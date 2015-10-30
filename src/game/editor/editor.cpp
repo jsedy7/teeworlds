@@ -1561,7 +1561,7 @@ void CEditor::DoQuadEnvelopes(const array<CQuad> &lQuads, IGraphics::CTextureHan
 	//Draw Quads
 	Graphics()->TextureSet(Texture);
 	Graphics()->QuadsBegin();
-	
+
 	for(int j = 0; j < Num; j++)
 	{
 		if(!apEnvelope[j])
@@ -2099,7 +2099,7 @@ void CEditor::DoMapEditor(CUIRect View, CUIRect ToolBar)
 						}
 					}
 				}
-				
+
 
 				for(int k = 0; k < NumEditLayers; k++)
 				{
@@ -2278,7 +2278,7 @@ void CEditor::DoMapEditor(CUIRect View, CUIRect ToolBar)
 
 		DoQuadEnvelopes(pLayer->m_lQuads, Texture);
 		m_ShowEnvelopePreview = SHOWENV_NONE;
-    }
+	}
 
 	Graphics()->MapScreen(UI()->Screen()->x, UI()->Screen()->y, UI()->Screen()->w, UI()->Screen()->h);
 	//UI()->ClipDisable();
@@ -3707,7 +3707,7 @@ void CEditor::RenderEnvelopeEditor(CUIRect View)
 
 										// clamp tangents
 										pEnvelope->m_lPoints[i].m_aInTangentdx[c] = clamp(pEnvelope->m_lPoints[i].m_aInTangentdx[c], -pEnvelope->m_lPoints[i].m_Time, 0);
-										pEnvelope->m_lPoints[i].m_aOutTangentdx[c] = clamp(pEnvelope->m_lPoints[i].m_aOutTangentdx[c], 0, 
+										pEnvelope->m_lPoints[i].m_aOutTangentdx[c] = clamp(pEnvelope->m_lPoints[i].m_aOutTangentdx[c], 0,
 																						(int)(EndTime*1000.f - pEnvelope->m_lPoints[i].m_Time));
 									}
 								}
@@ -3777,7 +3777,7 @@ void CEditor::RenderEnvelopeEditor(CUIRect View)
 							float y_out = py + fx2f(pEnvelope->m_lPoints[i].m_aOutTangentdy[c])/(Top-Bottom);
 
 							CUIRect Final;
-							Final.x = View.x + x_out*View.w; 
+							Final.x = View.x + x_out*View.w;
 							Final.y = View.y+View.h - y_out*View.h;
 							Final.x -= 2.0f;
 							Final.y -= 2.0f;
@@ -3805,7 +3805,7 @@ void CEditor::RenderEnvelopeEditor(CUIRect View)
 									if((Input()->KeyPressed(KEY_LCTRL) || Input()->KeyPressed(KEY_RCTRL)))
 									{
 										pEnvelope->m_lPoints[i].m_aOutTangentdx[c] += (int)((m_MouseDeltaX));
-										pEnvelope->m_lPoints[i].m_aOutTangentdy[c] -= f2fx(m_MouseDeltaY*0.001f);		
+										pEnvelope->m_lPoints[i].m_aOutTangentdy[c] -= f2fx(m_MouseDeltaY*0.001f);
 									}
 									else
 									{
@@ -3814,7 +3814,7 @@ void CEditor::RenderEnvelopeEditor(CUIRect View)
 									}
 
 									// clamp time value
-									pEnvelope->m_lPoints[i].m_aOutTangentdx[c] = clamp(pEnvelope->m_lPoints[i].m_aOutTangentdx[c], 0, 
+									pEnvelope->m_lPoints[i].m_aOutTangentdx[c] = clamp(pEnvelope->m_lPoints[i].m_aOutTangentdx[c], 0,
 																						(int)(EndTime*1000.f - pEnvelope->m_lPoints[i].m_Time));
 
 									//
@@ -3850,7 +3850,7 @@ void CEditor::RenderEnvelopeEditor(CUIRect View)
 							else
 								Graphics()->SetColor(aColors[c].r*ColorMod, aColors[c].g*ColorMod, aColors[c].b*ColorMod, 0.5f);
 
-							IGraphics::CFreeformItem FreeformItem(Final.x+Final.w/2, Final.y, Final.x+Final.w/2, Final.y, 
+							IGraphics::CFreeformItem FreeformItem(Final.x+Final.w/2, Final.y, Final.x+Final.w/2, Final.y,
 																 Final.x+Final.w, Final.y+Final.h, Final.x, Final.y+Final.h);
 							Graphics()->QuadsDrawFreeform(&FreeformItem, 1);
 						}
@@ -3862,7 +3862,7 @@ void CEditor::RenderEnvelopeEditor(CUIRect View)
 							float y_in = py + fx2f(pEnvelope->m_lPoints[i].m_aInTangentdy[c])/(Top-Bottom);
 
 							CUIRect Final;
-							Final.x = View.x + x_in*View.w; 
+							Final.x = View.x + x_in*View.w;
 							Final.y = View.y+View.h - y_in*View.h;
 							Final.x -= 2.0f;
 							Final.y -= 2.0f;
@@ -3890,7 +3890,7 @@ void CEditor::RenderEnvelopeEditor(CUIRect View)
 									if((Input()->KeyPressed(KEY_LCTRL) || Input()->KeyPressed(KEY_RCTRL)))
 									{
 										pEnvelope->m_lPoints[i].m_aInTangentdx[c] += (int)((m_MouseDeltaX));
-										pEnvelope->m_lPoints[i].m_aInTangentdy[c] -= f2fx(m_MouseDeltaY*0.001f);		
+										pEnvelope->m_lPoints[i].m_aInTangentdy[c] -= f2fx(m_MouseDeltaY*0.001f);
 									}
 									else
 									{
@@ -3900,7 +3900,7 @@ void CEditor::RenderEnvelopeEditor(CUIRect View)
 
 									// clamp time value
 									pEnvelope->m_lPoints[i].m_aInTangentdx[c] = clamp(pEnvelope->m_lPoints[i].m_aInTangentdx[c], -pEnvelope->m_lPoints[i].m_Time, 0);
-																			
+
 									//
 									m_SelectedQuadEnvelope = m_SelectedEnvelope;
 									m_ShowEnvelopePreview = SHOWENV_SELECTED;
@@ -3935,11 +3935,11 @@ void CEditor::RenderEnvelopeEditor(CUIRect View)
 								Graphics()->SetColor(aColors[c].r*ColorMod, aColors[c].g*ColorMod, aColors[c].b*ColorMod, 0.5f);
 
 							// draw triangle
-							IGraphics::CFreeformItem FreeformItem(Final.x+Final.w/2, Final.y, Final.x+Final.w/2, Final.y, 
+							IGraphics::CFreeformItem FreeformItem(Final.x+Final.w/2, Final.y, Final.x+Final.w/2, Final.y,
 																 Final.x+Final.w, Final.y+Final.h, Final.x, Final.y+Final.h);
 							Graphics()->QuadsDrawFreeform(&FreeformItem, 1);
 						}
-						
+
 					}
 				}
 			}
@@ -4527,7 +4527,12 @@ void CEditor::UpdateAndRender()
 	if(Input()->KeyDown(KEY_F10))
 		m_ShowMousePointer = false;
 
-	Render();
+	if(g_Config.m_ClAutoMap) {
+		m_AutoMapUI.Update();
+		m_AutoMapUI.Render();
+	}
+	else
+		Render();
 
 	if(Input()->KeyDown(KEY_F10))
 	{

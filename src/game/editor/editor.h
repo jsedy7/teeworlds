@@ -507,17 +507,19 @@ class CEditor : public IEditor
 	class IStorage *m_pStorage;
 	CRenderTools m_RenderTools;
 	CUI m_UI;
+	CAutoMapUI m_AutoMapUI;
+
 public:
-	class IInput *Input() { return m_pInput; };
-	class IClient *Client() { return m_pClient; };
-	class IConsole *Console() { return m_pConsole; };
-	class IGraphics *Graphics() { return m_pGraphics; };
-	class ITextRender *TextRender() { return m_pTextRender; };
-	class IStorage *Storage() { return m_pStorage; };
+	class IInput *Input() { return m_pInput; }
+	class IClient *Client() { return m_pClient; }
+	class IConsole *Console() { return m_pConsole; }
+	class IGraphics *Graphics() { return m_pGraphics; }
+	class ITextRender *TextRender() { return m_pTextRender; }
+	class IStorage *Storage() { return m_pStorage; }
 	CUI *UI() { return &m_UI; }
 	CRenderTools *RenderTools() { return &m_RenderTools; }
 
-	CEditor() : m_TilesetPicker(16, 16)
+	CEditor() : m_AutoMapUI(this), m_TilesetPicker(16, 16)
 	{
 		m_pInput = 0;
 		m_pClient = 0;
@@ -713,7 +715,7 @@ public:
 	int m_SelectedPoints;
 	int m_SelectedEnvelope;
 	int m_SelectedEnvelopePoint;
-    int m_SelectedQuadEnvelope;
+	int m_SelectedQuadEnvelope;
 	int m_SelectedImage;
 
 	IGraphics::CTextureHandle m_CheckerTexture;

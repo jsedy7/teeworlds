@@ -1,8 +1,9 @@
 #include <engine/console.h>
 #include <engine/storage.h>
 
-#include "auto_map.h"
 #include "editor.h"
+#include "auto_map.h"
+
 
 
 void CTilesetMapper::Load(const json_value &rElement)
@@ -145,7 +146,7 @@ void CTilesetMapper::Proceed(CLayerTiles *pLayer, int ConfigID)
 						RespectRules = false;
 					else
 					{
- 						if(pCondition->m_Value == CRuleCondition::EMPTY || pCondition->m_Value == CRuleCondition::FULL)
+						if(pCondition->m_Value == CRuleCondition::EMPTY || pCondition->m_Value == CRuleCondition::FULL)
 						{
 							if(pLayer->m_pTiles[CheckIndex].m_Index > 0 && pCondition->m_Value == CRuleCondition::EMPTY)
 								RespectRules = false;
@@ -710,4 +711,73 @@ void CDoodadsMapper::Proceed(CLayerTiles *pLayer, int ConfigID, int Amount)
 	}
 
 	m_pEditor->m_Map.m_Modified = true;
+}
+
+//
+// CAutoMapUI
+//
+
+IGraphics* CAutoMapUI::Graphics()
+{
+	return m_pEditor->Graphics();
+}
+
+CUI* CAutoMapUI::UI()
+{
+	return m_pEditor->UI();
+}
+
+CAutoMapUI::CAutoMapUI(CEditor* pEditor)
+{
+	m_pEditor = pEditor;
+}
+
+void CAutoMapUI::Update()
+{
+
+}
+
+void CAutoMapUI::Render()
+{
+	// basic start
+	Graphics()->Clear(0.5f, 0.5f, 0.5f);
+	CUIRect View = *UI()->Screen();
+	Graphics()->MapScreen(UI()->Screen()->x, UI()->Screen()->y, UI()->Screen()->w, UI()->Screen()->h);
+
+	/*float Width = View.w;
+	float Height = View.h;*/
+
+	// render checker
+	//m_pEditor->RenderBackground(View, m_pEditor->m_CheckerTexture, 32.0f, 1.0f);
+
+	// set views
+	CUIRect ToolBar, ToolBox;
+	View.HSplitTop(53.0f, &ToolBar, &View);
+	View.VSplitLeft(100.0f, &ToolBox, &View);
+	/*ToolBox.Margin(2.0f, &ToolBox);
+	ToolBar.Margin(2.0f, &ToolBar);*/
+
+	// fill views
+	float Brightness = 0.25f;
+	m_pEditor->RenderBackground(ToolBox, m_pEditor->m_BackgroundTexture, 128.0f, Brightness);
+	m_pEditor->RenderBackground(ToolBar, m_pEditor->m_BackgroundTexture, 128.0f, Brightness);
+
+	//if(m_ShowMousePointer)
+	{
+		// render butt ugly mouse cursor
+		float mx = UI()->MouseX();
+		float my = UI()->MouseY();
+		Graphics()->TextureSet(m_pEditor->m_CursorTexture); // same thing here
+		Graphics()->QuadsBegin();
+		/*if(ms_pUiGotContext == UI()->HotItem())
+			Graphics()->SetColor(1,0,0,1);*/
+		IGraphics::CQuadItem QuadItem(mx,my, 16.0f, 16.0f);
+		Graphics()->QuadsDrawTL(&QuadItem, 1);
+		Graphics()->QuadsEnd();
+	}
+}
+
+void CAutoMapUI::RenderPatterns()
+{
+
 }

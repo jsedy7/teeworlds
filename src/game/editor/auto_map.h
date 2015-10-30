@@ -26,7 +26,7 @@ public:
 
 	//
 	IAutoMapper(class CEditor *pEditor, int Type) : m_pEditor(pEditor), m_Type(Type) {}
-	virtual ~IAutoMapper() {};
+	virtual ~IAutoMapper() {}
 	virtual void Load(const json_value &rElement) = 0;
 	virtual void Proceed(class CLayerTiles *pLayer, int ConfigID) {}
 	virtual void Proceed(class CLayerTiles *pLayer, int ConfigID, int Ammount) {} // for convenience purposes
@@ -147,6 +147,28 @@ private:
 	array<array<int> > m_CeilingIDs;
 	array<array<int> > m_RightWallIDs;
 	array<array<int> > m_LeftWallIDs;
+};
+
+// TODO: move this?
+class CAutoMapUI
+{
+	class CEditor *m_pEditor;
+
+	// helper functions
+	/*class IInput *Input() { return m_pInput; }
+	class IClient *Client() { return m_pClient; }
+	class IConsole *Console() { return m_pConsole; }*/
+	class IGraphics *Graphics();
+	/*class ITextRender *TextRender() { return m_pTextRender; }
+	class IStorage *Storage() { return m_pStorage; }*/
+	CUI *UI();
+
+public:
+	CAutoMapUI(class CEditor *pEditor);
+
+	void Update();
+	void Render();
+	void RenderPatterns();
 };
 
 #endif
