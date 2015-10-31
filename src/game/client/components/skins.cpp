@@ -135,7 +135,7 @@ int CSkins::SkinScan(const char *pName, int IsDir, int DirType, void *pUser)
 	json_settings JsonSettings;
 	mem_zero(&JsonSettings, sizeof(JsonSettings));
 	char aError[256];
-	json_value *pJsonData = json_parse_ex(&JsonSettings, pFileData, aError);
+	json_value *pJsonData = json_parse_ex(&JsonSettings, pFileData, FileSize, aError);
 	if(pJsonData == 0)
 	{
 		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_ADDINFO, aBuf, aError);
@@ -152,7 +152,7 @@ int CSkins::SkinScan(const char *pName, int IsDir, int DirType, void *pUser)
 			const json_value &rPart = rStart[(const char *)ms_apSkinPartNames[PartIndex]];
 			if(rPart.type != json_object)
 				continue;
-			
+
 			// filename
 			const json_value &rFilename = rPart["filename"];
 			if(rFilename.type == json_string)
@@ -174,7 +174,7 @@ int CSkins::SkinScan(const char *pName, int IsDir, int DirType, void *pUser)
 			// color components
 			if(!UseCustomColors)
 				continue;
-				
+
 			for(int i = 0; i < NUM_COLOR_COMPONENTS; i++)
 			{
 				if(PartIndex != SKINPART_MARKING && i == 3)

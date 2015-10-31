@@ -33,7 +33,7 @@ void CCountryFlags::LoadCountryflagsIndexfile()
 	json_settings JsonSettings;
 	mem_zero(&JsonSettings, sizeof(JsonSettings));
 	char aError[256];
-	json_value *pJsonData = json_parse_ex(&JsonSettings, pFileData, aError);
+	json_value *pJsonData = json_parse_ex(&JsonSettings, pFileData, FileSize, aError);
 	if(pJsonData == 0)
 	{
 		Console()->Print(IConsole::OUTPUT_LEVEL_ADDINFO, pFilename, aError);
@@ -60,14 +60,14 @@ void CCountryFlags::LoadCountryflagsIndexfile()
 					char aBuf[64];
 
 					// validate country code
-					int CountryCode = (long)rStart[i]["code"];
+					int CountryCode = rStart[i]["code"];
 					if(CountryCode < CODE_LB || CountryCode > CODE_UB)
 					{
 						str_format(aBuf, sizeof(aBuf), "country code '%i' not within valid code range [%i..%i]", CountryCode, CODE_LB, CODE_UB);
 						Console()->Print(IConsole::OUTPUT_LEVEL_ADDINFO, "countryflags", aBuf);
 						continue;
 					}
-					
+
 					// add entry
 					const char *pCountryName = rStart[i]["id"];
 					CCountryFlag CountryFlag;
@@ -89,7 +89,7 @@ void CCountryFlags::LoadCountryflagsIndexfile()
 						mem_free(Info.m_pData);
 					}
 					m_aCountryFlags.add_unsorted(CountryFlag);
-		
+
 					// print message
 					if(g_Config.m_Debug)
 					{
@@ -114,7 +114,7 @@ void CCountryFlags::LoadCountryflagsIndexfile()
 			DefaultIndex = Index;
 			break;
 		}
-	
+
 	// init LUT
 	if(DefaultIndex != 0)
 		for(int i = 0; i < CODE_RANGE; ++i)

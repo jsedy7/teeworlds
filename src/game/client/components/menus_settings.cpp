@@ -82,7 +82,7 @@ void CMenus::SaveSkinfile()
 	{
 		if(!CSkins::ms_apSkinVariables[PartIndex][0])
 			continue;
-		
+
 		// part start
 		if(Count == 0)
 		{
@@ -91,7 +91,7 @@ void CMenus::SaveSkinfile()
 		}
 		else
 		{
-			p = ",\n"; 
+			p = ",\n";
 			io_write(File, p, str_length(p));
 		}
 		str_format(aBuf, sizeof(aBuf), "\t\"%s\": {\n", CSkins::ms_apSkinPartNames[PartIndex]);
@@ -579,7 +579,7 @@ void LoadLanguageIndexfile(IStorage *pStorage, IConsole *pConsole, sorted_array<
 	json_settings JsonSettings;
 	mem_zero(&JsonSettings, sizeof(JsonSettings));
 	char aError[256];
-	json_value *pJsonData = json_parse_ex(&JsonSettings, pFileData, aError);
+	json_value *pJsonData = json_parse_ex(&JsonSettings, pFileData, FileSize, aError);
 	if(pJsonData == 0)
 	{
 		pConsole->Print(IConsole::OUTPUT_LEVEL_ADDINFO, pFilename, aError);
@@ -595,7 +595,7 @@ void LoadLanguageIndexfile(IStorage *pStorage, IConsole *pConsole, sorted_array<
 		{
 			char aFileName[128];
 			str_format(aFileName, sizeof(aFileName), "languages/%s.json", (const char *)rStart[i]["file"]);
-			pLanguages->add(CLanguage((const char *)rStart[i]["name"], aFileName, (long)rStart[i]["code"]));
+			pLanguages->add(CLanguage((const char *)rStart[i]["name"], aFileName, (int)rStart[i]["code"]));
 		}
 	}
 
@@ -651,7 +651,7 @@ void CMenus::RenderLanguageSelection(CUIRect MainView, bool Header)
 				TextRender()->TextOutlineColor(0.0f, 0.0f, 0.0f, 0.3f);
 			}
 			else
- 				UI()->DoLabelScaled(&Item.m_Rect, r.front().m_Name, Item.m_Rect.h*ms_FontmodHeight*0.8f, CUI::ALIGN_LEFT);
+				UI()->DoLabelScaled(&Item.m_Rect, r.front().m_Name, Item.m_Rect.h*ms_FontmodHeight*0.8f, CUI::ALIGN_LEFT);
 		}
 	}
 

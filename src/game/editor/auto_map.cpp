@@ -1,7 +1,5 @@
 #include <cassert>
 #include <iostream>
-#include <engine/console.h>
-#include <engine/storage.h>
 
 #include "editor.h"
 #include "auto_map.h"
@@ -716,6 +714,10 @@ void CDoodadsMapper::Proceed(CLayerTiles *pLayer, int ConfigID, int Amount)
 }
 
 
+//
+// CMapFilter
+//
+
 CMapFilter::CPattern::CPattern()
 {
 	// unrelevent
@@ -785,12 +787,12 @@ void CMapFilter::CPattern::SetTile(int x, int y, int Index, int Flags)
 	m_Tiles[i].m_Flags = Flags;
 }
 
-const CMapFilter::CMFTile&CMapFilter::CPattern::GetTile(int TileID) const
+const CMapFilter::CMFTile& CMapFilter::CPattern::GetTile(int TileID) const
 {
 	return m_Tiles[TileID];
 }
 
-const array<CMapFilter::CMFTile>&CMapFilter::CPattern::GetTiles() const
+const array<CMapFilter::CMFTile>& CMapFilter::CPattern::GetTiles() const
 {
 	return m_Tiles;
 }
