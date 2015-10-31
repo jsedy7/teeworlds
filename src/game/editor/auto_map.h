@@ -149,6 +149,74 @@ private:
 	array<array<int> > m_LeftWallIDs;
 };
 
+class CMapFilter
+{
+	struct CMFTile // custom tile because we need a bigger m_Index
+	{
+		int m_Index;
+		char m_Flags;
+		void Clear() {
+			m_Index = CMapFilter::EMPTY;
+			m_Flags = 0;
+		}
+	};
+
+	int m_Width, m_Height;
+	array<CMFTile> m_Filter;
+	int m_RefPointId; // reference point
+
+	class CPattern
+	{
+		int m_Width, m_Height;
+		array<CMFTile> m_Tiles;
+
+	public:
+		CPattern();
+
+		void LoadTiles(const json_value& JsonVal);
+		//const json_value& ToJson();
+
+		void Print();
+
+		void SetSize(int Width, int Height);
+		void SetTile(int x, int y, int Index, int Flags);
+		const CMFTile& GetTile(int TileID) const;
+		const array<CMFTile>& GetTiles() const;
+		void Clear();
+		float m_Weight; // random weight
+	};
+
+	array<CPattern> m_Patterns;
+
+	void Apply(int TileID, CLayerTiles *pLayer);
+public:
+
+	enum {
+		FULL=-1,
+		EMPTY=0,
+		MAX_SIZE=8
+	};
+
+	CMapFilter();
+	explicit CMapFilter(const json_value& JsonVal);
+	//const json_value& ToJson();
+
+	void Print();
+
+	void SetSize(int Width, int Height);
+	void SetTile(int x, int y, int Index, int Flags = 0);
+	void Clear();
+
+	void AddPattern();
+	void RemovePattern(int ID);
+	void ClearPattern(int ID);
+	void SetPatternTile(int ID, int x, int y, int Index, int Flags = 0);
+	void SetPatternWeight(int ID, float Weight);
+	const array<CMFTile>& GetPatternTiles(int ID) const;
+
+	bool TryApply(int TileID, CLayerTiles *pLayer);
+};
+
 // TODO: move this?
 class CAutoMapUI
 {

@@ -1,3 +1,5 @@
+#include <cassert>
+#include <iostream>
 #include <engine/console.h>
 #include <engine/storage.h>
 
@@ -712,6 +714,406 @@ void CDoodadsMapper::Proceed(CLayerTiles *pLayer, int ConfigID, int Amount)
 
 	m_pEditor->m_Map.m_Modified = true;
 }
+
+
+CMapFilter::CPattern::CPattern()
+{
+	// unrelevent
+	m_Width = 0;
+	m_Height = 0;
+	m_Weight = 1.0f;
+}
+
+void CMapFilter::CPattern::LoadTiles(const json_value& JsonVal)
+{
+	int t = 0;
+	for(unsigned i = 0; i < JsonVal.u.array.length; i++)
+	{
+		bool valid = false;
+
+		const json_value& Tile = JsonVal[i];
+		if(Tile.type == json_integer)
+		{
+			m_Tiles[t].m_Index = Tile.u.integer;
+			valid = true;
+		}
+		else if(Tile.type == json_object)
+		{
+			const json_value& Index = Tile["index"];
+			if(Index.type == json_integer)
+			{
+				m_Tiles[t].m_Index = Index.u.integer;
+				valid = true;
+			}
+
+			const json_value& Flags = Tile["flags"];
+			if(Index.type == json_integer)
+				m_Tiles[t].m_Flags = Flags.u.integer;
+		}
+
+		if(valid) t++;
+	}
+}
+
+void CMapFilter::CPattern::Print()
+{
+	std::cout << "weight: " << m_Weight << std::endl;
+	std::cout << "tiles: [";
+	for(int i = 0; i < m_Tiles.size(); i++)
+		std::cout << m_Tiles[i].m_Index << ",";
+	std::cout << "]" << std::endl;
+}
+
+/*const json_value&CMapFilter::CPattern::ToJson()
+{
+
+}*/
+
+void CMapFilter::CPattern::SetSize(int Width, int Height)
+{
+	m_Width = Width;
+	m_Height = Height;
+	m_Tiles.set_size(m_Width*m_Height);
+}
+
+void CMapFilter::CPattern::SetTile(int x, int y, int Index, int Flags)
+{
+	x = clamp(x, 0, m_Width);
+	y = clamp(y, 0, m_Height);
+	int i = y*m_Width+x;
+	m_Tiles[i].m_Index = clamp(Index, 0, 255);
+	m_Tiles[i].m_Flags = Flags;
+}
+
+const CMapFilter::CMFTile&CMapFilter::CPattern::GetTile(int TileID) const
+{
+	return m_Tiles[TileID];
+}
+
+const array<CMapFilter::CMFTile>&CMapFilter::CPattern::GetTiles() const
+{
+	return m_Tiles;
+}
+
+void CMapFilter::CPattern::Clear()
+{
+	for(int i = 0; i < m_Tiles.size(); i++)
+		m_Tiles[i].Clear();
+}
+
+CMapFilter::CMapFilter()
+{
+	m_Width = 0;
+	m_Height = 0;
+	m_RefPointId = 0;
+}
+
+CMapFilter::CMapFilter(const json_value& JsonVal)
+{
+	/*
+	  "width": int,
+	  "height": int,
+	  "filter": [index,..., { "index": index, "flags": int }, ...],
+	  "patterns": [
+			{
+				"weight": float,
+				"tiles": [index,..., { index, flags }, ...]
+			},
+			{
+				"weight": float,
+				"tiles": [index,..., { index, flags }, ...]
+			},
+			...
+	  ]
+	*/
+	std::cout << "CMapFilter(const json_value& JsonVal)" << std::endl;
+
+	m_Width = 0;
+	const json_value& w = JsonVal["width"];
+	if(w.type == json_integer)
+		m_Width = w.u.integer;
+
+	m_Height = 0;
+	const json_value& h = JsonVal["height"];
+	if(h.type == json_integer)
+		m_Height = h.u.integer;
+
+	// init array
+	SetSize(m_Width, m_Height);
+	Clear();
+
+	const json_value& Filter = JsonVal["filter"];
+	int f = 0;
+	if(Filter.type == json_array)
+		for(unsigned i = 0; i < Filter.u.array.length; i++)
+		{
+			bool valid = false;
+
+			const json_value& Tile = Filter[i];
+			if(Tile.type == json_integer)
+			{
+				m_Filter[f].m_Index = Tile.u.integer;
+				valid = true;
+			}
+			else if(Tile.type == json_object)
+			{
+				const json_value& Index = Tile["index"];
+				if(Index.type == json_integer)
+				{
+					m_Filter[f].m_Index = Index.u.integer;
+					valid = true;
+				}
+
+				const json_value& Flags = Tile["flags"];
+				if(Index.type == json_integer)
+					m_Filter[f].m_Flags = Flags.u.integer;
+			}
+
+			if(valid) f++;
+		}
+
+	// ref point
+	for(int i = 0; i < m_Filter.size(); i++)
+	{
+		if(m_Filter[i].m_Index != CMapFilter::EMPTY)
+		{
+			m_RefPointId = i;
+			break;
+		}
+	}
+
+	const json_value& PatternArr = JsonVal["patterns"];
+	int p = 0;
+	if(PatternArr.type == json_array)
+		for(unsigned i = 0; i < PatternArr.u.array.length; i++)
+		{
+			const json_value& Pattern = PatternArr[i];
+			if(Pattern.type == json_object)
+			{
+				float Weight = 0.f;
+				const json_value& w = Pattern["weight"];
+				if(w.type == json_double)
+					Weight = w.u.dbl;
+
+				const json_value& Tiles = Pattern["tiles"];
+				if(Tiles.type == json_array && (int)Tiles.u.array.length == m_Filter.size())
+				{
+					AddPattern();
+					m_Patterns[p].LoadTiles(Tiles);
+					SetPatternWeight(p, Weight);
+					p++;
+				}
+			}
+		}
+}
+
+void CMapFilter::Print()
+{
+	std::cout << "CMapFilter [" << this << "]" << std::endl;
+	std::cout << "w: " << m_Width << " h: " << m_Height << std::endl;
+	std::cout << "ref: " << m_RefPointId << std::endl;
+	std::cout << "filter: [";
+	for(int i = 0; i < m_Filter.size(); i++)
+		std::cout << m_Filter[i].m_Index << ",";
+	std::cout << "]" << std::endl;
+	std::cout << "patterns: [" << std::endl;;
+	for(int i = 0; i < m_Patterns.size(); i++)
+	{
+		std::cout << i << std::endl;
+		m_Patterns[i].Print();
+	}
+	std::cout << "]" << std::endl;
+}
+
+/*const json_value& CMapFilter::ToJson()
+{
+
+}*/
+
+void CMapFilter::SetSize(int Width, int Height)
+{
+	m_Width = clamp(Width, 0, (int)CMapFilter::MAX_SIZE);
+	m_Height = clamp(Height, 0, (int)CMapFilter::MAX_SIZE);
+	m_Filter.set_size(m_Width*m_Height);
+
+	for(int i = 0; i < m_Patterns.size(); i++)
+		m_Patterns[i].SetSize(m_Width, m_Height);
+}
+
+void CMapFilter::SetTile(int x, int y, int Index, int Flags)
+{
+	x = clamp(x, 0, m_Width);
+	y = clamp(y, 0, m_Height);
+	int i = y*m_Width+x;
+	m_Filter[i].m_Index = clamp(Index, (int)CMapFilter::FULL, 255);
+	m_Filter[i].m_Flags = Flags;
+}
+
+void CMapFilter::Clear()
+{
+	for(int i = 0; i < m_Filter.size(); i++)
+		m_Filter[i].Clear();
+	m_Patterns.clear();
+}
+
+void CMapFilter::AddPattern()
+{
+	float TotalWeight = 0.f;
+	for(int i = 0; i < m_Patterns.size(); i++)
+		TotalWeight += m_Patterns[i].m_Weight;
+
+	int p = m_Patterns.add(CPattern());
+	m_Patterns[p].SetSize(m_Width, m_Height);
+	m_Patterns[p].Clear();
+	m_Patterns[p].m_Weight = 1.0f - TotalWeight;
+}
+
+void CMapFilter::RemovePattern(int Id)
+{
+	m_Patterns.remove_index(Id);
+
+	// adjust weights
+	float TotalWeight = 0.f;
+	for(int i = 0; i < m_Patterns.size(); i++)
+		TotalWeight += m_Patterns[i].m_Weight;
+
+	float Scale = 1.0f/TotalWeight;
+	for(int i = 0; i < m_Patterns.size(); i++)
+		m_Patterns[i].m_Weight *= Scale;
+}
+
+void CMapFilter::ClearPattern(int ID)
+{
+	if(ID < 0 || ID >= m_Patterns.size())
+		return;
+	m_Patterns[ID].Clear();
+}
+
+void CMapFilter::SetPatternTile(int ID, int x, int y, int Index, int Flags)
+{
+	if(ID < 0 || ID >= m_Patterns.size())
+		return;
+	m_Patterns[ID].SetTile(x, y, Index, Flags);
+}
+
+void CMapFilter::SetPatternWeight(int Id, float Weight)
+{
+	if(m_Patterns.size() == 1) // weight is 1.0 when there's only one
+		return;
+
+	Id = clamp(Id, 0, m_Patterns.size()-1);
+	Weight = clamp(Weight, 0.f, 1.0f);
+	m_Patterns[Id].m_Weight = Weight;
+
+	// adjust other weights
+	float OthersTotalWeight = 0.f;
+	for(int i = 0; i < m_Patterns.size(); i++)
+	{
+		if(i != Id)
+			OthersTotalWeight += m_Patterns[i].m_Weight;
+	}
+
+	float Scale = (1.0f-Weight)/OthersTotalWeight;
+	for(int i = 0; i < m_Patterns.size(); i++)
+	{
+		if(i != Id)
+			m_Patterns[i].m_Weight *= Scale;
+	}
+}
+
+const array<CMapFilter::CMFTile>&CMapFilter::GetPatternTiles(int ID) const
+{
+	assert(ID >= 0 && ID < m_Patterns.size());
+	return m_Patterns[ID].GetTiles();
+}
+
+bool CMapFilter::TryApply(int TileID, CLayerTiles* pLayer)
+{
+	int RefX = m_RefPointId % m_Width;
+	int RefY = floor(m_RefPointId / m_Width);
+
+	for(int y = 0; y < m_Height; y++)
+	{
+		for(int x = 0; x < m_Width; x++)
+		{
+			int mfi = y*m_Width+x;
+
+			if(mfi == m_RefPointId)
+				continue;
+
+			int OffsetX = x - RefX;
+			int OffsetY = y - RefY;
+			int CheckID = TileID + OffsetY*pLayer->m_Width+OffsetX;
+
+			if(CheckID < 0 || CheckID > pLayer->m_Width*pLayer->m_Height-1)
+				return false;
+
+			CTile& Tile = pLayer->m_pTiles[CheckID];
+			CMFTile& FTile = m_Filter[mfi];
+
+			if(FTile.m_Index == CMapFilter::FULL && Tile.m_Index == 0) // full
+				return false;
+			if(FTile.m_Index == CMapFilter::EMPTY && Tile.m_Index > 0) // empty
+				return false;
+			if(FTile.m_Index > 0 && (Tile.m_Index != FTile.m_Index || Tile.m_Flags != FTile.m_Flags)) // index specific
+				return false;
+		}
+	}
+
+	// everything checks out, replace
+	Apply(TileID, pLayer);
+
+	return true;
+}
+
+void CMapFilter::Apply(int TileID, CLayerTiles* pLayer)
+{
+	if(m_Patterns.size() == 0)
+		return;
+
+	int ChosenID = 0;
+	if(m_Patterns.size() > 1)
+	{
+		// roll the dice
+		float RandVal =  (float)rand() / RAND_MAX;
+		ChosenID = m_Patterns.size()-1;
+		float r = 0.f;
+
+		for(int i = 0; i < m_Patterns.size(); i++)
+		{
+			r += m_Patterns[i].m_Weight;
+			if(RandVal <= r)
+			{
+				ChosenID = i;
+				break;
+			}
+		}
+	}
+
+	// apply the pattern
+	int RefX = m_RefPointId % m_Width;
+	int RefY = floor(m_RefPointId / m_Width);
+	for(int y = 0; y < m_Height; y++)
+	{
+		for(int x = 0; x < m_Width; x++)
+		{
+			int mfi = y*m_Width+x;
+			int OffsetX = x - RefX;
+			int OffsetY = y - RefY;
+			int RepID = TileID + OffsetY*pLayer->m_Width+OffsetX;
+
+			if(RepID < 0 || RepID > pLayer->m_Width*pLayer->m_Height-1)
+				continue;
+
+			CTile& Tile = pLayer->m_pTiles[RepID];
+			const CMFTile& FTile = m_Patterns[ChosenID].GetTile(mfi);
+
+			Tile.m_Index = FTile.m_Index;
+			Tile.m_Flags = FTile.m_Flags;
+		}
+	}
+}
+
 
 //
 // CAutoMapUI
