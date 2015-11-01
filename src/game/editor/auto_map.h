@@ -155,26 +155,27 @@ class CMapFilter
 	{
 		int m_Index;
 		char m_Flags;
-		void Clear() {
+		void Clear()
+		{
 			m_Index = CMapFilter::EMPTY;
 			m_Flags = 0;
 		}
 	};
 
 	int m_Width, m_Height;
-	array<CMFTile> m_Filter;
+	array<CMFTile> m_aFilter;
 	int m_RefPointId; // reference point
 
 	class CPattern
 	{
 		int m_Width, m_Height;
-		array<CMFTile> m_Tiles;
+		array<CMFTile> m_aTiles;
 
 	public:
 		CPattern();
 
 		void LoadTiles(const json_value& JsonVal);
-		//const json_value& ToJson();
+		json_value* TilesToJson() const;
 
 		void Print();
 
@@ -186,12 +187,13 @@ class CMapFilter
 		float m_Weight; // random weight
 	};
 
-	array<CPattern> m_Patterns;
+	array<CPattern> m_aPatterns;
 
 	void Apply(int TileID, CLayerTiles *pLayer);
 public:
 
-	enum {
+	enum
+	{
 		FULL=-1,
 		EMPTY=0,
 		MAX_SIZE=8
@@ -199,7 +201,12 @@ public:
 
 	CMapFilter();
 	explicit CMapFilter(const json_value& JsonVal);
-	//const json_value& ToJson();
+
+	/**
+	 * @brief Jsonify the class
+	 * @return json_value* (free it)
+	 */
+	json_value* ToJson() const;
 
 	void Print();
 
