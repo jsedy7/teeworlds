@@ -31,7 +31,7 @@ public:
 	virtual void Proceed(class CLayerTiles *pLayer, int ConfigID) {}
 	virtual void Proceed(class CLayerTiles *pLayer, int ConfigID, int Ammount) {} // for convenience purposes
 
-	virtual int RuleSetNum() = 0;
+	virtual int RuleSetNum() const = 0;
 	virtual const char* GetRuleSetName(int Index) const = 0;
 
 	//
@@ -95,7 +95,7 @@ public:
 	virtual void Load(const json_value &rElement);
 	virtual void Proceed(class CLayerTiles *pLayer, int ConfigID);
 
-	virtual int RuleSetNum() { return m_aRuleSets.size(); }
+	virtual int RuleSetNum() const { return m_aRuleSets.size(); }
 	virtual const char* GetRuleSetName(int Index) const;
 };
 
@@ -135,7 +135,7 @@ public:
 	virtual void Proceed(class CLayerTiles *pLayer, int ConfigID, int Amount);
 	void AnalyzeGameLayer();
 
-	virtual int RuleSetNum() { return m_aRuleSets.size(); }
+	virtual int RuleSetNum() const { return m_aRuleSets.size(); }
 	virtual const char* GetRuleSetName(int Index) const;
 
 private:
@@ -148,6 +148,8 @@ private:
 	array<array<int> > m_RightWallIDs;
 	array<array<int> > m_LeftWallIDs;
 };
+
+
 
 class CMapFilter
 {
@@ -211,6 +213,7 @@ public:
 	void Print();
 
 	void SetSize(int Width, int Height);
+	int GetWidth() const;
 	void SetTile(int x, int y, int Index, int Flags = 0);
 	void Clear();
 
@@ -222,6 +225,27 @@ public:
 	const array<CMFTile>& GetPatternTiles(int ID) const;
 
 	bool TryApply(int TileID, CLayerTiles *pLayer);
+};
+
+class CTilesetMapper_: public IAutoMapper
+{
+	struct CGroup
+	{
+		char m_aName[128];
+		array<CMapFilter> m_aFilters;
+	};
+
+	array<CGroup> m_aGroups;
+
+public:
+
+	CTilesetMapper_(class CEditor *pEditor) : IAutoMapper(pEditor, TYPE_TILESET) { m_aGroups.clear(); }
+
+	virtual void Load(const json_value &rElement);
+	virtual void Proceed(class CLayerTiles *pLayer, int ConfigID);
+
+	virtual int RuleSetNum() const { return m_aGroups.size(); }
+	virtual const char* GetRuleSetName(int Index) const;
 };
 
 // TODO: move this?

@@ -237,7 +237,7 @@ void CEditorImage::LoadAutoMapper()
 	const json_value &rTileset = (*pJsonData)[(const char *)IAutoMapper::GetTypeName(IAutoMapper::TYPE_TILESET)];
 	if(rTileset.type == json_array)
 	{
-		m_pAutoMapper = new CTilesetMapper(m_pEditor);
+		m_pAutoMapper = new CTilesetMapper_(m_pEditor);
 		m_pAutoMapper->Load(rTileset);
 	}
 	else
@@ -4527,7 +4527,7 @@ void CEditor::UpdateAndRender()
 	if(Input()->KeyDown(KEY_F10))
 		m_ShowMousePointer = false;
 
-	if(g_Config.m_ClAutoMap) {
+	if(g_Config.m_ClAutoMapUI) {
 		m_AutoMapUI.Update();
 		m_AutoMapUI.Render();
 	}

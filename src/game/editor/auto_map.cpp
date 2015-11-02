@@ -733,27 +733,28 @@ void CMapFilter::CPattern::LoadTiles(const json_value& JsonVal)
 	{
 		bool valid = false;
 
-		const json_value& Tile = JsonVal[i];
-		if(Tile.type == json_integer)
+		const json_value& rTile = JsonVal[i];
+		if(rTile.type == json_integer)
 		{
-			m_aTiles[t].m_Index = Tile.u.integer;
+			m_aTiles[t].m_Index = clamp((int)rTile.u.integer, (int)CMapFilter::FULL, 255);
 			valid = true;
 		}
-		else if(Tile.type == json_object)
+		else if(rTile.type == json_object)
 		{
-			const json_value& Index = Tile["index"];
-			if(Index.type == json_integer)
+			const json_value& rIndex = rTile["index"];
+			if(rIndex.type == json_integer)
 			{
-				m_aTiles[t].m_Index = Index.u.integer;
+				m_aTiles[t].m_Index = clamp((int)rIndex.u.integer, (int)CMapFilter::FULL, 255);
 				valid = true;
 			}
 
-			const json_value& Flags = Tile["flags"];
-			if(Index.type == json_integer)
-				m_aTiles[t].m_Flags = Flags.u.integer;
+			const json_value& rFlags = rTile["flags"];
+			if(rFlags.type == json_integer)
+				m_aTiles[t].m_Flags = clamp((int)rFlags.u.integer, 0, 128);
 		}
 
-		if(valid) t++;
+		if(valid)
+			t++;
 	}
 }
 
@@ -848,45 +849,46 @@ CMapFilter::CMapFilter(const json_value& JsonVal)
 	m_Width = 0;
 	const json_value& w = JsonVal["width"];
 	if(w.type == json_integer)
-		m_Width = w.u.integer;
+		m_Width = clamp((int)w.u.integer, 0, (int)MAX_SIZE);
 
 	m_Height = 0;
 	const json_value& h = JsonVal["height"];
 	if(h.type == json_integer)
-		m_Height = h.u.integer;
+		m_Height = clamp((int)h.u.integer, 0, (int)MAX_SIZE);
 
 	// init array
 	SetSize(m_Width, m_Height);
 	Clear();
 
-	const json_value& Filter = JsonVal["filter"];
+	const json_value& rFilter = JsonVal["filter"];
 	int f = 0;
-	if(Filter.type == json_array)
-		for(unsigned i = 0; i < Filter.u.array.length; i++)
+	if(rFilter.type == json_array)
+		for(unsigned i = 0; i < rFilter.u.array.length; i++)
 		{
 			bool valid = false;
 
-			const json_value& Tile = Filter[i];
-			if(Tile.type == json_integer)
+			const json_value& rTile = rFilter[i];
+			if(rTile.type == json_integer)
 			{
-				m_aFilter[f].m_Index = Tile.u.integer;
+				m_aFilter[f].m_Index = clamp((int)rTile.u.integer, (int)CMapFilter::FULL, 255);
 				valid = true;
 			}
-			else if(Tile.type == json_object)
+			else if(rTile.type == json_object)
 			{
-				const json_value& Index = Tile["index"];
-				if(Index.type == json_integer)
+				const json_value& rIndex = rTile["index"];
+				if(rIndex.type == json_integer)
 				{
-					m_aFilter[f].m_Index = Index.u.integer;
+					m_aFilter[f].m_Index = clamp((int)rIndex.u.integer, (int)CMapFilter::FULL, 255);
 					valid = true;
 				}
 
-				const json_value& Flags = Tile["flags"];
-				if(Index.type == json_integer)
-					m_aFilter[f].m_Flags = Flags.u.integer;
+				const json_value& rFlags = rTile["flags"];
+				if(rFlags.type == json_integer)
+					m_aFilter[f].m_Flags = clamp((int)rFlags.u.integer, 0, 128);
 			}
 
-			if(valid) f++;
+			if(valid)
+				f++;
 		}
 
 	// ref point
@@ -899,24 +901,24 @@ CMapFilter::CMapFilter(const json_value& JsonVal)
 		}
 	}
 
-	const json_value& PatternArr = JsonVal["patterns"];
+	const json_value& rPatternArr = JsonVal["patterns"];
 	int p = 0;
-	if(PatternArr.type == json_array)
-		for(unsigned i = 0; i < PatternArr.u.array.length; i++)
+	if(rPatternArr.type == json_array)
+		for(unsigned i = 0; i < rPatternArr.u.array.length; i++)
 		{
-			const json_value& Pattern = PatternArr[i];
-			if(Pattern.type == json_object)
+			const json_value& rPattern = rPatternArr[i];
+			if(rPattern.type == json_object)
 			{
 				float Weight = 0.f;
-				const json_value& w = Pattern["weight"];
+				const json_value& w = rPattern["weight"];
 				if(w.type == json_double)
-					Weight = w.u.dbl;
+					Weight = clamp((float)w.u.dbl, 0.f, 1.f);
 
-				const json_value& Tiles = Pattern["tiles"];
-				if(Tiles.type == json_array && (int)Tiles.u.array.length == m_aFilter.size())
+				const json_value& rTiles = rPattern["tiles"];
+				if(rTiles.type == json_array && (int)rTiles.u.array.length == m_aFilter.size())
 				{
 					AddPattern();
-					m_aPatterns[p].LoadTiles(Tiles);
+					m_aPatterns[p].LoadTiles(rTiles);
 					SetPatternWeight(p, Weight);
 					p++;
 				}
@@ -1003,6 +1005,11 @@ void CMapFilter::SetSize(int Width, int Height)
 
 	for(int i = 0; i < m_aPatterns.size(); i++)
 		m_aPatterns[i].SetSize(m_Width, m_Height);
+}
+
+int CMapFilter::GetWidth() const
+{
+	return m_Width;
 }
 
 void CMapFilter::SetTile(int x, int y, int Index, int Flags)
@@ -1173,10 +1180,76 @@ void CMapFilter::Apply(int TileID, CLayerTiles* pLayer)
 			CTile& Tile = pLayer->m_pTiles[RepID];
 			const CMFTile& FTile = m_aPatterns[ChosenID].GetTile(mfi);
 
+			if(FTile.m_Index == CMapFilter::FULL) // leave it as is
+				continue;
+
 			Tile.m_Index = FTile.m_Index;
 			Tile.m_Flags = FTile.m_Flags;
 		}
 	}
+}
+
+
+void CTilesetMapper_::Load(const json_value& rElement)
+{
+	for(unsigned i = 0; i < rElement.u.array.length; ++i)
+	{
+		if(rElement[i].u.object.length != 1)
+			continue;
+
+		// new group
+		CGroup Group;
+		const char* pConfName = rElement[i].u.object.values[0].name;
+		str_copy(Group.m_aName, pConfName, sizeof(Group.m_aName));
+
+		const json_value &rFilterArr = *(rElement[i].u.object.values[0].value);
+		if(rFilterArr.type != json_array)
+			continue;
+
+		// get filters
+		for(unsigned j = 0; j < rFilterArr.u.array.length && j < MAX_RULES; j++)
+		{
+			CMapFilter Filter(rFilterArr[j]);
+			Group.m_aFilters.add(Filter);
+		}
+
+		m_aGroups.add(Group);
+	}
+
+	for(int i = 0; i < m_aGroups.size(); i++)
+	{
+		std::cout << "Group: " << m_aGroups[i].m_aName << std::endl;
+		for(int f = 0; f < m_aGroups[i].m_aFilters.size(); f++)
+			m_aGroups[i].m_aFilters[f].Print();
+	}
+}
+
+void CTilesetMapper_::Proceed(CLayerTiles* pLayer, int ConfigID)
+{
+	if(pLayer->m_Readonly || ConfigID < 0 || ConfigID >= m_aGroups.size())
+		return;
+
+	CGroup* pGroup = &m_aGroups[ConfigID];
+
+	for(int f = 0; f < pGroup->m_aFilters.size(); f++)
+	{
+		for(int y = 0; y < pLayer->m_Height; y++)
+			for(int x = 0; x < pLayer->m_Width; x++)
+			{
+				int Index = y*pLayer->m_Width+x;
+				if(pLayer->m_pTiles[Index].m_Index > 0)
+				{
+					if(pGroup->m_aFilters[f].TryApply(Index, pLayer))
+						x += pGroup->m_aFilters[f].GetWidth() - 1; // skip ahead if it successfully applied
+				}
+			}
+	}
+}
+
+const char* CTilesetMapper_::GetRuleSetName(int Index) const
+{
+	Index = clamp(Index, 0, m_aGroups.size()-1);
+	return m_aGroups[Index].m_aName;
 }
 
 
