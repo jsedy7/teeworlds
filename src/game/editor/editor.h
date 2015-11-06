@@ -507,7 +507,7 @@ class CEditor : public IEditor
 	class IStorage *m_pStorage;
 	CRenderTools m_RenderTools;
 	CUI m_UI;
-	CAutoMapUI m_AutoMapUI;
+	CAutoMapEd m_AutoMapUI;
 
 public:
 	class IInput *Input() { return m_pInput; }

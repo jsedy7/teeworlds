@@ -1,6 +1,9 @@
 #include <cassert>
 #include <iostream>
 
+#include <engine/textrender.h>
+#include <engine/storage.h>
+
 #include "editor.h"
 #include "auto_map.h"
 
@@ -1093,7 +1096,7 @@ void CMapFilter::SetPatternWeight(int Id, float Weight)
 	}
 }
 
-const array<CMapFilter::CMFTile>&CMapFilter::GetPatternTiles(int ID) const
+const array<CMapFilter::CMFTile>& CMapFilter::GetPatternTiles(int ID) const
 {
 	assert(ID >= 0 && ID < m_aPatterns.size());
 	return m_aPatterns[ID].GetTiles();
@@ -1190,6 +1193,12 @@ void CMapFilter::Apply(int TileID, CLayerTiles* pLayer)
 }
 
 
+CTilesetMapper_::CTilesetMapper_(CEditor* pEditor):
+	IAutoMapper(pEditor, TYPE_TILESET)
+{
+
+}
+
 void CTilesetMapper_::Load(const json_value& rElement)
 {
 	for(unsigned i = 0; i < rElement.u.array.length; ++i)
@@ -1257,27 +1266,48 @@ const char* CTilesetMapper_::GetRuleSetName(int Index) const
 // CAutoMapUI
 //
 
-IGraphics* CAutoMapUI::Graphics()
+IGraphics* CAutoMapEd::Graphics()
 {
 	return m_pEditor->Graphics();
 }
 
-CUI* CAutoMapUI::UI()
+ITextRender*CAutoMapEd::TextRender()
+{
+	return m_pEditor->TextRender();
+}
+
+CUI* CAutoMapEd::UI()
 {
 	return m_pEditor->UI();
 }
 
-CAutoMapUI::CAutoMapUI(CEditor* pEditor)
+CRenderTools* CAutoMapEd::RenderTools()
+{
+	return m_pEditor->RenderTools();
+}
+
+CAutoMapEd::CAutoMapEd(CEditor* pEditor)
+	: m_UiAlpha(0.85f),
+	  m_TabBarHeight(15.f),
+	  m_Tileset(pEditor)
 {
 	m_pEditor = pEditor;
+	m_ActiveTab = TAB_FILE;
+	m_pImage = 0;
 }
 
-void CAutoMapUI::Update()
+CAutoMapEd::~CAutoMapEd()
+{
+	if(m_pImage)
+		delete m_pImage;
+}
+
+void CAutoMapEd::Update()
 {
 
 }
 
-void CAutoMapUI::Render()
+void CAutoMapEd::Render()
 {
 	// basic start
 	Graphics()->Clear(0.5f, 0.5f, 0.5f);
@@ -1289,35 +1319,152 @@ void CAutoMapUI::Render()
 
 	// render checker
 	//m_pEditor->RenderBackground(View, m_pEditor->m_CheckerTexture, 32.0f, 1.0f);
+	m_pEditor->RenderBackground(View, m_pEditor->m_BackgroundTexture, 128.0f, 1.0f);
 
 	// set views
-	CUIRect ToolBar, ToolBox;
-	View.HSplitTop(53.0f, &ToolBar, &View);
-	View.VSplitLeft(100.0f, &ToolBox, &View);
-	/*ToolBox.Margin(2.0f, &ToolBox);
-	ToolBar.Margin(2.0f, &ToolBar);*/
+	CUIRect TabBar, ToolBar, LeftPanel;
+	View.HSplitTop(m_TabBarHeight, &TabBar, &View);
+	View.HSplitTop(52.0f, &ToolBar, &View);
+	View.VSplitLeft(100.0f, &LeftPanel, &View);
 
 	// fill views
-	float Brightness = 0.25f;
-	m_pEditor->RenderBackground(ToolBox, m_pEditor->m_BackgroundTexture, 128.0f, Brightness);
-	m_pEditor->RenderBackground(ToolBar, m_pEditor->m_BackgroundTexture, 128.0f, Brightness);
+	RenderTools()->DrawUIRect(&LeftPanel, vec4(0.f, 0.f, 0.f, m_UiAlpha), 0, 0.f);
+	RenderTools()->DrawUIRect(&ToolBar, vec4(0.f, 0.f, 0.f, m_UiAlpha), 0, 0.f);
+	m_pEditor->RenderBackground(View, m_pEditor->m_CheckerTexture, 32.0f, 1.0f);
 
-	//if(m_ShowMousePointer)
+	RenderTabBar(TabBar);
+	RenderFilterPanel(LeftPanel);
+
+	switch(m_ActiveTab)
 	{
-		// render butt ugly mouse cursor
-		float mx = UI()->MouseX();
-		float my = UI()->MouseY();
-		Graphics()->TextureSet(m_pEditor->m_CursorTexture); // same thing here
-		Graphics()->QuadsBegin();
-		/*if(ms_pUiGotContext == UI()->HotItem())
-			Graphics()->SetColor(1,0,0,1);*/
-		IGraphics::CQuadItem QuadItem(mx,my, 16.0f, 16.0f);
-		Graphics()->QuadsDrawTL(&QuadItem, 1);
-		Graphics()->QuadsEnd();
+	case TAB_FILE:
+		RenderFileBar(ToolBar);
+	}
+
+	if(m_pEditor->m_Dialog == DIALOG_FILE)
+	{
+		static int s_NullUiTarget = 0;
+		UI()->SetHotItem(&s_NullUiTarget);
+		m_pEditor->RenderFileDialog();
+	}
+
+	// cursor
+	float mx = UI()->MouseX();
+	float my = UI()->MouseY();
+	Graphics()->TextureSet(m_pEditor->m_CursorTexture);
+	Graphics()->QuadsBegin();
+	/*if(ms_pUiGotContext == UI()->HotItem())
+		Graphics()->SetColor(1,0,0,1);*/
+	IGraphics::CQuadItem QuadItem(mx,my, 16.0f, 16.0f);
+	Graphics()->QuadsDrawTL(&QuadItem, 1);
+	Graphics()->QuadsEnd();
+}
+
+int CAutoMapEd::DoButton_MenuTabTop(const void *pID, const char *pText, int Checked, const CUIRect *pRect)
+{
+	float Aplha = Checked ? m_UiAlpha : m_UiAlpha / 2.f;
+	RenderTools()->DrawUIRect(pRect, vec4(0.f, 0.f, 0.f, Aplha), /*CUI::CORNER_T*/0, 5.f);
+
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+	TextRender()->TextOutlineColor(0.0f, 0.0f, 0.0f, 0.25f);
+
+	const float FontSize = 8.f;
+	UI()->DoLabel(pRect, pText, FontSize, CUI::ALIGN_CENTER);
+	return UI()->DoButtonLogic(pID, pText, Checked, pRect);
+}
+
+void CAutoMapEd::RenderTabBar(CUIRect &Box)
+{
+	CUIRect Button;
+
+	const float Spacing = 0.f;
+	const float TabNum = 10.f;
+	const float ButtonWidth = (Box.w/TabNum)-(Spacing*5.f)/TabNum;
+
+	Box.HSplitBottom(m_TabBarHeight, 0, &Box);
+
+	Box.VSplitLeft(ButtonWidth, &Button, &Box);
+	static int s_TabFileButton = 0;
+	if(DoButton_MenuTabTop(&s_TabFileButton, "File", (m_ActiveTab == TAB_FILE), &Button))
+	{
+		m_ActiveTab = TAB_FILE;
+	}
+
+	Box.VSplitLeft(Spacing, 0, &Box); // little space
+	Box.VSplitLeft(ButtonWidth, &Button, &Box);
+	static int s_TabToolsButton = 0;
+	if(DoButton_MenuTabTop(&s_TabToolsButton, "Tools", (m_ActiveTab == TAB_TOOLS), &Button))
+	{
+		m_ActiveTab = TAB_TOOLS;
 	}
 }
 
-void CAutoMapUI::RenderPatterns()
+void CAutoMapEd::RenderFileBar(CUIRect& Box)
 {
+	CUIRect TB_Top, TB_Bottom;
+	CUIRect Button;
 
+	Box.HSplitTop(Box.h/2.0f, &TB_Top, &TB_Bottom);
+
+	/*TB_Top.HSplitBottom(8.f, &TB_Top, 0);
+	TB_Bottom.HSplitTop(8.f, 0, &TB_Bottom);*/
+	TB_Top.Margin(2.0f, &TB_Top);
+	TB_Bottom.Margin(2.0f, &TB_Bottom);
+
+	// open button
+	TB_Top.VSplitLeft(40.0f, &Button, &TB_Top);
+	static int s_OpenButton = 0;
+	if(m_pEditor->DoButton_Ex(&s_OpenButton, "Open", 0, &Button, 0, "[CTRL+O] Open/Create an automap file", CUI::CORNER_ALL))
+	{
+		m_pEditor->InvokeFileDialog(IStorage::TYPE_ALL, CEditor::FILETYPE_IMG, "Open Image", "Open", "mapres", "", OpenImage, this);
+	}
+
+	TB_Top.VSplitLeft(5.0f, 0, &TB_Top);
+
+	// save button
+	TB_Top.VSplitLeft(40.0f, &Button, &TB_Bottom);
+	static int s_SaveButton = 0;
+	if(m_pEditor->DoButton_Ex(&s_SaveButton, "Save", 0, &Button, 0, "[CTRL+S] Save file", CUI::CORNER_ALL))
+	{
+
+	}
 }
+
+void CAutoMapEd::RenderFilterPanel(CUIRect& Box)
+{
+	CUIRect Title;
+	Box.HSplitTop(15.f, &Title, &Box);
+
+	RenderTools()->DrawUIRect(&Title, vec4(0.25f, 0.25f, 0.25f, 1.0f), 0, 0.f);
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+	TextRender()->TextOutlineColor(0.0f, 0.0f, 0.0f, 0.25f);
+
+	const float FontSize = 10.f;
+	UI()->DoLabel(&Title, "Filters", FontSize, CUI::ALIGN_CENTER);
+}
+
+void CAutoMapEd::OpenImage(const char *pFileName, int StorageType, void *pUser)
+{
+	CAutoMapEd* pAMEd = (CAutoMapEd *)pUser;
+	CEditor* pEditor = pAMEd->m_pEditor;
+	CEditorImage* pImg = new CEditorImage(pEditor);
+	if(!pEditor->Graphics()->LoadPNG(pImg, pFileName, StorageType))
+		return;
+
+	char aBuf[128];
+	pEditor->ExtractName(pFileName, aBuf, sizeof(aBuf));
+	str_copy(pImg->m_aName, aBuf, sizeof(pImg->m_aName));
+
+	pImg->m_Texture = pEditor->Graphics()->LoadTextureRaw(pImg->m_Width, pImg->m_Height, pImg->m_Format, pImg->m_pData, CImageInfo::FORMAT_AUTO, IGraphics::TEXLOAD_MULTI_DIMENSION);
+	pImg->m_pData = 0;
+
+	if(pAMEd->m_pImage)
+		delete pAMEd->m_pImage;
+	pAMEd->m_pImage = pImg;
+
+	// load the coresponding automapper file
+	pAMEd->m_pImage->LoadAutoMapper();
+
+	pEditor->m_Dialog = DIALOG_NONE;
+}
+

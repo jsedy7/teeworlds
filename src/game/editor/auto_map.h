@@ -12,7 +12,7 @@
 class IAutoMapper
 {
 protected:
-	class CEditor *m_pEditor;
+	class CEditor *m_pEditor; // TODO: remove this
 	int m_Type;
 
 public:
@@ -239,7 +239,7 @@ class CTilesetMapper_: public IAutoMapper
 
 public:
 
-	CTilesetMapper_(class CEditor *pEditor) : IAutoMapper(pEditor, TYPE_TILESET) { m_aGroups.clear(); }
+	CTilesetMapper_(class CEditor *pEditor);
 
 	virtual void Load(const json_value &rElement);
 	virtual void Proceed(class CLayerTiles *pLayer, int ConfigID);
@@ -249,25 +249,45 @@ public:
 };
 
 // TODO: move this?
-class CAutoMapUI
+class CAutoMapEd
 {
 	class CEditor *m_pEditor;
-
 	// helper functions
 	/*class IInput *Input() { return m_pInput; }
 	class IClient *Client() { return m_pClient; }
 	class IConsole *Console() { return m_pConsole; }*/
 	class IGraphics *Graphics();
-	/*class ITextRender *TextRender() { return m_pTextRender; }
-	class IStorage *Storage() { return m_pStorage; }*/
+	class ITextRender *TextRender();
+	/*class IStorage *Storage() { return m_pStorage; }*/
 	CUI *UI();
+	CRenderTools *RenderTools();
+
+	const float m_UiAlpha;
+	const float m_TabBarHeight;
+
+	enum
+	{
+		TAB_FILE=0,
+		TAB_TOOLS
+	};
+	int m_ActiveTab;
+
+	class CEditorImage* m_pImage;
+	CTilesetMapper_ m_Tileset;
 
 public:
-	CAutoMapUI(class CEditor *pEditor);
+	explicit CAutoMapEd(class CEditor *pEditor);
+	~CAutoMapEd();
 
 	void Update();
 	void Render();
-	void RenderPatterns();
+	int DoButton_MenuTabTop(const void *pID, const char *pText, int Checked, const CUIRect *pRect);
+	void RenderTabBar(CUIRect& Box);
+	void RenderFileBar(CUIRect& Box);
+
+	void RenderFilterPanel(CUIRect& Box);
+
+	static void OpenImage(const char *pFileName, int StorageType, void *pUser);
 };
 
 #endif
