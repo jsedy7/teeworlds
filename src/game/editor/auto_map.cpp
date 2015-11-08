@@ -1029,6 +1029,11 @@ void CMapFilter::SetTile(int x, int y, int Index, int Flags)
 	m_aFilter[i].m_Flags = Flags;
 }
 
+const array<CMapFilter::CMFTile>& CMapFilter::GetFilterTiles() const
+{
+	return m_aFilter;
+}
+
 void CMapFilter::Clear()
 {
 	for(int i = 0; i < m_aFilter.size(); i++)
@@ -1072,6 +1077,11 @@ void CMapFilter::ClearPattern(int ID)
 int CMapFilter::GetPatternCount() const
 {
 	return m_aPatterns.size();
+}
+
+float CMapFilter::GetPatternWeight(int ID) const
+{
+	return m_aPatterns[ID].m_Weight;
 }
 
 const void* CMapFilter::GetPatternPtr(int ID) const
@@ -1316,6 +1326,7 @@ CAutoMapEd::CAutoMapEd(CEditor* pEditor)
 	  m_TabBarHeight(15.f)
 {
 	m_pEditor = pEditor;
+	m_pImage = 0;
 	Reset();
 }
 
@@ -1390,6 +1401,7 @@ void CAutoMapEd::Render()
 		case IAutoMapper::TYPE_TILESET:
 			RenderFilterPanel(LeftPanel);
 			RenderFilterDetails(SecLeftPanel);
+			RenderTiles(View);
 			break;
 		case IAutoMapper::TYPE_DOODADS:
 			//RenderFilterPanel(LeftPanel);
@@ -1577,7 +1589,7 @@ void CAutoMapEd::RenderFilterDetails(CUIRect& Box)
 	UI()->DoLabel(&Title, "Filter", FontSize, CUI::ALIGN_CENTER);
 
 	// filter options
-	const float FilterRectHeight = ButHeight*4.f + ButSpacing*3.f + 8.f;
+	const float FilterRectHeight = ButHeight*5.f + ButSpacing*4.f + 8.f;
 	CUIRect FilterRect = Box;
 	FilterRect.HMargin(4.f, &FilterRect);
 	FilterRect.VMargin(2.f, &FilterRect);
@@ -1660,6 +1672,16 @@ void CAutoMapEd::RenderFilterDetails(CUIRect& Box)
 		}
 	}
 
+	// edit (just unselects pattern)
+	FilterRect.HSplitTop(ButSpacing, 0, &FilterRect);
+
+	FilterRect.HSplitTop(ButHeight, &Button, &FilterRect);
+	static int s_FilterEditBut = 0;
+	if(m_pEditor->DoButton_Ex(&s_FilterEditBut, "Edit", 0, &Button, 0, "", CUI::CORNER_ALL))
+	{
+		UnselectPattern();
+	}
+
 	// -------------------------------------------------------
 
 	// patterns title
@@ -1681,7 +1703,7 @@ void CAutoMapEd::RenderFilterDetails(CUIRect& Box)
 		// pattern button
 		Box.HSplitTop(ButHeight, &Button, &Box);
 		char aBuff[64];
-		str_format(aBuff, sizeof(aBuff), "#%i", i + 1);
+		str_format(aBuff, sizeof(aBuff), "#%i %.1f%%", i + 1, pFilter->GetPatternWeight(i)*100.f);
 		if(DoListButton(pFilter->GetPatternPtr(i), m_Selected.pPattern, aBuff, &Button))
 		{
 			m_Selected.pPattern = pFilter->GetPatternPtr(i);
@@ -1690,7 +1712,8 @@ void CAutoMapEd::RenderFilterDetails(CUIRect& Box)
 
 		Box.HSplitTop(ButSpacing, 0, &Box);
 
-		/*// filter buttons
+		// display weight here
+		/*
 		CUIRect FilterRect;
 		Box.VSplitLeft(15.f, 0, &FilterRect); // left margin
 		const array<CMapFilter>& rFilters = rGroups[i].m_aFilters;
@@ -1709,6 +1732,134 @@ void CAutoMapEd::RenderFilterDetails(CUIRect& Box)
 
 		Box.HSplitTop((ButHeight + ButSpacing) * rFilters.size(), 0, &Box);*/
 	}
+}
+
+void CAutoMapEd::RenderTiles(CUIRect& Box)
+{
+	if(!m_Selected.pFilter)
+		return;
+
+	CMapFilter* pFilter = (CMapFilter*)m_Selected.pFilter;
+
+	const array<CMapFilter::CMFTile>* pTiles = &pFilter->GetFilterTiles();
+	if(m_Selected.pPattern)
+		pTiles = &pFilter->GetPatternTiles(m_Selected.PatternID);
+
+	const float Scale = 32.f;
+	const int Width = pFilter->GetWidth();
+	const int Height = pFilter->GetHeight();
+
+	Box.Margin(10.f, &Box);
+
+	// tiles
+	Graphics()->BlendNormal();
+
+	for(int y = 0; y < Height; y++)
+		for(int x = 0; x < Width; x++)
+		{
+			int c = x + y * Width;
+
+			int Index = (*pTiles)[c].m_Index;
+			if(Index >= CMapFilter::FULL)
+			{
+				unsigned char Flags = (*pTiles)[c].m_Flags;
+
+				float x0 = 0;
+				float y0 = 0;
+				float x1 = 1;
+				float y1 = 0;
+				float x2 = 1;
+				float y2 = 1;
+				float x3 = 0;
+				float y3 = 1;
+
+				if(Flags&TILEFLAG_VFLIP)
+				{
+					x0 = x2;
+					x1 = x3;
+					x2 = x3;
+					x3 = x0;
+				}
+
+				if(Flags&TILEFLAG_HFLIP)
+				{
+					y0 = y3;
+					y2 = y1;
+					y3 = y1;
+					y1 = y0;
+				}
+
+				if(Flags&TILEFLAG_ROTATE)
+				{
+					float Tmp = x0;
+					x0 = x3;
+					x3 = x2;
+					x2 = x1;
+					x1 = Tmp;
+					Tmp = y0;
+					y0 = y3;
+					y3 = y2;
+					y2 = y1;
+					y1 = Tmp;
+				}
+
+				if(Index > 0)
+				{
+					Graphics()->TextureSet(m_pImage->m_Texture);
+					Graphics()->QuadsBegin();
+					Graphics()->SetColor(1.f, 1.f, 1.f, 1.0f);
+
+					Graphics()->QuadsSetSubsetFree(x0, y0, x1, y1, x2, y2, x3, y3, Index);
+					IGraphics::CQuadItem QuadItem(Box.x + x*Scale, Box.y + y*Scale, Scale, Scale);
+					Graphics()->QuadsDrawTL(&QuadItem, 1);
+
+					Graphics()->QuadsEnd();
+				}
+				else if(Index == CMapFilter::FULL)
+				{
+					Graphics()->TextureClear();
+					Graphics()->QuadsBegin();
+					Graphics()->SetColor(0.45f, 0.0f, 0.59f, 1.0f);
+
+					float x0 = Box.x + x*Scale;
+					float y0 = Box.y + y*Scale;
+
+					IGraphics::CQuadItem QuadItem(x0, y0, Scale, Scale);
+					Graphics()->QuadsDrawTL(&QuadItem, 1);
+
+					Graphics()->QuadsEnd();
+
+					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+					TextRender()->TextOutlineColor(0.0f, 0.0f, 0.0f, 0.25f);
+
+					CUIRect Rect;
+					Rect.x = x0;
+					Rect.y = y0 + 2.f;
+					Rect.w = Scale;
+					Rect.h = Scale;
+					UI()->DoLabel(&Rect, "F", 22.f, CUI::ALIGN_CENTER);
+				}
+			}
+		}
+
+
+
+	// border
+	Graphics()->TextureClear();
+	Graphics()->LinesBegin();
+
+	Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+	IGraphics::CLineItem Line(Box.x, Box.y, Box.x + Width * Scale, Box.y); // top
+	Graphics()->LinesDraw(&Line, 1);
+	Line = IGraphics::CLineItem(Box.x + Width * Scale, Box.y, Box.x + Width * Scale, Box.y + Height * Scale); // right
+	Graphics()->LinesDraw(&Line, 1);
+	Line = IGraphics::CLineItem(Box.x, Box.y + Height * Scale, Box.x + Width * Scale, Box.y + Height * Scale); // bottom
+	Graphics()->LinesDraw(&Line, 1);
+	Line = IGraphics::CLineItem(Box.x, Box.y, Box.x, Box.y + Height * Scale); // left
+	Graphics()->LinesDraw(&Line, 1);
+
+	Graphics()->LinesEnd();
 }
 
 void CAutoMapEd::OpenImage(const char *pFileName, int StorageType, void *pUser)

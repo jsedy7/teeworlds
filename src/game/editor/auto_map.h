@@ -221,12 +221,14 @@ public:
 	int GetWidth() const;
 	int GetHeight() const;
 	void SetTile(int x, int y, int Index, int Flags = 0);
+	const array<CMFTile>& GetFilterTiles() const;
 	void Clear();
 
 	void AddPattern();
 	void RemovePattern(int ID);
 	void ClearPattern(int ID);
 	int GetPatternCount() const;
+	float GetPatternWeight(int ID) const;
 	const void* GetPatternPtr(int ID) const; // for UI selection (dirty, should CPattern be public?)
 	void SetPatternTile(int ID, int x, int y, int Index, int Flags = 0);
 	void SetPatternWeight(int ID, float Weight);
@@ -320,6 +322,8 @@ class CAutoMapEd
 
 	void RenderFilterPanel(CUIRect& Box);
 	void RenderFilterDetails(CUIRect& Box);
+
+	void RenderTiles(CUIRect& Box);
 
 	static void OpenImage(const char *pFileName, int StorageType, void *pUser);
 
