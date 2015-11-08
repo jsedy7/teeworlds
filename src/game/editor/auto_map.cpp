@@ -1015,6 +1015,11 @@ int CMapFilter::GetWidth() const
 	return m_Width;
 }
 
+int CMapFilter::GetHeight() const
+{
+	return m_Height;
+}
+
 void CMapFilter::SetTile(int x, int y, int Index, int Flags)
 {
 	x = clamp(x, 0, m_Width);
@@ -1062,6 +1067,16 @@ void CMapFilter::ClearPattern(int ID)
 	if(ID < 0 || ID >= m_aPatterns.size())
 		return;
 	m_aPatterns[ID].Clear();
+}
+
+int CMapFilter::GetPatternCount() const
+{
+	return m_aPatterns.size();
+}
+
+const void* CMapFilter::GetPatternPtr(int ID) const
+{
+	return &m_aPatterns[ID];
 }
 
 void CMapFilter::SetPatternTile(int ID, int x, int y, int Index, int Flags)
@@ -1261,9 +1276,14 @@ const char* CTilesetMapper_::GetRuleSetName(int Index) const
 	return m_aGroups[Index].m_aName;
 }
 
+const array<CTilesetMapper_::CGroup>& CTilesetMapper_::GetGroups() const
+{
+	return m_aGroups;
+}
+
 
 //
-// CAutoMapUI
+// CAutoMapEd
 //
 
 IGraphics* CAutoMapEd::Graphics()
@@ -1288,18 +1308,31 @@ CRenderTools* CAutoMapEd::RenderTools()
 
 CAutoMapEd::CAutoMapEd(CEditor* pEditor)
 	: m_UiAlpha(0.85f),
-	  m_TabBarHeight(15.f),
-	  m_Tileset(pEditor)
+	  m_TabBarHeight(15.f)
 {
 	m_pEditor = pEditor;
-	m_ActiveTab = TAB_FILE;
-	m_pImage = 0;
+	Reset();
 }
 
 CAutoMapEd::~CAutoMapEd()
 {
+	Reset();
+}
+
+void CAutoMapEd::Reset()
+{
+	m_ActiveTab = TAB_FILE;
+	m_Selected.Reset();
 	if(m_pImage)
 		delete m_pImage;
+	m_pImage = 0;
+	m_pAutoMap = 0;
+}
+
+void CAutoMapEd::UnselectPattern()
+{
+	m_Selected.pPattern = 0;
+	m_Selected.PatternID = -1;
 }
 
 void CAutoMapEd::Update()
@@ -1318,35 +1351,50 @@ void CAutoMapEd::Render()
 	float Height = View.h;*/
 
 	// render checker
-	//m_pEditor->RenderBackground(View, m_pEditor->m_CheckerTexture, 32.0f, 1.0f);
 	m_pEditor->RenderBackground(View, m_pEditor->m_BackgroundTexture, 128.0f, 1.0f);
 
 	// set views
-	CUIRect TabBar, ToolBar, LeftPanel;
+	CUIRect TabBar, ToolBar, LeftPanel, SecLeftPanel;
 	View.HSplitTop(m_TabBarHeight, &TabBar, &View);
 	View.HSplitTop(52.0f, &ToolBar, &View);
-	View.VSplitLeft(100.0f, &LeftPanel, &View);
+	View.VSplitLeft(120.0f, &LeftPanel, &View);
+	if(m_Selected.pFilter)
+		View.VSplitLeft(80.0f, &SecLeftPanel, &View);
 
 	// fill views
-	RenderTools()->DrawUIRect(&LeftPanel, vec4(0.f, 0.f, 0.f, m_UiAlpha), 0, 0.f);
 	RenderTools()->DrawUIRect(&ToolBar, vec4(0.f, 0.f, 0.f, m_UiAlpha), 0, 0.f);
+	RenderTools()->DrawUIRect(&LeftPanel, vec4(0.f, 0.f, 0.f, m_UiAlpha), 0, 0.f);
+	RenderTools()->DrawUIRect(&SecLeftPanel, vec4(0.f, 0.f, 0.f, m_UiAlpha * 0.9f), 0, 0.f);
 	m_pEditor->RenderBackground(View, m_pEditor->m_CheckerTexture, 32.0f, 1.0f);
 
+	// tabs
 	RenderTabBar(TabBar);
-	RenderFilterPanel(LeftPanel);
 
 	switch(m_ActiveTab)
 	{
 	case TAB_FILE:
 		RenderFileBar(ToolBar);
+		break;
 	}
 
-	if(m_pEditor->m_Dialog == DIALOG_FILE)
+	//
+	if(m_pAutoMap)
 	{
-		static int s_NullUiTarget = 0;
-		UI()->SetHotItem(&s_NullUiTarget);
-		m_pEditor->RenderFileDialog();
+		switch(m_pAutoMap->GetType())
+		{
+		case IAutoMapper::TYPE_TILESET:
+			RenderFilterPanel(LeftPanel);
+			RenderFilterDetails(SecLeftPanel);
+			break;
+		case IAutoMapper::TYPE_DOODADS:
+			//RenderFilterPanel(LeftPanel);
+			break;
+		}
 	}
+
+	// file dialog
+	if(m_pEditor->m_Dialog == DIALOG_FILE)
+		m_pEditor->RenderFileDialog();
 
 	// cursor
 	float mx = UI()->MouseX();
@@ -1355,7 +1403,7 @@ void CAutoMapEd::Render()
 	Graphics()->QuadsBegin();
 	/*if(ms_pUiGotContext == UI()->HotItem())
 		Graphics()->SetColor(1,0,0,1);*/
-	IGraphics::CQuadItem QuadItem(mx,my, 16.0f, 16.0f);
+	IGraphics::CQuadItem QuadItem(mx, my, 16.0f, 16.0f);
 	Graphics()->QuadsDrawTL(&QuadItem, 1);
 	Graphics()->QuadsEnd();
 }
@@ -1371,6 +1419,21 @@ int CAutoMapEd::DoButton_MenuTabTop(const void *pID, const char *pText, int Chec
 	const float FontSize = 8.f;
 	UI()->DoLabel(pRect, pText, FontSize, CUI::ALIGN_CENTER);
 	return UI()->DoButtonLogic(pID, pText, Checked, pRect);
+}
+
+int CAutoMapEd::DoListButton(const void* pID, const void* pCheckID, const char* pText, const CUIRect* pRect)
+{
+	// color
+	const vec4 SelectedColor(0.2f, 0.2f, 1.0f, 1.0f);
+	const vec4 NormalColor = UI()->HotItem() == pID ? vec4(0.75f, 0.75f, 0.75f, 1.0f) : vec4(0.5f, 0.5f, 0.5f, 1.0f);
+	vec4 Color = pID == pCheckID ? SelectedColor : NormalColor;
+
+	RenderTools()->DrawUIRect(pRect, Color, CUI::CORNER_ALL, 3.0f);
+	CUIRect NewRect = *pRect;
+	const float FontSize = 10.f;
+	NewRect.HMargin(NewRect.h/2.0f-FontSize/2.0f-1.0f, &NewRect);
+	UI()->DoLabel(&NewRect, pText, FontSize, CUI::ALIGN_CENTER);
+	return m_pEditor->DoButton_Editor_Common(pID, pText, false, pRect, CUI::CORNER_ALL, "");
 }
 
 void CAutoMapEd::RenderTabBar(CUIRect &Box)
@@ -1406,10 +1469,8 @@ void CAutoMapEd::RenderFileBar(CUIRect& Box)
 
 	Box.HSplitTop(Box.h/2.0f, &TB_Top, &TB_Bottom);
 
-	/*TB_Top.HSplitBottom(8.f, &TB_Top, 0);
-	TB_Bottom.HSplitTop(8.f, 0, &TB_Bottom);*/
-	TB_Top.Margin(2.0f, &TB_Top);
-	TB_Bottom.Margin(2.0f, &TB_Bottom);
+	TB_Top.Margin(2.f, &TB_Top);
+	TB_Bottom.Margin(2.f, &TB_Bottom);
 
 	// open button
 	TB_Top.VSplitLeft(40.0f, &Button, &TB_Top);
@@ -1432,6 +1493,7 @@ void CAutoMapEd::RenderFileBar(CUIRect& Box)
 
 void CAutoMapEd::RenderFilterPanel(CUIRect& Box)
 {
+	// title
 	CUIRect Title;
 	Box.HSplitTop(15.f, &Title, &Box);
 
@@ -1440,7 +1502,182 @@ void CAutoMapEd::RenderFilterPanel(CUIRect& Box)
 	TextRender()->TextOutlineColor(0.0f, 0.0f, 0.0f, 0.25f);
 
 	const float FontSize = 10.f;
-	UI()->DoLabel(&Title, "Filters", FontSize, CUI::ALIGN_CENTER);
+	UI()->DoLabel(&Title, m_pImage->m_aName, FontSize, CUI::ALIGN_CENTER);
+
+	Box.HMargin(4.f, &Box);
+	Box.VMargin(2.f, &Box);
+
+	// groups
+	CTilesetMapper_* pTileset = static_cast<CTilesetMapper_*>(m_pAutoMap);
+	const array<CTilesetMapper_::CGroup>& rGroups = pTileset->GetGroups();
+	CUIRect Button;
+	const float ButHeight = 15.f;
+	const float ButSpacing = 2.f;
+
+	for(int i = 0; i < rGroups.size(); i++)
+	{
+		// group button
+		Box.HSplitTop(ButHeight, &Button, &Box);
+		if(m_pEditor->DoButton_Ex(&rGroups[i], rGroups[i].m_aName, 0, &Button, 0, "", CUI::CORNER_ALL))
+		{
+			//
+		}
+
+		Box.HSplitTop(ButSpacing, 0, &Box);
+
+		// filter buttons
+		CUIRect FilterRect;
+		Box.VSplitLeft(15.f, 0, &FilterRect); // left margin
+		const array<CMapFilter>& rFilters = rGroups[i].m_aFilters;
+		for(int j = 0; j < rFilters.size(); j++)
+		{
+			FilterRect.HSplitTop(ButHeight, &Button, &FilterRect);
+			char aBuff[64];
+			str_format(aBuff, sizeof(aBuff), "#%i [%i x %i]", j + 1, rFilters[j].GetWidth(), rFilters[j].GetHeight()); // Ex: #3 [5 x 2]
+			if(DoListButton(&rFilters[j], m_Selected.pFilter, aBuff, &Button))
+			{
+				m_Selected.pFilter = &rFilters[j];
+				UnselectPattern(); // deselect pattern
+			}
+
+			FilterRect.HSplitTop(ButSpacing, 0, &FilterRect);
+		}
+
+		Box.HSplitTop((ButHeight + ButSpacing) * rFilters.size(), 0, &Box);
+	}
+}
+
+void CAutoMapEd::RenderFilterDetails(CUIRect& Box)
+{
+	if(!m_Selected.pFilter)
+		return;
+
+	const CMapFilter* pFilter = (CMapFilter*)m_Selected.pFilter;
+
+	CUIRect Title;
+	CUIRect Button;
+	const float ButHeight = 15.f;
+	const float ButSpacing = 2.f;
+
+	// filter title
+	Box.HSplitTop(15.f, &Title, &Box);
+
+	RenderTools()->DrawUIRect(&Title, vec4(0.3f, 0.3f, 0.3f, 1.0f), 0, 0.f);
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+	TextRender()->TextOutlineColor(0.0f, 0.0f, 0.0f, 0.25f);
+
+	const float FontSize = 10.f;
+	UI()->DoLabel(&Title, "Filter", FontSize, CUI::ALIGN_CENTER);
+
+	// filter options
+	const float FilterRectHeight = ButHeight*4.f + ButSpacing*3.f + 8.f;
+	CUIRect FilterRect = Box;
+	FilterRect.HMargin(4.f, &FilterRect);
+	FilterRect.VMargin(2.f, &FilterRect);
+
+	// width
+	FilterRect.HSplitTop(ButHeight, &Button, &FilterRect);
+	UI()->DoLabel(&Button, "Width:", FontSize, CUI::ALIGN_LEFT);
+
+	FilterRect.HSplitTop(ButSpacing, 0, &FilterRect);
+
+	FilterRect.HSplitTop(ButHeight, &Button, &FilterRect);
+	CUIRect MinusBut, PlusBut;
+	Button.VSplitLeft(15.f, &MinusBut, &Button);
+	Button.VSplitRight(15.f, &Button, &PlusBut);
+	static int s_FilterWidthMinusBut = 0;
+	if(m_pEditor->DoButton_Ex(&s_FilterWidthMinusBut, "-", 0, &MinusBut, 0, "", CUI::CORNER_L))
+	{
+		// minus
+	}
+
+	RenderTools()->DrawUIRect(&Button, vec4(0.4f, 0.4f, 0.4f, 1.0f), 0, 0.f);
+	char aBuff[64];
+	str_format(aBuff, sizeof(aBuff), "%i", pFilter->GetWidth());
+	UI()->DoLabel(&Button, aBuff, FontSize, CUI::ALIGN_CENTER);
+
+	static int s_FilterWidthPlusBut = 0;
+	if(m_pEditor->DoButton_Ex(&s_FilterWidthPlusBut, "+", 0, &PlusBut, 0, "", CUI::CORNER_R))
+	{
+		// plus
+	}
+
+	FilterRect.HSplitTop(ButSpacing, 0, &FilterRect);
+
+	// height
+	FilterRect.HSplitTop(ButHeight, &Button, &FilterRect);
+	UI()->DoLabel(&Button, "Height:", FontSize, CUI::ALIGN_LEFT);
+
+	FilterRect.HSplitTop(ButSpacing, 0, &FilterRect);
+
+	FilterRect.HSplitTop(ButHeight, &Button, &FilterRect);
+	Button.VSplitLeft(15.f, &MinusBut, &Button);
+	Button.VSplitRight(15.f, &Button, &PlusBut);
+	static int s_FilterHeightMinusBut = 0;
+	if(m_pEditor->DoButton_Ex(&s_FilterHeightMinusBut, "-", 0, &MinusBut, 0, "", CUI::CORNER_L))
+	{
+		// minus
+	}
+
+	RenderTools()->DrawUIRect(&Button, vec4(0.4f, 0.4f, 0.4f, 1.0f), 0, 0.f);
+	str_format(aBuff, sizeof(aBuff), "%i", pFilter->GetWidth());
+	UI()->DoLabel(&Button, aBuff, FontSize, CUI::ALIGN_CENTER);
+
+	static int s_FilterHeightPlusBut = 0;
+	if(m_pEditor->DoButton_Ex(&s_FilterHeightPlusBut, "+", 0, &PlusBut, 0, "", CUI::CORNER_R))
+	{
+		// plus
+	}
+
+	// -------------------------------------------------------
+
+	// patterns title
+	Box.HSplitTop(FilterRectHeight, 0, &Box);
+	Box.HSplitTop(15.f, &Title, &Box);
+
+	RenderTools()->DrawUIRect(&Title, vec4(0.3f, 0.3f, 0.3f, 1.0f), 0, 0.f);
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+	TextRender()->TextOutlineColor(0.0f, 0.0f, 0.0f, 0.25f);
+	UI()->DoLabel(&Title, "Patterns", FontSize, CUI::ALIGN_CENTER);
+
+	// patterns
+	Box.HMargin(4.f, &Box);
+	Box.VMargin(2.f, &Box);
+	int Count = pFilter->GetPatternCount();
+
+	for(int i = 0; i < Count; i++)
+	{
+		// pattern button
+		Box.HSplitTop(ButHeight, &Button, &Box);
+		char aBuff[64];
+		str_format(aBuff, sizeof(aBuff), "#%i", i + 1);
+		if(DoListButton(pFilter->GetPatternPtr(i), m_Selected.pPattern, aBuff, &Button))
+		{
+			m_Selected.pPattern = pFilter->GetPatternPtr(i);
+			m_Selected.PatternID = i;
+		}
+
+		Box.HSplitTop(ButSpacing, 0, &Box);
+
+		/*// filter buttons
+		CUIRect FilterRect;
+		Box.VSplitLeft(15.f, 0, &FilterRect); // left margin
+		const array<CMapFilter>& rFilters = rGroups[i].m_aFilters;
+		for(int j = 0; j < rFilters.size(); j++)
+		{
+			FilterRect.HSplitTop(ButHeight, &Button, &FilterRect);
+			char aBuff[64];
+			str_format(aBuff, sizeof(aBuff), "#%i [%i x %i]", j + 1, rFilters[j].GetWidth(), rFilters[j].GetHeight()); // Ex: #3 [5 x 2]
+			if(DoListButton(&rFilters[j], m_Selected.pFilter, aBuff, &Button))
+			{
+				m_Selected.pFilter = &rFilters[j];
+			}
+
+			FilterRect.HSplitTop(ButSpacing, 0, &FilterRect);
+		}
+
+		Box.HSplitTop((ButHeight + ButSpacing) * rFilters.size(), 0, &Box);*/
+	}
 }
 
 void CAutoMapEd::OpenImage(const char *pFileName, int StorageType, void *pUser)
@@ -1458,12 +1695,12 @@ void CAutoMapEd::OpenImage(const char *pFileName, int StorageType, void *pUser)
 	pImg->m_Texture = pEditor->Graphics()->LoadTextureRaw(pImg->m_Width, pImg->m_Height, pImg->m_Format, pImg->m_pData, CImageInfo::FORMAT_AUTO, IGraphics::TEXLOAD_MULTI_DIMENSION);
 	pImg->m_pData = 0;
 
-	if(pAMEd->m_pImage)
-		delete pAMEd->m_pImage;
+	pAMEd->Reset();
 	pAMEd->m_pImage = pImg;
 
 	// load the coresponding automapper file
 	pAMEd->m_pImage->LoadAutoMapper();
+	pAMEd->m_pAutoMap = pAMEd->m_pImage->m_pAutoMapper;
 
 	pEditor->m_Dialog = DIALOG_NONE;
 }

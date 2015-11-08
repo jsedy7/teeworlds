@@ -153,6 +153,8 @@ private:
 
 class CMapFilter
 {
+public:
+
 	struct CMFTile // custom tile because we need a bigger m_Index
 	{
 		int m_Index;
@@ -163,6 +165,8 @@ class CMapFilter
 			m_Flags = 0;
 		}
 	};
+
+private:
 
 	int m_Width, m_Height;
 	array<CMFTile> m_aFilter;
@@ -192,6 +196,7 @@ class CMapFilter
 	array<CPattern> m_aPatterns;
 
 	void Apply(int TileID, CLayerTiles *pLayer);
+
 public:
 
 	enum
@@ -214,12 +219,15 @@ public:
 
 	void SetSize(int Width, int Height);
 	int GetWidth() const;
+	int GetHeight() const;
 	void SetTile(int x, int y, int Index, int Flags = 0);
 	void Clear();
 
 	void AddPattern();
 	void RemovePattern(int ID);
 	void ClearPattern(int ID);
+	int GetPatternCount() const;
+	const void* GetPatternPtr(int ID) const; // for UI selection (dirty, should CPattern be public?)
 	void SetPatternTile(int ID, int x, int y, int Index, int Flags = 0);
 	void SetPatternWeight(int ID, float Weight);
 	const array<CMFTile>& GetPatternTiles(int ID) const;
@@ -229,14 +237,6 @@ public:
 
 class CTilesetMapper_: public IAutoMapper
 {
-	struct CGroup
-	{
-		char m_aName[128];
-		array<CMapFilter> m_aFilters;
-	};
-
-	array<CGroup> m_aGroups;
-
 public:
 
 	CTilesetMapper_(class CEditor *pEditor);
@@ -246,6 +246,18 @@ public:
 
 	virtual int RuleSetNum() const { return m_aGroups.size(); }
 	virtual const char* GetRuleSetName(int Index) const;
+
+	struct CGroup
+	{
+		char m_aName[128];
+		array<CMapFilter> m_aFilters;
+	};
+
+	const array<CGroup>& GetGroups() const;
+
+private:
+
+	array<CGroup> m_aGroups;
 };
 
 // TODO: move this?
@@ -270,10 +282,45 @@ class CAutoMapEd
 		TAB_FILE=0,
 		TAB_TOOLS
 	};
+
 	int m_ActiveTab;
 
+	struct
+	{
+		const void* pGroup;
+		const void* pFilter;
+		const void* pPattern;
+		int PatternID;
+
+		void Reset()
+		{
+			pGroup = 0;
+			pFilter = 0;
+			pPattern = 0;
+			PatternID = -1;
+		}
+
+	} m_Selected;
+
+
 	class CEditorImage* m_pImage;
-	CTilesetMapper_ m_Tileset;
+	IAutoMapper* m_pAutoMap;
+
+	// functions
+	void Reset();
+
+	void UnselectPattern();
+
+	int DoButton_MenuTabTop(const void *pID, const char *pText, int Checked, const CUIRect *pRect);
+	int DoListButton(const void *pID, const void *pCheckID, const char *pText, const CUIRect *pRect);
+
+	void RenderTabBar(CUIRect& Box);
+	void RenderFileBar(CUIRect& Box);
+
+	void RenderFilterPanel(CUIRect& Box);
+	void RenderFilterDetails(CUIRect& Box);
+
+	static void OpenImage(const char *pFileName, int StorageType, void *pUser);
 
 public:
 	explicit CAutoMapEd(class CEditor *pEditor);
@@ -281,13 +328,6 @@ public:
 
 	void Update();
 	void Render();
-	int DoButton_MenuTabTop(const void *pID, const char *pText, int Checked, const CUIRect *pRect);
-	void RenderTabBar(CUIRect& Box);
-	void RenderFileBar(CUIRect& Box);
-
-	void RenderFilterPanel(CUIRect& Box);
-
-	static void OpenImage(const char *pFileName, int StorageType, void *pUser);
 };
 
 #endif
