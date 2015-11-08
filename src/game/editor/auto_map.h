@@ -253,7 +253,8 @@ public:
 		array<CMapFilter> m_aFilters;
 	};
 
-	const array<CGroup>& GetGroups() const;
+	int GetGroupCount() const;
+	CGroup* GetGroup(int ID) const;
 
 private:
 
@@ -288,7 +289,7 @@ class CAutoMapEd
 	struct
 	{
 		const void* pGroup;
-		const void* pFilter;
+		void* pFilter;
 		const void* pPattern;
 		int PatternID;
 

@@ -1002,8 +1002,8 @@ void CMapFilter::Print()
 
 void CMapFilter::SetSize(int Width, int Height)
 {
-	m_Width = clamp(Width, 0, (int)CMapFilter::MAX_SIZE);
-	m_Height = clamp(Height, 0, (int)CMapFilter::MAX_SIZE);
+	m_Width = clamp(Width, 1, (int)CMapFilter::MAX_SIZE);
+	m_Height = clamp(Height, 1, (int)CMapFilter::MAX_SIZE);
 	m_aFilter.set_size(m_Width*m_Height);
 
 	for(int i = 0; i < m_aPatterns.size(); i++)
@@ -1276,9 +1276,14 @@ const char* CTilesetMapper_::GetRuleSetName(int Index) const
 	return m_aGroups[Index].m_aName;
 }
 
-const array<CTilesetMapper_::CGroup>& CTilesetMapper_::GetGroups() const
+int CTilesetMapper_::GetGroupCount() const
 {
-	return m_aGroups;
+	return m_aGroups.size();
+}
+
+CTilesetMapper_::CGroup* CTilesetMapper_::GetGroup(int ID) const
+{
+	return (CGroup*)&m_aGroups[ID];
 }
 
 
@@ -1509,16 +1514,18 @@ void CAutoMapEd::RenderFilterPanel(CUIRect& Box)
 
 	// groups
 	CTilesetMapper_* pTileset = static_cast<CTilesetMapper_*>(m_pAutoMap);
-	const array<CTilesetMapper_::CGroup>& rGroups = pTileset->GetGroups();
+	int GroupCount = pTileset->GetGroupCount();
 	CUIRect Button;
 	const float ButHeight = 15.f;
 	const float ButSpacing = 2.f;
 
-	for(int i = 0; i < rGroups.size(); i++)
+	for(int i = 0; i < GroupCount; i++)
 	{
+		CTilesetMapper_::CGroup* pGroup = pTileset->GetGroup(i);
+
 		// group button
 		Box.HSplitTop(ButHeight, &Button, &Box);
-		if(m_pEditor->DoButton_Ex(&rGroups[i], rGroups[i].m_aName, 0, &Button, 0, "", CUI::CORNER_ALL))
+		if(m_pEditor->DoButton_Ex(pGroup, pGroup->m_aName, 0, &Button, 0, "", CUI::CORNER_ALL))
 		{
 			//
 		}
@@ -1528,7 +1535,7 @@ void CAutoMapEd::RenderFilterPanel(CUIRect& Box)
 		// filter buttons
 		CUIRect FilterRect;
 		Box.VSplitLeft(15.f, 0, &FilterRect); // left margin
-		const array<CMapFilter>& rFilters = rGroups[i].m_aFilters;
+		array<CMapFilter>& rFilters = pGroup->m_aFilters;
 		for(int j = 0; j < rFilters.size(); j++)
 		{
 			FilterRect.HSplitTop(ButHeight, &Button, &FilterRect);
@@ -1552,7 +1559,7 @@ void CAutoMapEd::RenderFilterDetails(CUIRect& Box)
 	if(!m_Selected.pFilter)
 		return;
 
-	const CMapFilter* pFilter = (CMapFilter*)m_Selected.pFilter;
+	CMapFilter* pFilter = (CMapFilter*)m_Selected.pFilter;
 
 	CUIRect Title;
 	CUIRect Button;
@@ -1589,6 +1596,12 @@ void CAutoMapEd::RenderFilterDetails(CUIRect& Box)
 	if(m_pEditor->DoButton_Ex(&s_FilterWidthMinusBut, "-", 0, &MinusBut, 0, "", CUI::CORNER_L))
 	{
 		// minus
+		int FWidth = pFilter->GetWidth();
+		if(FWidth > 1)
+		{
+			FWidth--;
+			pFilter->SetSize(FWidth, pFilter->GetHeight());
+		}
 	}
 
 	RenderTools()->DrawUIRect(&Button, vec4(0.4f, 0.4f, 0.4f, 1.0f), 0, 0.f);
@@ -1600,6 +1613,12 @@ void CAutoMapEd::RenderFilterDetails(CUIRect& Box)
 	if(m_pEditor->DoButton_Ex(&s_FilterWidthPlusBut, "+", 0, &PlusBut, 0, "", CUI::CORNER_R))
 	{
 		// plus
+		int FWidth = pFilter->GetWidth();
+		if(FWidth < CMapFilter::MAX_SIZE)
+		{
+			FWidth++;
+			pFilter->SetSize(FWidth, pFilter->GetHeight());
+		}
 	}
 
 	FilterRect.HSplitTop(ButSpacing, 0, &FilterRect);
@@ -1617,16 +1636,28 @@ void CAutoMapEd::RenderFilterDetails(CUIRect& Box)
 	if(m_pEditor->DoButton_Ex(&s_FilterHeightMinusBut, "-", 0, &MinusBut, 0, "", CUI::CORNER_L))
 	{
 		// minus
+		int FHeight = pFilter->GetHeight();
+		if(FHeight > 1)
+		{
+			FHeight--;
+			pFilter->SetSize(pFilter->GetWidth(), FHeight);
+		}
 	}
 
 	RenderTools()->DrawUIRect(&Button, vec4(0.4f, 0.4f, 0.4f, 1.0f), 0, 0.f);
-	str_format(aBuff, sizeof(aBuff), "%i", pFilter->GetWidth());
+	str_format(aBuff, sizeof(aBuff), "%i", pFilter->GetHeight());
 	UI()->DoLabel(&Button, aBuff, FontSize, CUI::ALIGN_CENTER);
 
 	static int s_FilterHeightPlusBut = 0;
 	if(m_pEditor->DoButton_Ex(&s_FilterHeightPlusBut, "+", 0, &PlusBut, 0, "", CUI::CORNER_R))
 	{
 		// plus
+		int FHeight = pFilter->GetHeight();
+		if(FHeight < CMapFilter::MAX_SIZE)
+		{
+			FHeight++;
+			pFilter->SetSize(pFilter->GetWidth(), FHeight);
+		}
 	}
 
 	// -------------------------------------------------------
