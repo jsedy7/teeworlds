@@ -164,6 +164,8 @@ public:
 			m_Index = CMapFilter::EMPTY;
 			m_Flags = 0;
 		}
+
+		CMFTile() { Clear(); }
 	};
 
 private:
@@ -172,25 +174,17 @@ private:
 	array<CMFTile> m_aFilter;
 	int m_RefPointId; // reference point
 
-	class CPattern
+	struct CPattern
 	{
-		int m_Width, m_Height;
 		array<CMFTile> m_aTiles;
+		float m_Weight;
 
-	public:
 		CPattern();
 
 		void LoadTiles(const json_value& JsonVal);
 		json_value* TilesToJson() const;
 
 		void Print();
-
-		void SetSize(int Width, int Height);
-		void SetTile(int x, int y, int Index, int Flags);
-		const CMFTile& GetTile(int TileID) const;
-		const array<CMFTile>& GetTiles() const;
-		void Clear();
-		float m_Weight; // random weight
 	};
 
 	array<CPattern> m_aPatterns;
@@ -229,7 +223,7 @@ public:
 	void ClearPattern(int ID);
 	int GetPatternCount() const;
 	float GetPatternWeight(int ID) const;
-	const void* GetPatternPtr(int ID) const; // for UI selection (dirty, should CPattern be public?)
+	const void* GetPatternPtr(int ID) const; // for UI selection (meh)
 	void SetPatternTile(int ID, int x, int y, int Index, int Flags = 0);
 	void SetPatternWeight(int ID, float Weight);
 	const array<CMFTile>& GetPatternTiles(int ID) const;

@@ -724,8 +724,6 @@ void CDoodadsMapper::Proceed(CLayerTiles *pLayer, int ConfigID, int Amount)
 CMapFilter::CPattern::CPattern()
 {
 	// unrelevent
-	m_Width = 0;
-	m_Height = 0;
 	m_Weight = 1.0f;
 }
 
@@ -788,38 +786,6 @@ void CMapFilter::CPattern::Print()
 	for(int i = 0; i < m_aTiles.size(); i++)
 		std::cout << m_aTiles[i].m_Index << ",";
 	std::cout << "]" << std::endl;
-}
-
-void CMapFilter::CPattern::SetSize(int Width, int Height)
-{
-	m_Width = Width;
-	m_Height = Height;
-	m_aTiles.set_size(m_Width*m_Height);
-}
-
-void CMapFilter::CPattern::SetTile(int x, int y, int Index, int Flags)
-{
-	x = clamp(x, 0, m_Width);
-	y = clamp(y, 0, m_Height);
-	int i = y*m_Width+x;
-	m_aTiles[i].m_Index = clamp(Index, 0, 255);
-	m_aTiles[i].m_Flags = Flags;
-}
-
-const CMapFilter::CMFTile& CMapFilter::CPattern::GetTile(int TileID) const
-{
-	return m_aTiles[TileID];
-}
-
-const array<CMapFilter::CMFTile>& CMapFilter::CPattern::GetTiles() const
-{
-	return m_aTiles;
-}
-
-void CMapFilter::CPattern::Clear()
-{
-	for(int i = 0; i < m_aTiles.size(); i++)
-		m_aTiles[i].Clear();
 }
 
 CMapFilter::CMapFilter()
@@ -1002,12 +968,66 @@ void CMapFilter::Print()
 
 void CMapFilter::SetSize(int Width, int Height)
 {
+	int OldW = m_Width;
+	int OldH = m_Height;
+	array<CMFTile> aOldF(m_aFilter);
+
 	m_Width = clamp(Width, 1, (int)CMapFilter::MAX_SIZE);
 	m_Height = clamp(Height, 1, (int)CMapFilter::MAX_SIZE);
 	m_aFilter.set_size(m_Width*m_Height);
+	if(m_aFilter.size() > OldW*OldH) // override what was previously there
+	{
+		for(int i = OldW*OldH; i < m_aFilter.size(); i++)
+			m_aFilter[i].Clear();
+	}
 
+	// shift content when width changes
+	if(OldW != m_Width)
+	{
+		for(int i = 0; i < m_aFilter.size(); i++)
+			m_aFilter[i].Clear();
+		for(int y = 0; y < OldH; y++)
+			for(int x = 0; x < OldW; x++)
+			{
+				int OldInd = y * OldW + x;
+				int NewInd = y * m_Width + x;
+
+				if(NewInd >= m_aFilter.size())
+					continue;
+				m_aFilter[NewInd] = aOldF[OldInd];
+			}
+	}
+
+	// same thing for each pattern
 	for(int i = 0; i < m_aPatterns.size(); i++)
-		m_aPatterns[i].SetSize(m_Width, m_Height);
+	{
+		CPattern* pPat = &m_aPatterns[i];
+		array<CMFTile> aOldF(pPat->m_aTiles);
+
+		pPat->m_aTiles.set_size(m_Width*m_Height);
+		if(pPat->m_aTiles.size() > OldW*OldH) // override what was previously there
+		{
+			for(int i = OldW*OldH; i < pPat->m_aTiles.size(); i++)
+				pPat->m_aTiles[i].Clear();
+		}
+
+		// shift content when width changes
+		if(OldW != m_Width)
+		{
+			for(int i = 0; i < pPat->m_aTiles.size(); i++)
+				pPat->m_aTiles[i].Clear();
+			for(int y = 0; y < OldH; y++)
+				for(int x = 0; x < OldW; x++)
+				{
+					int OldInd = y * OldW + x;
+					int NewInd = y * m_Width + x;
+
+					if(NewInd >= pPat->m_aTiles.size())
+						continue;
+					pPat->m_aTiles[NewInd] = aOldF[OldInd];
+				}
+		}
+	}
 }
 
 int CMapFilter::GetWidth() const
@@ -1048,8 +1068,7 @@ void CMapFilter::AddPattern()
 		TotalWeight += m_aPatterns[i].m_Weight;
 
 	int p = m_aPatterns.add(CPattern());
-	m_aPatterns[p].SetSize(m_Width, m_Height);
-	m_aPatterns[p].Clear();
+	m_aPatterns[p].m_aTiles.set_size(m_Width * m_Height);
 	m_aPatterns[p].m_Weight = 1.0f - TotalWeight;
 }
 
@@ -1071,7 +1090,9 @@ void CMapFilter::ClearPattern(int ID)
 {
 	if(ID < 0 || ID >= m_aPatterns.size())
 		return;
-	m_aPatterns[ID].Clear();
+	CPattern* pPat = &m_aPatterns[ID];
+	for(int i = 0; i < pPat->m_aTiles.size(); i++)
+		pPat->m_aTiles[i].Clear();
 }
 
 int CMapFilter::GetPatternCount() const
@@ -1093,7 +1114,9 @@ void CMapFilter::SetPatternTile(int ID, int x, int y, int Index, int Flags)
 {
 	if(ID < 0 || ID >= m_aPatterns.size())
 		return;
-	m_aPatterns[ID].SetTile(x, y, Index, Flags);
+	int ti = y * m_Width + x;
+	m_aPatterns[ID].m_aTiles[ti].m_Index = Index;
+	m_aPatterns[ID].m_aTiles[ti].m_Flags = Flags;
 }
 
 void CMapFilter::SetPatternWeight(int Id, float Weight)
@@ -1124,7 +1147,7 @@ void CMapFilter::SetPatternWeight(int Id, float Weight)
 const array<CMapFilter::CMFTile>& CMapFilter::GetPatternTiles(int ID) const
 {
 	assert(ID >= 0 && ID < m_aPatterns.size());
-	return m_aPatterns[ID].GetTiles();
+	return m_aPatterns[ID].m_aTiles;
 }
 
 bool CMapFilter::TryApply(int TileID, CLayerTiles* pLayer)
@@ -1145,7 +1168,7 @@ bool CMapFilter::TryApply(int TileID, CLayerTiles* pLayer)
 			int OffsetY = y - RefY;
 			int CheckID = TileID + OffsetY*pLayer->m_Width+OffsetX;
 
-			if(CheckID < 0 || CheckID > pLayer->m_Width*pLayer->m_Height-1)
+			if(CheckID < 0 || CheckID >= pLayer->m_Width*pLayer->m_Height)
 				return false;
 
 			CTile& Tile = pLayer->m_pTiles[CheckID];
@@ -1202,11 +1225,11 @@ void CMapFilter::Apply(int TileID, CLayerTiles* pLayer)
 			int OffsetY = y - RefY;
 			int RepID = TileID + OffsetY*pLayer->m_Width+OffsetX;
 
-			if(RepID < 0 || RepID > pLayer->m_Width*pLayer->m_Height-1)
+			if(RepID < 0 || RepID >= pLayer->m_Width*pLayer->m_Height)
 				continue;
 
 			CTile& Tile = pLayer->m_pTiles[RepID];
-			const CMFTile& FTile = m_aPatterns[ChosenID].GetTile(mfi);
+			const CMFTile& FTile = m_aPatterns[ChosenID].m_aTiles[mfi];
 
 			if(FTile.m_Index == CMapFilter::FULL) // leave it as is
 				continue;
