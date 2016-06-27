@@ -70,7 +70,7 @@ void CPickup::Tick()
 				{
 					Picked = true;
 					GameServer()->CreateSound(m_Pos, SOUND_PICKUP_GRENADE);
-					if(pChr->GetPlayer())
+					if(pChr->GetPlayer() && !pChr->GetPlayer()->IsDummy())
 						GameServer()->SendWeaponPickup(pChr->GetPlayer()->GetCID(), WEAPON_GRENADE);
 				}
 				break;
@@ -79,7 +79,7 @@ void CPickup::Tick()
 				{
 					Picked = true;
 					GameServer()->CreateSound(m_Pos, SOUND_PICKUP_SHOTGUN);
-					if(pChr->GetPlayer())
+					if(pChr->GetPlayer() && !pChr->GetPlayer()->IsDummy())
 						GameServer()->SendWeaponPickup(pChr->GetPlayer()->GetCID(), WEAPON_SHOTGUN);
 				}
 				break;
@@ -88,7 +88,7 @@ void CPickup::Tick()
 				{
 					Picked = true;
 					GameServer()->CreateSound(m_Pos, SOUND_PICKUP_SHOTGUN);
-					if(pChr->GetPlayer())
+					if(pChr->GetPlayer() && !pChr->GetPlayer()->IsDummy())
 						GameServer()->SendWeaponPickup(pChr->GetPlayer()->GetCID(), WEAPON_LASER);
 				}
 				break;
