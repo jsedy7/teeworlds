@@ -5,12 +5,15 @@
 
 #define MAX_SURVIVORS 4
 #define MAX_ZOMBS (MAX_CLIENTS - MAX_SURVIVORS)
+#define MAX_MAP_SIZE 1024 * 1024
 
+typedef uint8_t u8;
 typedef int32_t i32;
 typedef uint32_t u32;
 
 class CGameControllerZOMB : public IGameController
 {
+	i32 m_Tick;
 	u32 m_ZombCount;
 	CCharacterCore m_ZombCharCore[MAX_ZOMBS];
 	CNetObj_PlayerInput m_ZombInput[MAX_ZOMBS];
@@ -24,6 +27,13 @@ class CGameControllerZOMB : public IGameController
 	bool m_ZombAlive[MAX_ZOMBS];
 	i32 m_ZombHealth[MAX_ZOMBS];
 
+	i32 m_ZombSurvTarget[MAX_ZOMBS];
+
+	u8 m_Map[MAX_MAP_SIZE];
+	u32 m_MapWidth;
+	u32 m_MapHeight;
+
+	i32 RandInt(i32 min, i32 max);
 	void SpawnZombie(i32 zid);
 	void KillZombie(i32 zid, i32 killerCID);
 

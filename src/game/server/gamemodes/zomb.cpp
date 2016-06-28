@@ -1,5 +1,6 @@
 // LordSk
 #include "zomb.h"
+#include <io.h>
 #include <engine/server.h>
 #include <engine/console.h>
 #include <engine/shared/protocol.h>
@@ -7,10 +8,25 @@
 #include <game/server/player.h>
 #include <game/server/gamecontext.h>
 
-#define dgb_zomb_msg(...)\
+/* TODO:
+ * - zombie pathfinding
+ * - zombie types
+ * - waves
+ * - flag to resurect (get one flag to another to trigger a resurect)
+ */
+
+#define dbg_zomb_msg(...)\
 	char msgBuff__[256];\
 	str_format(msgBuff__, 256, ##__VA_ARGS__);\
 	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "zomb", msgBuff__);
+
+#define NO_TARGET (-1)
+
+i32 CGameControllerZOMB::RandInt(i32 min, i32 max)
+{
+	dbg_assert(max > min, "RandInt(min, max) max must be > min");
+	return (min + (rand() / (float)RAND_MAX) * (max + 1 - min));
+}
 
 void CGameControllerZOMB::SpawnZombie(i32 zid)
 {
@@ -35,15 +51,29 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	m_pGameType = "ZOMB";
 	m_ZombCount = MAX_ZOMBS;
 
+	// get map info
+	mem_zero(m_Map, MAX_MAP_SIZE);
+	CMapItemLayerTilemap* pGameLayer = GameServer()->Layers()->GameLayer();
+	m_MapWidth = pGameLayer->m_Width;
+	m_MapHeight = pGameLayer->m_Height;
+	CTile* pTiles = (CTile*)(GameServer()->Layers()->Map()->GetData(pGameLayer->m_Data));
+	u32 count = m_MapWidth * m_MapHeight;
+	for(u32 i = 0; i < count; ++i) {
+		if(pTiles[i].m_Index == TILE_SOLID ||
+		   pTiles[i].m_Index == TILE_NOHOOK) {
+			m_Map[i] = 1;
+		}
+	}
+
 	// init zombies
 	mem_zero(m_ZombInput, sizeof(CNetObj_PlayerInput) * MAX_ZOMBS);
 	mem_zero(m_ZombActiveWeapon, sizeof(i32) * MAX_ZOMBS);
 	mem_zero(m_ZombAttackTick, sizeof(i32) * MAX_ZOMBS);
 	mem_zero(m_ZombDmgTick, sizeof(i32) * MAX_ZOMBS);
 	mem_zero(m_ZombDmgAngle, sizeof(i32) * MAX_ZOMBS);
+	memset(m_ZombSurvTarget, NO_TARGET, sizeof(i32) * MAX_ZOMBS);
 
 	for(u32 i = 0; i < m_ZombCount; ++i) {
-		u32 zombCID = MAX_SURVIVORS + i;
 		CCharacterCore& core = m_ZombCharCore[i];
 		core.Reset();
 		core.Init(&GameServer()->m_World.m_Core, GameServer()->Collision());
@@ -55,12 +85,23 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 
 void CGameControllerZOMB::Tick()
 {
+	m_Tick = Server()->Tick();
 	IGameController::Tick();
+
+	for(u32 i = 0; i < m_ZombCount; ++i) {
+		CNetObj_PlayerInput& zi = m_ZombInput[i];
+		if(m_ZombSurvTarget[i] == NO_TARGET) {
+			// roam around
+			zi.m_Direction = i%2 ? -1 : 1;
+			zi.m_Jump = m_Tick%50 > 25 ? 1 : 0;
+		}
+	}
 
 	for(u32 i = 0; i < m_ZombCount; ++i) {
 		m_ZombCharCore[i].m_Input = m_ZombInput[i];
 		m_ZombCharCore[i].Tick(true);
 		m_ZombCharCore[i].Move();
+		m_ZombInput[i] = m_ZombCharCore[i].m_Input;
 	}
 }
 
@@ -83,7 +124,7 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 		CNetObj_PlayerInfo *pPlayerInfo = static_cast<CNetObj_PlayerInfo *>(Server()->
 				SnapNewItem(NETOBJTYPE_PLAYERINFO, zombCID, sizeof(CNetObj_PlayerInfo)));
 		if(!pPlayerInfo) {
-			dgb_zomb_msg("Error: failed to SnapNewItem(NETOBJTYPE_PLAYERINFO)");
+			dbg_zomb_msg("Error: failed to SnapNewItem(NETOBJTYPE_PLAYERINFO)");
 			return;
 		}
 
@@ -94,11 +135,11 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 		CNetObj_Character *pCharacter = static_cast<CNetObj_Character *>(Server()->
 				SnapNewItem(NETOBJTYPE_CHARACTER, zombCID, sizeof(CNetObj_Character)));
 		if(!pCharacter) {
-			dgb_zomb_msg("Error: failed to SnapNewItem(NETOBJTYPE_CHARACTER)");
+			dbg_zomb_msg("Error: failed to SnapNewItem(NETOBJTYPE_CHARACTER)");
 			return;
 		}
 
-		pCharacter->m_Tick = Server()->Tick();
+		pCharacter->m_Tick = m_Tick;
 		pCharacter->m_Emote = EMOTE_NORMAL;
 		pCharacter->m_TriggeredEvents = m_ZombCharCore[i].m_TriggeredEvents;
 		pCharacter->m_Weapon = m_ZombActiveWeapon[i];
@@ -132,7 +173,7 @@ void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 		Server()->SendPackMsg(&NewClientInfoMsg, MSGFLAG_VITAL|MSGFLAG_NORECORD, pPlayer->GetCID());
 	}
 
-	dgb_zomb_msg("Sending zombie info");
+	dbg_zomb_msg("sending zombie info to %d", pPlayer->GetCID());
 }
 
 bool CGameControllerZOMB::IsFriendlyFire(int ClientID1, int ClientID2) const
@@ -162,7 +203,7 @@ void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i3
 	}
 
 	u32 zid = CID - MAX_SURVIVORS;
-	dgb_zomb_msg("%d taking %d dmg", CID, Dmg);
+	dbg_zomb_msg("%d taking %d dmg", CID, Dmg);
 
 	// make sure that the damage indicators doesn't group together
 	++m_ZombDmgAngle[zid];
@@ -178,6 +219,6 @@ void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i3
 	m_ZombHealth[zid] -= Dmg;
 	if(m_ZombHealth[zid] <= 0) {
 		KillZombie(zid, -1);
-		dgb_zomb_msg("%d died", CID);
+		dbg_zomb_msg("%d died", CID);
 	}
 }
