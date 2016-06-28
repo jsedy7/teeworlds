@@ -19,7 +19,22 @@ class CGameControllerZOMB : public IGameController
 
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer);
-	virtual void Tick();
-	virtual void Snap(i32 SnappingClientID);
-	virtual void OnPlayerConnect(CPlayer *pPlayer);
+	void Tick();
+	void Snap(i32 SnappingClientID);
+	void OnPlayerConnect(CPlayer *pPlayer);
+	bool IsFriendlyFire(int ClientID1, int ClientID2) const;
+	void ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i32 Weapon);
 };
+
+#define IsControllerZomb(GameServer) (GameServer->GameType()[0] == 'Z' && \
+	GameServer->GameType()[1] == 'O' &&\
+	GameServer->GameType()[2] == 'M' &&\
+	GameServer->GameType()[3] == 'B')
+
+inline bool IsSurvivor(i32 CID) {
+	return (CID < MAX_SURVIVORS);
+}
+
+inline bool IsZombie(i32 CID) {
+	return (CID >= MAX_SURVIVORS);
+}

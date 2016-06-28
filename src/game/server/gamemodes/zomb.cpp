@@ -7,7 +7,10 @@
 #include <game/server/player.h>
 #include <game/server/gamecontext.h>
 
-#define dgb_zomb_msg(...) GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "zomb", ##__VA_ARGS__);
+#define dgb_zomb_msg(...)\
+	char msgBuff__[256];\
+	str_format(msgBuff__, 256, ##__VA_ARGS__);\
+	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "zomb", msgBuff__);
 
 CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 : IGameController(pGameServer)
@@ -21,7 +24,7 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	mem_zero(m_ZombAttackTick, sizeof(i32) * MAX_ZOMBS);
 
 	for(u32 i = 0; i < m_ZombCount; ++i) {
-		u32 zombCID = MAX_CLIENTS - i - 1;
+		u32 zombCID = MAX_SURVIVORS + i;
 		CCharacterCore& core = m_ZombCharCore[i];
 		core.Reset();
 		core.Init(&GameServer()->m_World.m_Core, GameServer()->Collision());
@@ -51,7 +54,7 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 
 	// send zombie player and character infos
 	for(u32 i = 0; i < m_ZombCount; ++i) {
-		u32 zombCID = MAX_CLIENTS - 1 - i;
+		u32 zombCID = MAX_SURVIVORS + i;
 
 		CNetObj_PlayerInfo *pPlayerInfo = static_cast<CNetObj_PlayerInfo *>(Server()->
 				SnapNewItem(NETOBJTYPE_PLAYERINFO, zombCID, sizeof(CNetObj_PlayerInfo)));
@@ -87,7 +90,7 @@ void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 
 	// send zombie client informations
 	for(u32 i = 0; i < m_ZombCount; ++i) {
-		u32 zombID = MAX_CLIENTS - 1 - i;
+		u32 zombID = MAX_SURVIVORS + i;
 		CNetMsg_Sv_ClientInfo NewClientInfoMsg;
 		NewClientInfoMsg.m_ClientID = zombID;
 		NewClientInfoMsg.m_Local = 0;
@@ -105,5 +108,37 @@ void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 		Server()->SendPackMsg(&NewClientInfoMsg, MSGFLAG_VITAL|MSGFLAG_NORECORD, pPlayer->GetCID());
 	}
 
-	dgb_zomb_msg("Sending test zombie info");
+	dgb_zomb_msg("Sending zombie info");
+}
+
+bool CGameControllerZOMB::IsFriendlyFire(int ClientID1, int ClientID2) const
+{
+	if(ClientID1 == ClientID2) {
+		return false;
+	}
+
+	// both survivors
+	if(IsSurvivor(ClientID1) && IsSurvivor(ClientID2)) {
+		return false;
+	}
+
+	// both zombies
+	if(IsZombie(ClientID1) && IsZombie(ClientID2)) {
+		return false;
+	}
+
+	return true;
+}
+
+void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i32 Weapon)
+{
+	// don't take damage from other zombies
+	if(From >= MAX_SURVIVORS) {
+		return;
+	}
+
+	u32 zid = CID - MAX_SURVIVORS;
+
+	dgb_zomb_msg("%d taking %d dmg", CID, Dmg);
+	GameServer()->CreateDamageInd(m_ZombCharCore[zid].m_Pos, 0, Dmg);
 }

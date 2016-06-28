@@ -2,6 +2,7 @@
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
 #include <generated/server_data.h>
 #include <game/server/gamecontext.h>
+#include <game/server/gamemodes/zomb.h>
 
 #include "character.h"
 #include "laser.h"
@@ -23,6 +24,33 @@ bool CLaser::HitCharacter(vec2 From, vec2 To)
 {
 	vec2 At;
 	CCharacter *pOwnerChar = GameServer()->GetPlayerChar(m_Owner);
+
+	// zomb
+	if(IsControllerZomb(GameServer())) {
+		int hitCID = GameServer()->m_World.IntersectCharacterCore(m_Pos, To, 0.f, At,
+						GameWorld()->m_Core.m_apCharacters[m_Owner]);
+		if(hitCID == -1) {
+			return false;
+		}
+
+		m_From = From;
+		m_Pos = At;
+		m_Energy = -1;
+
+		if(IsSurvivor(hitCID)) {
+			GameServer()->GetPlayerChar(hitCID)->TakeDamage(vec2(0.f, 0.f),
+				g_pData->m_Weapons.m_aId[WEAPON_LASER].m_Damage, m_Owner, WEAPON_LASER);
+		}
+		else {
+			((CGameControllerZOMB*)GameServer()->m_pController)->
+				ZombTakeDmg(hitCID, vec2(0.f, 0.f),
+							g_pData->m_Weapons.m_aId[WEAPON_LASER].m_Damage,
+							m_Owner, WEAPON_LASER);
+		}
+
+		return true;
+	}
+
 	CCharacter *pHit = GameServer()->m_World.IntersectCharacter(m_Pos, To, 0.f, At, pOwnerChar);
 	if(!pHit)
 		return false;

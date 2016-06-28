@@ -148,6 +148,25 @@ void CGameContext::CreateExplosion(vec2 Pos, int Owner, int Weapon, int MaxDamag
 		if((int)(Factor * MaxDamage))
 			apEnts[i]->TakeDamage(Force * Factor, Diff*-1, (int)(Factor * MaxDamage), Owner, Weapon);
 	}
+
+	// zomb
+	if(IsControllerZomb(this) && IsSurvivor(Owner)) {
+		for(int i = 0; i < MAX_CLIENTS; ++i) {
+			CCharacterCore* pCore = m_World.m_Core.m_apCharacters[i];
+
+			if(pCore && IsZombie(i) &&
+			   distance(pCore->m_Pos, Pos) < (Radius + CCharacter::ms_PhysSize)) {
+				vec2 Diff = pCore->m_Pos - Pos;
+				vec2 Force(0, MaxForce);
+				float l = length(Diff);
+				if(l) Force = normalize(Diff) * MaxForce;
+				float Factor = 1 - clamp((l-InnerRadius)/(Radius-InnerRadius), 0.0f, 1.0f);
+
+				((CGameControllerZOMB*)m_pController)->
+					ZombTakeDmg(i, Force * Factor, (int)(Factor * MaxDamage), Owner, Weapon);
+			}
+		}
+	}
 }
 
 void CGameContext::CreatePlayerSpawn(vec2 Pos)

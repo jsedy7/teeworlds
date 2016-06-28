@@ -6,6 +6,7 @@
 #include <game/server/gamecontext.h>
 #include <game/server/gamecontroller.h>
 #include <game/server/player.h>
+#include <game/server/gamemodes/zomb.h>
 
 #include "character.h"
 #include "laser.h"
@@ -124,7 +125,7 @@ void CCharacter::HandleNinja()
 		// time's up, return
 		m_aWeapons[WEAPON_NINJA].m_Got = false;
 		m_ActiveWeapon = m_LastWeapon;
-		
+
 		// reset velocity
 		if(m_Ninja.m_CurrentMoveTime > 0)
 			m_Core.m_Vel = m_Ninja.m_ActivationDir*m_Ninja.m_OldVelAmount;
@@ -323,6 +324,42 @@ void CCharacter::FireWeapon()
 				pTarget->TakeDamage(vec2(0.f, -1.f) + normalize(Dir + vec2(0.f, -1.1f)) * 10.0f, Dir*-1, g_pData->m_Weapons.m_Hammer.m_pBase->m_Damage,
 					m_pPlayer->GetCID(), m_ActiveWeapon);
 				Hits++;
+			}
+
+			// zomb
+			if(IsControllerZomb(GameServer())) {
+				for(int i = 0; i < MAX_CLIENTS; ++i) {
+					CCharacterCore* pCore = GameWorld()->m_Core.m_apCharacters[i];
+
+					if(pCore && IsZombie(i) &&
+					   distance(pCore->m_Pos, ProjStartPos) <
+					   (GetProximityRadius()*0.5f + CCharacter::ms_PhysSize)) {
+
+						// set his velocity to fast upward (for now)
+						if(length(pCore->m_Pos-ProjStartPos) > 0.0f) {
+							GameServer()->CreateHammerHit(pCore->m_Pos-
+								normalize(pCore->m_Pos-ProjStartPos)*GetProximityRadius()*0.5f);
+						}
+						else {
+							GameServer()->CreateHammerHit(ProjStartPos);
+						}
+
+						vec2 Dir;
+						if (length(pCore->m_Pos - m_Pos) > 0.0f) {
+							Dir = normalize(pCore->m_Pos - m_Pos);
+						}
+						else {
+							Dir = vec2(0.f, -1.f);
+						}
+
+						((CGameControllerZOMB*)GameServer()->m_pController)->ZombTakeDmg(
+									i,
+									vec2(0.f, -1.f) + normalize(Dir + vec2(0.f, -1.1f)) * 10.0f,
+									g_pData->m_Weapons.m_Hammer.m_pBase->m_Damage,
+									m_pPlayer->GetCID(), m_ActiveWeapon);
+						Hits++;
+					}
+				}
 			}
 
 			// if we Hit anything, we have to wait for the reload
@@ -589,7 +626,7 @@ void CCharacter::TickDefered()
 			StartVelX.u, StartVelY.u);
 		GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "game", aBuf);
 	}
-	
+
 	m_TriggeredEvents |= m_Core.m_TriggeredEvents;
 
 	if(m_pPlayer->GetTeam() == TEAM_SPECTATORS)
