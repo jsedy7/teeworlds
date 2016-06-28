@@ -12,6 +12,23 @@
 	str_format(msgBuff__, 256, ##__VA_ARGS__);\
 	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "zomb", msgBuff__);
 
+void CGameControllerZOMB::SpawnZombie(i32 zid)
+{
+	m_ZombAlive[zid] = true;
+	m_ZombHealth[zid] = 5;
+	GameServer()->m_World.m_Core.m_apCharacters[zid + MAX_SURVIVORS] = &m_ZombCharCore[zid];
+}
+
+void CGameControllerZOMB::KillZombie(i32 zid, i32 killerCID)
+{
+	m_ZombAlive[zid] = false;
+	GameServer()->m_World.m_Core.m_apCharacters[zid + MAX_SURVIVORS] = 0;
+	GameServer()->CreateSound(m_ZombCharCore[zid].m_Pos, SOUND_PLAYER_DIE);
+	GameServer()->CreateSound(m_ZombCharCore[zid].m_Pos, SOUND_PLAYER_PAIN_LONG);
+	GameServer()->CreateDeath(m_ZombCharCore[zid].m_Pos, 0);
+	// TODO: send a kill message?
+}
+
 CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 : IGameController(pGameServer)
 {
@@ -22,6 +39,8 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	mem_zero(m_ZombInput, sizeof(CNetObj_PlayerInput) * MAX_ZOMBS);
 	mem_zero(m_ZombActiveWeapon, sizeof(i32) * MAX_ZOMBS);
 	mem_zero(m_ZombAttackTick, sizeof(i32) * MAX_ZOMBS);
+	mem_zero(m_ZombDmgTick, sizeof(i32) * MAX_ZOMBS);
+	mem_zero(m_ZombDmgAngle, sizeof(i32) * MAX_ZOMBS);
 
 	for(u32 i = 0; i < m_ZombCount; ++i) {
 		u32 zombCID = MAX_SURVIVORS + i;
@@ -29,7 +48,8 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 		core.Reset();
 		core.Init(&GameServer()->m_World.m_Core, GameServer()->Collision());
 		core.m_Pos = vec2(250 + 50 * i, 250);
-		GameServer()->m_World.m_Core.m_apCharacters[zombCID] = &core;
+
+		SpawnZombie(i);
 	}
 }
 
@@ -54,6 +74,10 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 
 	// send zombie player and character infos
 	for(u32 i = 0; i < m_ZombCount; ++i) {
+		if(!m_ZombAlive[i]) {
+			continue;
+		}
+
 		u32 zombCID = MAX_SURVIVORS + i;
 
 		CNetObj_PlayerInfo *pPlayerInfo = static_cast<CNetObj_PlayerInfo *>(Server()->
@@ -133,12 +157,27 @@ bool CGameControllerZOMB::IsFriendlyFire(int ClientID1, int ClientID2) const
 void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i32 Weapon)
 {
 	// don't take damage from other zombies
-	if(From >= MAX_SURVIVORS) {
+	if(IsZombie(From)) {
 		return;
 	}
 
 	u32 zid = CID - MAX_SURVIVORS;
-
 	dgb_zomb_msg("%d taking %d dmg", CID, Dmg);
-	GameServer()->CreateDamageInd(m_ZombCharCore[zid].m_Pos, 0, Dmg);
+
+	// make sure that the damage indicators doesn't group together
+	++m_ZombDmgAngle[zid];
+	if(Server()->Tick() < m_ZombDmgTick[zid]+25) {
+		GameServer()->CreateDamageInd(m_ZombCharCore[zid].m_Pos, m_ZombDmgAngle[zid]*0.25f, Dmg);
+	}
+	else {
+		m_ZombDmgAngle[zid] = 0;
+		GameServer()->CreateDamageInd(m_ZombCharCore[zid].m_Pos, 0, Dmg);
+	}
+	m_ZombDmgTick[zid] = Server()->Tick();
+
+	m_ZombHealth[zid] -= Dmg;
+	if(m_ZombHealth[zid] <= 0) {
+		KillZombie(zid, -1);
+		dgb_zomb_msg("%d died", CID);
+	}
 }

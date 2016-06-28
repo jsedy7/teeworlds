@@ -17,6 +17,16 @@ class CGameControllerZOMB : public IGameController
 	i32 m_ZombActiveWeapon[MAX_ZOMBS];
 	i32 m_ZombAttackTick[MAX_ZOMBS];
 
+	// prevents superposition of damage stars
+	i32 m_ZombDmgTick[MAX_ZOMBS];
+	i32 m_ZombDmgAngle[MAX_ZOMBS];
+
+	bool m_ZombAlive[MAX_ZOMBS];
+	i32 m_ZombHealth[MAX_ZOMBS];
+
+	void SpawnZombie(i32 zid);
+	void KillZombie(i32 zid, i32 killerCID);
+
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer);
 	void Tick();
