@@ -6,10 +6,12 @@
 #define MAX_SURVIVORS 4
 #define MAX_ZOMBS (MAX_CLIENTS - MAX_SURVIVORS)
 #define MAX_MAP_SIZE 1024 * 1024
+#define PATHFIND_CLOCK_TIME 20
 
 typedef uint8_t u8;
 typedef int32_t i32;
 typedef uint32_t u32;
+typedef float f32;
 
 class CGameControllerZOMB : public IGameController
 {
@@ -28,14 +30,19 @@ class CGameControllerZOMB : public IGameController
 	i32 m_ZombHealth[MAX_ZOMBS];
 
 	i32 m_ZombSurvTarget[MAX_ZOMBS];
+	i32 m_ZombPathFindClock[MAX_ZOMBS];
 
 	u8 m_Map[MAX_MAP_SIZE];
 	u32 m_MapWidth;
 	u32 m_MapHeight;
 
-	i32 RandInt(i32 min, i32 max);
+	vec2 m_ZombSpawnPoint[64];
+	u32 m_ZombSpawnPointCount;
+
+	void Init();
 	void SpawnZombie(i32 zid);
 	void KillZombie(i32 zid, i32 killerCID);
+	vec2 PathFind(vec2 start, vec2 end);
 
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer);
@@ -43,6 +50,7 @@ public:
 	void Snap(i32 SnappingClientID);
 	void OnPlayerConnect(CPlayer *pPlayer);
 	bool IsFriendlyFire(int ClientID1, int ClientID2) const;
+	bool OnEntity(int Index, vec2 Pos);
 	void ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i32 Weapon);
 };
 

@@ -73,7 +73,7 @@ public:
 	class IConsole *Console() { return m_pConsole; }
 	CCollision *Collision() { return &m_Collision; }
 	CTuningParams *Tuning() { return &m_Tuning; }
-	CLayers *Layers() const { return &m_Layers; }
+	const CLayers *Layers() const { return &m_Layers; }
 
 	CGameContext();
 	~CGameContext();
