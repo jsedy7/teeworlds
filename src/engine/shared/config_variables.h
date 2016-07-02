@@ -99,4 +99,7 @@ MACRO_CONFIG_INT(DbgHitch, dbg_hitch, 0, 0, 0, CFGFLAG_SERVER, "Hitch warnings")
 MACRO_CONFIG_STR(DbgStressServer, dbg_stress_server, 32, "localhost", CFGFLAG_CLIENT, "Server to stress")
 MACRO_CONFIG_INT(DbgResizable, dbg_resizable, 0, 0, 0, CFGFLAG_CLIENT, "Enables window resizing")
 
+// zomb
+MACRO_CONFIG_INT(DbgPathFindIterations, sv_pf_iterations, 2500, 1, 10000, CFGFLAG_SERVER, "Debug pathfind iterations")
+
 #endif

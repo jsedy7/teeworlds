@@ -3,6 +3,7 @@
 #include <io.h>
 #include <engine/server.h>
 #include <engine/console.h>
+#include <engine/shared/config.h>
 #include <engine/shared/protocol.h>
 #include <game/server/entity.h>
 #include <game/server/player.h>
@@ -18,6 +19,7 @@
 
 static char msgBuff__[256];
 #define dbg_zomb_msg(...)\
+	memset(msgBuff__, 0, sizeof(msgBuff__));\
 	str_format(msgBuff__, 256, ##__VA_ARGS__);\
 	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "zomb", msgBuff__);
 
@@ -59,16 +61,15 @@ void CGameControllerZOMB::KillZombie(i32 zid, i32 killerCID)
 struct Node
 {
 	ivec2 pos;
-	f32 g, h, f;
+	f32 g, f;
 	Node* pParent;
 
 	Node() = default;
-	Node(ivec2 pos_, i32 g_, i32 h_, Node* pPrevNode_):
+	Node(ivec2 pos_, f32 g_, f32 h_, Node* pParent_):
 		pos(pos_),
 		g(g_),
-		h(h_),
 		f(g_ + h_),
-		pParent(pPrevNode_)
+		pParent(pParent_)
 	{}
 };
 
@@ -88,13 +89,13 @@ inline Node* addNode_(Node* pNodeList, u32* pCount, Node node)
 	return &pNodeList[(*pCount)-1];
 }
 
-#define addNode(node) addNode_(nodeList, &nodeCount, (node))
+#define addNode(node) addNode_(nodeList, &nodeListCount, (node))
 
-inline Node* searchList_(Node** pNodeList, u32 count, ivec2 pos)
+inline Node* searchList_(Node* pNodeList, u32 count, ivec2 pos)
 {
 	for(u32 i = 0; i < count; ++i) {
-		if(pNodeList[i]->pos == pos) {
-			return pNodeList[i];
+		if(pNodeList[i].pos == pos) {
+			return &pNodeList[i];
 		}
 	}
 	return 0;
@@ -102,48 +103,162 @@ inline Node* searchList_(Node** pNodeList, u32 count, ivec2 pos)
 
 #define searchList(list, pos) searchList_(list, list##Count, pos)
 
+static i32 compareNodePtr(const void* a, const void* b)
+{
+	const Node* na = *(const Node**)a;
+	const Node* nb = *(const Node**)b;
+	if(na->f < nb->f) return -1;
+	if(na->f > nb->f) return 1;
+	return 0;
+}
+
+inline bool CGameControllerZOMB::InMapBounds(const ivec2& pos)
+{
+	return (pos.x >= 0 && pos.x < (i32)m_MapWidth &&
+			pos.y >= 0 && pos.y < (i32)m_MapHeight);
+}
+
+inline bool CGameControllerZOMB::IsBlocked(const ivec2& pos)
+{
+	return (!InMapBounds(pos) || m_Map[pos.y * m_MapWidth + pos.x] != 0);
+}
+
 static Node* openList[MAX_MAP_SIZE];
 static Node* closedList[MAX_MAP_SIZE];
 static u32 openListCount = 0;
 static u32 closedListCount = 0;
 static Node nodeList[MAX_MAP_SIZE];
-static u32 nodeCount = 0;
+static u32 nodeListCount = 0;
+
+bool CGameControllerZOMB::JumpStraight(const ivec2& start, const ivec2& dir, const ivec2& goal,
+									   i32* out_pJumps)
+{
+	ivec2 jumpPos = start;
+	ivec2 forcedCheckDir[2]; // places to check for walls
+
+	if(dir.x != 0) {
+		forcedCheckDir[0] = ivec2(0, 1);
+		forcedCheckDir[1] = ivec2(0, -1);
+	}
+	else {
+		forcedCheckDir[0] = ivec2(1, 0);
+		forcedCheckDir[1] = ivec2(-1, 0);
+	}
+
+	*out_pJumps = 0;
+	while(1) {
+		if(jumpPos == goal) {
+			return true;
+		}
+
+		// hit a wall, diregard jump
+		if(!InMapBounds(jumpPos) || IsBlocked(jumpPos)) {
+			return false;
+		}
+
+		// forced neighours check
+		ivec2 wallPos = jumpPos + forcedCheckDir[0];
+		ivec2 freePos = jumpPos + forcedCheckDir[0] + dir;
+		if(IsBlocked(wallPos) && !IsBlocked(freePos)) {
+			return true;
+		}
+
+		wallPos = jumpPos + forcedCheckDir[1];
+		freePos = jumpPos + forcedCheckDir[1] + dir;
+		if(IsBlocked(wallPos) && !IsBlocked(freePos)) {
+			return true;
+		}
+
+		jumpPos += dir;
+		++(*out_pJumps);
+	}
+
+	return false;
+}
+
+bool CGameControllerZOMB::JumpDiagonal(const ivec2& start, const ivec2& dir, const ivec2& goal,
+									   i32* out_pJumps)
+{
+	ivec2 jumpPos = start;
+	ivec2 forcedCheckDir[2]; // places to check for walls
+	forcedCheckDir[0] = ivec2(-dir.x, 0);
+	forcedCheckDir[1] = ivec2(0, -dir.y);
+
+	ivec2 straigthDirs[] = {
+		ivec2(dir.x, 0),
+		ivec2(0, dir.y)
+	};
+
+	*out_pJumps = 0;
+	while(1) {
+		if(jumpPos == goal) {
+			return true;
+		}
+
+		// check veritcal/horizontal
+		for(u32 i = 0; i < 2; ++i) {
+			i32 j;
+			if(JumpStraight(jumpPos, straigthDirs[i], goal, &j)) {
+				return true;
+			}
+		}
+
+		// hit a wall, diregard jump
+		if(!InMapBounds(jumpPos) || IsBlocked(jumpPos)) {
+			return false;
+		}
+
+		// forced neighours check
+		ivec2 wallPos = jumpPos + forcedCheckDir[0];
+		ivec2 freePos = jumpPos + forcedCheckDir[0] + ivec2(0, dir.y);
+		if(IsBlocked(wallPos) && !IsBlocked(freePos)) {
+			return true;
+		}
+
+		wallPos = jumpPos + forcedCheckDir[1];
+		freePos = jumpPos + forcedCheckDir[1] + ivec2(dir.x, 0);
+		if(IsBlocked(wallPos) && !IsBlocked(freePos)) {
+			return true;
+		}
+
+		jumpPos += dir;
+		++(*out_pJumps);
+	}
+
+	return false;
+}
 
 vec2 CGameControllerZOMB::PathFind(vec2 start, vec2 end)
 {
 	ivec2 mStart(start.x / 32, start.y / 32);
 	ivec2 mEnd(end.x / 32, end.y / 32);
 
-	if(m_Map[mStart.y * m_MapWidth + mStart.x] != 0 ||
-	   m_Map[mEnd.y * m_MapWidth + mEnd.x] != 0) {
-		dbg_zomb_msg("Error: start and end point must be clear.");
+	if(mStart == mEnd) {
+		return end;
 	}
 
+	if(IsBlocked(mStart) || IsBlocked(mStart)) {
+		dbg_zomb_msg("Error: PathFind() start and end point must be clear.");
+		return end;
+	}
+
+	bool pathFound = false;
 	openListCount = 0;
 	closedListCount = 0;
-	nodeCount = 0;
+	nodeListCount = 0;
 
-	addToList(openList, addNode(Node(mStart, 0, 0, 0)));
+#ifdef CONF_DEBUG
+	m_DbgPathLen = 0;
+	m_DbgLinesCount = 0;
+	u32 maxIterations = g_Config.m_DbgPathFindIterations;
+#endif
+
+	Node* pFirst = addNode(Node(mStart, 0, 0, nullptr));
+	addToList(openList, pFirst);
 
 	u32 iterations = 0;
-	bool searching = true;
-	while(openListCount > 0 && searching) {
-		// bubble sort
-		bool sorting = true;
-		while(sorting) {
-			u32 changes = 0;
-			for(u32 i = 1; i < openListCount; ++i) {
-				if(openList[i]->f < openList[i-1]->f) {
-					Node* temp = openList[i];
-					openList[i] = openList[i-1];
-					openList[i-1] = temp;
-					++changes;
-				}
-			}
-			sorting = (changes > 0);
-		}
-
-		//dbg_zomb_msg("sorted %d nodes %.1f", openListCount, openList[0]->f);
+	while(openListCount > 0 && !pathFound) {
+		qsort(openList, openListCount, sizeof(Node*), compareNodePtr);
 
 		// pop first node from open list and add it to closed list
 		Node* pCurrent = openList[0];
@@ -151,69 +266,159 @@ vec2 CGameControllerZOMB::PathFind(vec2 start, vec2 end)
 		--openListCount;
 		addToList(closedList, pCurrent);
 
-		// successors
-		ivec2 from = pCurrent->pos;
-		if(pCurrent->pParent) {
-			from = pCurrent->pParent->pos;
+		// neighbours
+		ivec2 nbDir[8];
+		u32 nbCount = 0;
+		const ivec2& cp = pCurrent->pos;
+
+		// first node (TODO: move this out of the loop)
+		if(!pCurrent->pParent) {
+			for(i32 x = -1; x < 2; ++x) {
+				for(i32 y = -1; y < 2; ++y) {
+					ivec2 dir(x, y);
+					ivec2 succPos = cp + dir;
+					if((x == 0 && y == 0) ||
+					   !InMapBounds(succPos) ||
+					   IsBlocked(succPos)) {
+						continue;
+					}
+					nbDir[nbCount++] = dir;
+				}
+			}
+		}
+		else {
+			ivec2 fromDir(clamp(cp.x - pCurrent->pParent->pos.x, -1, 1),
+						  clamp(cp.y - pCurrent->pParent->pos.y, -1, 1));
+
+
+
+			// straight (add fromDir + adjacent diags)
+			if(fromDir.x == 0 || fromDir.y == 0) {
+				if(!IsBlocked(cp + fromDir)) {
+					nbDir[nbCount++] = fromDir;
+
+					if(fromDir.x == 0) {
+						ivec2 diagR(1, fromDir.y);
+						if(!IsBlocked(cp + diagR)) {
+							nbDir[nbCount++] = diagR;
+						}
+						ivec2 diagL(-1, fromDir.y);
+						if(!IsBlocked(cp + diagL)) {
+							nbDir[nbCount++] = diagL;
+						}
+					}
+					else if(fromDir.y == 0) {
+						ivec2 diagB(fromDir.x, 1);
+						if(!IsBlocked(cp + diagB)) {
+							nbDir[nbCount++] = diagB;
+						}
+						ivec2 diagT(fromDir.x, -1);
+						if(!IsBlocked(cp + diagT)) {
+							nbDir[nbCount++] = diagT;
+						}
+					}
+				}
+			}
+			// diagonal (add diag + adjacent straight dirs + forced neighbours)
+			else {
+				ivec2 stX(fromDir.x, 0);
+				ivec2 stY(0, fromDir.y);
+
+				if(!IsBlocked(cp + fromDir) &&
+				   (!IsBlocked(cp + stX) || !IsBlocked(cp + stY))) {
+					nbDir[nbCount++] = fromDir;
+				}
+				if(!IsBlocked(cp + stX)) {
+					nbDir[nbCount++] = stX;
+				}
+				if(!IsBlocked(cp + stY)) {
+					nbDir[nbCount++] = stY;
+				}
+
+				// forced neighbours
+				ivec2 fn1(-stX.x, stY.y);
+				if(IsBlocked(cp - stX) && !IsBlocked(cp + stY) && !IsBlocked(cp + fn1)) {
+					nbDir[nbCount++] = fn1;
+				}
+				ivec2 fn2(stX.x, -stY.y);
+				if(IsBlocked(cp - stY) && !IsBlocked(cp + stX) && !IsBlocked(cp + fn2)) {
+					nbDir[nbCount++] = fn2;
+				}
+			}
 		}
 
-		for(i32 x = -1; x < 2; ++x) {
-			for(i32 y = -1; y < 2; ++y) {
-				ivec2 succPos = pCurrent->pos + ivec2(x,y);
-				if(succPos.x < 0 || succPos.x >= (i32)m_MapWidth ||
-				   succPos.y < 0 || succPos.y >= (i32)m_MapHeight ||
-				   (x == 0 && y == 0) || succPos == from ||
-				   m_Map[succPos.y * m_MapWidth + succPos.x] != 0) {
-					continue;
-				}
+		// jump
+		for(u32 n = 0; n < nbCount; ++n) {
+			const ivec2& succDir = nbDir[n];
+			ivec2 succPos = pCurrent->pos + succDir;
 
-				// found path
-				if(succPos == mEnd) {
-					addToList(closedList, addNode(Node(succPos, 0, 0, pCurrent)));
-					searching = false;
-					break;
-				}
+			if(succDir.x == 0 || succDir.y == 0) {
+				i32 jumps;
+				if(JumpStraight(succPos, succDir, mEnd, &jumps)) {
+					ivec2 jumpPos = succPos + succDir * jumps;
+					f32 g = pCurrent->g + jumps;
+					f32 h = abs(mEnd.x - jumpPos.x) + abs(mEnd.y - jumpPos.y);
 
-				f32 g = 1.f;
-				if(x != 0 || y != 0) { // diagonal
-					g = 2.f;
-				}
-
-				if(pCurrent->pParent) {
-					g += pCurrent->pParent->g;
-				}
-
-				ivec2 d = mEnd - succPos;
-				f32 h = dot(d, d);
-				f32 f = g + h;
-
-				// if successor is in any of the lists and its f < new f, skip
-				Node* pSuccOpen = searchList(openList, succPos);
-				if(pSuccOpen) {
-					if(pSuccOpen->f > f) {
-						pSuccOpen->f = f;
-						pSuccOpen->pParent = pCurrent;
+					if(jumpPos == mEnd) {
+						addToList(closedList, addNode(Node(jumpPos, 0, 0, pCurrent)));
+						pathFound = true;
+						break;
 					}
-					continue;
-				}
-				Node* pSuccClosed = searchList(closedList, succPos);
-				if(pSuccClosed) {
-					if(pSuccClosed->f > f) {
-						pSuccClosed->f = f;
-						pSuccClosed->pParent = pCurrent;
+					else {
+						Node* pSearchNode = searchList(nodeList, jumpPos);
+						if(pSearchNode) {
+							f32 f = g + h;
+							if(f < pSearchNode->f) {
+								pSearchNode->f = f;
+								pSearchNode->g = g;
+								pSearchNode->pParent = pCurrent;
+							}
+						}
+						else {
+							Node* pJumpNode = addNode(Node(jumpPos, g, h, pCurrent));
+							addToList(openList, pJumpNode);
+						}
 					}
-					continue;
 				}
+			}
+			else {
+				i32 jumps = 0;
+				if(JumpDiagonal(succPos, succDir, mEnd, &jumps)) {
+					ivec2 jumpPos = succPos + succDir * jumps;
+					f32 g = pCurrent->g + jumps * 2.f;
+					f32 h = abs(mEnd.x - jumpPos.x) + abs(mEnd.y - jumpPos.y);
 
-				addToList(openList, addNode(Node(succPos, g, h, pCurrent)));
+					if(jumpPos == mEnd) {
+						addToList(closedList, addNode(Node(jumpPos, 0, 0, pCurrent)));
+						pathFound = true;
+						break;
+					}
+					else {
+						Node* pSearchNode = searchList(nodeList, jumpPos);
+						if(pSearchNode) {
+							f32 f = g + h;
+							if(f < pSearchNode->f) {
+								pSearchNode->f = f;
+								pSearchNode->g = g;
+								pSearchNode->pParent = pCurrent;
+							}
+						}
+						else {
+							Node* pJumpNode = addNode(Node(jumpPos, g, h, pCurrent));
+							addToList(openList, pJumpNode);
+						}
+					}
+				}
 			}
 		}
 
 		// TODO: remove this safeguard
 		++iterations;
-		if(iterations > 2500) {
+#ifdef CONF_DEBUG
+		if(iterations > maxIterations) {
 			break;
 		}
+#endif
 	}
 
 	Node* pCur = closedList[closedListCount-1];
@@ -221,11 +426,23 @@ vec2 CGameControllerZOMB::PathFind(vec2 start, vec2 end)
 	while(pCur && pCur->pParent) {
 		next = pCur->pos;
 		pCur = pCur->pParent;
-		GameServer()->CreatePlayerSpawn(vec2(next.x * 32.f + 16.f, next.y * 32.f + 16.f));
 	}
 
-	dbg_zomb_msg("pathfind iterations: %d", iterations);
 	return vec2(next.x * 32.f + 16.f, next.y * 32.f + 16.f);
+}
+
+void CGameControllerZOMB::DebugPathAddPoint(ivec2 p)
+{
+	if(m_DbgPathLen >= 256) return;
+	m_DbgPath[m_DbgPathLen++] = p;
+}
+
+void CGameControllerZOMB::DebugLine(ivec2 s, ivec2 e)
+{
+	if(m_DbgLinesCount >= 256) return;
+	u32 id = m_DbgLinesCount++;
+	m_DbgLines[id].start = s;
+	m_DbgLines[id].end = e;
 }
 
 CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
@@ -256,21 +473,21 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	mem_zero(m_ZombDmgTick, sizeof(i32) * MAX_ZOMBS);
 	mem_zero(m_ZombDmgAngle, sizeof(i32) * MAX_ZOMBS);
 	memset(m_ZombSurvTarget, NO_TARGET, sizeof(i32) * MAX_ZOMBS);
+	mem_zero(m_ZombPathFindClock, sizeof(i32) * MAX_ZOMBS);
+	mem_zero(m_ZombDestination, sizeof(vec2) * MAX_ZOMBS);
 
 	for(u32 i = 0; i < m_ZombCount; ++i) {
-		CCharacterCore& core = m_ZombCharCore[i];
-		core.Reset();
-		core.Init(&GameServer()->m_World.m_Core, GameServer()->Collision());
-		m_ZombPathFindClock[i] = PATHFIND_CLOCK_TIME;
+		m_ZombCharCore[i].Init(&GameServer()->m_World.m_Core, GameServer()->Collision());
 	}
+
+	m_DoInit = true;
 }
 
 void CGameControllerZOMB::Tick()
 {
-	static bool init = true;
-	if(init) {
+	if(m_DoInit) {
 		Init();
-		init = false;
+		m_DoInit = false;
 	}
 
 	m_Tick = Server()->Tick();
@@ -295,25 +512,28 @@ void CGameControllerZOMB::Tick()
 		else {
 			vec2 pos = m_ZombCharCore[i].m_Pos;
 			vec2 targetPos = GameServer()->GetPlayerChar(m_ZombSurvTarget[i])->GetPos();
-			vec2 to = pos;
+			vec2& dest = m_ZombDestination[i];
 			if(--m_ZombPathFindClock[i] <= 0) {
-				to = PathFind(pos, targetPos);
+				dest = PathFind(pos, targetPos);
 				m_ZombPathFindClock[i] = PATHFIND_CLOCK_TIME;
 			}
 
 			zi.m_Direction = -1;
-			if(pos.x < to.x) {
+			if(pos.x < dest.x) {
 				zi.m_Direction = 1;
 			}
 
-			if(abs(to.x - pos.x) < 2.f) {
+			if(abs(dest.x - pos.x) < 2.f) {
 				zi.m_Direction = 0;
 			}
 
 			zi.m_Jump = 0;
-			if(to.y < pos.y && abs(to.y - pos.y) > 10.f) {
+			if(dest.y < pos.y && abs(dest.y - pos.y) > 10.f) {
 				zi.m_Jump = 1;
 			}
+
+			zi.m_TargetX = targetPos.x - pos.x;
+			zi.m_TargetY = targetPos.y - pos.y;
 		}
 	}
 
@@ -370,6 +590,39 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 
 		m_ZombCharCore[i].Write(pCharacter);
 	}
+
+#ifdef CONF_DEBUG
+	i32 tick = Server()->Tick();
+	u32 laserID = 0;
+
+	// debug path
+	for(u32 i = 1; i < m_DbgPathLen; ++i) {
+		CNetObj_Laser *pObj = (CNetObj_Laser*)Server()->SnapNewItem(NETOBJTYPE_LASER,
+									 laserID++, sizeof(CNetObj_Laser));
+		if(!pObj)
+			return;
+
+		pObj->m_X = m_DbgPath[i-1].x * 32 + 16;
+		pObj->m_Y = m_DbgPath[i-1].y * 32 + 16;
+		pObj->m_FromX = m_DbgPath[i].x * 32 + 16;
+		pObj->m_FromY = m_DbgPath[i].y * 32 + 16;
+		pObj->m_StartTick = tick;
+	}
+
+	// debug lines
+	for(u32 i = 1; i < m_DbgLinesCount; ++i) {
+		CNetObj_Laser *pObj = (CNetObj_Laser*)Server()->SnapNewItem(NETOBJTYPE_LASER,
+									 laserID++, sizeof(CNetObj_Laser));
+		if(!pObj)
+			return;
+
+		pObj->m_X = m_DbgLines[i].start.x * 32 + 16;
+		pObj->m_Y = m_DbgLines[i].start.y * 32 + 16;
+		pObj->m_FromX = m_DbgLines[i].end.x * 32 + 16;
+		pObj->m_FromY = m_DbgLines[i].end.y * 32 + 16;
+		pObj->m_StartTick = tick;
+	}
+#endif
 }
 
 void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
