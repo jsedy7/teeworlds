@@ -12,6 +12,7 @@
 
 /* TODO:
  * - zombie types
+ * - Bull zombie (charges survivors)
  * - waves
  * - flag to resurect (get one flag to another to trigger a resurect)
  */
@@ -33,6 +34,23 @@ enum {
 	SKINPART_EYES
 };
 
+enum {
+	ZTYPE_BASIC = 0,
+	ZTYPE_TANK
+};
+
+static const u32 g_ZombMaxHealth[] = {
+	7, // ZTYPE_BASIC
+	40 // ZTYPE_TANK
+};
+
+enum {
+	BUFF_ENRAGED = 1,
+	BUFF_HEALING = (1 << 1),
+	BUFF_ARMORED = (1 << 2),
+	BUFF_ELITE = (1 << 3)
+};
+
 static i32 randInt(i32 min, i32 max)
 {
 	dbg_assert(max > min, "RandInt(min, max) max must be > min");
@@ -42,19 +60,30 @@ static i32 randInt(i32 min, i32 max)
 void CGameControllerZOMB::Init()
 {
 	for(u32 i = 0; i < m_ZombCount; ++i) {
-		SpawnZombie(i);
+		SpawnZombie(i, ZTYPE_BASIC, false);
 	}
 }
 
-void CGameControllerZOMB::SpawnZombie(i32 zid)
+void CGameControllerZOMB::SpawnZombie(i32 zid, u32 type, bool isElite)
 {
-	vec2 spawnPos = m_ZombSpawnPoint[zid%m_ZombSpawnPointCount];
 	m_ZombAlive[zid] = true;
-	m_ZombHealth[zid] = 5;
+	m_ZombType[zid] = type;
+	m_ZombHealth[zid] = g_ZombMaxHealth[type];
+	m_ZombBuff[zid] = 0;
+
+	if(isElite) {
+		m_ZombHealth[zid] *= 2;
+		m_ZombBuff[zid] |= BUFF_ELITE;
+	}
+
+	vec2 spawnPos = m_ZombSpawnPoint[zid%m_ZombSpawnPointCount];
 	m_ZombCharCore[zid].Reset();
 	m_ZombCharCore[zid].m_Pos = spawnPos;
 	m_ZombCharCore[zid].m_Pos.x += (-MAX_ZOMBS/2 + zid); // prevent them from being stuck
 	GameServer()->m_World.m_Core.m_apCharacters[zid + MAX_SURVIVORS] = &m_ZombCharCore[zid];
+
+	m_ZombInput[zid] = CNetObj_PlayerInput();
+	m_ZombSurvTarget[zid] = NO_TARGET;
 }
 
 void CGameControllerZOMB::KillZombie(i32 zid, i32 killerCID)
@@ -440,6 +469,7 @@ vec2 CGameControllerZOMB::PathFind(vec2 start, vec2 end)
 	return vec2(next.x * 32.f + 16.f, next.y * 32.f + 16.f);
 }
 
+#ifdef CONF_DEBUG
 void CGameControllerZOMB::DebugPathAddPoint(ivec2 p)
 {
 	if(m_DbgPathLen >= 256) return;
@@ -453,6 +483,7 @@ void CGameControllerZOMB::DebugLine(ivec2 s, ivec2 e)
 	m_DbgLines[id].start = s;
 	m_DbgLines[id].end = e;
 }
+#endif
 
 CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 : IGameController(pGameServer)
@@ -592,7 +623,13 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 		}
 
 		pCharacter->m_Tick = m_Tick;
+
+		// eyes
 		pCharacter->m_Emote = EMOTE_NORMAL;
+		if(m_ZombBuff[i]&BUFF_ENRAGED) {
+			pCharacter->m_Emote = EMOTE_SURPRISE;
+		}
+
 		pCharacter->m_TriggeredEvents = m_ZombCharCore[i].m_TriggeredEvents;
 		pCharacter->m_Weapon = m_ZombActiveWeapon[i];
 		pCharacter->m_AttackTick = m_ZombAttackTick[i];
@@ -634,9 +671,9 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 #endif
 }
 
-inline i32 PackColor(i32 hue, i32 sat, i32 lgt)
+inline i32 PackColor(i32 hue, i32 sat, i32 lgt, i32 alpha = 255)
 {
-	return ((hue << 16) + (sat << 8) + lgt);
+	return ((alpha << 24) + (hue << 16) + (sat << 8) + lgt);
 }
 
 void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
@@ -646,31 +683,49 @@ void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 	// send zombie client informations
 	for(u32 i = 0; i < m_ZombCount; ++i) {
 		u32 zombID = MAX_SURVIVORS + i;
-		CNetMsg_Sv_ClientInfo NewClientInfoMsg;
-		NewClientInfoMsg.m_ClientID = zombID;
-		NewClientInfoMsg.m_Local = 0;
-		NewClientInfoMsg.m_Team = 0;
-		NewClientInfoMsg.m_pName = "zombie";
-		NewClientInfoMsg.m_pClan = "";
-		NewClientInfoMsg.m_Country = 0;
+		CNetMsg_Sv_ClientInfo nci;
+		nci.m_ClientID = zombID;
+		nci.m_Local = 0;
+		nci.m_Team = 0;
+		nci.m_pName = "zombie";
+		nci.m_pClan = "";
+		nci.m_Country = 0;
 
-		// brown hands and feets
+		// hands and feets
 		i32 brown = PackColor(28, 77, 13);
-		for(i32 p = 1; p < 5; p++)
-		{
-			NewClientInfoMsg.m_apSkinPartNames[p] = "standard";
-			NewClientInfoMsg.m_aUseCustomColors[p] = 1;
-			NewClientInfoMsg.m_aSkinPartColors[p] = brown;
+		i32 red = PackColor(0, 255, 0);
+
+		i32 handFeetColor = brown;
+		if(m_ZombBuff[i]&BUFF_ENRAGED) {
+			handFeetColor = red;
 		}
 
-		NewClientInfoMsg.m_apSkinPartNames[SKINPART_BODY] = i%2 ? "zombie1" : "zombie2";
-		NewClientInfoMsg.m_aUseCustomColors[SKINPART_BODY] = 0;
-		NewClientInfoMsg.m_aSkinPartColors[SKINPART_BODY] = 0;
-		NewClientInfoMsg.m_apSkinPartNames[SKINPART_EYES] = "zombie_eyes";
-		NewClientInfoMsg.m_aUseCustomColors[SKINPART_EYES] = 0;
-		NewClientInfoMsg.m_aSkinPartColors[SKINPART_EYES] = 0;
+		nci.m_apSkinPartNames[SKINPART_HANDS] = "standard";
+		nci.m_aUseCustomColors[SKINPART_HANDS] = 1;
+		nci.m_aSkinPartColors[SKINPART_HANDS] = handFeetColor;
+		nci.m_apSkinPartNames[SKINPART_FEET] = "standard";
+		nci.m_aUseCustomColors[SKINPART_FEET] = 1;
+		nci.m_aSkinPartColors[SKINPART_FEET] = handFeetColor;
 
-		Server()->SendPackMsg(&NewClientInfoMsg, MSGFLAG_VITAL|MSGFLAG_NORECORD, pPlayer->GetCID());
+		nci.m_apSkinPartNames[SKINPART_EYES] = "zombie_eyes";
+		nci.m_aUseCustomColors[SKINPART_EYES] = 0;
+		nci.m_aSkinPartColors[SKINPART_EYES] = 0;
+		nci.m_apSkinPartNames[SKINPART_MARKING] = "enraged";
+		nci.m_aUseCustomColors[SKINPART_MARKING] = 0;
+		nci.m_aSkinPartColors[SKINPART_MARKING] = 0;
+
+		nci.m_aUseCustomColors[SKINPART_BODY] = 0;
+		nci.m_aSkinPartColors[SKINPART_BODY] = 0;
+
+		switch(m_ZombType[i]) {
+			case ZTYPE_BASIC:
+				nci.m_apSkinPartNames[SKINPART_BODY] = i%2 ? "zombie1" : "zombie2";
+				break;
+
+			default: break;
+		}
+
+		Server()->SendPackMsg(&nci, MSGFLAG_VITAL|MSGFLAG_NORECORD, pPlayer->GetCID());
 	}
 
 	dbg_zomb_msg("sending zombie info to %d", pPlayer->GetCID());

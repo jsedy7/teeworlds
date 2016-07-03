@@ -30,6 +30,8 @@ class CGameControllerZOMB : public IGameController
 
 	bool m_ZombAlive[MAX_ZOMBS];
 	i32 m_ZombHealth[MAX_ZOMBS];
+	u32 m_ZombType[MAX_ZOMBS];
+	u8 m_ZombBuff[MAX_ZOMBS];
 
 	i32 m_ZombSurvTarget[MAX_ZOMBS];
 	i32 m_ZombPathFindClock[MAX_ZOMBS];
@@ -42,6 +44,7 @@ class CGameControllerZOMB : public IGameController
 	vec2 m_ZombSpawnPoint[64];
 	u32 m_ZombSpawnPointCount;
 
+#ifdef CONF_DEBUG
 	ivec2 m_DbgPath[256];
 	u32 m_DbgPathLen;
 
@@ -52,8 +55,12 @@ class CGameControllerZOMB : public IGameController
 	DbgLine m_DbgLines[256];
 	u32 m_DbgLinesCount;
 
+	void DebugPathAddPoint(ivec2 p);
+	void DebugLine(ivec2 s, ivec2 e);
+#endif
+
 	void Init();
-	void SpawnZombie(i32 zid);
+	void SpawnZombie(i32 zid, u32 type, bool isElite);
 	void KillZombie(i32 zid, i32 killerCID);
 	inline bool InMapBounds(const ivec2& pos);
 	inline bool IsBlocked(const ivec2& pos);
@@ -62,8 +69,6 @@ class CGameControllerZOMB : public IGameController
 	bool JumpDiagonal(const ivec2& start, const ivec2& dir, const ivec2& goal,
 					  i32* out_pJumps);
 	vec2 PathFind(vec2 start, vec2 end);
-	void DebugPathAddPoint(ivec2 p);
-	void DebugLine(ivec2 s, ivec2 e);
 
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer);

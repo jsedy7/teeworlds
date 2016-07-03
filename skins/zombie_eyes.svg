@@ -16,7 +16,7 @@
    version="1.1"
    inkscape:version="0.91 r13725"
    sodipodi:docname="zombie_eyes.svg"
-   inkscape:export-filename="C:\Prog\Projets\teeworlds\ignore\zombie_eyes.png"
+   inkscape:export-filename="C:\Prog\Projets\teeworlds\skins\zombie_eyes.png"
    inkscape:export-xdpi="90"
    inkscape:export-ydpi="90">
   <defs
@@ -28,11 +28,11 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="6.4140625"
-     inkscape:cx="73.319369"
-     inkscape:cy="86.746253"
+     inkscape:zoom="25.65625"
+     inkscape:cx="35.572865"
+     inkscape:cy="48.650476"
      inkscape:document-units="px"
-     inkscape:current-layer="layer1"
+     inkscape:current-layer="g4192"
      showgrid="false"
      units="px"
      showguides="false"
@@ -50,7 +50,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -130,7 +130,7 @@
       <path
          inkscape:connector-curvature="0"
          id="path4206"
-         d="m 22.729679,932.00243 a 2.875638,9.8095925 0 0 0 -0.354702,4.71671 2.875638,9.8095925 0 0 0 2.875305,9.81049 2.875638,9.8095925 0 0 0 2.876416,-9.81049 2.875638,9.8095925 0 0 0 -0.356919,-4.71671 l -5.0401,0 z"
+         d="m 22.729679,933.79537 a 2.875638,8.5989004 0 0 0 -0.354702,4.13457 2.875638,8.5989004 0 0 0 2.875305,8.59969 2.875638,8.5989004 0 0 0 2.876416,-8.59969 2.875638,8.5989004 0 0 0 -0.356919,-4.13457 l -5.0401,0 z"
          style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:10;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     </g>
     <g
@@ -148,7 +148,7 @@
          style="opacity:1;fill:#000000;fill-opacity:1;stroke:none;stroke-width:10;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
       <path
          style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:10;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-         d="m 22.749695,932.00243 a 2.8528076,9.7840479 0 0 0 -0.351885,4.70442 2.8528076,9.7840479 0 0 0 2.852477,9.78495 2.8528076,9.7840479 0 0 0 2.853578,-9.78495 2.8528076,9.7840479 0 0 0 -0.354085,-4.70442 l -5.000085,0 z"
+         d="m 22.749695,933.71741 a 2.8528076,8.6259946 0 0 0 -0.351885,4.1476 2.8528076,8.6259946 0 0 0 2.852477,8.62679 2.8528076,8.6259946 0 0 0 2.853578,-8.62679 2.8528076,8.6259946 0 0 0 -0.354085,-4.1476 l -5.000085,0 z"
          id="path4204"
          inkscape:connector-curvature="0" />
       <path
