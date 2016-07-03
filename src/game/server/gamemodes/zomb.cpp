@@ -11,7 +11,6 @@
 #include <game/server/gamecontext.h>
 
 /* TODO:
- * - zombie pathfinding
  * - zombie types
  * - waves
  * - flag to resurect (get one flag to another to trigger a resurect)
@@ -24,6 +23,15 @@ static char msgBuff__[256];
 	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "zomb", msgBuff__);
 
 #define NO_TARGET (-1)
+
+enum {
+	SKINPART_BODY = 0,
+	SKINPART_MARKING,
+	SKINPART_DECORATION,
+	SKINPART_HANDS,
+	SKINPART_FEET,
+	SKINPART_EYES
+};
 
 static i32 randInt(i32 min, i32 max)
 {
@@ -40,11 +48,12 @@ void CGameControllerZOMB::Init()
 
 void CGameControllerZOMB::SpawnZombie(i32 zid)
 {
-	vec2 spawnPos = m_ZombSpawnPoint[0];
+	vec2 spawnPos = m_ZombSpawnPoint[zid%m_ZombSpawnPointCount];
 	m_ZombAlive[zid] = true;
 	m_ZombHealth[zid] = 5;
 	m_ZombCharCore[zid].Reset();
 	m_ZombCharCore[zid].m_Pos = spawnPos;
+	m_ZombCharCore[zid].m_Pos.x += (-MAX_ZOMBS/2 + zid); // prevent them from being stuck
 	GameServer()->m_World.m_Core.m_apCharacters[zid + MAX_SURVIVORS] = &m_ZombCharCore[zid];
 }
 
@@ -449,7 +458,7 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 : IGameController(pGameServer)
 {
 	m_pGameType = "ZOMB";
-	m_ZombCount = 1;
+	m_ZombCount = MAX_ZOMBS;
 	m_ZombSpawnPointCount = 0;
 
 	// get map info
@@ -625,6 +634,11 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 #endif
 }
 
+inline i32 PackColor(i32 hue, i32 sat, i32 lgt)
+{
+	return ((hue << 16) + (sat << 8) + lgt);
+}
+
 void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 {
 	IGameController::OnPlayerConnect(pPlayer);
@@ -639,12 +653,22 @@ void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 		NewClientInfoMsg.m_pName = "zombie";
 		NewClientInfoMsg.m_pClan = "";
 		NewClientInfoMsg.m_Country = 0;
-		for(i32 p = 0; p < 6; p++)
+
+		// brown hands and feets
+		i32 brown = PackColor(28, 77, 13);
+		for(i32 p = 1; p < 5; p++)
 		{
 			NewClientInfoMsg.m_apSkinPartNames[p] = "standard";
-			NewClientInfoMsg.m_aUseCustomColors[p] = 0;
-			NewClientInfoMsg.m_aSkinPartColors[p] = 0;
+			NewClientInfoMsg.m_aUseCustomColors[p] = 1;
+			NewClientInfoMsg.m_aSkinPartColors[p] = brown;
 		}
+
+		NewClientInfoMsg.m_apSkinPartNames[SKINPART_BODY] = i%2 ? "zombie1" : "zombie2";
+		NewClientInfoMsg.m_aUseCustomColors[SKINPART_BODY] = 0;
+		NewClientInfoMsg.m_aSkinPartColors[SKINPART_BODY] = 0;
+		NewClientInfoMsg.m_apSkinPartNames[SKINPART_EYES] = "zombie_eyes";
+		NewClientInfoMsg.m_aUseCustomColors[SKINPART_EYES] = 0;
+		NewClientInfoMsg.m_aSkinPartColors[SKINPART_EYES] = 0;
 
 		Server()->SendPackMsg(&NewClientInfoMsg, MSGFLAG_VITAL|MSGFLAG_NORECORD, pPlayer->GetCID());
 	}
