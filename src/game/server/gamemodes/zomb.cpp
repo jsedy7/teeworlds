@@ -56,6 +56,11 @@ static const i32 g_ZombAttackDmg[] = {
 	8 // ZTYPE_TANK
 };
 
+static const f32 g_ZombKnockbackMultiplier[] = {
+	4.f, // ZTYPE_BASIC
+	0.f // ZTYPE_TANK
+};
+
 enum {
 	BUFF_ENRAGED = 1,
 	BUFF_HEALING = (1 << 1),
@@ -96,6 +101,7 @@ void CGameControllerZOMB::SpawnZombie(i32 zid, u32 type, bool isElite)
 	m_ZombType[zid] = type;
 	m_ZombHealth[zid] = g_ZombMaxHealth[type];
 	m_ZombBuff[zid] = 0;
+	m_ZombKnockbackMultiplier[zid] = g_ZombKnockbackMultiplier[type];
 
 	if(isElite) {
 		m_ZombHealth[zid] *= 2;
@@ -621,7 +627,7 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 		default: break;
 	}
 
-	i32 r = Server()->SendPackMsg(&nci, MSGFLAG_VITAL|MSGFLAG_NORECORD, CID);
+	Server()->SendPackMsg(&nci, MSGFLAG_VITAL|MSGFLAG_NORECORD, CID);
 }
 
 #ifdef CONF_DEBUG
@@ -674,6 +680,7 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	mem_zero(m_ZombJumpClock, sizeof(i32) * MAX_ZOMBS);
 	mem_zero(m_ZombAirJumps, sizeof(i32) * MAX_ZOMBS);
 	mem_zero(m_ZombEnrageClock, sizeof(i32) * MAX_ZOMBS);
+	mem_zero(m_ZombHookClock, sizeof(i32) * MAX_ZOMBS);
 
 	for(u32 i = 0; i < m_ZombCount; ++i) {
 		m_ZombCharCore[i].Init(&GameServer()->m_World.m_Core, GameServer()->Collision());
@@ -699,6 +706,7 @@ void CGameControllerZOMB::Tick()
 		--m_ZombJumpClock[i];
 		--m_ZombAttackClock[i];
 		--m_ZombEnrageClock[i];
+		--m_ZombHookClock[i];
 
 		if(m_ZombEnrageClock[i] <= 0 && (m_ZombBuff[i]&BUFF_ENRAGED) == 0) {
 			m_ZombBuff[i] |= BUFF_ENRAGED;
@@ -799,6 +807,21 @@ void CGameControllerZOMB::Tick()
 
 				SwingHammer(i, dmg, 2.f);
 				m_ZombAttackClock[i] = SecondsToTick(1.f / g_ZombAttackSpeed[m_ZombType[i]]);
+			}
+
+			// hook
+			if(m_ZombHookClock[i] <= 0 && distance(pos, targetPos) < 600.f) {
+				zi.m_Hook = 1;
+				m_ZombHookClock[i] = SecondsToTick(1.f);
+			}
+
+			if(m_ZombCharCore[i].m_HookState == HOOK_GRABBED &&
+			   m_ZombCharCore[i].m_HookedPlayer != m_ZombSurvTarget[i]) {
+				zi.m_Hook = 0;
+			}
+
+			if(m_ZombCharCore[i].m_HookState == HOOK_RETRACTED) {
+				zi.m_Hook = 0;
 			}
 		}
 	}
@@ -976,7 +999,7 @@ void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i3
 	u32 zid = CID - MAX_SURVIVORS;
 	dbg_zomb_msg("%d taking %d dmg", CID, Dmg);
 
-	// make sure that the damage indicators doesn't group together
+	// make sure damage indicators don't group together
 	++m_ZombDmgAngle[zid];
 	if(Server()->Tick() < m_ZombDmgTick[zid]+25) {
 		GameServer()->CreateDamageInd(m_ZombCharCore[zid].m_Pos, m_ZombDmgAngle[zid]*0.25f, Dmg);
@@ -992,4 +1015,6 @@ void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i3
 		KillZombie(zid, -1);
 		dbg_zomb_msg("%d died", CID);
 	}
+
+	m_ZombCharCore[zid].m_Vel += Force * m_ZombKnockbackMultiplier[zid];
 }
