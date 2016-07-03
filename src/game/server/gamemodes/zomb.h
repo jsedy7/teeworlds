@@ -62,6 +62,8 @@ class CGameControllerZOMB : public IGameController
 	void Init();
 	void SpawnZombie(i32 zid, u32 type, bool isElite);
 	void KillZombie(i32 zid, i32 killerCID);
+	void SwingHammer(i32 zid, u32 dmg, f32 knockback);
+
 	inline bool InMapBounds(const ivec2& pos);
 	inline bool IsBlocked(const ivec2& pos);
 	bool JumpStraight(const ivec2& start, const ivec2& dir, const ivec2& goal,

@@ -24,6 +24,7 @@ static char msgBuff__[256];
 	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "zomb", msgBuff__);
 
 #define NO_TARGET (-1)
+#define SecondsToTick(sec) (sec * SERVER_TICK_SPEED)
 
 enum {
 	SKINPART_BODY = 0,
@@ -40,7 +41,7 @@ enum {
 };
 
 static const u32 g_ZombMaxHealth[] = {
-	7, // ZTYPE_BASIC
+	8, // ZTYPE_BASIC
 	40 // ZTYPE_TANK
 };
 
@@ -94,6 +95,52 @@ void CGameControllerZOMB::KillZombie(i32 zid, i32 killerCID)
 	GameServer()->CreateSound(m_ZombCharCore[zid].m_Pos, SOUND_PLAYER_PAIN_LONG);
 	GameServer()->CreateDeath(m_ZombCharCore[zid].m_Pos, 0);
 	// TODO: send a kill message?
+}
+
+void CGameControllerZOMB::SwingHammer(i32 zid, u32 dmg, f32 knockback)
+{
+	const vec2& zpos = m_ZombCharCore[zid].m_Pos;
+	GameServer()->CreateSound(zpos, SOUND_HAMMER_FIRE);
+
+	vec2 hitDir = normalize(vec2(m_ZombInput[zid].m_TargetX, m_ZombInput[zid].m_TargetY));
+	vec2 hitPos = zpos + hitDir * 21.f; // NOTE: different reach per zombie type?
+
+	CCharacter *apEnts[MAX_CLIENTS];
+
+	// NOTE: same here for radius
+	i32 count = GameServer()->m_World.FindEntities(hitPos, 14.f, (CEntity**)apEnts,
+					MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
+
+	for(i32 i = 0; i < count; ++i) {
+		CCharacter *pTarget = apEnts[i];
+		const vec2& targetPos = pTarget->GetPos();
+
+		if(GameServer()->Collision()->IntersectLine(hitPos, targetPos, NULL, NULL)) {
+			continue;
+		}
+
+		// set his velocity to fast upward (for now)
+		if(length(targetPos-hitPos) > 0.0f) {
+			GameServer()->CreateHammerHit(targetPos-normalize(targetPos-hitPos)*14.f);
+		}
+		else {
+			GameServer()->CreateHammerHit(hitPos);
+		}
+
+		vec2 kbDir;
+		if(length(targetPos - zpos) > 0.0f) {
+			kbDir = normalize(targetPos - zpos);
+		}
+		else {
+			kbDir = vec2(0.f, -1.f);
+		}
+
+		vec2 kbForce = vec2(0.f, -1.f) + normalize(kbDir + vec2(0.f, -1.1f)) * knockback;
+
+		pTarget->TakeDamage(kbForce, dmg, MAX_SURVIVORS + zid, WEAPON_HAMMER);
+	}
+
+	m_ZombAttackTick[zid] = m_Tick;
 }
 
 struct Node
@@ -574,6 +621,11 @@ void CGameControllerZOMB::Tick()
 
 			zi.m_TargetX = targetPos.x - pos.x;
 			zi.m_TargetY = targetPos.y - pos.y;
+
+			// attack!
+			if(distance(pos, targetPos) < 56.f) {
+				SwingHammer(i, 1, 2.f);
+			}
 		}
 	}
 
@@ -682,14 +734,16 @@ void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 
 	// send zombie client informations
 	for(u32 i = 0; i < m_ZombCount; ++i) {
-		u32 zombID = MAX_SURVIVORS + i;
+		u32 zombCID = MAX_SURVIVORS + i;
 		CNetMsg_Sv_ClientInfo nci;
-		nci.m_ClientID = zombID;
+		nci.m_ClientID = zombCID;
 		nci.m_Local = 0;
 		nci.m_Team = 0;
-		nci.m_pName = "zombie";
 		nci.m_pClan = "";
 		nci.m_Country = 0;
+		nci.m_apSkinPartNames[SKINPART_DECORATION] = "standard";
+		nci.m_aUseCustomColors[SKINPART_DECORATION] = 0;
+		nci.m_aSkinPartColors[SKINPART_DECORATION] = 0;
 
 		// hands and feets
 		i32 brown = PackColor(28, 77, 13);
@@ -710,15 +764,23 @@ void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 		nci.m_apSkinPartNames[SKINPART_EYES] = "zombie_eyes";
 		nci.m_aUseCustomColors[SKINPART_EYES] = 0;
 		nci.m_aSkinPartColors[SKINPART_EYES] = 0;
-		nci.m_apSkinPartNames[SKINPART_MARKING] = "enraged";
+
 		nci.m_aUseCustomColors[SKINPART_MARKING] = 0;
 		nci.m_aSkinPartColors[SKINPART_MARKING] = 0;
+
+		if(m_ZombBuff[i]&BUFF_ENRAGED) {
+			nci.m_apSkinPartNames[SKINPART_MARKING] = "enraged";
+		}
+		else {
+			nci.m_apSkinPartNames[SKINPART_MARKING] = "standard";
+		}
 
 		nci.m_aUseCustomColors[SKINPART_BODY] = 0;
 		nci.m_aSkinPartColors[SKINPART_BODY] = 0;
 
 		switch(m_ZombType[i]) {
 			case ZTYPE_BASIC:
+				nci.m_pName = "zombie";
 				nci.m_apSkinPartNames[SKINPART_BODY] = i%2 ? "zombie1" : "zombie2";
 				break;
 
@@ -734,20 +796,20 @@ void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 bool CGameControllerZOMB::IsFriendlyFire(int ClientID1, int ClientID2) const
 {
 	if(ClientID1 == ClientID2) {
-		return false;
+		return true;
 	}
 
 	// both survivors
 	if(IsSurvivor(ClientID1) && IsSurvivor(ClientID2)) {
-		return false;
+		return true;
 	}
 
 	// both zombies
 	if(IsZombie(ClientID1) && IsZombie(ClientID2)) {
-		return false;
+		return true;
 	}
 
-	return true;
+	return false;
 }
 
 bool CGameControllerZOMB::OnEntity(int Index, vec2 Pos)
