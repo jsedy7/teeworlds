@@ -6,7 +6,6 @@
 #define MAX_SURVIVORS 4
 #define MAX_ZOMBS (MAX_CLIENTS - MAX_SURVIVORS)
 #define MAX_MAP_SIZE 1024 * 1024
-#define PATHFIND_CLOCK_TIME 5
 
 typedef uint8_t u8;
 typedef int32_t i32;
@@ -32,6 +31,9 @@ class CGameControllerZOMB : public IGameController
 	i32 m_ZombHealth[MAX_ZOMBS];
 	u32 m_ZombType[MAX_ZOMBS];
 	u8 m_ZombBuff[MAX_ZOMBS];
+	i32 m_ZombAttackClock[MAX_ZOMBS];
+	i32 m_ZombJumpClock[MAX_ZOMBS];
+	i32 m_ZombAirJumps[MAX_ZOMBS];
 
 	i32 m_ZombSurvTarget[MAX_ZOMBS];
 	i32 m_ZombPathFindClock[MAX_ZOMBS];

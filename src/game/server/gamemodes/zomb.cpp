@@ -45,11 +45,22 @@ static const u32 g_ZombMaxHealth[] = {
 	40 // ZTYPE_TANK
 };
 
+static const f32 g_ZombAttackSpeed[] = {
+	2.f,
+	1.f
+};
+
 enum {
 	BUFF_ENRAGED = 1,
 	BUFF_HEALING = (1 << 1),
 	BUFF_ARMORED = (1 << 2),
 	BUFF_ELITE = (1 << 3)
+};
+
+enum {
+	ZOMBIE_GROUNDJUMP = 1,
+	ZOMBIE_AIRJUMP,
+	ZOMBIE_BIGJUMP
 };
 
 static i32 randInt(i32 min, i32 max)
@@ -85,6 +96,7 @@ void CGameControllerZOMB::SpawnZombie(i32 zid, u32 type, bool isElite)
 
 	m_ZombInput[zid] = CNetObj_PlayerInput();
 	m_ZombSurvTarget[zid] = NO_TARGET;
+	m_ZombAttackClock[zid] = 0;
 }
 
 void CGameControllerZOMB::KillZombie(i32 zid, i32 killerCID)
@@ -562,6 +574,9 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	memset(m_ZombSurvTarget, NO_TARGET, sizeof(i32) * MAX_ZOMBS);
 	mem_zero(m_ZombPathFindClock, sizeof(i32) * MAX_ZOMBS);
 	mem_zero(m_ZombDestination, sizeof(vec2) * MAX_ZOMBS);
+	mem_zero(m_ZombAttackClock, sizeof(i32) * MAX_ZOMBS);
+	mem_zero(m_ZombJumpClock, sizeof(i32) * MAX_ZOMBS);
+	mem_zero(m_ZombAirJumps, sizeof(i32) * MAX_ZOMBS);
 
 	for(u32 i = 0; i < m_ZombCount; ++i) {
 		m_ZombCharCore[i].Init(&GameServer()->m_World.m_Core, GameServer()->Collision());
@@ -581,6 +596,7 @@ void CGameControllerZOMB::Tick()
 	IGameController::Tick();
 
 	for(u32 i = 0; i < m_ZombCount; ++i) {
+		if(!m_ZombAlive[i]) continue;
 		CNetObj_PlayerInput& zi = m_ZombInput[i];
 
 		// TODO: find target
@@ -602,7 +618,7 @@ void CGameControllerZOMB::Tick()
 			vec2& dest = m_ZombDestination[i];
 			if(--m_ZombPathFindClock[i] <= 0) {
 				dest = PathFind(pos, targetPos);
-				m_ZombPathFindClock[i] = PATHFIND_CLOCK_TIME;
+				m_ZombPathFindClock[i] = SecondsToTick(0.1f);
 			}
 
 			zi.m_Direction = -1;
@@ -610,33 +626,96 @@ void CGameControllerZOMB::Tick()
 				zi.m_Direction = 1;
 			}
 
-			if(abs(dest.x - pos.x) < 2.f) {
-				zi.m_Direction = 0;
+			// grounded?
+			f32 phyzSize = 28.f;
+			bool grounded = (GameServer()->Collision()->CheckPoint(pos.x+phyzSize/2, pos.y+phyzSize/2+5) ||
+							 GameServer()->Collision()->CheckPoint(pos.x-phyzSize/2, pos.y+phyzSize/2+5));
+			for(u32 i = 0; i < MAX_CLIENTS; ++i) {
+				CCharacterCore* pCore = GameServer()->m_World.m_Core.m_apCharacters[i];
+				if(!pCore) {
+					continue;
+				}
+
+				if(pos.y < pCore->m_Pos.y &&
+				   abs(pos.x - pCore->m_Pos.x) < phyzSize &&
+				   abs(pos.y - pCore->m_Pos.y) < (phyzSize*1.5f)) {
+					grounded = true;
+					break;
+				}
 			}
 
+			if(grounded) {
+				m_ZombAirJumps[i] = 2;
+			}
+
+			// jump
 			zi.m_Jump = 0;
-			if(dest.y < pos.y && abs(dest.y - pos.y) > 10.f) {
-				zi.m_Jump = 1;
+			if(--m_ZombJumpClock[i] <= 0 && dest.y < pos.y) {
+				f32 yDist = abs(dest.y - pos.y);
+				if(yDist > 10.f) {
+					if(grounded) {
+						zi.m_Jump = ZOMBIE_GROUNDJUMP;
+						m_ZombJumpClock[i] = SecondsToTick(0.5f);
+					}
+					else if(m_ZombAirJumps[i] > 0) {
+						zi.m_Jump = ZOMBIE_AIRJUMP;
+						m_ZombJumpClock[i] = SecondsToTick(0.5f);
+						--m_ZombAirJumps[i];
+					}
+				}
+				if(yDist > 300.f) {
+					zi.m_Jump = ZOMBIE_BIGJUMP;
+					m_ZombJumpClock[i] = SecondsToTick(1.0f);
+				}
 			}
 
 			zi.m_TargetX = targetPos.x - pos.x;
 			zi.m_TargetY = targetPos.y - pos.y;
 
 			// attack!
-			if(distance(pos, targetPos) < 56.f) {
-				SwingHammer(i, 1, 2.f);
+			if(--m_ZombAttackClock[i] <= 0 && distance(pos, targetPos) < 56.f) {
+				SwingHammer(i, 0, 2.f);
+				m_ZombAttackClock[i] = SecondsToTick(1.f / g_ZombAttackSpeed[m_ZombType[i]]);
 			}
 		}
 	}
 
 	for(u32 i = 0; i < m_ZombCount; ++i) {
+		if(!m_ZombAlive[i]) continue;
 		m_ZombCharCore[i].m_Input = m_ZombInput[i];
+
+		// handle jump
+		m_ZombCharCore[i].m_Jumped = 0;
+		i32 jumpTriggers = 0;
 		if(m_ZombCharCore[i].m_Input.m_Jump) {
-			m_ZombCharCore[i].m_Jumped = 0;
+			f32 jumpStr = 14.f;
+			if(m_ZombCharCore[i].m_Input.m_Jump == ZOMBIE_BIGJUMP) {
+				jumpStr = 28.f;
+				jumpTriggers |= COREEVENTFLAG_AIR_JUMP;
+				m_ZombCharCore[i].m_Jumped |= 3;
+			}
+			else if(m_ZombCharCore[i].m_Input.m_Jump == ZOMBIE_AIRJUMP) {
+				jumpTriggers |= COREEVENTFLAG_AIR_JUMP;
+				m_ZombCharCore[i].m_Jumped |= 3;
+			}
+			else {
+				jumpTriggers |= COREEVENTFLAG_GROUND_JUMP;
+				m_ZombCharCore[i].m_Jumped |= 1;
+			}
+
+			m_ZombCharCore[i].m_Vel.y = -jumpStr;
+			m_ZombCharCore[i].m_Input.m_Jump = 0;
 		}
+
 		m_ZombCharCore[i].Tick(true);
+
+		m_ZombCharCore[i].m_TriggeredEvents |= jumpTriggers;
+		f32 xDist = abs(m_ZombDestination[i].x - m_ZombCharCore[i].m_Pos.x);
+		if(xDist < 5.f) {
+			m_ZombCharCore[i].m_Vel.x = (m_ZombDestination[i].x - m_ZombCharCore[i].m_Pos.x);
+		}
+
 		m_ZombCharCore[i].Move();
-		//dbg_zomb_msg("m_Jumped: %d", m_ZombCharCore[i].m_Jumped);
 	}
 }
 
