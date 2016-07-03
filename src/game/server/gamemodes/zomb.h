@@ -34,6 +34,7 @@ class CGameControllerZOMB : public IGameController
 	i32 m_ZombAttackClock[MAX_ZOMBS];
 	i32 m_ZombJumpClock[MAX_ZOMBS];
 	i32 m_ZombAirJumps[MAX_ZOMBS];
+	i32 m_ZombEnrageClock[MAX_ZOMBS];
 
 	i32 m_ZombSurvTarget[MAX_ZOMBS];
 	i32 m_ZombPathFindClock[MAX_ZOMBS];
@@ -73,6 +74,8 @@ class CGameControllerZOMB : public IGameController
 	bool JumpDiagonal(const ivec2& start, const ivec2& dir, const ivec2& goal,
 					  i32* out_pJumps);
 	vec2 PathFind(vec2 start, vec2 end);
+
+	void SendZombieInfos(i32 zid, i32 CID);
 
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer);

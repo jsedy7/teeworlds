@@ -25,6 +25,7 @@ static char msgBuff__[256];
 
 #define NO_TARGET (-1)
 #define SecondsToTick(sec) (sec * SERVER_TICK_SPEED)
+#define TIME_TO_ENRAGE SecondsToTick(3)
 
 enum {
 	SKINPART_BODY = 0,
@@ -46,8 +47,13 @@ static const u32 g_ZombMaxHealth[] = {
 };
 
 static const f32 g_ZombAttackSpeed[] = {
-	2.f,
-	1.f
+	2.f, // ZTYPE_BASIC
+	1.f // ZTYPE_TANK
+};
+
+static const i32 g_ZombAttackDmg[] = {
+	0, // ZTYPE_BASIC
+	8 // ZTYPE_TANK
 };
 
 enum {
@@ -78,6 +84,14 @@ void CGameControllerZOMB::Init()
 
 void CGameControllerZOMB::SpawnZombie(i32 zid, u32 type, bool isElite)
 {
+	// do we need to update clients
+	bool needSendInfos = false;
+	i32 eliteBuff = isElite ? BUFF_ELITE : 0;
+	if(m_ZombType[zid] != type ||
+	   m_ZombBuff[zid] != eliteBuff) {
+		needSendInfos = true;
+	}
+
 	m_ZombAlive[zid] = true;
 	m_ZombType[zid] = type;
 	m_ZombHealth[zid] = g_ZombMaxHealth[type];
@@ -97,6 +111,15 @@ void CGameControllerZOMB::SpawnZombie(i32 zid, u32 type, bool isElite)
 	m_ZombInput[zid] = CNetObj_PlayerInput();
 	m_ZombSurvTarget[zid] = NO_TARGET;
 	m_ZombAttackClock[zid] = 0;
+	m_ZombEnrageClock[zid] = TIME_TO_ENRAGE;
+
+	if(needSendInfos) {
+		for(u32 i = 0; i < MAX_SURVIVORS; ++i) {
+			if(GameServer()->m_apPlayers[i] && Server()->ClientIngame(i)) {
+				SendZombieInfos(zid, i);
+			}
+		}
+	}
 }
 
 void CGameControllerZOMB::KillZombie(i32 zid, i32 killerCID)
@@ -528,6 +551,79 @@ vec2 CGameControllerZOMB::PathFind(vec2 start, vec2 end)
 	return vec2(next.x * 32.f + 16.f, next.y * 32.f + 16.f);
 }
 
+inline i32 PackColor(i32 hue, i32 sat, i32 lgt, i32 alpha = 255)
+{
+	return ((alpha << 24) + (hue << 16) + (sat << 8) + lgt);
+}
+
+void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
+{
+	// send zombie client informations
+	u32 zombCID = MAX_SURVIVORS + zid;
+
+	// send drop first
+	// this will pop a chat message
+	CNetMsg_Sv_ClientDrop Msg;
+	Msg.m_ClientID = zombCID;
+	Msg.m_pReason = "";
+	Server()->SendPackMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_NORECORD, CID);
+
+	// then update
+	CNetMsg_Sv_ClientInfo nci;
+	nci.m_ClientID = zombCID;
+	nci.m_Local = 0;
+	nci.m_Team = 0;
+	nci.m_pClan = "";
+	nci.m_Country = 0;
+	nci.m_apSkinPartNames[SKINPART_DECORATION] = "standard";
+	nci.m_aUseCustomColors[SKINPART_DECORATION] = 0;
+	nci.m_aSkinPartColors[SKINPART_DECORATION] = 0;
+
+	// hands and feets
+	i32 brown = PackColor(28, 77, 13);
+	i32 red = PackColor(0, 255, 0);
+
+	i32 handFeetColor = brown;
+	if(m_ZombBuff[zid]&BUFF_ENRAGED) {
+		handFeetColor = red;
+	}
+
+	nci.m_apSkinPartNames[SKINPART_HANDS] = "standard";
+	nci.m_aUseCustomColors[SKINPART_HANDS] = 1;
+	nci.m_aSkinPartColors[SKINPART_HANDS] = handFeetColor;
+	nci.m_apSkinPartNames[SKINPART_FEET] = "standard";
+	nci.m_aUseCustomColors[SKINPART_FEET] = 1;
+	nci.m_aSkinPartColors[SKINPART_FEET] = handFeetColor;
+
+	nci.m_apSkinPartNames[SKINPART_EYES] = "zombie_eyes";
+	nci.m_aUseCustomColors[SKINPART_EYES] = 0;
+	nci.m_aSkinPartColors[SKINPART_EYES] = 0;
+
+	nci.m_aUseCustomColors[SKINPART_MARKING] = 0;
+	nci.m_aSkinPartColors[SKINPART_MARKING] = 0;
+
+	if(m_ZombBuff[zid]&BUFF_ENRAGED) {
+		nci.m_apSkinPartNames[SKINPART_MARKING] = "enraged";
+	}
+	else {
+		nci.m_apSkinPartNames[SKINPART_MARKING] = "standard";
+	}
+
+	nci.m_aUseCustomColors[SKINPART_BODY] = 0;
+	nci.m_aSkinPartColors[SKINPART_BODY] = 0;
+
+	switch(m_ZombType[zid]) {
+		case ZTYPE_BASIC:
+			nci.m_pName = "zombie";
+			nci.m_apSkinPartNames[SKINPART_BODY] = zid%2 ? "zombie1" : "zombie2";
+			break;
+
+		default: break;
+	}
+
+	i32 r = Server()->SendPackMsg(&nci, MSGFLAG_VITAL|MSGFLAG_NORECORD, CID);
+}
+
 #ifdef CONF_DEBUG
 void CGameControllerZOMB::DebugPathAddPoint(ivec2 p)
 {
@@ -577,6 +673,7 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	mem_zero(m_ZombAttackClock, sizeof(i32) * MAX_ZOMBS);
 	mem_zero(m_ZombJumpClock, sizeof(i32) * MAX_ZOMBS);
 	mem_zero(m_ZombAirJumps, sizeof(i32) * MAX_ZOMBS);
+	mem_zero(m_ZombEnrageClock, sizeof(i32) * MAX_ZOMBS);
 
 	for(u32 i = 0; i < m_ZombCount; ++i) {
 		m_ZombCharCore[i].Init(&GameServer()->m_World.m_Core, GameServer()->Collision());
@@ -597,6 +694,21 @@ void CGameControllerZOMB::Tick()
 
 	for(u32 i = 0; i < m_ZombCount; ++i) {
 		if(!m_ZombAlive[i]) continue;
+		// clocks
+		--m_ZombPathFindClock[i];
+		--m_ZombJumpClock[i];
+		--m_ZombAttackClock[i];
+		--m_ZombEnrageClock[i];
+
+		if(m_ZombEnrageClock[i] <= 0 && (m_ZombBuff[i]&BUFF_ENRAGED) == 0) {
+			m_ZombBuff[i] |= BUFF_ENRAGED;
+			for(u32 s = 0; s < MAX_SURVIVORS; ++s) {
+				if(GameServer()->m_apPlayers[s] && Server()->ClientIngame(s)) {
+					SendZombieInfos(i, s);
+				}
+			}
+		}
+
 		CNetObj_PlayerInput& zi = m_ZombInput[i];
 
 		// TODO: find target
@@ -616,7 +728,7 @@ void CGameControllerZOMB::Tick()
 			vec2 pos = m_ZombCharCore[i].m_Pos;
 			vec2 targetPos = GameServer()->GetPlayerChar(m_ZombSurvTarget[i])->GetPos();
 			vec2& dest = m_ZombDestination[i];
-			if(--m_ZombPathFindClock[i] <= 0) {
+			if(m_ZombPathFindClock[i] <= 0) {
 				dest = PathFind(pos, targetPos);
 				m_ZombPathFindClock[i] = SecondsToTick(0.1f);
 			}
@@ -650,7 +762,7 @@ void CGameControllerZOMB::Tick()
 
 			// jump
 			zi.m_Jump = 0;
-			if(--m_ZombJumpClock[i] <= 0 && dest.y < pos.y) {
+			if(m_ZombJumpClock[i] <= 0 && dest.y < pos.y) {
 				f32 yDist = abs(dest.y - pos.y);
 				if(yDist > 10.f) {
 					if(grounded) {
@@ -672,9 +784,20 @@ void CGameControllerZOMB::Tick()
 			zi.m_TargetX = targetPos.x - pos.x;
 			zi.m_TargetY = targetPos.y - pos.y;
 
+			// double attack speed if enraged
+			if(m_ZombBuff[i]&BUFF_ENRAGED) {
+				--m_ZombAttackClock[i];
+			}
+
 			// attack!
-			if(--m_ZombAttackClock[i] <= 0 && distance(pos, targetPos) < 56.f) {
-				SwingHammer(i, 0, 2.f);
+			if(m_ZombAttackClock[i] <= 0 && distance(pos, targetPos) < 56.f) {
+				i32 dmg = g_ZombAttackDmg[m_ZombType[i]];
+				// double damage if elite
+				if(m_ZombBuff[i]&BUFF_ELITE) {
+					dmg *= 2;
+				}
+
+				SwingHammer(i, dmg, 2.f);
 				m_ZombAttackClock[i] = SecondsToTick(1.f / g_ZombAttackSpeed[m_ZombType[i]]);
 			}
 		}
@@ -690,7 +813,7 @@ void CGameControllerZOMB::Tick()
 		if(m_ZombCharCore[i].m_Input.m_Jump) {
 			f32 jumpStr = 14.f;
 			if(m_ZombCharCore[i].m_Input.m_Jump == ZOMBIE_BIGJUMP) {
-				jumpStr = 28.f;
+				jumpStr = 22.f;
 				jumpTriggers |= COREEVENTFLAG_AIR_JUMP;
 				m_ZombCharCore[i].m_Jumped |= 3;
 			}
@@ -710,6 +833,7 @@ void CGameControllerZOMB::Tick()
 		m_ZombCharCore[i].Tick(true);
 
 		m_ZombCharCore[i].m_TriggeredEvents |= jumpTriggers;
+		// smooth out horizontal movement
 		f32 xDist = abs(m_ZombDestination[i].x - m_ZombCharCore[i].m_Pos.x);
 		if(xDist < 5.f) {
 			m_ZombCharCore[i].m_Vel.x = (m_ZombDestination[i].x - m_ZombCharCore[i].m_Pos.x);
@@ -802,74 +926,14 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 #endif
 }
 
-inline i32 PackColor(i32 hue, i32 sat, i32 lgt, i32 alpha = 255)
-{
-	return ((alpha << 24) + (hue << 16) + (sat << 8) + lgt);
-}
-
 void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 {
 	IGameController::OnPlayerConnect(pPlayer);
 
-	// send zombie client informations
-	for(u32 i = 0; i < m_ZombCount; ++i) {
-		u32 zombCID = MAX_SURVIVORS + i;
-		CNetMsg_Sv_ClientInfo nci;
-		nci.m_ClientID = zombCID;
-		nci.m_Local = 0;
-		nci.m_Team = 0;
-		nci.m_pClan = "";
-		nci.m_Country = 0;
-		nci.m_apSkinPartNames[SKINPART_DECORATION] = "standard";
-		nci.m_aUseCustomColors[SKINPART_DECORATION] = 0;
-		nci.m_aSkinPartColors[SKINPART_DECORATION] = 0;
-
-		// hands and feets
-		i32 brown = PackColor(28, 77, 13);
-		i32 red = PackColor(0, 255, 0);
-
-		i32 handFeetColor = brown;
-		if(m_ZombBuff[i]&BUFF_ENRAGED) {
-			handFeetColor = red;
-		}
-
-		nci.m_apSkinPartNames[SKINPART_HANDS] = "standard";
-		nci.m_aUseCustomColors[SKINPART_HANDS] = 1;
-		nci.m_aSkinPartColors[SKINPART_HANDS] = handFeetColor;
-		nci.m_apSkinPartNames[SKINPART_FEET] = "standard";
-		nci.m_aUseCustomColors[SKINPART_FEET] = 1;
-		nci.m_aSkinPartColors[SKINPART_FEET] = handFeetColor;
-
-		nci.m_apSkinPartNames[SKINPART_EYES] = "zombie_eyes";
-		nci.m_aUseCustomColors[SKINPART_EYES] = 0;
-		nci.m_aSkinPartColors[SKINPART_EYES] = 0;
-
-		nci.m_aUseCustomColors[SKINPART_MARKING] = 0;
-		nci.m_aSkinPartColors[SKINPART_MARKING] = 0;
-
-		if(m_ZombBuff[i]&BUFF_ENRAGED) {
-			nci.m_apSkinPartNames[SKINPART_MARKING] = "enraged";
-		}
-		else {
-			nci.m_apSkinPartNames[SKINPART_MARKING] = "standard";
-		}
-
-		nci.m_aUseCustomColors[SKINPART_BODY] = 0;
-		nci.m_aSkinPartColors[SKINPART_BODY] = 0;
-
-		switch(m_ZombType[i]) {
-			case ZTYPE_BASIC:
-				nci.m_pName = "zombie";
-				nci.m_apSkinPartNames[SKINPART_BODY] = i%2 ? "zombie1" : "zombie2";
-				break;
-
-			default: break;
-		}
-
-		Server()->SendPackMsg(&nci, MSGFLAG_VITAL|MSGFLAG_NORECORD, pPlayer->GetCID());
+	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
+		if(!m_ZombAlive[i]) continue;
+		SendZombieInfos(i, pPlayer->GetCID());
 	}
-
-	dbg_zomb_msg("sending zombie info to %d", pPlayer->GetCID());
 }
 
 bool CGameControllerZOMB::IsFriendlyFire(int ClientID1, int ClientID2) const
