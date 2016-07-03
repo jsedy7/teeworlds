@@ -25,7 +25,7 @@ static char msgBuff__[256];
 
 #define ZombCID(id) (id + MAX_SURVIVORS)
 #define NO_TARGET (-1)
-#define SecondsToTick(sec) (sec * SERVER_TICK_SPEED)
+#define SecondsToTick(sec) (i32)(sec * SERVER_TICK_SPEED)
 
 #define TIME_TO_ENRAGE SecondsToTick(30)
 
@@ -69,6 +69,12 @@ static const f32 g_ZombKnockbackMultiplier[] = {
 	4.f, // ZTYPE_BASIC
 	0.f, // ZTYPE_TANK
 	0.f // ZTYPE_BOOMER
+};
+
+static const i32 g_ZombGrabLimit[] = {
+	SecondsToTick(0.2f), // ZTYPE_BASIC
+	SecondsToTick(3.f), // ZTYPE_TANK
+	SecondsToTick(2.f) // ZTYPE_BOOMER
 };
 
 enum {
@@ -133,6 +139,7 @@ void CGameControllerZOMB::SpawnZombie(i32 zid, u32 type, bool isElite)
 	m_ZombAttackClock[zid] = SecondsToTick(1.f / g_ZombAttackSpeed[type]);
 	m_ZombEnrageClock[zid] = TIME_TO_ENRAGE;
 	m_ZombExplodeClock[zid] = -1;
+	m_ZombHookGrabClock[zid] = 0;
 
 	if(needSendInfos) {
 		for(u32 i = 0; i < MAX_SURVIVORS; ++i) {
@@ -671,6 +678,7 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 {
 	m_pGameType = "ZOMB";
 	m_ZombCount = MAX_ZOMBS;
+	m_ZombCount = 2;
 	m_ZombSpawnPointCount = 0;
 
 	// get map info
@@ -701,6 +709,7 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	mem_zero(m_ZombAirJumps, sizeof(i32) * MAX_ZOMBS);
 	mem_zero(m_ZombEnrageClock, sizeof(i32) * MAX_ZOMBS);
 	mem_zero(m_ZombHookClock, sizeof(i32) * MAX_ZOMBS);
+	mem_zero(m_ZombHookGrabClock, sizeof(i32) * MAX_ZOMBS);
 
 	for(u32 i = 0; i < m_ZombCount; ++i) {
 		m_ZombCharCore[i].Init(&GameServer()->m_World.m_Core, GameServer()->Collision());
@@ -848,12 +857,32 @@ void CGameControllerZOMB::Tick()
 				zi.m_Hook = 0;
 			}
 
+			// keep grabbing target
+			if(m_ZombCharCore[i].m_HookState == HOOK_GRABBED &&
+			   m_ZombCharCore[i].m_HookedPlayer == m_ZombSurvTarget[i]) {
+				++m_ZombHookGrabClock[i];
+				i32 limit = g_ZombGrabLimit[m_ZombType[i]];
+				if(m_ZombBuff[i]&BUFF_ENRAGED) {
+					limit *= 2;
+				}
+
+				if(m_ZombHookGrabClock[i] >= limit) {
+					zi.m_Hook = 0;
+					m_ZombHookGrabClock[i] = 0;
+				}
+				else {
+					zi.m_Hook = 1;
+					m_ZombCharCore[i].m_HookTick = 0;
+				}
+			}
+
 			// special behaviors
 			if(m_ZombType[i] == ZTYPE_BOOMER) {
 				--m_ZombExplodeClock[i];
+				i32 zombCID = ZombCID(i);
+
 				// BOOM
 				if(m_ZombExplodeClock[i] == 0) {
-					i32 zombCID = ZombCID(i);
 					KillZombie(i, zombCID);
 
 					// explosion effect
@@ -913,6 +942,8 @@ void CGameControllerZOMB::Tick()
 					m_ZombExplodeClock[i] = SecondsToTick(0.25f);
 					m_ZombInput[i].m_Hook = 0; // stop hooking to let the survivor a chance to escape
 					m_ZombHookClock[i] = SecondsToTick(1.f);
+					// send some love
+					GameServer()->SendEmoticon(zombCID, 2);
 				}
 			}
 		}
@@ -998,6 +1029,10 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 		pCharacter->m_Emote = EMOTE_NORMAL;
 		if(m_ZombBuff[i]&BUFF_ENRAGED) {
 			pCharacter->m_Emote = EMOTE_SURPRISE;
+		}
+		// boomer found his soulmate
+		if(m_ZombType[i] == ZTYPE_BOOMER && m_ZombExplodeClock[i] > 0) {
+			pCharacter->m_Emote = EMOTE_HAPPY;
 		}
 
 		pCharacter->m_TriggeredEvents = m_ZombCharCore[i].m_TriggeredEvents;

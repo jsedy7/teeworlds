@@ -41,6 +41,7 @@ class CGameControllerZOMB : public IGameController
 	i32 m_ZombAirJumps[MAX_ZOMBS];
 	i32 m_ZombEnrageClock[MAX_ZOMBS];
 	i32 m_ZombHookClock[MAX_ZOMBS];
+	i32 m_ZombHookGrabClock[MAX_ZOMBS];
 	i32 m_ZombExplodeClock[MAX_ZOMBS];
 
 	u8 m_Map[MAX_MAP_SIZE];
