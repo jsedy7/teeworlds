@@ -14,7 +14,7 @@
  * - zombie types
  * - Bull zombie (charges survivors)
  * - waves
- * - flag to resurect (get one flag to another to trigger a resurect)
+ * - flag to resurect (get red flag to blue to trigger a resurect (red flag on zombie?))
  */
 
 static char msgBuff__[256];
@@ -23,9 +23,14 @@ static char msgBuff__[256];
 	str_format(msgBuff__, 256, ##__VA_ARGS__);\
 	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "zomb", msgBuff__);
 
+#define ZombCID(id) (id + MAX_SURVIVORS)
 #define NO_TARGET (-1)
 #define SecondsToTick(sec) (sec * SERVER_TICK_SPEED)
-#define TIME_TO_ENRAGE SecondsToTick(3)
+
+#define TIME_TO_ENRAGE SecondsToTick(30)
+
+#define BOOMER_EXPLOSION_INNER_RADIUS (150.f)
+#define BOOMER_EXPLOSION_OUTER_RADIUS (250.f)
 
 enum {
 	SKINPART_BODY = 0,
@@ -38,27 +43,32 @@ enum {
 
 enum {
 	ZTYPE_BASIC = 0,
-	ZTYPE_TANK
+	ZTYPE_TANK,
+	ZTYPE_BOOMER,
 };
 
 static const u32 g_ZombMaxHealth[] = {
 	8, // ZTYPE_BASIC
-	40 // ZTYPE_TANK
+	40, // ZTYPE_TANK
+	15 // ZTYPE_BOOMER
 };
 
 static const f32 g_ZombAttackSpeed[] = {
 	2.f, // ZTYPE_BASIC
-	1.f // ZTYPE_TANK
+	1.f, // ZTYPE_TANK
+	0.0001f // ZTYPE_BOOMER
 };
 
 static const i32 g_ZombAttackDmg[] = {
 	0, // ZTYPE_BASIC
-	8 // ZTYPE_TANK
+	8, // ZTYPE_TANK
+	1 // ZTYPE_BOOMER
 };
 
 static const f32 g_ZombKnockbackMultiplier[] = {
 	4.f, // ZTYPE_BASIC
-	0.f // ZTYPE_TANK
+	0.f, // ZTYPE_TANK
+	0.f // ZTYPE_BOOMER
 };
 
 enum {
@@ -83,7 +93,12 @@ static i32 randInt(i32 min, i32 max)
 void CGameControllerZOMB::Init()
 {
 	for(u32 i = 0; i < m_ZombCount; ++i) {
-		SpawnZombie(i, ZTYPE_BASIC, false);
+		if(i%2 == 1) {
+			SpawnZombie(i, ZTYPE_BOOMER, false);
+		}
+		else {
+			SpawnZombie(i, ZTYPE_BASIC, false);
+		}
 	}
 }
 
@@ -101,7 +116,6 @@ void CGameControllerZOMB::SpawnZombie(i32 zid, u32 type, bool isElite)
 	m_ZombType[zid] = type;
 	m_ZombHealth[zid] = g_ZombMaxHealth[type];
 	m_ZombBuff[zid] = 0;
-	m_ZombKnockbackMultiplier[zid] = g_ZombKnockbackMultiplier[type];
 
 	if(isElite) {
 		m_ZombHealth[zid] *= 2;
@@ -112,12 +126,13 @@ void CGameControllerZOMB::SpawnZombie(i32 zid, u32 type, bool isElite)
 	m_ZombCharCore[zid].Reset();
 	m_ZombCharCore[zid].m_Pos = spawnPos;
 	m_ZombCharCore[zid].m_Pos.x += (-MAX_ZOMBS/2 + zid); // prevent them from being stuck
-	GameServer()->m_World.m_Core.m_apCharacters[zid + MAX_SURVIVORS] = &m_ZombCharCore[zid];
+	GameServer()->m_World.m_Core.m_apCharacters[ZombCID(zid)] = &m_ZombCharCore[zid];
 
 	m_ZombInput[zid] = CNetObj_PlayerInput();
 	m_ZombSurvTarget[zid] = NO_TARGET;
-	m_ZombAttackClock[zid] = 0;
+	m_ZombAttackClock[zid] = SecondsToTick(1.f / g_ZombAttackSpeed[type]);
 	m_ZombEnrageClock[zid] = TIME_TO_ENRAGE;
+	m_ZombExplodeClock[zid] = -1;
 
 	if(needSendInfos) {
 		for(u32 i = 0; i < MAX_SURVIVORS; ++i) {
@@ -178,7 +193,7 @@ void CGameControllerZOMB::SwingHammer(i32 zid, u32 dmg, f32 knockback)
 
 		vec2 kbForce = vec2(0.f, -1.f) + normalize(kbDir + vec2(0.f, -1.1f)) * knockback;
 
-		pTarget->TakeDamage(kbForce, dmg, MAX_SURVIVORS + zid, WEAPON_HAMMER);
+		pTarget->TakeDamage(kbForce, dmg, ZombCID(zid), WEAPON_HAMMER);
 	}
 
 	m_ZombAttackTick[zid] = m_Tick;
@@ -565,7 +580,7 @@ inline i32 PackColor(i32 hue, i32 sat, i32 lgt, i32 alpha = 255)
 void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 {
 	// send zombie client informations
-	u32 zombCID = MAX_SURVIVORS + zid;
+	u32 zombCID = ZombCID(zid);
 
 	// send drop first
 	// this will pop a chat message
@@ -622,6 +637,11 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 		case ZTYPE_BASIC:
 			nci.m_pName = "zombie";
 			nci.m_apSkinPartNames[SKINPART_BODY] = zid%2 ? "zombie1" : "zombie2";
+			break;
+
+		case ZTYPE_BOOMER:
+			nci.m_pName = "boomer";
+			nci.m_apSkinPartNames[SKINPART_BODY] = "boomer";
 			break;
 
 		default: break;
@@ -708,7 +728,10 @@ void CGameControllerZOMB::Tick()
 		--m_ZombEnrageClock[i];
 		--m_ZombHookClock[i];
 
-		if(m_ZombEnrageClock[i] <= 0 && (m_ZombBuff[i]&BUFF_ENRAGED) == 0) {
+		// enrage
+		if(m_ZombType[i] != ZTYPE_BOOMER && // boomers don't enrage
+		   m_ZombEnrageClock[i] <= 0 &&
+		   (m_ZombBuff[i]&BUFF_ENRAGED) == 0) {
 			m_ZombBuff[i] |= BUFF_ENRAGED;
 			for(u32 s = 0; s < MAX_SURVIVORS; ++s) {
 				if(GameServer()->m_apPlayers[s] && Server()->ClientIngame(s)) {
@@ -735,6 +758,7 @@ void CGameControllerZOMB::Tick()
 		else {
 			vec2 pos = m_ZombCharCore[i].m_Pos;
 			vec2 targetPos = GameServer()->GetPlayerChar(m_ZombSurvTarget[i])->GetPos();
+			f32 targetDist = distance(pos, targetPos);
 			vec2& dest = m_ZombDestination[i];
 			if(m_ZombPathFindClock[i] <= 0) {
 				dest = PathFind(pos, targetPos);
@@ -798,7 +822,7 @@ void CGameControllerZOMB::Tick()
 			}
 
 			// attack!
-			if(m_ZombAttackClock[i] <= 0 && distance(pos, targetPos) < 56.f) {
+			if(m_ZombAttackClock[i] <= 0 && targetDist < 56.f) {
 				i32 dmg = g_ZombAttackDmg[m_ZombType[i]];
 				// double damage if elite
 				if(m_ZombBuff[i]&BUFF_ELITE) {
@@ -810,7 +834,7 @@ void CGameControllerZOMB::Tick()
 			}
 
 			// hook
-			if(m_ZombHookClock[i] <= 0 && distance(pos, targetPos) < 600.f) {
+			if(m_ZombHookClock[i] <= 0 && targetDist < 600.f) {
 				zi.m_Hook = 1;
 				m_ZombHookClock[i] = SecondsToTick(1.f);
 			}
@@ -822,6 +846,74 @@ void CGameControllerZOMB::Tick()
 
 			if(m_ZombCharCore[i].m_HookState == HOOK_RETRACTED) {
 				zi.m_Hook = 0;
+			}
+
+			// special behaviors
+			if(m_ZombType[i] == ZTYPE_BOOMER) {
+				--m_ZombExplodeClock[i];
+				// BOOM
+				if(m_ZombExplodeClock[i] == 0) {
+					i32 zombCID = ZombCID(i);
+					KillZombie(i, zombCID);
+
+					// explosion effect
+					GameServer()->CreateExplosion(pos, zombCID, 0, 0);
+					GameServer()->CreateSound(pos, SOUND_GRENADE_EXPLODE);
+
+					// damage survivors
+					CCharacter *apEnts[MAX_SURVIVORS];
+					i32 count = GameServer()->m_World.FindEntities(pos, BOOMER_EXPLOSION_OUTER_RADIUS,
+																   (CEntity**)apEnts, MAX_CLIENTS,
+																   CGameWorld::ENTTYPE_CHARACTER);
+
+					f32 radiusDiff = BOOMER_EXPLOSION_OUTER_RADIUS - BOOMER_EXPLOSION_INNER_RADIUS;
+
+					for(i32 s = 0; s < count; ++s) {
+						vec2 d = apEnts[s]->GetPos() - pos;
+						vec2 n = normalize(d);
+						f32 l = length(d);
+						f32 factor = 0.2f;
+						if(l < BOOMER_EXPLOSION_INNER_RADIUS) {
+							factor = 1.f;
+						}
+						else {
+							l -= BOOMER_EXPLOSION_INNER_RADIUS;
+							factor = min(0.2f, l / radiusDiff);
+						}
+
+						apEnts[s]->TakeDamage(n* 30.f * factor, (i32)(g_ZombAttackDmg[m_ZombType[i]] * factor),
+								zombCID, 0);
+						dbg_zomb_msg("boomer exploded for %d dmg",
+									 (i32)(g_ZombAttackDmg[m_ZombType[i]] * factor));
+					}
+
+					// knockback zombies
+					for(u32 z = 0; z < m_ZombCount; ++z) {
+						if(!m_ZombAlive[z] || z == i) continue;
+
+						vec2 d = m_ZombCharCore[z].m_Pos - pos;
+						vec2 n = normalize(d);
+						f32 l = length(d);
+						f32 factor = 0.2f;
+						if(l < BOOMER_EXPLOSION_INNER_RADIUS) {
+							factor = 1.f;
+						}
+						else {
+							l -= BOOMER_EXPLOSION_INNER_RADIUS;
+							factor = min(0.2f, l / radiusDiff);
+						}
+
+						m_ZombCharCore[z].m_Vel += n * 30.f * factor *
+								g_ZombKnockbackMultiplier[m_ZombType[z]];
+					}
+				}
+
+				// start the fuse
+				if(m_ZombExplodeClock[i] < 0 && targetDist < (BOOMER_EXPLOSION_INNER_RADIUS / 2.f)) {
+					m_ZombExplodeClock[i] = SecondsToTick(0.25f);
+					m_ZombInput[i].m_Hook = 0; // stop hooking to let the survivor a chance to escape
+					m_ZombHookClock[i] = SecondsToTick(1.f);
+				}
 			}
 		}
 	}
@@ -880,7 +972,7 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 			continue;
 		}
 
-		u32 zombCID = MAX_SURVIVORS + i;
+		u32 zombCID = ZombCID(i);
 
 		CNetObj_PlayerInfo *pPlayerInfo = static_cast<CNetObj_PlayerInfo *>(Server()->
 				SnapNewItem(NETOBJTYPE_PLAYERINFO, zombCID, sizeof(CNetObj_PlayerInfo)));
@@ -1016,5 +1108,5 @@ void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i3
 		dbg_zomb_msg("%d died", CID);
 	}
 
-	m_ZombCharCore[zid].m_Vel += Force * m_ZombKnockbackMultiplier[zid];
+	m_ZombCharCore[zid].m_Vel += Force * g_ZombKnockbackMultiplier[m_ZombType[zid]];
 }

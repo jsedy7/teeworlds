@@ -31,7 +31,6 @@ class CGameControllerZOMB : public IGameController
 	i32 m_ZombHealth[MAX_ZOMBS];
 	u32 m_ZombType[MAX_ZOMBS];
 	u8 m_ZombBuff[MAX_ZOMBS];
-	f32 m_ZombKnockbackMultiplier[MAX_ZOMBS];
 
 	i32 m_ZombSurvTarget[MAX_ZOMBS];
 	vec2 m_ZombDestination[MAX_ZOMBS];
@@ -42,6 +41,7 @@ class CGameControllerZOMB : public IGameController
 	i32 m_ZombAirJumps[MAX_ZOMBS];
 	i32 m_ZombEnrageClock[MAX_ZOMBS];
 	i32 m_ZombHookClock[MAX_ZOMBS];
+	i32 m_ZombExplodeClock[MAX_ZOMBS];
 
 	u8 m_Map[MAX_MAP_SIZE];
 	u32 m_MapWidth;
