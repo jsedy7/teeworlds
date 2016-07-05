@@ -38,6 +38,10 @@ static char msgBuff__[256];
 
 #define MUDGE_PULL_STR (1.1f)
 
+#define HUNTER_CHARGE_CD (SecondsToTick(2))
+#define HUNTER_CHARGE_SPEED (2500.f)
+#define HUNTER_CHARGE_DMG (3)
+
 enum {
 	SKINPART_BODY = 0,
 	SKINPART_MARKING,
@@ -53,6 +57,7 @@ enum {
 	ZTYPE_BOOMER,
 	ZTYPE_BULL,
 	ZTYPE_MUDGE,
+	ZTYPE_HUNTER,
 };
 
 static const u32 g_ZombMaxHealth[] = {
@@ -60,7 +65,8 @@ static const u32 g_ZombMaxHealth[] = {
 	40, // ZTYPE_TANK
 	15, // ZTYPE_BOOMER
 	20, // ZTYPE_BULL
-	8 // ZTYPE_MUDGE
+	8, // ZTYPE_MUDGE
+	7 // ZTYPE_HUNTER
 };
 
 static const f32 g_ZombAttackSpeed[] = {
@@ -68,7 +74,8 @@ static const f32 g_ZombAttackSpeed[] = {
 	1.f, // ZTYPE_TANK
 	0.0001f, // ZTYPE_BOOMER
 	1.0f, // ZTYPE_BULL (1.0)
-	4.0f // ZTYPE_MUDGE
+	3.0f, // ZTYPE_MUDGE
+	5.0f // ZTYPE_HUNTER
 };
 
 static const i32 g_ZombAttackDmg[] = {
@@ -76,7 +83,8 @@ static const i32 g_ZombAttackDmg[] = {
 	8, // ZTYPE_TANK (8)
 	10, // ZTYPE_BOOMER (10)
 	4, // ZTYPE_BULL (4)
-	1 // ZTYPE_MUDGE (1)
+	1, // ZTYPE_MUDGE (1)
+	1 // ZTYPE_HUNTER (1)
 };
 
 static const f32 g_ZombKnockbackMultiplier[] = {
@@ -84,7 +92,8 @@ static const f32 g_ZombKnockbackMultiplier[] = {
 	0.f, // ZTYPE_TANK
 	0.f, // ZTYPE_BOOMER
 	0.5f, // ZTYPE_BULL
-	0.f // ZTYPE_MUDGE
+	0.f, // ZTYPE_MUDGE
+	1.f, // ZTYPE_HUNTER
 };
 
 static const i32 g_ZombGrabLimit[] = {
@@ -92,7 +101,8 @@ static const i32 g_ZombGrabLimit[] = {
 	SecondsToTick(3.f), // ZTYPE_TANK
 	SecondsToTick(2.f), // ZTYPE_BOOMER
 	SecondsToTick(1.f), // ZTYPE_BULL
-	SecondsToTick(30.f) // ZTYPE_MUDGE
+	SecondsToTick(30.f), // ZTYPE_MUDGE
+	SecondsToTick(0.5f) // ZTYPE_HUNTER
 };
 
 static const i32 g_ZombHookCD[] = {
@@ -100,7 +110,8 @@ static const i32 g_ZombHookCD[] = {
 	SecondsToTick(2.f), // ZTYPE_TANK
 	SecondsToTick(0.5f), // ZTYPE_BOOMER
 	SecondsToTick(3.f), // ZTYPE_BULL
-	SecondsToTick(3.f) // ZTYPE_MUDGE
+	SecondsToTick(3.f), // ZTYPE_MUDGE
+	SecondsToTick(2.f) // ZTYPE_HUNTER
 };
 
 enum {
@@ -129,7 +140,7 @@ void CGameControllerZOMB::Init()
 		SpawnZombie(i, ZTYPE_BASIC, false);
 	}*/
 
-	SpawnZombie(0, ZTYPE_MUDGE, false);
+	SpawnZombie(0, ZTYPE_HUNTER, false);
 }
 
 void CGameControllerZOMB::SpawnZombie(i32 zid, u32 type, bool isElite)
@@ -641,6 +652,9 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 	if(m_ZombType[zid] == ZTYPE_TANK) {
 		handFeetColor = PackColor(9, 145, 108); // pinkish feet
 	}
+	if(m_ZombType[zid] == ZTYPE_HUNTER) {
+		handFeetColor = PackColor(28, 255, 192);
+	}
 
 	// NOTE: is this really needed?
 	if(m_ZombBuff[zid]&BUFF_ENRAGED) {
@@ -695,6 +709,11 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 		case ZTYPE_MUDGE:
 			nci.m_pName = "Mudge";
 			nci.m_apSkinPartNames[SKINPART_BODY] = "mudge";
+			break;
+
+		case ZTYPE_HUNTER:
+			nci.m_pName = "Hunter";
+			nci.m_apSkinPartNames[SKINPART_BODY] = "hunter";
 			break;
 
 		default: break;
@@ -1000,6 +1019,67 @@ void CGameControllerZOMB::HandleMudge(u32 zid, const vec2& targetPos, bool targe
 	}
 }
 
+void CGameControllerZOMB::HandleHunter(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS)
+{
+	const vec2& pos = m_ZombCharCore[zid].m_Pos;
+	i32 zombCID = ZombCID(zid);
+
+	// CHARRRGE
+	if(m_ZombChargeClock[zid] <= 0 && targetDist > 200.f && targetDist < 600.f && targetLOS) {
+		m_ZombChargeClock[zid] = HUNTER_CHARGE_CD;
+		f32 chargeDist = targetDist * 1.5f; // overcharge a bit
+		m_ZombChargingClock[zid] = SecondsToTick(chargeDist/HUNTER_CHARGE_SPEED);
+		m_ZombChargeVel[zid] = normalize(targetPos - pos) * (HUNTER_CHARGE_SPEED/SERVER_TICK_SPEED);
+
+		m_ZombAttackTick[zid] = m_Tick; // ninja attack tick
+
+		GameServer()->CreateSound(pos, SOUND_NINJA_FIRE);
+		GameServer()->SendEmoticon(zombCID, 10);
+		mem_zero(m_ZombChargeHit[zid], sizeof(bool) * MAX_CLIENTS);
+	}
+
+	if(m_ZombChargingClock[zid] > 0) {
+		m_ZombActiveWeapon[zid] = WEAPON_NINJA;
+		m_ZombChargeClock[zid] = HUNTER_CHARGE_CD; // don't count cd while charging
+
+		f32 checkRadius = 28.f * 2.f;
+		f32 chargeSpeed = length(m_ZombChargeVel[zid]);
+		u32 checkCount = max(1, (i32)(chargeSpeed / checkRadius));
+
+		// as it is moving quite fast, check several times along path if needed
+		for(u32 c = 0; c < checkCount; ++c) {
+			vec2 checkPos = pos + ((m_ZombChargeVel[zid] / (f32)checkCount) * (f32)c);
+
+			CCharacter *apEnts[MAX_SURVIVORS];
+			i32 count = GameServer()->m_World.FindEntities(checkPos, checkRadius,
+														   (CEntity**)apEnts, MAX_SURVIVORS,
+														   CGameWorld::ENTTYPE_CHARACTER);
+			for(i32 s = 0; s < count; ++s) {
+				i32 cid = apEnts[s]->GetPlayer()->GetCID();
+
+				// hit only once during charge
+				if(m_ZombChargeHit[zid][cid]) {
+					continue;
+				}
+				m_ZombChargeHit[zid][cid] = true;
+
+				GameServer()->CreateHammerHit(apEnts[s]->GetPos());
+				apEnts[s]->TakeDamage(vec2(0, 0), HUNTER_CHARGE_DMG, zombCID, WEAPON_NINJA);
+			}
+
+			// it hit something, reset attack time so it doesn't attack when
+			// hitting with charge
+			if(count > 0) {
+				m_ZombAttackClock[zid] = SecondsToTick(1.f / g_ZombAttackSpeed[m_ZombType[zid]]);
+				GameServer()->CreateSound(pos, SOUND_NINJA_HIT);
+			}
+		}
+	}
+	else {
+		m_ZombActiveWeapon[zid] = WEAPON_HAMMER;
+	}
+}
+
 #ifdef CONF_DEBUG
 void CGameControllerZOMB::DebugPathAddPoint(ivec2 p)
 {
@@ -1150,6 +1230,10 @@ void CGameControllerZOMB::Tick()
 
 		if(m_ZombType[i] == ZTYPE_MUDGE) {
 			HandleMudge(i, targetPos, targetLOS);
+		}
+
+		if(m_ZombType[i] == ZTYPE_HUNTER) {
+			HandleHunter(i, targetPos, targetDist, targetLOS);
 		}
 	}
 
