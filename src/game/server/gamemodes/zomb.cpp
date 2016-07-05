@@ -36,6 +36,8 @@ static char msgBuff__[256];
 #define BULL_CHARGE_SPEED (1850.f)
 #define BULL_KNOCKBACK_FORCE (30.f)
 
+#define MUDGE_PULL_STR (1.1f)
+
 enum {
 	SKINPART_BODY = 0,
 	SKINPART_MARKING,
@@ -50,48 +52,55 @@ enum {
 	ZTYPE_TANK,
 	ZTYPE_BOOMER,
 	ZTYPE_BULL,
+	ZTYPE_MUDGE,
 };
 
 static const u32 g_ZombMaxHealth[] = {
-	8, // ZTYPE_BASIC
+	7, // ZTYPE_BASIC
 	40, // ZTYPE_TANK
 	15, // ZTYPE_BOOMER
-	20 // ZTYPE_BULL
+	20, // ZTYPE_BULL
+	8 // ZTYPE_MUDGE
 };
 
 static const f32 g_ZombAttackSpeed[] = {
 	2.f, // ZTYPE_BASIC
 	1.f, // ZTYPE_TANK
 	0.0001f, // ZTYPE_BOOMER
-	1.0f // ZTYPE_BULL (1.0)
+	1.0f, // ZTYPE_BULL (1.0)
+	4.0f // ZTYPE_MUDGE
 };
 
 static const i32 g_ZombAttackDmg[] = {
 	3, // ZTYPE_BASIC (3)
 	8, // ZTYPE_TANK (8)
 	10, // ZTYPE_BOOMER (10)
-	4 // ZTYPE_BULL (4)
+	4, // ZTYPE_BULL (4)
+	1 // ZTYPE_MUDGE (1)
 };
 
 static const f32 g_ZombKnockbackMultiplier[] = {
 	2.f, // ZTYPE_BASIC
 	0.f, // ZTYPE_TANK
 	0.f, // ZTYPE_BOOMER
-	0.5f // ZTYPE_BULL
+	0.5f, // ZTYPE_BULL
+	0.f // ZTYPE_MUDGE
 };
 
 static const i32 g_ZombGrabLimit[] = {
 	SecondsToTick(0.2f), // ZTYPE_BASIC
 	SecondsToTick(3.f), // ZTYPE_TANK
 	SecondsToTick(2.f), // ZTYPE_BOOMER
-	SecondsToTick(1.f) // ZTYPE_BULL
+	SecondsToTick(1.f), // ZTYPE_BULL
+	SecondsToTick(30.f) // ZTYPE_MUDGE
 };
 
 static const i32 g_ZombHookCD[] = {
 	SecondsToTick(2.f), // ZTYPE_BASIC
 	SecondsToTick(2.f), // ZTYPE_TANK
 	SecondsToTick(0.5f), // ZTYPE_BOOMER
-	SecondsToTick(3.f) // ZTYPE_BULL
+	SecondsToTick(3.f), // ZTYPE_BULL
+	SecondsToTick(3.f) // ZTYPE_MUDGE
 };
 
 enum {
@@ -120,7 +129,7 @@ void CGameControllerZOMB::Init()
 		SpawnZombie(i, ZTYPE_BASIC, false);
 	}*/
 
-	SpawnZombie(0, ZTYPE_TANK, false);
+	SpawnZombie(0, ZTYPE_MUDGE, false);
 }
 
 void CGameControllerZOMB::SpawnZombie(i32 zid, u32 type, bool isElite)
@@ -683,6 +692,11 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 			nci.m_apSkinPartNames[SKINPART_BODY] = "bull";
 			break;
 
+		case ZTYPE_MUDGE:
+			nci.m_pName = "Mudge";
+			nci.m_apSkinPartNames[SKINPART_BODY] = "mudge";
+			break;
+
 		default: break;
 	}
 
@@ -964,6 +978,28 @@ void CGameControllerZOMB::HandleBull(u32 zid, const vec2& targetPos, f32 targetD
 	}
 }
 
+void CGameControllerZOMB::HandleMudge(u32 zid, const vec2& targetPos, bool targetLOS)
+{
+	if(targetLOS && m_ZombCharCore[zid].m_HookState != HOOK_GRABBED) {
+		m_ZombCharCore[zid].m_HookState = HOOK_GRABBED;
+		m_ZombCharCore[zid].m_HookedPlayer = m_ZombSurvTarget[zid];
+		GameServer()->CreateSound(targetPos, SOUND_HOOK_ATTACH_PLAYER);
+		m_ZombInput[zid].m_Hook = 1;
+	}
+
+	// stop moving once it grabs onto someone
+	// and pulls a bit stronger
+	if(m_ZombCharCore[zid].m_HookState == HOOK_GRABBED) {
+		m_ZombInput[zid].m_Jump = 0;
+		m_ZombInput[zid].m_Direction = 0;
+		vec2 pullDir = normalize(m_ZombCharCore[zid].m_Pos - targetPos);
+		CCharacterCore* pTargetCore = GameServer()->m_World.m_Core.m_apCharacters[m_ZombSurvTarget[zid]];
+		if(pTargetCore) {
+			pTargetCore->m_Vel += pullDir * MUDGE_PULL_STR;
+		}
+	}
+}
+
 #ifdef CONF_DEBUG
 void CGameControllerZOMB::DebugPathAddPoint(ivec2 p)
 {
@@ -1110,6 +1146,10 @@ void CGameControllerZOMB::Tick()
 
 		if(m_ZombType[i] == ZTYPE_BULL) {
 			HandleBull(i, targetPos, targetDist, targetLOS);
+		}
+
+		if(m_ZombType[i] == ZTYPE_MUDGE) {
+			HandleMudge(i, targetPos, targetLOS);
 		}
 	}
 

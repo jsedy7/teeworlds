@@ -90,6 +90,7 @@ class CGameControllerZOMB : public IGameController
 	void HandleHook(u32 zid, f32 targetDist, bool targetLOS);
 	void HandleBoomer(u32 zid, f32 targetDist, bool targetLOS);
 	void HandleBull(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
+	void HandleMudge(u32 zid, const vec2& targetPos, bool targetLOS);
 
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer);
