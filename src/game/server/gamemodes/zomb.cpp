@@ -120,7 +120,7 @@ void CGameControllerZOMB::Init()
 		SpawnZombie(i, ZTYPE_BASIC, false);
 	}*/
 
-	SpawnZombie(0, ZTYPE_BULL, false);
+	SpawnZombie(0, ZTYPE_TANK, false);
 }
 
 void CGameControllerZOMB::SpawnZombie(i32 zid, u32 type, bool isElite)
@@ -629,6 +629,11 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 	i32 red = PackColor(0, 255, 0);
 
 	i32 handFeetColor = brown;
+	if(m_ZombType[zid] == ZTYPE_TANK) {
+		handFeetColor = PackColor(9, 145, 108); // pinkish feet
+	}
+
+	// NOTE: is this really needed?
 	if(m_ZombBuff[zid]&BUFF_ENRAGED) {
 		handFeetColor = red;
 	}
@@ -661,6 +666,11 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 		case ZTYPE_BASIC:
 			nci.m_pName = "zombie";
 			nci.m_apSkinPartNames[SKINPART_BODY] = zid%2 ? "zombie1" : "zombie2";
+			break;
+
+		case ZTYPE_TANK:
+			nci.m_pName = "Tank";
+			nci.m_apSkinPartNames[SKINPART_BODY] = "tank";
 			break;
 
 		case ZTYPE_BOOMER:
