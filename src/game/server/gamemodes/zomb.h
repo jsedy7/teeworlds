@@ -44,6 +44,11 @@ class CGameControllerZOMB : public IGameController
 	i32 m_ZombHookGrabClock[MAX_ZOMBS];
 	i32 m_ZombExplodeClock[MAX_ZOMBS];
 
+	i32 m_ZombChargeClock[MAX_ZOMBS];
+	i32 m_ZombChargingClock[MAX_ZOMBS];
+	vec2 m_ZombChargeVel[MAX_ZOMBS];
+	bool m_ZombChargeHit[MAX_ZOMBS][MAX_CLIENTS];
+
 	u8 m_Map[MAX_MAP_SIZE];
 	u32 m_MapWidth;
 	u32 m_MapHeight;
@@ -80,6 +85,8 @@ class CGameControllerZOMB : public IGameController
 	vec2 PathFind(vec2 start, vec2 end);
 
 	void SendZombieInfos(i32 zid, i32 CID);
+
+	void HandleBull(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
 
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer);
