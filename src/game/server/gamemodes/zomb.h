@@ -86,6 +86,9 @@ class CGameControllerZOMB : public IGameController
 
 	void SendZombieInfos(i32 zid, i32 CID);
 
+	void HandleMovement(u32 zid, const vec2& targetPos);
+	void HandleHook(u32 zid, f32 targetDist, bool targetLOS);
+	void HandleBoomer(u32 zid, f32 targetDist, bool targetLOS);
 	void HandleBull(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
 
 public:
