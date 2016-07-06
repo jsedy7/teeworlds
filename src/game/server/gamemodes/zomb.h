@@ -58,6 +58,7 @@ class CGameControllerZOMB : public IGameController
 	vec2 m_ZombSpawnPoint[64];
 	u32 m_ZombSpawnPointCount;
 
+	// waves
 	struct SpawnCmd {
 		u8 type;
 		u8 isElite;
@@ -71,6 +72,17 @@ class CGameControllerZOMB : public IGameController
 	i32 m_SpawnClock;
 	i32 m_WaveWaitClock;
 	u32 m_ZombGameState;
+
+	// revive ctf
+	u32 m_BlueFlagSpawnCount;
+	vec2 m_BlueFlagSpawn[32];
+	vec2 m_RedFlagSpawn;
+	vec2 m_RedFlagPos;
+	vec2 m_RedFlagVel;
+	vec2 m_BlueFlagPos;
+	i32 m_RedFlagCarrier;
+	bool m_IsReviveCtfActive;
+	bool m_CanPlayersRespawn;
 
 
 #ifdef CONF_DEBUG
@@ -112,8 +124,12 @@ class CGameControllerZOMB : public IGameController
 	static void ConZombStart(IConsole::IResult *pResult, void *pUserData);
 	void StartZombGame(u32 startingWave = 0);
 	void GameWon();
+	void GameLost();
 	void ChatMessage(const char* msg);
 	void AnnounceWave(u32 waveID);
+
+	void ActivateReviveCtf();
+	void ReviveSurvivors();
 
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer);
@@ -123,6 +139,8 @@ public:
 	bool IsFriendlyFire(int ClientID1, int ClientID2) const;
 	bool OnEntity(int Index, vec2 Pos);
 	bool HasEnoughPlayers() const;
+	bool CanSpawn(int Team, vec2 *pPos) const;
+	int OnCharacterDeath(class CCharacter *pVictim, class CPlayer *pKiller, int Weapon);
 	void ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i32 Weapon);
 };
 

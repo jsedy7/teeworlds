@@ -799,6 +799,10 @@ void CGameControllerZOMB::HandleHook(u32 zid, f32 targetDist, bool targetLOS)
 		input.m_Hook = 0;
 	}
 
+	if(m_ZombCharCore[zid].m_HookState == HOOK_FLYING) {
+		input.m_Hook = 1;
+	}
+
 	// keep grabbing target
 	if(m_ZombCharCore[zid].m_HookState == HOOK_GRABBED &&
 	   m_ZombCharCore[zid].m_HookedPlayer == m_ZombSurvTarget[zid]) {
@@ -1111,6 +1115,13 @@ void CGameControllerZOMB::GameWon()
 	m_ZombGameState = ZSTATE_NONE;
 }
 
+void CGameControllerZOMB::GameLost()
+{
+	ChatMessage(">> You LOST.");
+	EndMatch();
+	m_ZombGameState = ZSTATE_NONE;
+}
+
 void CGameControllerZOMB::ChatMessage(const char* msg)
 {
 	CNetMsg_Sv_Chat chatMsg;
@@ -1130,6 +1141,32 @@ void CGameControllerZOMB::AnnounceWave(u32 waveID)
 			   m_WaveSpawnCount[waveID]);
 	chatMsg.m_pMessage = msgBuff;
 	Server()->SendPackMsg(&chatMsg, MSGFLAG_VITAL, -1);
+}
+
+void CGameControllerZOMB::ActivateReviveCtf()
+{
+	m_RedFlagPos = m_RedFlagSpawn;
+	m_BlueFlagPos = m_BlueFlagSpawn[m_Tick%m_BlueFlagSpawnCount];
+	m_RedFlagCarrier = -1;
+	m_RedFlagVel = vec2(0, 0);
+	GameServer()->CreateSound(m_RedFlagPos, SOUND_CTF_RETURN);
+	m_IsReviveCtfActive = true;
+	m_CanPlayersRespawn = false;
+}
+
+void CGameControllerZOMB::ReviveSurvivors()
+{
+	GameServer()->CreateSound(m_RedFlagPos, SOUND_CTF_CAPTURE);
+	m_CanPlayersRespawn = true;
+
+	for(u32 i = 0; i < MAX_SURVIVORS; ++i) {
+		if(GameServer()->m_apPlayers[i] && !GameServer()->GetPlayerChar(i)) {
+			GameServer()->m_apPlayers[i]->TryRespawn();
+		}
+	}
+
+	m_CanPlayersRespawn = false;
+	m_IsReviveCtfActive = false;
 }
 
 #ifdef CONF_DEBUG
@@ -1202,6 +1239,10 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	m_WaveCount = 0;
 	m_ZombGameState = ZSTATE_NONE;
 
+	m_BlueFlagSpawnCount = 0;
+	m_IsReviveCtfActive = false;
+	m_CanPlayersRespawn = true;
+
 #define WAVE_ADD(waveID, type, isElite)\
 	m_WaveData[waveID][m_WaveSpawnCount[waveID]++] = SpawnCmd{type, isElite}
 
@@ -1223,6 +1264,52 @@ void CGameControllerZOMB::Tick()
 	if(GameServer()->m_World.m_Paused) {
 		return;
 	}
+
+	if(m_IsReviveCtfActive && m_ZombGameState != ZSTATE_NONE) {
+		bool everyoneDead = true;
+		for(u32 i = 0; i < MAX_SURVIVORS; ++i) {
+			if(GameServer()->GetPlayerChar(i)) {
+				everyoneDead = false;
+				break;
+			}
+		}
+
+		if(everyoneDead) {
+			GameLost();
+			return;
+		}
+
+		if(m_RedFlagCarrier == -1) {
+			m_RedFlagVel.y += GameServer()->Tuning()->m_Gravity;
+			GameServer()->Collision()->MoveBox(&m_RedFlagPos,
+											   &m_RedFlagVel,
+											   vec2(28.f, 28.f),
+											   0.f);
+
+			CCharacter *apEnts[MAX_SURVIVORS];
+			i32 count = GameServer()->m_World.FindEntities(m_RedFlagPos, 56.f,
+														   (CEntity**)apEnts, MAX_SURVIVORS,
+														   CGameWorld::ENTTYPE_CHARACTER);
+
+			for(i32 i = 0; i < count; ++i) {
+				m_RedFlagCarrier = apEnts[i]->GetPlayer()->GetCID();
+				m_RedFlagVel = vec2(0, 0);
+				m_RedFlagPos = apEnts[i]->GetPos();
+				GameServer()->CreateSound(m_RedFlagPos, SOUND_CTF_GRAB_PL);
+				break;
+			}
+
+		}
+		else {
+			m_RedFlagPos = GameServer()->GetPlayerChar(m_RedFlagCarrier)->GetPos();
+			m_RedFlagVel = vec2(0, 0);
+		}
+
+		if(distance(m_RedFlagPos, m_BlueFlagPos) < 100.f) {
+			ReviveSurvivors();
+		}
+	}
+
 
 	if(m_ZombGameState == ZSTATE_WAVE_GAME) {
 		// wait in between waves
@@ -1437,10 +1524,6 @@ void CGameControllerZOMB::Tick()
 void CGameControllerZOMB::Snap(i32 SnappingClientID)
 {
 	IGameController::Snap(SnappingClientID);
-	CEntity* pChar = (CEntity*)GameServer()->GetPlayerChar(SnappingClientID);
-	if(!pChar || pChar->NetworkClipped(SnappingClientID)) {
-		return;
-	}
 
 	// send zombie player and character infos
 	for(u32 i = 0; i < m_ZombCount; ++i) {
@@ -1485,6 +1568,37 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 		pCharacter->m_AttackTick = m_ZombAttackTick[i];
 
 		m_ZombCharCore[i].Write(pCharacter);
+	}
+
+	// revive ctf
+	if(m_IsReviveCtfActive) {
+		CNetObj_Flag *pFlag = (CNetObj_Flag *)Server()->SnapNewItem(NETOBJTYPE_FLAG,
+																	TEAM_RED, sizeof(CNetObj_Flag));
+		if(pFlag) {
+			pFlag->m_X = (int)m_RedFlagPos.x;
+			pFlag->m_Y = (int)m_RedFlagPos.y;
+			pFlag->m_Team = TEAM_RED;
+		}
+
+		pFlag = (CNetObj_Flag *)Server()->SnapNewItem(NETOBJTYPE_FLAG,
+													  TEAM_BLUE, sizeof(CNetObj_Flag));
+		if(pFlag) {
+			pFlag->m_X = (int)m_BlueFlagPos.x;
+			pFlag->m_Y = (int)m_BlueFlagPos.y;
+			pFlag->m_Team = TEAM_BLUE;
+		}
+
+		CNetObj_GameDataFlag *pGameDataFlag = (CNetObj_GameDataFlag *)
+				Server()->SnapNewItem(NETOBJTYPE_GAMEDATAFLAG, 0, sizeof(CNetObj_GameDataFlag));
+		if(pGameDataFlag) {
+			pGameDataFlag->m_FlagCarrierBlue = FLAG_ATSTAND;
+			if(m_RedFlagCarrier == -1) {
+				pGameDataFlag->m_FlagCarrierRed = FLAG_ATSTAND;
+			}
+			else {
+				pGameDataFlag->m_FlagCarrierRed = m_RedFlagCarrier;
+			}
+		}
 	}
 
 #ifdef CONF_DEBUG
@@ -1558,6 +1672,14 @@ bool CGameControllerZOMB::OnEntity(int Index, vec2 Pos)
 		m_ZombSpawnPoint[m_ZombSpawnPointCount++] = Pos;
 	}
 
+	if(Index == ENTITY_FLAGSTAND_RED) {
+		m_RedFlagSpawn = Pos;
+	}
+
+	if(Index == ENTITY_FLAGSTAND_BLUE) {
+		m_BlueFlagSpawn[m_BlueFlagSpawnCount++] = Pos;
+	}
+
 	return r;
 }
 
@@ -1565,6 +1687,29 @@ bool CGameControllerZOMB::HasEnoughPlayers() const
 {
 	// get rid of that annoying warmup message
 	return true;
+}
+
+bool CGameControllerZOMB::CanSpawn(int Team, vec2* pPos) const
+{
+	if(!m_CanPlayersRespawn) {
+		return false;
+	}
+
+	return IGameController::CanSpawn(Team, pPos);
+}
+
+int CGameControllerZOMB::OnCharacterDeath(CCharacter* pVictim, CPlayer* pKiller, int Weapon)
+{
+	if(!m_IsReviveCtfActive) {
+		ActivateReviveCtf();
+	}
+
+	if(m_RedFlagCarrier == pVictim->GetPlayer()->GetCID()) {
+		m_RedFlagCarrier = -1;
+		GameServer()->CreateSound(m_RedFlagPos, SOUND_CTF_DROP);
+	}
+
+	return IGameController::OnCharacterDeath(pVictim, pKiller, Weapon);
 }
 
 void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i32 Weapon)
