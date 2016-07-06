@@ -56,7 +56,9 @@ class CGameControllerZOMB : public IGameController
 	u32 m_MapHeight;
 
 	vec2 m_ZombSpawnPoint[64];
+	vec2 m_SurvSpawnPoint[64];
 	u32 m_ZombSpawnPointCount;
+	u32 m_SurvSpawnPointCount;
 
 	// waves
 	struct SpawnCmd {

@@ -27,7 +27,7 @@ static char msgBuff__[256];
 #define NO_TARGET -1
 #define SecondsToTick(sec) (i32)(sec * SERVER_TICK_SPEED)
 
-#define TIME_TO_ENRAGE SecondsToTick(60)
+#define TIME_TO_ENRAGE SecondsToTick(30)
 
 #define BOOMER_EXPLOSION_INNER_RADIUS 150.f
 #define BOOMER_EXPLOSION_OUTER_RADIUS 250.f
@@ -1113,6 +1113,7 @@ void CGameControllerZOMB::GameWon()
 	ChatMessage(">> Game won, good job.");
 	EndMatch();
 	m_ZombGameState = ZSTATE_NONE;
+	m_IsReviveCtfActive = false;
 }
 
 void CGameControllerZOMB::GameLost()
@@ -1120,6 +1121,13 @@ void CGameControllerZOMB::GameLost()
 	ChatMessage(">> You LOST.");
 	EndMatch();
 	m_ZombGameState = ZSTATE_NONE;
+	m_IsReviveCtfActive = false;
+
+	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
+		if(m_ZombAlive[i]) {
+			KillZombie(i, -1);
+		}
+	}
 }
 
 void CGameControllerZOMB::ChatMessage(const char* msg)
@@ -1191,6 +1199,7 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	m_pGameType = "ZOMB";
 	m_ZombCount = MAX_ZOMBS;
 	m_ZombSpawnPointCount = 0;
+	m_SurvSpawnPointCount = 0;
 
 	// get map info
 	mem_zero(m_Map, MAX_MAP_SIZE);
@@ -1246,12 +1255,65 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 #define WAVE_ADD(waveID, type, isElite)\
 	m_WaveData[waveID][m_WaveSpawnCount[waveID]++] = SpawnCmd{type, isElite}
 
-	for(u32 i = 0; i < 2; ++i) {
+	// wave 0
+	for(u32 i = 0; i < 10; ++i) {
 		WAVE_ADD(0, ZTYPE_BASIC, false);
 	}
 
+	// wave 1
+	for(u32 i = 0; i < 8; ++i) {
+		WAVE_ADD(1, ZTYPE_BASIC, false);
+	}
 	WAVE_ADD(1, ZTYPE_BOOMER, false);
-	m_WaveCount = 2;
+	WAVE_ADD(1, ZTYPE_BOOMER, false);
+	for(u32 i = 0; i < 8; ++i) {
+		WAVE_ADD(1, ZTYPE_BASIC, false);
+	}
+
+	// wave 2
+	for(u32 i = 0; i < 4; ++i) {
+		WAVE_ADD(2, ZTYPE_BASIC, false);
+	}
+	WAVE_ADD(2, ZTYPE_MUDGE, false);
+	WAVE_ADD(2, ZTYPE_BULL, false);
+	for(u32 i = 0; i < 8; ++i) {
+		WAVE_ADD(2, ZTYPE_BASIC, false);
+	}
+
+	// wave 3
+	WAVE_ADD(3, ZTYPE_TANK, false);
+	for(u32 i = 0; i < 15; ++i) {
+		WAVE_ADD(3, ZTYPE_BASIC, false);
+	}
+	WAVE_ADD(3, ZTYPE_MUDGE, false);
+	WAVE_ADD(3, ZTYPE_MUDGE, false);
+	for(u32 i = 0; i < 15; ++i) {
+		WAVE_ADD(3, ZTYPE_BASIC, false);
+	}
+
+	// wave 4
+	WAVE_ADD(4, ZTYPE_HUNTER, false);
+	WAVE_ADD(4, ZTYPE_HUNTER, false);
+	for(u32 i = 0; i < 10; ++i) {
+		WAVE_ADD(4, ZTYPE_BASIC, false);
+	}
+	WAVE_ADD(4, ZTYPE_BULL, false);
+	WAVE_ADD(4, ZTYPE_BULL, false);
+	for(u32 i = 0; i < 10; ++i) {
+		WAVE_ADD(4, ZTYPE_BASIC, false);
+	}
+
+	// wave 5
+	for(u32 i = 0; i < 2; ++i) {
+		WAVE_ADD(5, ZTYPE_BASIC, false);
+		WAVE_ADD(5, ZTYPE_BOOMER, false);
+		WAVE_ADD(5, ZTYPE_BULL, false);
+		WAVE_ADD(5, ZTYPE_MUDGE, false);
+		WAVE_ADD(5, ZTYPE_HUNTER, false);
+		WAVE_ADD(5, ZTYPE_TANK, false);
+	}
+
+	m_WaveCount = 6;
 
 #undef WAVE_ADD
 }
@@ -1671,6 +1733,9 @@ bool CGameControllerZOMB::OnEntity(int Index, vec2 Pos)
 	if(Index == ENTITY_SPAWN_BLUE || Index == ENTITY_SPAWN) {
 		m_ZombSpawnPoint[m_ZombSpawnPointCount++] = Pos;
 	}
+	if(Index == ENTITY_SPAWN_RED || Index == ENTITY_SPAWN) {
+		m_SurvSpawnPoint[m_SurvSpawnPointCount++] = Pos;
+	}
 
 	if(Index == ENTITY_FLAGSTAND_RED) {
 		m_RedFlagSpawn = Pos;
@@ -1691,16 +1756,22 @@ bool CGameControllerZOMB::HasEnoughPlayers() const
 
 bool CGameControllerZOMB::CanSpawn(int Team, vec2* pPos) const
 {
-	if(!m_CanPlayersRespawn) {
+	if(Team == TEAM_SPECTATORS) {
 		return false;
 	}
 
-	return IGameController::CanSpawn(Team, pPos);
+	if(!m_CanPlayersRespawn && m_ZombGameState != ZSTATE_NONE) {
+		return false;
+	}
+
+	i32 spawnID = randInt(0, m_SurvSpawnPointCount-1);
+	*pPos = m_SurvSpawnPoint[spawnID];
+	return true;
 }
 
 int CGameControllerZOMB::OnCharacterDeath(CCharacter* pVictim, CPlayer* pKiller, int Weapon)
 {
-	if(!m_IsReviveCtfActive) {
+	if(!m_IsReviveCtfActive && m_ZombGameState != ZSTATE_NONE) {
 		ActivateReviveCtf();
 	}
 
