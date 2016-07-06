@@ -18,7 +18,6 @@ typedef double f64;
 
 class CGameControllerZOMB : public IGameController
 {
-	bool m_DoInit;
 	i32 m_Tick;
 	u32 m_ZombCount;
 	CCharacterCore m_ZombCharCore[MAX_ZOMBS];
@@ -89,7 +88,6 @@ class CGameControllerZOMB : public IGameController
 	void DebugLine(ivec2 s, ivec2 e);
 #endif
 
-	void Init();
 	void SpawnZombie(i32 zid, u8 type, bool isElite);
 	void KillZombie(i32 zid, i32 killerCID);
 	void SwingHammer(i32 zid, u32 dmg, f32 knockback);

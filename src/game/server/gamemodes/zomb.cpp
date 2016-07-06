@@ -142,14 +142,6 @@ static i32 randInt(i32 min, i32 max)
 	return (min + (rand() / (float)RAND_MAX) * (max + 1 - min));
 }
 
-void CGameControllerZOMB::Init()
-{
-	/*
-	for(u32 i = 1; i < 4; ++i) {
-		SpawnZombie(i, ZTYPE_BASIC, false);
-	}*/
-}
-
 void CGameControllerZOMB::SpawnZombie(i32 zid, u8 type, bool isElite)
 {
 	// do we need to update clients
@@ -173,7 +165,6 @@ void CGameControllerZOMB::SpawnZombie(i32 zid, u8 type, bool isElite)
 	vec2 spawnPos = m_ZombSpawnPoint[zid%m_ZombSpawnPointCount];
 	m_ZombCharCore[zid].Reset();
 	m_ZombCharCore[zid].m_Pos = spawnPos;
-	m_ZombCharCore[zid].m_Pos.x += (-MAX_ZOMBS/2 + zid); // prevent them from being stuck
 	GameServer()->m_World.m_Core.m_apCharacters[ZombCID(zid)] = &m_ZombCharCore[zid];
 
 	m_ZombInput[zid] = CNetObj_PlayerInput();
@@ -1203,8 +1194,6 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 		m_ZombType[i] = 69;
 	}
 
-	m_DoInit = true;
-
 	GameServer()->Console()->Register("zomb_start", "?i", CFGFLAG_SERVER, ConZombStart,
 									  this, "Start a ZOMB game");
 
@@ -1228,11 +1217,6 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 
 void CGameControllerZOMB::Tick()
 {
-	if(m_DoInit) {
-		Init();
-		m_DoInit = false;
-	}
-
 	m_Tick = Server()->Tick();
 	IGameController::Tick();
 
@@ -1321,29 +1305,37 @@ void CGameControllerZOMB::Tick()
 			--m_ZombChargeClock[i];
 		}
 
-		CNetObj_PlayerInput& zi = m_ZombInput[i];
+		vec2 pos = m_ZombCharCore[i].m_Pos;
 
-		// TODO: find target
-		if(GameServer()->GetPlayerChar(0)) {
-			m_ZombSurvTarget[i] = 0;
+		// find closest target
+		f32 closestDist = -1.f;
+		i32 survTargetID = NO_TARGET;
+		for(u32 s = 0; s < MAX_SURVIVORS; ++s) {
+			CCharacter* pSurvChar = GameServer()->GetPlayerChar(s);
+			if(pSurvChar) {
+				f32 dist = length(pos - pSurvChar->GetPos());
+				if(closestDist < 0.f || dist < closestDist) {
+					closestDist = dist;
+					survTargetID = s;
+				}
+			}
 		}
-		else {
-			m_ZombSurvTarget[i] = NO_TARGET;
-		}
+
+		m_ZombSurvTarget[i] = survTargetID;
 
 		if(m_ZombSurvTarget[i] == NO_TARGET) {
 			continue;
 		}
 
-		vec2 pos = m_ZombCharCore[i].m_Pos;
+
 		vec2 targetPos = GameServer()->GetPlayerChar(m_ZombSurvTarget[i])->GetPos();
 		f32 targetDist = distance(pos, targetPos);
 		bool targetLOS = (GameServer()->Collision()->IntersectLine(pos, targetPos, 0, 0) == 0);
 
 		HandleMovement(i, targetPos);
 
-		zi.m_TargetX = targetPos.x - pos.x;
-		zi.m_TargetY = targetPos.y - pos.y;
+		m_ZombInput[i].m_TargetX = targetPos.x - pos.x;
+		m_ZombInput[i].m_TargetY = targetPos.y - pos.y;
 
 		// attack!
 		if(m_ZombAttackClock[i] <= 0 && targetDist < 56.f) {
