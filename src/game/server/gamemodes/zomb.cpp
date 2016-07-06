@@ -64,9 +64,9 @@ enum {
 };
 
 static const u32 g_ZombMaxHealth[] = {
-	7, // ZTYPE_BASIC
+	5, // ZTYPE_BASIC
 	40, // ZTYPE_TANK
-	15, // ZTYPE_BOOMER
+	10, // ZTYPE_BOOMER
 	20, // ZTYPE_BULL
 	8, // ZTYPE_MUDGE
 	7 // ZTYPE_HUNTER
@@ -82,7 +82,7 @@ static const f32 g_ZombAttackSpeed[] = {
 };
 
 static const i32 g_ZombAttackDmg[] = {
-	2, // ZTYPE_BASIC (3)
+	1, // ZTYPE_BASIC (1)
 	8, // ZTYPE_TANK (8)
 	10, // ZTYPE_BOOMER (10)
 	4, // ZTYPE_BULL (4)
@@ -1106,6 +1106,7 @@ void CGameControllerZOMB::StartZombGame(u32 startingWave)
 	ChatMessage(">> 10s to setup.");
 	StartMatch();
 	m_ZombGameState = ZSTATE_WAVE_GAME;
+	m_CanPlayersRespawn = true;
 }
 
 void CGameControllerZOMB::GameWon()
@@ -1313,7 +1314,13 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 		WAVE_ADD(5, ZTYPE_TANK, false);
 	}
 
-	m_WaveCount = 6;
+	// wave 6
+	for(u32 i = 0; i < 2; ++i) {
+		WAVE_ADD(5, ZTYPE_HUNTER, false);
+		WAVE_ADD(5, ZTYPE_BULL, false);
+	}
+
+	m_WaveCount = 7;
 
 #undef WAVE_ADD
 }
