@@ -1,11 +1,14 @@
 #pragma once
 #include <game/server/gamecontroller.h>
+#include <engine/console.h>
 #include <game/gamecore.h>
 #include <stdint.h>
 
 #define MAX_SURVIVORS 4
 #define MAX_ZOMBS (MAX_CLIENTS - MAX_SURVIVORS)
 #define MAX_MAP_SIZE 1024 * 1024
+#define MAX_WAVES 128
+#define MAX_SPAWN_QUEUE 256
 
 typedef uint8_t u8;
 typedef int32_t i32;
@@ -29,7 +32,7 @@ class CGameControllerZOMB : public IGameController
 
 	bool m_ZombAlive[MAX_ZOMBS];
 	i32 m_ZombHealth[MAX_ZOMBS];
-	u32 m_ZombType[MAX_ZOMBS];
+	u8 m_ZombType[MAX_ZOMBS];
 	u8 m_ZombBuff[MAX_ZOMBS];
 
 	i32 m_ZombSurvTarget[MAX_ZOMBS];
@@ -56,6 +59,21 @@ class CGameControllerZOMB : public IGameController
 	vec2 m_ZombSpawnPoint[64];
 	u32 m_ZombSpawnPointCount;
 
+	struct SpawnCmd {
+		u8 type;
+		u8 isElite;
+	};
+
+	SpawnCmd m_WaveData[MAX_WAVES][MAX_SPAWN_QUEUE];
+	u32 m_WaveSpawnCount[MAX_WAVES];
+	u32 m_WaveCount;
+	u32 m_CurrentWave;
+	u32 m_SpawnCmdID;
+	i32 m_SpawnClock;
+	i32 m_WaveWaitClock;
+	u32 m_ZombGameState;
+
+
 #ifdef CONF_DEBUG
 	ivec2 m_DbgPath[256];
 	u32 m_DbgPathLen;
@@ -72,7 +90,7 @@ class CGameControllerZOMB : public IGameController
 #endif
 
 	void Init();
-	void SpawnZombie(i32 zid, u32 type, bool isElite);
+	void SpawnZombie(i32 zid, u8 type, bool isElite);
 	void KillZombie(i32 zid, i32 killerCID);
 	void SwingHammer(i32 zid, u32 dmg, f32 knockback);
 
@@ -93,6 +111,12 @@ class CGameControllerZOMB : public IGameController
 	void HandleMudge(u32 zid, const vec2& targetPos, bool targetLOS);
 	void HandleHunter(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
 
+	static void ConZombStart(IConsole::IResult *pResult, void *pUserData);
+	void StartZombGame(u32 startingWave = 0);
+	void GameWon();
+	void ChatMessage(const char* msg);
+	void AnnounceWave(u32 waveID);
+
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer);
 	void Tick();
@@ -100,6 +124,7 @@ public:
 	void OnPlayerConnect(CPlayer *pPlayer);
 	bool IsFriendlyFire(int ClientID1, int ClientID2) const;
 	bool OnEntity(int Index, vec2 Pos);
+	bool HasEnoughPlayers() const;
 	void ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i32 Weapon);
 };
 

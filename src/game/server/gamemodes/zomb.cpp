@@ -24,23 +24,26 @@ static char msgBuff__[256];
 	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "zomb", msgBuff__);
 
 #define ZombCID(id) (id + MAX_SURVIVORS)
-#define NO_TARGET (-1)
+#define NO_TARGET -1
 #define SecondsToTick(sec) (i32)(sec * SERVER_TICK_SPEED)
 
 #define TIME_TO_ENRAGE SecondsToTick(60)
 
-#define BOOMER_EXPLOSION_INNER_RADIUS (150.f)
-#define BOOMER_EXPLOSION_OUTER_RADIUS (250.f)
+#define BOOMER_EXPLOSION_INNER_RADIUS 150.f
+#define BOOMER_EXPLOSION_OUTER_RADIUS 250.f
 
 #define BULL_CHARGE_CD (SecondsToTick(4))
-#define BULL_CHARGE_SPEED (1850.f)
-#define BULL_KNOCKBACK_FORCE (30.f)
+#define BULL_CHARGE_SPEED 1850.f
+#define BULL_KNOCKBACK_FORCE 30.f
 
-#define MUDGE_PULL_STR (1.1f)
+#define MUDGE_PULL_STR 1.1f
 
 #define HUNTER_CHARGE_CD (SecondsToTick(2))
-#define HUNTER_CHARGE_SPEED (2500.f)
-#define HUNTER_CHARGE_DMG (3)
+#define HUNTER_CHARGE_SPEED 2500.f
+#define HUNTER_CHARGE_DMG 3
+
+#define SPAWN_INTERVAL (SecondsToTick(0.4f))
+#define WAVE_WAIT_TIME (SecondsToTick(10))
 
 enum {
 	SKINPART_BODY = 0,
@@ -70,7 +73,7 @@ static const u32 g_ZombMaxHealth[] = {
 };
 
 static const f32 g_ZombAttackSpeed[] = {
-	2.f, // ZTYPE_BASIC
+	1.5f, // ZTYPE_BASIC
 	1.f, // ZTYPE_TANK
 	0.0001f, // ZTYPE_BOOMER
 	1.0f, // ZTYPE_BULL (1.0)
@@ -79,7 +82,7 @@ static const f32 g_ZombAttackSpeed[] = {
 };
 
 static const i32 g_ZombAttackDmg[] = {
-	3, // ZTYPE_BASIC (3)
+	2, // ZTYPE_BASIC (3)
 	8, // ZTYPE_TANK (8)
 	10, // ZTYPE_BOOMER (10)
 	4, // ZTYPE_BULL (4)
@@ -127,6 +130,12 @@ enum {
 	ZOMBIE_BIGJUMP
 };
 
+enum {
+	ZSTATE_NONE = 0,
+	ZSTATE_WAVE_GAME,
+	ZSTATE_SURV_GAME,
+};
+
 static i32 randInt(i32 min, i32 max)
 {
 	dbg_assert(max > min, "RandInt(min, max) max must be > min");
@@ -139,11 +148,9 @@ void CGameControllerZOMB::Init()
 	for(u32 i = 1; i < 4; ++i) {
 		SpawnZombie(i, ZTYPE_BASIC, false);
 	}*/
-
-	SpawnZombie(0, ZTYPE_HUNTER, false);
 }
 
-void CGameControllerZOMB::SpawnZombie(i32 zid, u32 type, bool isElite)
+void CGameControllerZOMB::SpawnZombie(i32 zid, u8 type, bool isElite)
 {
 	// do we need to update clients
 	bool needSendInfos = false;
@@ -185,6 +192,8 @@ void CGameControllerZOMB::SpawnZombie(i32 zid, u32 type, bool isElite)
 			}
 		}
 	}
+
+	GameServer()->CreatePlayerSpawn(spawnPos);
 }
 
 void CGameControllerZOMB::KillZombie(i32 zid, i32 killerCID)
@@ -1080,6 +1089,58 @@ void CGameControllerZOMB::HandleHunter(u32 zid, const vec2& targetPos, f32 targe
 	}
 }
 
+void CGameControllerZOMB::ConZombStart(IConsole::IResult* pResult, void* pUserData)
+{
+	CGameControllerZOMB *pThis = (CGameControllerZOMB *)pUserData;
+
+	i32 startingWave = 0;
+	if(pResult->NumArguments()) {
+		startingWave = clamp(pResult->GetInteger(0), 0, MAX_WAVES);
+	}
+
+	pThis->StartZombGame(startingWave);
+}
+
+void CGameControllerZOMB::StartZombGame(u32 startingWave)
+{
+	m_CurrentWave = startingWave;
+	m_SpawnCmdID = 0;
+	m_SpawnClock = SecondsToTick(10); // 10s to setup
+	m_WaveWaitClock = -1;
+	AnnounceWave(0);
+	ChatMessage(">> 10s to setup.");
+	StartMatch();
+	m_ZombGameState = ZSTATE_WAVE_GAME;
+}
+
+void CGameControllerZOMB::GameWon()
+{
+	ChatMessage(">> Game won, good job.");
+	EndMatch();
+	m_ZombGameState = ZSTATE_NONE;
+}
+
+void CGameControllerZOMB::ChatMessage(const char* msg)
+{
+	CNetMsg_Sv_Chat chatMsg;
+	chatMsg.m_Team = 0;
+	chatMsg.m_ClientID = -1;
+	chatMsg.m_pMessage = msg;
+	Server()->SendPackMsg(&chatMsg, MSGFLAG_VITAL, -1);
+}
+
+void CGameControllerZOMB::AnnounceWave(u32 waveID)
+{
+	CNetMsg_Sv_Chat chatMsg;
+	chatMsg.m_Team = 0;
+	chatMsg.m_ClientID = -1;
+	char msgBuff[256];
+	str_format(msgBuff, sizeof(msgBuff), ">> WAVE %d (%d zombies)", waveID + 1,
+			   m_WaveSpawnCount[waveID]);
+	chatMsg.m_pMessage = msgBuff;
+	Server()->SendPackMsg(&chatMsg, MSGFLAG_VITAL, -1);
+}
+
 #ifdef CONF_DEBUG
 void CGameControllerZOMB::DebugPathAddPoint(ivec2 p)
 {
@@ -1137,9 +1198,32 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 
 	for(u32 i = 0; i < m_ZombCount; ++i) {
 		m_ZombCharCore[i].Init(&GameServer()->m_World.m_Core, GameServer()->Collision());
+		// needed so when SpawnZombie() checks type it sends infos
+		// (for the first spawn)
+		m_ZombType[i] = 69;
 	}
 
 	m_DoInit = true;
+
+	GameServer()->Console()->Register("zomb_start", "?i", CFGFLAG_SERVER, ConZombStart,
+									  this, "Start a ZOMB game");
+
+	m_SpawnClock = -1;
+	m_WaveWaitClock = -1;
+	m_WaveCount = 0;
+	m_ZombGameState = ZSTATE_NONE;
+
+#define WAVE_ADD(waveID, type, isElite)\
+	m_WaveData[waveID][m_WaveSpawnCount[waveID]++] = SpawnCmd{type, isElite}
+
+	for(u32 i = 0; i < 2; ++i) {
+		WAVE_ADD(0, ZTYPE_BASIC, false);
+	}
+
+	WAVE_ADD(1, ZTYPE_BOOMER, false);
+	m_WaveCount = 2;
+
+#undef WAVE_ADD
 }
 
 void CGameControllerZOMB::Tick()
@@ -1151,6 +1235,62 @@ void CGameControllerZOMB::Tick()
 
 	m_Tick = Server()->Tick();
 	IGameController::Tick();
+
+	if(GameServer()->m_World.m_Paused) {
+		return;
+	}
+
+	if(m_ZombGameState == ZSTATE_WAVE_GAME) {
+		// wait in between waves
+		if(m_WaveWaitClock > 0) {
+			--m_WaveWaitClock;
+			if(m_WaveWaitClock == 0) {
+				++m_CurrentWave;
+				m_SpawnClock = SPAWN_INTERVAL;
+			}
+		}
+		else if(m_SpawnClock > 0) {
+			--m_SpawnClock;
+
+			if(m_SpawnClock == 0 && m_SpawnCmdID < m_WaveSpawnCount[m_CurrentWave]) {
+				for(u32 i = 0; i < m_ZombCount; ++i) {
+					if(m_ZombAlive[i]) continue;
+					u32 cmdID = m_SpawnCmdID++;
+					u8 type = m_WaveData[m_CurrentWave][cmdID].type;
+					bool isElite = m_WaveData[m_CurrentWave][cmdID].isElite;
+					SpawnZombie(i, type, isElite);
+					break;
+				}
+
+				m_SpawnClock = SPAWN_INTERVAL;
+			}
+		}
+
+		// end of the wave
+		if(m_SpawnCmdID == m_WaveSpawnCount[m_CurrentWave]) {
+			bool areZombsDead = true;
+			for(u32 i = 0; i < m_ZombCount; ++i) {
+				if(m_ZombAlive[i]) {
+					areZombsDead = false;
+					break;
+				}
+			}
+
+			if(areZombsDead) {
+				m_WaveWaitClock = WAVE_WAIT_TIME;
+				m_SpawnCmdID = 0;
+
+				if(m_CurrentWave == (m_WaveCount-1)) {
+					GameWon();
+				}
+				else {
+					ChatMessage(">> Wave complete.");
+					ChatMessage(">> 10s until next wave.");
+					AnnounceWave(m_CurrentWave + 1);
+				}
+			}
+		}
+	}
 
 	for(u32 i = 0; i < m_ZombCount; ++i) {
 		if(!m_ZombAlive[i]) continue;
@@ -1427,6 +1567,12 @@ bool CGameControllerZOMB::OnEntity(int Index, vec2 Pos)
 	}
 
 	return r;
+}
+
+bool CGameControllerZOMB::HasEnoughPlayers() const
+{
+	// get rid of that annoying warmup message
+	return true;
 }
 
 void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i32 Weapon)
