@@ -59,6 +59,7 @@ class CGameControllerZOMB : public IGameController
 	vec2 m_SurvSpawnPoint[64];
 	u32 m_ZombSpawnPointCount;
 	u32 m_SurvSpawnPointCount;
+	u32 m_SurvSpawnChoose;
 
 	// waves
 	struct SpawnCmd {
@@ -120,7 +121,7 @@ class CGameControllerZOMB : public IGameController
 	void HandleHook(u32 zid, f32 targetDist, bool targetLOS);
 	void HandleBoomer(u32 zid, f32 targetDist, bool targetLOS);
 	void HandleBull(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
-	void HandleMudge(u32 zid, const vec2& targetPos, bool targetLOS);
+	void HandleMudge(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
 	void HandleHunter(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
 
 	static void ConZombStart(IConsole::IResult *pResult, void *pUserData);
@@ -141,7 +142,7 @@ public:
 	bool IsFriendlyFire(int ClientID1, int ClientID2) const;
 	bool OnEntity(int Index, vec2 Pos);
 	bool HasEnoughPlayers() const;
-	bool CanSpawn(int Team, vec2 *pPos) const;
+	bool CanSpawn(int Team, vec2 *pPos);
 	int OnCharacterDeath(class CCharacter *pVictim, class CPlayer *pKiller, int Weapon);
 	void ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i32 Weapon);
 };
