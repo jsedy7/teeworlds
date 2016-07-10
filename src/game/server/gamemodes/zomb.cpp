@@ -734,13 +734,16 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 	Server()->SendPackMsg(&nci, MSGFLAG_VITAL|MSGFLAG_NORECORD, CID);
 }
 
-void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos)
+void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos, bool targetLOS)
 {
 	const vec2& pos = m_ZombCharCore[zid].m_Pos;
 	CNetObj_PlayerInput& input = m_ZombInput[zid];
 
 	vec2& dest = m_ZombDestination[zid];
-	if(m_ZombPathFindClock[zid] <= 0) {
+	if(targetLOS) {
+		dest = targetPos;
+	}
+	else if(m_ZombPathFindClock[zid] <= 0) {
 		dest = PathFind(pos, targetPos);
 		m_ZombPathFindClock[zid] = SecondsToTick(0.1f);
 	}
@@ -776,7 +779,7 @@ void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos)
 	input.m_Jump = 0;
 	if(m_ZombJumpClock[zid] <= 0 && dest.y < pos.y) {
 		f32 yDist = abs(dest.y - pos.y);
-		if(yDist > 10.f) {
+		if(yDist > 2.f) {
 			if(grounded) {
 				input.m_Jump = ZOMBIE_GROUNDJUMP;
 				m_ZombJumpClock[zid] = SecondsToTick(0.5f);
@@ -853,6 +856,10 @@ void CGameControllerZOMB::HandleBoomer(u32 zid, f32 targetDist, bool targetLOS)
 	// BOOM
 	if(m_ZombExplodeClock[zid] == 0) {
 		KillZombie(zid, zombCID);
+		i32 dmg = g_ZombAttackDmg[m_ZombType[zid]];
+		if(m_ZombBuff[zid]&BUFF_ELITE) {
+			dmg *= 2;
+		}
 
 		// explosion effect
 		GameServer()->CreateExplosion(pos, zombCID, 0, 0);
@@ -879,7 +886,7 @@ void CGameControllerZOMB::HandleBoomer(u32 zid, f32 targetDist, bool targetLOS)
 				factor = max(0.2f, l / radiusDiff);
 			}
 
-			apEnts[s]->TakeDamage(n* 30.f * factor, (i32)(g_ZombAttackDmg[m_ZombType[zid]] * factor),
+			apEnts[s]->TakeDamage(n* 30.f * factor, (i32)(dmg * factor),
 					zombCID, WEAPON_GRENADE);
 			u32 cid = apEnts[s]->GetPlayer()->GetCID();
 			CCharacterCore* pCore = GameServer()->m_World.m_Core.m_apCharacters[cid];
@@ -949,6 +956,11 @@ void CGameControllerZOMB::HandleBull(u32 zid, const vec2& targetPos, f32 targetD
 		m_ZombActiveWeapon[zid] = WEAPON_NINJA;
 		m_ZombChargeClock[zid] = BULL_CHARGE_CD; // don't count cd while charging
 
+		i32 dmg = g_ZombAttackDmg[m_ZombType[zid]];
+		if(m_ZombBuff[zid]&BUFF_ELITE) {
+			dmg *= 2;
+		}
+
 		f32 checkRadius = 28.f * 3.f;
 		f32 chargeSpeed = length(m_ZombChargeVel[zid]);
 		u32 checkCount = max(1, (i32)(chargeSpeed / checkRadius));
@@ -974,7 +986,7 @@ void CGameControllerZOMB::HandleBull(u32 zid, const vec2& targetPos, f32 targetD
 				vec2 n = normalize(d);
 
 				GameServer()->CreateHammerHit(apEnts[s]->GetPos());
-				apEnts[s]->TakeDamage(n * BULL_KNOCKBACK_FORCE, g_ZombAttackDmg[m_ZombType[zid]],
+				apEnts[s]->TakeDamage(n * BULL_KNOCKBACK_FORCE, dmg,
 						zombCID, WEAPON_HAMMER);
 				CCharacterCore* pCore = GameServer()->m_World.m_Core.m_apCharacters[cid];
 				if(pCore) {
@@ -1737,6 +1749,11 @@ void CGameControllerZOMB::Tick()
 		--m_ZombHookClock[i];
 		--m_ZombChargeClock[i];
 
+		// elites enrage twice as fast
+		if(m_ZombBuff[i]&BUFF_ELITE) {
+			--m_ZombEnrageClock[i];
+		}
+
 		// enrage
 		if(m_ZombEnrageClock[i] <= 0 &&
 		   (m_ZombBuff[i]&BUFF_ENRAGED) == 0) {
@@ -1782,7 +1799,7 @@ void CGameControllerZOMB::Tick()
 		f32 targetDist = distance(pos, targetPos);
 		bool targetLOS = (GameServer()->Collision()->IntersectLine(pos, targetPos, 0, 0) == 0);
 
-		HandleMovement(i, targetPos);
+		HandleMovement(i, targetPos, targetLOS);
 
 		m_ZombInput[i].m_TargetX = targetPos.x - pos.x;
 		m_ZombInput[i].m_TargetY = targetPos.y - pos.y;
