@@ -1,5 +1,6 @@
 // LordSk
 #include "zomb.h"
+#include <stdio.h>
 #include <io.h>
 #include <engine/server.h>
 #include <engine/console.h>
@@ -11,10 +12,10 @@
 #include <game/server/gamecontext.h>
 
 /* TODO:
- * - zombie types
- * - Bull zombie (charges survivors)
- * - waves
- * - flag to resurect (get red flag to blue to trigger a resurect (red flag on zombie?))
+ * - Queen, Dominant
+ * - Elites
+ * - wave file parsing
+ * - Survival
  */
 
 static char msgBuff__[256];
@@ -61,6 +62,16 @@ enum {
 	ZTYPE_BULL,
 	ZTYPE_MUDGE,
 	ZTYPE_HUNTER,
+	ZTYPE_MAX,
+};
+
+static const char* g_ZombName[] = {
+	"zombie",
+	"Tank",
+	"Boomer",
+	"Bull",
+	"Mudge",
+	"Hunter"
 };
 
 static const u32 g_ZombMaxHealth[] = {
@@ -685,34 +696,35 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 	nci.m_aUseCustomColors[SKINPART_BODY] = 0;
 	nci.m_aSkinPartColors[SKINPART_BODY] = 0;
 
+	if(m_ZombBuff[zid]&BUFF_ELITE) {
+		nci.m_aUseCustomColors[SKINPART_BODY] = 1;
+		nci.m_aSkinPartColors[SKINPART_BODY] = PackColor(39, 255, 60); // yellow
+	}
+
+	nci.m_pName = g_ZombName[m_ZombType[zid]];
+
 	switch(m_ZombType[zid]) {
 		case ZTYPE_BASIC:
-			nci.m_pName = "zombie";
 			nci.m_apSkinPartNames[SKINPART_BODY] = zid%2 ? "zombie1" : "zombie2";
 			break;
 
 		case ZTYPE_TANK:
-			nci.m_pName = "Tank";
 			nci.m_apSkinPartNames[SKINPART_BODY] = "tank";
 			break;
 
 		case ZTYPE_BOOMER:
-			nci.m_pName = "Boomer";
 			nci.m_apSkinPartNames[SKINPART_BODY] = "boomer";
 			break;
 
 		case ZTYPE_BULL:
-			nci.m_pName = "Bull";
 			nci.m_apSkinPartNames[SKINPART_BODY] = "bull";
 			break;
 
 		case ZTYPE_MUDGE:
-			nci.m_pName = "Mudge";
 			nci.m_apSkinPartNames[SKINPART_BODY] = "mudge";
 			break;
 
 		case ZTYPE_HUNTER:
-			nci.m_pName = "Hunter";
 			nci.m_apSkinPartNames[SKINPART_BODY] = "hunter";
 			break;
 
@@ -1187,6 +1199,336 @@ void CGameControllerZOMB::ReviveSurvivors()
 	m_IsReviveCtfActive = false;
 }
 
+enum {
+	TK_INVALID = 0,
+	TK_OPEN_BRACE,
+	TK_CLOSE_BRACE,
+	TK_COLON,
+	TK_SEMICOLON,
+	TK_UNDERSCORE,
+	TK_COMMENT,
+	TK_IDENTIFIER,
+	TK_NUMBER,
+	TK_EOS
+};
+
+struct Token
+{
+	const char* at;
+	u32 length;
+	u8 type;
+};
+
+struct Cursor
+{
+	const char* at;
+};
+
+inline bool IsWhiteSpace(char c)
+{
+	return (c == ' ' ||
+			c == '\n' ||
+			c == '\t' ||
+			c == '\r');
+}
+
+inline bool IsAlpha(char c)
+{
+	return ((c >= 'a' && c <= 'z') ||
+			(c >= 'A' && c <= 'Z'));
+}
+
+inline bool IsNumber(char c)
+{
+	return (c >= '0' && c <= '9');
+}
+
+static Token GetToken(Cursor* pCursor)
+{
+	while(*pCursor->at && IsWhiteSpace(*pCursor->at)) {
+		++pCursor->at;
+	}
+
+	Token token;
+	token.at = pCursor->at;
+	token.length = 1;
+	token.type = TK_INVALID;
+
+	switch(*pCursor->at) {
+		case '{': token.type = TK_OPEN_BRACE; break;
+		case '}': token.type = TK_CLOSE_BRACE; break;
+		case ':': token.type = TK_COLON; break;
+		case ';': token.type = TK_SEMICOLON; break;
+		case '_': token.type = TK_UNDERSCORE; break;
+		case 0: token.type = TK_EOS; break;
+
+		case '#': {
+			token.type = TK_COMMENT;
+			const char* ccur = pCursor->at+1;
+			while(*ccur != 0 && *ccur != '\n') {
+				++token.length;
+				++ccur;
+			}
+		} break;
+
+		default: {
+			if(IsAlpha(*pCursor->at)) {
+				token.type = TK_IDENTIFIER;
+				const char* ccur = pCursor->at+1;
+				while(*ccur != 0 && IsAlpha(*ccur)) {
+					++token.length;
+					++ccur;
+				}
+			}
+			else if(IsNumber(*pCursor->at)) {
+				token.type = TK_NUMBER;
+				const char* ccur = pCursor->at+1;
+				while(*ccur != 0 && IsNumber(*ccur)) {
+					++token.length;
+					++ccur;
+				}
+			}
+		} break;
+	}
+
+	pCursor->at += token.length;
+	return token;
+}
+
+static bool ParseZombDecl(Cursor* pCursor, u32* out_pCount, bool* out_pIsElite)
+{
+	Token token = GetToken(pCursor);
+
+	// _elite
+	if(token.type == TK_UNDERSCORE) {
+		token = GetToken(pCursor);
+		if(token.type == TK_IDENTIFIER && token.length == 5
+		   && str_comp_nocase_num(token.at, "elite", 5) == 0) {
+			*out_pIsElite = true;
+			token = GetToken(pCursor); // :
+		}
+		else {
+			return false;
+		}
+	}
+
+	if(token.type != TK_COLON) {
+		return false;
+	}
+
+	token = GetToken(pCursor);
+	if(token.type != TK_NUMBER) {
+		return false;
+	}
+
+	// parse count
+	char numBuff[8];
+	memcpy(numBuff, token.at, token.length);
+	numBuff[token.length] = 0;
+	*out_pCount = str_toint(numBuff);
+
+	token = GetToken(pCursor);
+	if(token.type != TK_SEMICOLON) {
+		return false;
+	}
+
+	return true;
+}
+
+bool CGameControllerZOMB::LoadWaveFile()
+{
+	char path[256];
+	str_format(path, sizeof(path), "./zomb/%s.wave", m_MapName);
+	FILE* pWaveFile = fopen(path, "r");
+	if(pWaveFile) {
+		fseek(pWaveFile, 0, SEEK_END);
+		u32 fileSize = ftell(pWaveFile);
+		fseek(pWaveFile, 0, SEEK_SET);
+		char* fileContents = (char*)mem_alloc(fileSize+1, 1);
+		fileSize = fread(fileContents, sizeof(char), fileSize, pWaveFile);
+		fileContents[fileSize] = 0;
+
+		// parse wave file
+		bool parsing = true;
+		Cursor cursor;
+		cursor.at = fileContents;
+
+		bool insideWave = false;
+		i32 waveId = -1;
+		u32 waveZombCount = 0;
+
+		while(parsing) {
+			Token token = GetToken(&cursor);
+
+			switch(token.type) {
+				case TK_OPEN_BRACE: {
+					//dbg_zomb_msg("{");
+					if(!insideWave) {
+						++waveId;
+						++m_WaveCount;
+						insideWave = true;
+						waveZombCount = 0;
+					}
+					else {
+						dbg_zomb_msg("Wave parsing error: { not closed");
+						return false;
+					}
+				} break;
+
+				case TK_CLOSE_BRACE: {
+					//dbg_zomb_msg("}");
+					if(insideWave) {
+						if(waveZombCount == 0) {
+							dbg_zomb_msg("Wave parsing error: wave %d is empty", waveId);
+							return false;
+						}
+
+						insideWave = false;
+					}
+					else {
+						dbg_zomb_msg("Wave parsing error: } not open");
+						return false;
+					}
+				} break;
+
+				case TK_IDENTIFIER: {
+					//dbg_zomb_msg("%.*s", token.length, token.at);
+					if(insideWave) {
+						i32 zombType = -1;
+						for(i32 i = 0; i < ZTYPE_MAX; ++i) {
+							if(strlen(g_ZombName[i]) == token.length &&
+							   str_comp_nocase_num(token.at, g_ZombName[i], token.length) == 0) {
+								zombType = i;
+								break;
+							}
+						}
+
+						if(zombType != -1) {
+							u32 count = 0;
+							bool isElite = false;
+							if(ParseZombDecl(&cursor, &count, &isElite)) {
+								// add to wave
+								/*dbg_zomb_msg("Wave %d: add %s %d %d", waveId, g_ZombName[zombType],
+											 count, isElite);*/
+								for(u32 c = 0; c < count; ++c) {
+									m_WaveData[waveId][m_WaveSpawnCount[waveId]++] = SpawnCmd{(u8)zombType,
+											isElite};
+								}
+
+								waveZombCount += count;
+							}
+							else {
+								dbg_zomb_msg("Wave parsing error: near %.*s (format is type[_elite]: count;)", token.length, token.at);
+								return false;
+							}
+						}
+						else {
+							dbg_zomb_msg("Wave parsing error: near %.*s (unknown identifer)",
+										 token.length, token.at);
+							return false;
+						}
+					}
+					else {
+						dbg_zomb_msg("Wave parsing error: identifier outside wave block");
+						return false;
+					}
+				} break;
+
+				case TK_EOS: {
+					parsing = false;
+				} break;
+			}
+		}
+
+		if(m_WaveCount == 0) {
+			dbg_zomb_msg("Wave parsing error: no waves declared");
+			return false;
+		}
+
+		mem_free(fileContents);
+		return true;
+	}
+
+	return false;
+}
+
+void CGameControllerZOMB::LoadDefaultWaves()
+{
+	mem_zero(m_WaveSpawnCount, sizeof(u32) * MAX_WAVES);
+	m_WaveCount = 0;
+
+#define WAVE_ADD(waveID, type, isElite)\
+	m_WaveData[waveID][m_WaveSpawnCount[waveID]++] = SpawnCmd{type, isElite}
+
+		// wave 0
+		for(u32 i = 0; i < 10; ++i) {
+			WAVE_ADD(0, ZTYPE_BASIC, false);
+		}
+
+		// wave 1
+		for(u32 i = 0; i < 8; ++i) {
+			WAVE_ADD(1, ZTYPE_BASIC, false);
+		}
+		WAVE_ADD(1, ZTYPE_BOOMER, false);
+		WAVE_ADD(1, ZTYPE_BOOMER, false);
+		for(u32 i = 0; i < 8; ++i) {
+			WAVE_ADD(1, ZTYPE_BASIC, false);
+		}
+
+		// wave 2
+		for(u32 i = 0; i < 4; ++i) {
+			WAVE_ADD(2, ZTYPE_BASIC, false);
+		}
+		WAVE_ADD(2, ZTYPE_MUDGE, false);
+		WAVE_ADD(2, ZTYPE_BULL, false);
+		for(u32 i = 0; i < 8; ++i) {
+			WAVE_ADD(2, ZTYPE_BASIC, false);
+		}
+
+		// wave 3
+		WAVE_ADD(3, ZTYPE_TANK, false);
+		for(u32 i = 0; i < 15; ++i) {
+			WAVE_ADD(3, ZTYPE_BASIC, false);
+		}
+		WAVE_ADD(3, ZTYPE_MUDGE, false);
+		WAVE_ADD(3, ZTYPE_MUDGE, false);
+		for(u32 i = 0; i < 15; ++i) {
+			WAVE_ADD(3, ZTYPE_BASIC, false);
+		}
+
+		// wave 4
+		WAVE_ADD(4, ZTYPE_HUNTER, false);
+		WAVE_ADD(4, ZTYPE_HUNTER, false);
+		for(u32 i = 0; i < 10; ++i) {
+			WAVE_ADD(4, ZTYPE_BASIC, false);
+		}
+		WAVE_ADD(4, ZTYPE_BULL, false);
+		WAVE_ADD(4, ZTYPE_BULL, false);
+		for(u32 i = 0; i < 10; ++i) {
+			WAVE_ADD(4, ZTYPE_BASIC, false);
+		}
+
+		// wave 5
+		for(u32 i = 0; i < 2; ++i) {
+			WAVE_ADD(5, ZTYPE_BASIC, false);
+			WAVE_ADD(5, ZTYPE_BOOMER, false);
+			WAVE_ADD(5, ZTYPE_BULL, false);
+			WAVE_ADD(5, ZTYPE_MUDGE, false);
+			WAVE_ADD(5, ZTYPE_HUNTER, false);
+			WAVE_ADD(5, ZTYPE_TANK, false);
+		}
+
+		// wave 6
+		for(u32 i = 0; i < 2; ++i) {
+			WAVE_ADD(5, ZTYPE_HUNTER, false);
+			WAVE_ADD(5, ZTYPE_BULL, false);
+		}
+
+		m_WaveCount = 7;
+
+#undef WAVE_ADD
+}
+
 #ifdef CONF_DEBUG
 void CGameControllerZOMB::DebugPathAddPoint(ivec2 p)
 {
@@ -1213,6 +1555,7 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	m_SurvSpawnChoose = 0;
 
 	// get map info
+	memcpy(m_MapName, g_Config.m_SvMap, sizeof(g_Config.m_SvMap));
 	mem_zero(m_Map, MAX_MAP_SIZE);
 	CMapItemLayerTilemap* pGameLayer = GameServer()->Layers()->GameLayer();
 	m_MapWidth = pGameLayer->m_Width;
@@ -1254,85 +1597,26 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	GameServer()->Console()->Register("zomb_start", "?i", CFGFLAG_SERVER, ConZombStart,
 									  this, "Start a ZOMB game");
 
-	m_SpawnClock = -1;
-	m_WaveWaitClock = -1;
-	m_WaveCount = 0;
 	m_ZombGameState = ZSTATE_NONE;
 
 	m_BlueFlagSpawnCount = 0;
 	m_IsReviveCtfActive = false;
 	m_CanPlayersRespawn = true;
 
-#define WAVE_ADD(waveID, type, isElite)\
-	m_WaveData[waveID][m_WaveSpawnCount[waveID]++] = SpawnCmd{type, isElite}
+	mem_zero(m_WaveSpawnCount, sizeof(u32) * MAX_WAVES);
+	m_WaveCount = 0;
+	m_CurrentWave = 0;
+	m_SpawnCmdID = 0;
+	m_SpawnClock = -1;
+	m_WaveWaitClock = -1;
 
-	// wave 0
-	for(u32 i = 0; i < 10; ++i) {
-		WAVE_ADD(0, ZTYPE_BASIC, false);
+	if(LoadWaveFile()) {
+		dbg_zomb_msg("wave file loaded (%d waves).", m_WaveCount);
 	}
-
-	// wave 1
-	for(u32 i = 0; i < 8; ++i) {
-		WAVE_ADD(1, ZTYPE_BASIC, false);
+	else {
+		dbg_zomb_msg("Error: could not load this map's wave file, using default waves.");
+		LoadDefaultWaves();
 	}
-	WAVE_ADD(1, ZTYPE_BOOMER, false);
-	WAVE_ADD(1, ZTYPE_BOOMER, false);
-	for(u32 i = 0; i < 8; ++i) {
-		WAVE_ADD(1, ZTYPE_BASIC, false);
-	}
-
-	// wave 2
-	for(u32 i = 0; i < 4; ++i) {
-		WAVE_ADD(2, ZTYPE_BASIC, false);
-	}
-	WAVE_ADD(2, ZTYPE_MUDGE, false);
-	WAVE_ADD(2, ZTYPE_BULL, false);
-	for(u32 i = 0; i < 8; ++i) {
-		WAVE_ADD(2, ZTYPE_BASIC, false);
-	}
-
-	// wave 3
-	WAVE_ADD(3, ZTYPE_TANK, false);
-	for(u32 i = 0; i < 15; ++i) {
-		WAVE_ADD(3, ZTYPE_BASIC, false);
-	}
-	WAVE_ADD(3, ZTYPE_MUDGE, false);
-	WAVE_ADD(3, ZTYPE_MUDGE, false);
-	for(u32 i = 0; i < 15; ++i) {
-		WAVE_ADD(3, ZTYPE_BASIC, false);
-	}
-
-	// wave 4
-	WAVE_ADD(4, ZTYPE_HUNTER, false);
-	WAVE_ADD(4, ZTYPE_HUNTER, false);
-	for(u32 i = 0; i < 10; ++i) {
-		WAVE_ADD(4, ZTYPE_BASIC, false);
-	}
-	WAVE_ADD(4, ZTYPE_BULL, false);
-	WAVE_ADD(4, ZTYPE_BULL, false);
-	for(u32 i = 0; i < 10; ++i) {
-		WAVE_ADD(4, ZTYPE_BASIC, false);
-	}
-
-	// wave 5
-	for(u32 i = 0; i < 2; ++i) {
-		WAVE_ADD(5, ZTYPE_BASIC, false);
-		WAVE_ADD(5, ZTYPE_BOOMER, false);
-		WAVE_ADD(5, ZTYPE_BULL, false);
-		WAVE_ADD(5, ZTYPE_MUDGE, false);
-		WAVE_ADD(5, ZTYPE_HUNTER, false);
-		WAVE_ADD(5, ZTYPE_TANK, false);
-	}
-
-	// wave 6
-	for(u32 i = 0; i < 2; ++i) {
-		WAVE_ADD(5, ZTYPE_HUNTER, false);
-		WAVE_ADD(5, ZTYPE_BULL, false);
-	}
-
-	m_WaveCount = 7;
-
-#undef WAVE_ADD
 }
 
 void CGameControllerZOMB::Tick()

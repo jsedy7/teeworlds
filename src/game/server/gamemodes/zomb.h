@@ -51,6 +51,7 @@ class CGameControllerZOMB : public IGameController
 	vec2 m_ZombChargeVel[MAX_ZOMBS];
 	bool m_ZombChargeHit[MAX_ZOMBS][MAX_CLIENTS];
 
+	char m_MapName[128];
 	u8 m_Map[MAX_MAP_SIZE];
 	u32 m_MapWidth;
 	u32 m_MapHeight;
@@ -60,6 +61,8 @@ class CGameControllerZOMB : public IGameController
 	u32 m_ZombSpawnPointCount;
 	u32 m_SurvSpawnPointCount;
 	u32 m_SurvSpawnChoose;
+
+	u32 m_ZombGameState;
 
 	// waves
 	struct SpawnCmd {
@@ -74,7 +77,6 @@ class CGameControllerZOMB : public IGameController
 	u32 m_SpawnCmdID;
 	i32 m_SpawnClock;
 	i32 m_WaveWaitClock;
-	u32 m_ZombGameState;
 
 	// revive ctf
 	u32 m_BlueFlagSpawnCount;
@@ -133,6 +135,9 @@ class CGameControllerZOMB : public IGameController
 
 	void ActivateReviveCtf();
 	void ReviveSurvivors();
+
+	bool LoadWaveFile();
+	void LoadDefaultWaves();
 
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer);
