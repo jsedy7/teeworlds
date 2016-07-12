@@ -13,8 +13,8 @@
 
 /* TODO:
  * - Queen, Dominant
- * - Survival
  * - Boss zombies?
+ * - tweak bull
  */
 
 static char msgBuff__[256];
@@ -1165,6 +1165,7 @@ void CGameControllerZOMB::StartZombGame(u32 startingWave)
 	// needed so when SpawnZombie() checks type it sends infos
 	// (for the first spawn)
 	for(u32 i = 0; i < m_ZombCount; ++i) {
+		KillZombie(i, -1);
 		m_ZombType[i] = ZTYPE_INVALID;
 	}
 
@@ -1304,6 +1305,7 @@ struct Token
 struct Cursor
 {
 	const char* at;
+	u32 line;
 };
 
 inline bool IsWhiteSpace(char c)
@@ -1328,6 +1330,9 @@ inline bool IsNumber(char c)
 static Token GetToken(Cursor* pCursor)
 {
 	while(*pCursor->at && IsWhiteSpace(*pCursor->at)) {
+		if(*pCursor->at == '\n') {
+			++pCursor->line;
+		}
 		++pCursor->at;
 	}
 
@@ -1465,6 +1470,8 @@ bool CGameControllerZOMB::LoadWaveFile(const char* path)
 		return true;
 	}
 
+	std_zomb_msg("Error: could not open %s", path);
+
 	return false;
 }
 
@@ -1478,6 +1485,7 @@ bool CGameControllerZOMB::ParseWaveFile(const char* pBuff)
 	bool parsing = true;
 	Cursor cursor;
 	cursor.at = pBuff;
+	cursor.line = 1;
 
 	bool insideWave = false;
 	i32 waveId = -1;
@@ -1495,7 +1503,7 @@ bool CGameControllerZOMB::ParseWaveFile(const char* pBuff)
 					insideWave = true;
 				}
 				else {
-					dbg_zomb_msg("Wave parsing error: { not closed");
+					std_zomb_msg("Error: wave parsing error: { not closed (line: %d)", cursor.line);
 					return false;
 				}
 			} break;
@@ -1504,14 +1512,14 @@ bool CGameControllerZOMB::ParseWaveFile(const char* pBuff)
 				//dbg_zomb_msg("}");
 				if(insideWave) {
 					if(waveSpawnCount[waveId] == 0) {
-						dbg_zomb_msg("Wave parsing error: wave %d is empty", waveId);
+						std_zomb_msg("Error: wave parsing error: wave %d is empty (line: %d)", waveId, cursor.line);
 						return false;
 					}
 
 					insideWave = false;
 				}
 				else {
-					dbg_zomb_msg("Wave parsing error: } not open");
+					std_zomb_msg("Error: wave parsing error: } not open (line: %d)", cursor.line);
 					return false;
 				}
 			} break;
@@ -1539,8 +1547,8 @@ bool CGameControllerZOMB::ParseWaveFile(const char* pBuff)
 							}
 						}
 						else {
-							dbg_zomb_msg("Wave parsing error: near %.*s (format is type[_elite]: count;)",
-										 token.length, token.at);
+							std_zomb_msg("Error: wave parsing error: near %.*s (format is type[_elite]: count;) (line: %d)",
+										 token.length, token.at, cursor.line);
 							return false;
 						}
 					}
@@ -1551,20 +1559,20 @@ bool CGameControllerZOMB::ParseWaveFile(const char* pBuff)
 							waveEnrageTime[waveId] = enrageTime;
 						}
 						else {
-							dbg_zomb_msg("Wave parsing error: near %.*s (format is enrage: time;)",
-										 token.length, token.at);
+							std_zomb_msg("Error: wave parsing error: near %.*s (format is enrage: time;) (line: %d)",
+										 token.length, token.at, cursor.line);
 							return false;
 						}
 
 					}
 					else {
-						dbg_zomb_msg("Wave parsing error: near %.*s (unknown identifer)",
-									 token.length, token.at);
+						std_zomb_msg("Error: wave parsing error: near %.*s (unknown identifer) (line: %d)",
+									 token.length, token.at, cursor.line);
 						return false;
 					}
 				}
 				else {
-					dbg_zomb_msg("Wave parsing error: identifier outside wave block");
+					std_zomb_msg("Error: wave parsing error: identifier outside wave block (line: %d)", cursor.line);
 					return false;
 				}
 			} break;
@@ -1576,7 +1584,7 @@ bool CGameControllerZOMB::ParseWaveFile(const char* pBuff)
 	}
 
 	if(waveCount == 0) {
-		dbg_zomb_msg("Wave parsing error: no waves declared");
+		std_zomb_msg("Error: wave parsing error: no waves declared");
 		return false;
 	}
 
@@ -1592,7 +1600,8 @@ void CGameControllerZOMB::LoadDefaultWaves()
 {
 	static const char* defaultWavesFile = {
 		"{"
-		"	zombies: 10;"
+		"	tank: 5;"
+		"	tank_elite: 5;"
 		"}"
 	};
 
@@ -1608,10 +1617,6 @@ void CGameControllerZOMB::ConLoadWaveFile(IConsole::IResult* pResult, void* pUse
 		if(pThis->LoadWaveFile(rStr)) {
 			pThis->ChatMessage("-- New waves successfully loaded.");
 			memcpy(g_Config.m_SvZombWaveFile, rStr, min(256, (i32)strlen(rStr)));
-		}
-		else {
-			pThis->GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "zomb",
-												  "can't load wave file");
 		}
 	}
 }
@@ -1741,7 +1746,7 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 		std_zomb_msg("wave file loaded (%d waves).", m_WaveCount);
 	}
 	else {
-		std_zomb_msg("Error: could not load wave file (%s), using default waves.", g_Config.m_SvZombWaveFile);
+		std_zomb_msg("loading default waves.");
 		LoadDefaultWaves();
 	}
 
