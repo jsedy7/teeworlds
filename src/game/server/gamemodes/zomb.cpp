@@ -1696,7 +1696,6 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	m_ZombCount = MAX_ZOMBS;
 	m_ZombSpawnPointCount = 0;
 	m_SurvSpawnPointCount = 0;
-	m_SurvSpawnChoose = 0;
 	m_Seed = 1337;
 
 	// get map info
@@ -2174,7 +2173,7 @@ bool CGameControllerZOMB::HasEnoughPlayers() const
 	return true;
 }
 
-bool CGameControllerZOMB::CanSpawn(int Team, vec2* pPos)
+bool CGameControllerZOMB::CanSpawn(int Team, vec2* pPos) const
 {
 	if(Team == TEAM_SPECTATORS) {
 		return false;
@@ -2184,7 +2183,18 @@ bool CGameControllerZOMB::CanSpawn(int Team, vec2* pPos)
 		return false;
 	}
 
-	*pPos = m_SurvSpawnPoint[m_SurvSpawnChoose++%m_SurvSpawnPointCount];
+	u32 chosen = (m_Tick%m_SurvSpawnPointCount);
+	CCharacter *aEnts[MAX_SURVIVORS];
+	for(u32 i = 0; i < m_SurvSpawnPointCount; ++i) {
+		i32 count = GameServer()->m_World.FindEntities(m_SurvSpawnPoint[i], 28.f, (CEntity**)aEnts,
+													   MAX_SURVIVORS, CGameWorld::ENTTYPE_CHARACTER);
+		if(count == 0) {
+			chosen = i;
+			break;
+		}
+	}
+
+	*pPos = m_SurvSpawnPoint[chosen];
 	return true;
 }
 

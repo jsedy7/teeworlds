@@ -201,7 +201,7 @@ public:
 	void ChangeMap(const char *pToMap);
 
 	//spawn
-	virtual bool CanSpawn(int Team, vec2 *pPos);
+	virtual bool CanSpawn(int Team, vec2 *pPos) const;
 	bool GetStartRespawnState() const;
 
 	// team

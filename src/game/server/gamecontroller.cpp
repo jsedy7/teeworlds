@@ -972,7 +972,7 @@ void IGameController::CycleMap()
 }
 
 // spawn
-bool IGameController::CanSpawn(int Team, vec2 *pOutPos)
+bool IGameController::CanSpawn(int Team, vec2 *pOutPos) const
 {
 	// spectators can't spawn
 	if(Team == TEAM_SPECTATORS || GameServer()->m_World.m_Paused || GameServer()->m_World.m_ResetRequested)
