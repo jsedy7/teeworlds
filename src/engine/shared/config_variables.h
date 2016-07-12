@@ -100,6 +100,11 @@ MACRO_CONFIG_STR(DbgStressServer, dbg_stress_server, 32, "localhost", CFGFLAG_CL
 MACRO_CONFIG_INT(DbgResizable, dbg_resizable, 0, 0, 0, CFGFLAG_CLIENT, "Enables window resizing")
 
 // zomb
+#ifdef CONF_DEBUG
 MACRO_CONFIG_INT(DbgPathFindIterations, sv_pf_iterations, 2500, 1, 10000, CFGFLAG_SERVER, "Debug pathfind iterations")
+#endif
+
+MACRO_CONFIG_INT(SvZombAutoRestart, sv_zomb_auto_restart, 0, 0, 1, CFGFLAG_SERVER, "Zomb auto restart")
+MACRO_CONFIG_STR(SvZombWaveFile, sv_zomb_wave_file, 256, "", CFGFLAG_SAVE|CFGFLAG_SERVER, "Zomb wave file path")
 
 #endif

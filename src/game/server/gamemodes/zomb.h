@@ -136,7 +136,8 @@ class CGameControllerZOMB : public IGameController
 	void ActivateReviveCtf();
 	void ReviveSurvivors();
 
-	bool LoadWaveFile();
+	bool LoadWaveFile(const char* path);
+	bool ParseWaveFile(const char* pBuff);
 	void LoadDefaultWaves();
 
 public:
