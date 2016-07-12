@@ -27,6 +27,11 @@ static char msgBuff__[256];
 	str_format(msgBuff__, 256, ##__VA_ARGS__);\
 	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "zomb", msgBuff__);
 
+#define std_zomb_msg(...)\
+	memset(msgBuff__, 0, sizeof(msgBuff__));\
+	str_format(msgBuff__, 256, ##__VA_ARGS__);\
+	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "zomb", msgBuff__);
+
 #define ZombCID(id) (id + MAX_SURVIVORS)
 #define NO_TARGET -1
 #define SecondsToTick(sec) (i32)(sec * SERVER_TICK_SPEED)
@@ -151,10 +156,10 @@ enum {
 	ZSTATE_SURV_GAME,
 };
 
-static i32 randInt(i32 min, i32 max)
+static i32 RandInt(i32 min, i32 max)
 {
 	dbg_assert(max > min, "RandInt(min, max) max must be > min");
-	return (min + (rand() / (float)RAND_MAX) * (max + 1 - min));
+	return (min + (rand() / (f32)RAND_MAX) * (max + 1 - min));
 }
 
 void CGameControllerZOMB::SpawnZombie(i32 zid, u8 type, bool isElite)
@@ -178,7 +183,7 @@ void CGameControllerZOMB::SpawnZombie(i32 zid, u8 type, bool isElite)
 		m_ZombBuff[zid] |= BUFF_ELITE;
 	}
 
-	vec2 spawnPos = m_ZombSpawnPoint[zid%m_ZombSpawnPointCount];
+	vec2 spawnPos = m_ZombSpawnPoint[(zid + m_Seed)%m_ZombSpawnPointCount];
 	m_ZombCharCore[zid].Reset();
 	m_ZombCharCore[zid].m_Pos = spawnPos;
 	GameServer()->m_World.m_Core.m_apCharacters[ZombCID(zid)] = &m_ZombCharCore[zid];
@@ -1027,7 +1032,6 @@ void CGameControllerZOMB::HandleBull(u32 zid, const vec2& targetPos, f32 targetD
 						g_ZombKnockbackMultiplier[m_ZombType[z]];
 				m_ZombHookClock[z] = SecondsToTick(1);
 				m_ZombInput[z].m_Hook = 0;
-				dbg_zomb_msg("knocked %d back", z);
 			}
 
 			// it hit something, reset attack time so it doesn't attack when
@@ -1157,6 +1161,8 @@ void CGameControllerZOMB::StartZombGame(u32 startingWave)
 	for(u32 i = 0; i < m_ZombCount; ++i) {
 		m_ZombType[i] = ZTYPE_INVALID;
 	}
+
+	m_Seed = RandInt(0, 9999);
 }
 
 void CGameControllerZOMB::GameWon()
@@ -1523,6 +1529,23 @@ void CGameControllerZOMB::LoadDefaultWaves()
 	ParseWaveFile(defaultWavesFile);
 }
 
+void CGameControllerZOMB::ConLoadWaveFile(IConsole::IResult* pResult, void* pUserData)
+{
+	CGameControllerZOMB *pThis = (CGameControllerZOMB *)pUserData;
+
+	if(pResult->NumArguments()) {
+		const char* rStr = pResult->GetString(0);
+		memcpy(g_Config.m_SvZombWaveFile, rStr, min(256, (i32)strlen(rStr)));
+		if(pThis->LoadWaveFile(rStr)) {
+			pThis->ChatMessage("-- New waves successfully loaded.");
+		}
+		else {
+			pThis->GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "zomb",
+												  "can't load wave file");
+		}
+	}
+}
+
 #ifdef CONF_DEBUG
 void CGameControllerZOMB::DebugPathAddPoint(ivec2 p)
 {
@@ -1547,6 +1570,7 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	m_ZombSpawnPointCount = 0;
 	m_SurvSpawnPointCount = 0;
 	m_SurvSpawnChoose = 0;
+	m_Seed = 1337;
 
 	// get map info
 	memcpy(m_MapName, g_Config.m_SvMap, sizeof(g_Config.m_SvMap));
@@ -1578,6 +1602,8 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 
 	GameServer()->Console()->Register("zomb_start", "?i", CFGFLAG_SERVER, ConZombStart,
 									  this, "Start a ZOMB game");
+	GameServer()->Console()->Register("zomb_load", "s", CFGFLAG_SERVER, ConLoadWaveFile,
+									  this, "Load a ZOMB wave file");
 
 	m_ZombGameState = ZSTATE_NONE;
 
@@ -1593,10 +1619,10 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	m_WaveWaitClock = -1;
 
 	if(LoadWaveFile(g_Config.m_SvZombWaveFile)) {
-		dbg_zomb_msg("wave file loaded (%d waves).", m_WaveCount);
+		std_zomb_msg("wave file loaded (%d waves).", m_WaveCount);
 	}
 	else {
-		dbg_zomb_msg("Error: could not load wave file (%s), using default waves.", g_Config.m_SvZombWaveFile);
+		std_zomb_msg("Error: could not load wave file (%s), using default waves.", g_Config.m_SvZombWaveFile);
 		LoadDefaultWaves();
 	}
 
@@ -2113,7 +2139,6 @@ void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i3
 	}
 
 	u32 zid = CID - MAX_SURVIVORS;
-	dbg_zomb_msg("%d taking %d dmg", CID, Dmg);
 
 	// make sure damage indicators don't group together
 	++m_ZombDmgAngle[zid];
@@ -2129,7 +2154,6 @@ void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i3
 	m_ZombHealth[zid] -= Dmg;
 	if(m_ZombHealth[zid] <= 0) {
 		KillZombie(zid, -1);
-		dbg_zomb_msg("%d died", CID);
 	}
 
 	m_ZombCharCore[zid].m_Vel += Force * g_ZombKnockbackMultiplier[m_ZombType[zid]];

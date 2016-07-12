@@ -19,6 +19,7 @@ typedef double f64;
 class CGameControllerZOMB : public IGameController
 {
 	i32 m_Tick;
+	u32 m_Seed;
 	u32 m_ZombCount;
 	CCharacterCore m_ZombCharCore[MAX_ZOMBS];
 	CNetObj_PlayerInput m_ZombInput[MAX_ZOMBS];
@@ -139,6 +140,7 @@ class CGameControllerZOMB : public IGameController
 	bool LoadWaveFile(const char* path);
 	bool ParseWaveFile(const char* pBuff);
 	void LoadDefaultWaves();
+	static void ConLoadWaveFile(IConsole::IResult *pResult, void *pUserData);
 
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer);
