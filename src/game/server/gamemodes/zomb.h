@@ -143,6 +143,8 @@ class CGameControllerZOMB : public IGameController
 	void LoadDefaultWaves();
 	static void ConLoadWaveFile(IConsole::IResult *pResult, void *pUserData);
 
+	void TickReviveCtf();
+
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer);
 	void Tick();

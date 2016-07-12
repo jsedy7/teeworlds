@@ -15,8 +15,6 @@
  * - Queen, Dominant
  * - Survival
  * - Boss zombies?
- * - spawn flag on zombie
- * - specify enrage time per wave (file)
  */
 
 static char msgBuff__[256];
@@ -221,6 +219,10 @@ void CGameControllerZOMB::KillZombie(i32 zid, i32 killerCID)
 	GameServer()->CreateSound(m_ZombCharCore[zid].m_Pos, SOUND_PLAYER_PAIN_LONG);
 	GameServer()->CreateDeath(m_ZombCharCore[zid].m_Pos, ZombCID(zid));
 	// TODO: send a kill message?
+
+	if(m_RedFlagCarrier == ZombCID(zid)) {
+		m_RedFlagCarrier = -1;
+	}
 }
 
 void CGameControllerZOMB::SwingHammer(i32 zid, u32 dmg, f32 knockback)
@@ -1237,6 +1239,31 @@ void CGameControllerZOMB::ActivateReviveCtf()
 	GameServer()->CreateSound(m_RedFlagPos, SOUND_CTF_RETURN);
 	m_IsReviveCtfActive = true;
 	m_CanPlayersRespawn = false;
+
+	// if there are more than 2 people playing,
+	// spawn flag on a random zombie
+	u32 survCount = 0;
+	for(u32 i = 0; i < MAX_SURVIVORS; ++i) {
+		if(GameServer()->m_apPlayers[i]) {
+			++survCount;
+		}
+	}
+
+	u32 choices[MAX_ZOMBS];
+	u32 choiceCount = 0;
+	if(survCount > 2) {
+		for(u32 i = 0; i < MAX_ZOMBS; ++i) {
+			if(m_ZombAlive[i]) {
+				choices[choiceCount++] = i;
+			}
+		}
+
+		if(choiceCount > 0) {
+			u32 chosen = choices[m_Tick%choiceCount];
+			m_RedFlagCarrier = ZombCID(chosen);
+			m_RedFlagPos = m_ZombCharCore[chosen].m_Pos;
+		}
+	}
 }
 
 void CGameControllerZOMB::ReviveSurvivors()
@@ -1589,6 +1616,63 @@ void CGameControllerZOMB::ConLoadWaveFile(IConsole::IResult* pResult, void* pUse
 	}
 }
 
+void CGameControllerZOMB::TickReviveCtf()
+{
+	bool everyoneDead = true;
+	for(u32 i = 0; i < MAX_SURVIVORS; ++i) {
+		if(GameServer()->GetPlayerChar(i)) {
+			everyoneDead = false;
+		}
+		else if(GameServer()->m_apPlayers[i] &&
+				GameServer()->m_apPlayers[i]->GetTeam() != TEAM_SPECTATORS) {
+			GameServer()->m_apPlayers[i]->SetTeam(TEAM_SPECTATORS, false);
+		}
+	}
+
+	if(everyoneDead) {
+		GameLost();
+		return;
+	}
+
+	if(m_RedFlagCarrier == -1) {
+		m_RedFlagVel.y += GameServer()->Tuning()->m_Gravity;
+		GameServer()->Collision()->MoveBox(&m_RedFlagPos,
+										   &m_RedFlagVel,
+										   vec2(28.f, 28.f),
+										   0.f);
+
+		CCharacter *apEnts[MAX_SURVIVORS];
+		i32 count = GameServer()->m_World.FindEntities(m_RedFlagPos, 56.f,
+													   (CEntity**)apEnts, MAX_SURVIVORS,
+													   CGameWorld::ENTTYPE_CHARACTER);
+
+		for(i32 i = 0; i < count; ++i) {
+			m_RedFlagCarrier = apEnts[i]->GetPlayer()->GetCID();
+			m_RedFlagVel = vec2(0, 0);
+			m_RedFlagPos = apEnts[i]->GetPos();
+			GameServer()->CreateSound(m_RedFlagPos, SOUND_CTF_GRAB_PL);
+			break;
+		}
+
+	}
+	else {
+		if(IsSurvivor(m_RedFlagCarrier)) {
+			m_RedFlagPos = GameServer()->GetPlayerChar(m_RedFlagCarrier)->GetPos();
+		}
+		else {
+			m_RedFlagPos = m_ZombCharCore[m_RedFlagCarrier - MAX_SURVIVORS].m_Pos;
+		}
+
+		m_RedFlagVel = vec2(0, 0);
+	}
+
+	// capture
+	if(distance(m_RedFlagPos, m_BlueFlagPos) < 100.f && IsSurvivor(m_RedFlagCarrier)) {
+		GameServer()->CreateSound(m_RedFlagPos, SOUND_CTF_CAPTURE);
+		ReviveSurvivors();
+	}
+}
+
 #ifdef CONF_DEBUG
 void CGameControllerZOMB::DebugPathAddPoint(ivec2 p)
 {
@@ -1669,57 +1753,6 @@ void CGameControllerZOMB::Tick()
 {
 	m_Tick = Server()->Tick();
 	IGameController::Tick();
-
-	if(m_IsReviveCtfActive && m_ZombGameState != ZSTATE_NONE) {
-		bool everyoneDead = true;
-		for(u32 i = 0; i < MAX_SURVIVORS; ++i) {
-			if(GameServer()->GetPlayerChar(i)) {
-				everyoneDead = false;
-			}
-			else if(GameServer()->m_apPlayers[i] &&
-					GameServer()->m_apPlayers[i]->GetTeam() != TEAM_SPECTATORS) {
-				GameServer()->m_apPlayers[i]->SetTeam(TEAM_SPECTATORS, false);
-			}
-		}
-
-		if(everyoneDead) {
-			GameLost();
-			return;
-		}
-
-		if(m_RedFlagCarrier == -1) {
-			m_RedFlagVel.y += GameServer()->Tuning()->m_Gravity;
-			GameServer()->Collision()->MoveBox(&m_RedFlagPos,
-											   &m_RedFlagVel,
-											   vec2(28.f, 28.f),
-											   0.f);
-
-			CCharacter *apEnts[MAX_SURVIVORS];
-			i32 count = GameServer()->m_World.FindEntities(m_RedFlagPos, 56.f,
-														   (CEntity**)apEnts, MAX_SURVIVORS,
-														   CGameWorld::ENTTYPE_CHARACTER);
-
-			for(i32 i = 0; i < count; ++i) {
-				m_RedFlagCarrier = apEnts[i]->GetPlayer()->GetCID();
-				m_RedFlagVel = vec2(0, 0);
-				m_RedFlagPos = apEnts[i]->GetPos();
-				GameServer()->CreateSound(m_RedFlagPos, SOUND_CTF_GRAB_PL);
-				break;
-			}
-
-		}
-		else {
-			m_RedFlagPos = GameServer()->GetPlayerChar(m_RedFlagCarrier)->GetPos();
-			m_RedFlagVel = vec2(0, 0);
-		}
-
-		// capture
-		if(distance(m_RedFlagPos, m_BlueFlagPos) < 100.f) {
-			GameServer()->CreateSound(m_RedFlagPos, SOUND_CTF_CAPTURE);
-			ReviveSurvivors();
-		}
-	}
-
 
 	if(m_ZombGameState == ZSTATE_WAVE_GAME) {
 		// wait in between waves
@@ -1934,6 +1967,10 @@ void CGameControllerZOMB::Tick()
 			m_ZombCharCore[i].m_Vel = m_ZombChargeVel[i];
 		}
 	}
+
+	if(m_IsReviveCtfActive && m_ZombGameState != ZSTATE_NONE) {
+		TickReviveCtf();
+	}
 }
 
 void CGameControllerZOMB::Snap(i32 SnappingClientID)
@@ -2090,14 +2127,12 @@ void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 		if(!m_ZombAlive[i]) continue;
 		SendZombieInfos(i, pPlayer->GetCID());
 	}
+
+	pPlayer->SetTeam(TEAM_RED, false);
 }
 
 bool CGameControllerZOMB::IsFriendlyFire(int ClientID1, int ClientID2) const
 {
-	if(ClientID1 == ClientID2) {
-		return true;
-	}
-
 	// both survivors
 	if(IsSurvivor(ClientID1) && IsSurvivor(ClientID2)) {
 		return true;
