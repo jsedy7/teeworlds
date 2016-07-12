@@ -15,9 +15,7 @@
  * - Queen, Dominant
  * - Survival
  * - Boss zombies?
- * - Buff tank, boomer (radius)
  * - spawn flag on zombie
- * - fix revive sound and timing
  * - specify enrage time per wave (file)
  */
 
@@ -36,10 +34,11 @@ static char msgBuff__[256];
 #define NO_TARGET -1
 #define SecondsToTick(sec) (i32)(sec * SERVER_TICK_SPEED)
 
-#define TIME_TO_ENRAGE SecondsToTick(30)
+#define HOOK_RANGE 375.f
+#define DEFAULT_ENRAGE_TIME SecondsToTick(30)
 
 #define BOOMER_EXPLOSION_INNER_RADIUS 150.f
-#define BOOMER_EXPLOSION_OUTER_RADIUS 250.f
+#define BOOMER_EXPLOSION_OUTER_RADIUS 300.f
 
 #define BULL_CHARGE_CD (SecondsToTick(3))
 #define BULL_CHARGE_SPEED 1850.f
@@ -85,7 +84,7 @@ static const char* g_ZombName[] = {
 
 static const u32 g_ZombMaxHealth[] = {
 	7, // ZTYPE_BASIC
-	30, // ZTYPE_TANK
+	35, // ZTYPE_TANK
 	12, // ZTYPE_BOOMER
 	20, // ZTYPE_BULL
 	8, // ZTYPE_MUDGE
@@ -96,18 +95,18 @@ static const f32 g_ZombAttackSpeed[] = {
 	1.5f, // ZTYPE_BASIC
 	1.f, // ZTYPE_TANK
 	0.0001f, // ZTYPE_BOOMER
-	1.0f, // ZTYPE_BULL (1.0)
+	1.0f, // ZTYPE_BULL
 	3.0f, // ZTYPE_MUDGE
 	5.0f // ZTYPE_HUNTER
 };
 
 static const i32 g_ZombAttackDmg[] = {
-	1, // ZTYPE_BASIC (1)
-	6, // ZTYPE_TANK (8)
-	10, // ZTYPE_BOOMER (10)
-	4, // ZTYPE_BULL (4)
-	1, // ZTYPE_MUDGE (1)
-	1 // ZTYPE_HUNTER (1)
+	1, // ZTYPE_BASIC
+	6, // ZTYPE_TANK
+	10, // ZTYPE_BOOMER
+	4, // ZTYPE_BULL
+	1, // ZTYPE_MUDGE
+	1 // ZTYPE_HUNTER
 };
 
 static const f32 g_ZombKnockbackMultiplier[] = {
@@ -121,7 +120,7 @@ static const f32 g_ZombKnockbackMultiplier[] = {
 
 static const i32 g_ZombGrabLimit[] = {
 	SecondsToTick(0.2f), // ZTYPE_BASIC
-	SecondsToTick(4.f), // ZTYPE_TANK
+	SecondsToTick(2.5f), // ZTYPE_TANK
 	SecondsToTick(1.f), // ZTYPE_BOOMER
 	SecondsToTick(1.f), // ZTYPE_BULL
 	SecondsToTick(30.f), // ZTYPE_MUDGE
@@ -162,13 +161,14 @@ static i32 RandInt(i32 min, i32 max)
 	return (min + (rand() / (f32)RAND_MAX) * (max + 1 - min));
 }
 
-void CGameControllerZOMB::SpawnZombie(i32 zid, u8 type, bool isElite)
+void CGameControllerZOMB::SpawnZombie(i32 zid, u8 type, bool isElite, u32 enrageTime)
 {
+	bool isEnraged = (enrageTime == 0);
 	// do we need to update clients
 	bool needSendInfos = false;
-	i32 eliteBuff = isElite ? BUFF_ELITE : 0;
 	if(m_ZombType[zid] != type ||
-	   m_ZombBuff[zid] != eliteBuff) {
+	   (m_ZombBuff[zid]&BUFF_ELITE) != isElite ||
+	   (m_ZombBuff[zid]&BUFF_ENRAGED) != isEnraged) {
 		needSendInfos = true;
 	}
 
@@ -183,6 +183,10 @@ void CGameControllerZOMB::SpawnZombie(i32 zid, u8 type, bool isElite)
 		m_ZombBuff[zid] |= BUFF_ELITE;
 	}
 
+	if(isEnraged) {
+		m_ZombBuff[zid] |= BUFF_ENRAGED;
+	}
+
 	vec2 spawnPos = m_ZombSpawnPoint[(zid + m_Seed)%m_ZombSpawnPointCount];
 	m_ZombCharCore[zid].Reset();
 	m_ZombCharCore[zid].m_Pos = spawnPos;
@@ -192,7 +196,7 @@ void CGameControllerZOMB::SpawnZombie(i32 zid, u8 type, bool isElite)
 	m_ZombSurvTarget[zid] = NO_TARGET;
 	m_ZombJumpClock[zid] = 0;
 	m_ZombAttackClock[zid] = SecondsToTick(1.f / g_ZombAttackSpeed[type]);
-	m_ZombEnrageClock[zid] = TIME_TO_ENRAGE;
+	m_ZombEnrageClock[zid] = SecondsToTick(enrageTime);
 	m_ZombExplodeClock[zid] = -1;
 	m_ZombHookGrabClock[zid] = 0;
 	m_ZombChargeClock[zid] = 0;
@@ -816,7 +820,7 @@ void CGameControllerZOMB::HandleHook(u32 zid, f32 targetDist, bool targetLOS)
 {
 	CNetObj_PlayerInput& input = m_ZombInput[zid];
 
-	if(m_ZombHookClock[zid] <= 0 && targetDist < 350.f && targetLOS) {
+	if(m_ZombHookClock[zid] <= 0 && targetDist < HOOK_RANGE && targetLOS) {
 		input.m_Hook = 1;
 	}
 
@@ -940,7 +944,7 @@ void CGameControllerZOMB::HandleBoomer(u32 zid, f32 targetDist, bool targetLOS)
 
 	// start the fuse
 	if(m_ZombExplodeClock[zid] < 0 && targetDist < BOOMER_EXPLOSION_INNER_RADIUS && targetLOS) {
-		m_ZombExplodeClock[zid] = SecondsToTick(0.5f);
+		m_ZombExplodeClock[zid] = SecondsToTick(0.35f);
 		m_ZombInput[zid].m_Hook = 0; // stop hooking to let the survivor a chance to escape
 		m_ZombHookClock[zid] = SecondsToTick(1.f);
 		// send some love
@@ -1386,11 +1390,35 @@ static bool ParseZombDecl(Cursor* pCursor, u32* out_pCount, bool* out_pIsElite)
 	return true;
 }
 
+static bool ParseEnrageDecl(Cursor* pCursor, u32* out_pTime)
+{
+	Token token = GetToken(pCursor);
+
+	if(token.type != TK_COLON) {
+		return false;
+	}
+
+	token = GetToken(pCursor);
+	if(token.type != TK_NUMBER) {
+		return false;
+	}
+
+	// parse time
+	char numBuff[8];
+	memcpy(numBuff, token.at, token.length);
+	numBuff[token.length] = 0;
+	*out_pTime = str_toint(numBuff);
+
+	token = GetToken(pCursor);
+	if(token.type != TK_SEMICOLON) {
+		return false;
+	}
+
+	return true;
+}
+
 bool CGameControllerZOMB::LoadWaveFile(const char* path)
 {
-	mem_zero(m_WaveSpawnCount, sizeof(m_WaveSpawnCount));
-	m_WaveCount = 0;
-
 	FILE* pWaveFile = fopen(path, "r");
 	if(pWaveFile) {
 		fseek(pWaveFile, 0, SEEK_END);
@@ -1415,13 +1443,17 @@ bool CGameControllerZOMB::LoadWaveFile(const char* path)
 
 bool CGameControllerZOMB::ParseWaveFile(const char* pBuff)
 {
+	SpawnCmd waveData[MAX_WAVES][MAX_SPAWN_QUEUE];
+	u32 waveSpawnCount[MAX_WAVES];
+	u32 waveEnrageTime[MAX_WAVES];
+	u32 waveCount = 0;
+
 	bool parsing = true;
 	Cursor cursor;
 	cursor.at = pBuff;
 
 	bool insideWave = false;
 	i32 waveId = -1;
-	u32 waveZombCount = 0;
 
 	while(parsing) {
 		Token token = GetToken(&cursor);
@@ -1430,10 +1462,10 @@ bool CGameControllerZOMB::ParseWaveFile(const char* pBuff)
 			case TK_OPEN_BRACE: {
 				//dbg_zomb_msg("{");
 				if(!insideWave) {
-					++waveId;
-					++m_WaveCount;
+					waveId = waveCount++;
+					waveEnrageTime[waveId] = DEFAULT_ENRAGE_TIME;
+					waveSpawnCount[waveId] = 0;
 					insideWave = true;
-					waveZombCount = 0;
 				}
 				else {
 					dbg_zomb_msg("Wave parsing error: { not closed");
@@ -1444,7 +1476,7 @@ bool CGameControllerZOMB::ParseWaveFile(const char* pBuff)
 			case TK_CLOSE_BRACE: {
 				//dbg_zomb_msg("}");
 				if(insideWave) {
-					if(waveZombCount == 0) {
+					if(waveSpawnCount[waveId] == 0) {
 						dbg_zomb_msg("Wave parsing error: wave %d is empty", waveId);
 						return false;
 					}
@@ -1474,20 +1506,29 @@ bool CGameControllerZOMB::ParseWaveFile(const char* pBuff)
 						bool isElite = false;
 						if(ParseZombDecl(&cursor, &count, &isElite)) {
 							// add to wave
-							/*dbg_zomb_msg("Wave %d: add %s %d %d", waveId, g_ZombName[zombType],
-										 count, isElite);*/
 							for(u32 c = 0; c < count; ++c) {
-								m_WaveData[waveId][m_WaveSpawnCount[waveId]++] = SpawnCmd{(u8)zombType,
+								waveData[waveId][waveSpawnCount[waveId]++] = SpawnCmd{(u8)zombType,
 										isElite};
 							}
-
-							waveZombCount += count;
 						}
 						else {
 							dbg_zomb_msg("Wave parsing error: near %.*s (format is type[_elite]: count;)",
 										 token.length, token.at);
 							return false;
 						}
+					}
+					else if(token.length == 6 &&
+							str_comp_nocase_num(token.at, "enrage", token.length) == 0) {
+						u32 enrageTime = 0;
+						if(ParseEnrageDecl(&cursor, &enrageTime)) {
+							waveEnrageTime[waveId] = enrageTime;
+						}
+						else {
+							dbg_zomb_msg("Wave parsing error: near %.*s (format is enrage: time;)",
+										 token.length, token.at);
+							return false;
+						}
+
 					}
 					else {
 						dbg_zomb_msg("Wave parsing error: near %.*s (unknown identifer)",
@@ -1507,19 +1548,21 @@ bool CGameControllerZOMB::ParseWaveFile(const char* pBuff)
 		}
 	}
 
-	if(m_WaveCount == 0) {
+	if(waveCount == 0) {
 		dbg_zomb_msg("Wave parsing error: no waves declared");
 		return false;
 	}
+
+	memcpy(m_WaveData, waveData, sizeof(m_WaveData));
+	memcpy(m_WaveSpawnCount, waveSpawnCount, sizeof(m_WaveSpawnCount));
+	memcpy(m_WaveEnrageTime, waveEnrageTime, sizeof(m_WaveEnrageTime));
+	m_WaveCount = waveCount;
 
 	return true;
 }
 
 void CGameControllerZOMB::LoadDefaultWaves()
 {
-	mem_zero(m_WaveSpawnCount, sizeof(m_WaveSpawnCount));
-	m_WaveCount = 0;
-
 	static const char* defaultWavesFile = {
 		"{"
 		"	zombies: 10;"
@@ -1535,9 +1578,9 @@ void CGameControllerZOMB::ConLoadWaveFile(IConsole::IResult* pResult, void* pUse
 
 	if(pResult->NumArguments()) {
 		const char* rStr = pResult->GetString(0);
-		memcpy(g_Config.m_SvZombWaveFile, rStr, min(256, (i32)strlen(rStr)));
 		if(pThis->LoadWaveFile(rStr)) {
 			pThis->ChatMessage("-- New waves successfully loaded.");
+			memcpy(g_Config.m_SvZombWaveFile, rStr, min(256, (i32)strlen(rStr)));
 		}
 		else {
 			pThis->GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "zomb",
@@ -1610,13 +1653,6 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	m_BlueFlagSpawnCount = 0;
 	m_IsReviveCtfActive = false;
 	m_CanPlayersRespawn = true;
-
-	mem_zero(m_WaveSpawnCount, sizeof(u32) * MAX_WAVES);
-	m_WaveCount = 0;
-	m_CurrentWave = 0;
-	m_SpawnCmdID = 0;
-	m_SpawnClock = -1;
-	m_WaveWaitClock = -1;
 
 	if(LoadWaveFile(g_Config.m_SvZombWaveFile)) {
 		std_zomb_msg("wave file loaded (%d waves).", m_WaveCount);
@@ -1692,7 +1728,6 @@ void CGameControllerZOMB::Tick()
 			if(m_WaveWaitClock == 0) {
 				++m_CurrentWave;
 				m_SpawnClock = SPAWN_INTERVAL;
-				ReviveSurvivors();
 			}
 		}
 		else if(m_SpawnClock > 0) {
@@ -1704,7 +1739,7 @@ void CGameControllerZOMB::Tick()
 					u32 cmdID = m_SpawnCmdID++;
 					u8 type = m_WaveData[m_CurrentWave][cmdID].type;
 					bool isElite = m_WaveData[m_CurrentWave][cmdID].isElite;
-					SpawnZombie(i, type, isElite);
+					SpawnZombie(i, type, isElite, m_WaveEnrageTime[m_CurrentWave]);
 					break;
 				}
 
@@ -1723,6 +1758,7 @@ void CGameControllerZOMB::Tick()
 			}
 
 			if(areZombsDead) {
+				ReviveSurvivors();
 				m_WaveWaitClock = WAVE_WAIT_TIME;
 				m_SpawnCmdID = 0;
 
