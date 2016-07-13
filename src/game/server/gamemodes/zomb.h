@@ -9,6 +9,7 @@
 #define MAX_MAP_SIZE 1024 * 1024
 #define MAX_WAVES 128
 #define MAX_SPAWN_QUEUE 256
+#define MAX_LASERS 256
 
 typedef uint8_t u8;
 typedef int32_t i32;
@@ -90,6 +91,15 @@ class CGameControllerZOMB : public IGameController
 	bool m_IsReviveCtfActive;
 	bool m_CanPlayersRespawn;
 
+	// lasers
+	struct Laser {
+		vec2 from, to;
+		i32 tick;
+	};
+
+	Laser m_LaserList[MAX_LASERS];
+	u32 m_LaserListCount;
+	u32 m_LaserID;
 
 #ifdef CONF_DEBUG
 	ivec2 m_DbgPath[256];
@@ -126,6 +136,7 @@ class CGameControllerZOMB : public IGameController
 	void HandleBull(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
 	void HandleMudge(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
 	void HandleHunter(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
+	void HandleDominant(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
 
 	static void ConZombStart(IConsole::IResult *pResult, void *pUserData);
 	void StartZombGame(u32 startingWave = 0);
@@ -136,13 +147,14 @@ class CGameControllerZOMB : public IGameController
 
 	void ActivateReviveCtf();
 	void ReviveSurvivors();
+	void TickReviveCtf();
 
 	bool LoadWaveFile(const char* path);
 	bool ParseWaveFile(const char* pBuff);
 	void LoadDefaultWaves();
 	static void ConLoadWaveFile(IConsole::IResult *pResult, void *pUserData);
 
-	void TickReviveCtf();
+	void CreateLaser(vec2 from, vec2 to);
 
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer);
