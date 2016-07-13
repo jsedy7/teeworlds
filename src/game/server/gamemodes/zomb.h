@@ -21,7 +21,6 @@ class CGameControllerZOMB : public IGameController
 {
 	i32 m_Tick;
 	u32 m_Seed;
-	u32 m_ZombCount;
 	CCharacterCore m_ZombCharCore[MAX_ZOMBS];
 	CNetObj_PlayerInput m_ZombInput[MAX_ZOMBS];
 	i32 m_ZombActiveWeapon[MAX_ZOMBS];

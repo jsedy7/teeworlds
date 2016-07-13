@@ -12,9 +12,8 @@
 #include <game/server/gamecontext.h>
 
 /* TODO:
- * - Queen, Dominant
+ * - Queen
  * - Boss zombies?
- * - tweak bull
  */
 
 static char msgBuff__[256];
@@ -38,7 +37,7 @@ static char msgBuff__[256];
 #define BOOMER_EXPLOSION_INNER_RADIUS 150.f
 #define BOOMER_EXPLOSION_OUTER_RADIUS 300.f
 
-#define BULL_CHARGE_CD (SecondsToTick(3))
+#define BULL_CHARGE_CD (SecondsToTick(2.75f))
 #define BULL_CHARGE_SPEED 1850.f
 #define BULL_KNOCKBACK_FORCE 30.f
 
@@ -48,7 +47,7 @@ static char msgBuff__[256];
 #define HUNTER_CHARGE_SPEED 2700.f
 #define HUNTER_CHARGE_DMG 3
 
-#define SPAWN_INTERVAL (SecondsToTick(0.4f))
+#define SPAWN_INTERVAL (SecondsToTick(0.5f))
 #define WAVE_WAIT_TIME (SecondsToTick(10))
 
 #define ARMOR_DMG_REDUCTION 0.25f
@@ -110,7 +109,7 @@ static const i32 g_ZombAttackDmg[] = {
 	1, // ZTYPE_BASIC
 	6, // ZTYPE_TANK
 	10, // ZTYPE_BOOMER
-	4, // ZTYPE_BULL
+	3, // ZTYPE_BULL
 	1, // ZTYPE_MUDGE
 	1, // ZTYPE_HUNTER
 	1 // ZTYPE_DOMINANT
@@ -936,7 +935,7 @@ void CGameControllerZOMB::HandleBoomer(u32 zid, f32 targetDist, bool targetLOS)
 		}
 
 		// knockback zombies
-		for(u32 z = 0; z < m_ZombCount; ++z) {
+		for(u32 z = 0; z < MAX_ZOMBS; ++z) {
 			if(!m_ZombAlive[z] || z == zid) continue;
 
 			vec2 d = m_ZombCharCore[z].m_Pos - pos;
@@ -979,9 +978,9 @@ void CGameControllerZOMB::HandleBull(u32 zid, const vec2& targetPos, f32 targetD
 	i32 zombCID = ZombCID(zid);
 
 	// CHARRRGE
-	if(m_ZombChargeClock[zid] <= 0 && targetDist > 100.f && targetLOS && targetDist < 1000.f) {
+	if(m_ZombChargeClock[zid] <= 0 && targetDist > 100.f && targetLOS && targetDist < 700.f) {
 		m_ZombChargeClock[zid] = BULL_CHARGE_CD;
-		f32 chargeDist = targetDist * 2.0f; // overcharge a bit
+		f32 chargeDist = targetDist * 1.5f; // overcharge a bit
 		m_ZombChargingClock[zid] = SecondsToTick(chargeDist/BULL_CHARGE_SPEED);
 		m_ZombChargeVel[zid] = normalize(targetPos - pos) * (BULL_CHARGE_SPEED/SERVER_TICK_SPEED);
 
@@ -995,6 +994,11 @@ void CGameControllerZOMB::HandleBull(u32 zid, const vec2& targetPos, f32 targetD
 	if(m_ZombChargingClock[zid] > 0) {
 		m_ZombActiveWeapon[zid] = WEAPON_NINJA;
 		m_ZombChargeClock[zid] = BULL_CHARGE_CD; // don't count cd while charging
+
+		// look where it is charging
+		m_ZombInput[zid].m_TargetX = m_ZombChargeVel[zid].x;
+		m_ZombInput[zid].m_TargetY = m_ZombChargeVel[zid].y;
+		m_ZombInput[zid].m_Hook = 0;
 
 		i32 dmg = g_ZombAttackDmg[m_ZombType[zid]];
 		if(m_ZombBuff[zid]&BUFF_ELITE) {
@@ -1035,7 +1039,7 @@ void CGameControllerZOMB::HandleBull(u32 zid, const vec2& targetPos, f32 targetD
 			}
 
 			// knockback zombies
-			for(u32 z = 0; z < m_ZombCount; ++z) {
+			for(u32 z = 0; z < MAX_ZOMBS; ++z) {
 				if(!m_ZombAlive[z] || z == zid) continue;
 
 				// hit only once during charge
@@ -1065,7 +1069,7 @@ void CGameControllerZOMB::HandleBull(u32 zid, const vec2& targetPos, f32 targetD
 				m_ZombAttackClock[zid] = SecondsToTick(1.f / g_ZombAttackSpeed[m_ZombType[zid]]);
 				m_ZombInput[zid].m_Hook = 0;
 				m_ZombHookClock[zid] = SecondsToTick(0.25f);
-				m_ZombChargingClock[zid] = 1;
+				m_ZombChargingClock[zid] = 1; // stop on hit
 			}
 		}
 	}
@@ -1215,8 +1219,10 @@ void CGameControllerZOMB::StartZombGame(u32 startingWave)
 
 	// needed so when SpawnZombie() checks type it sends infos
 	// (for the first spawn)
-	for(u32 i = 0; i < m_ZombCount; ++i) {
-		KillZombie(i, -1);
+	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
+		if(m_ZombAlive[i]) {
+			KillZombie(i, -1);
+		}
 		m_ZombType[i] = ZTYPE_INVALID;
 	}
 
@@ -1757,7 +1763,6 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 : IGameController(pGameServer)
 {
 	m_pGameType = "ZOMB";
-	m_ZombCount = MAX_ZOMBS;
 	m_ZombSpawnPointCount = 0;
 	m_SurvSpawnPointCount = 0;
 	m_Seed = 1337;
@@ -1783,7 +1788,7 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	mem_zero(m_ZombDmgAngle, sizeof(m_ZombDmgAngle));
 	mem_zero(m_ZombPathFindClock, sizeof(m_ZombPathFindClock));
 
-	for(u32 i = 0; i < m_ZombCount; ++i) {
+	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
 		m_ZombCharCore[i].Init(&GameServer()->m_World.m_Core, GameServer()->Collision());
 		// needed so when SpawnZombie() checks type it sends infos
 		// (for the first spawn)
@@ -1833,7 +1838,7 @@ void CGameControllerZOMB::Tick()
 			--m_SpawnClock;
 
 			if(m_SpawnClock == 0 && m_SpawnCmdID < m_WaveSpawnCount[m_CurrentWave]) {
-				for(u32 i = 0; i < m_ZombCount; ++i) {
+				for(u32 i = 0; i < MAX_ZOMBS; ++i) {
 					if(m_ZombAlive[i]) continue;
 					u32 cmdID = m_SpawnCmdID++;
 					u8 type = m_WaveData[m_CurrentWave][cmdID].type;
@@ -1842,14 +1847,14 @@ void CGameControllerZOMB::Tick()
 					break;
 				}
 
-				m_SpawnClock = SPAWN_INTERVAL;
+				m_SpawnClock = SPAWN_INTERVAL / m_ZombSpawnPointCount;
 			}
 		}
 
 		// end of the wave
 		if(m_SpawnCmdID == m_WaveSpawnCount[m_CurrentWave]) {
 			bool areZombsDead = true;
-			for(u32 i = 0; i < m_ZombCount; ++i) {
+			for(u32 i = 0; i < MAX_ZOMBS; ++i) {
 				if(m_ZombAlive[i]) {
 					areZombsDead = false;
 					break;
@@ -1874,13 +1879,13 @@ void CGameControllerZOMB::Tick()
 	}
 
 	bool domninantAura = false;
-	for(u32 i = 0; i < m_ZombCount; ++i) {
+	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
 		if(m_ZombAlive[i] && m_ZombType[i] == ZTYPE_DOMINANT) {
 			domninantAura = true;
 		}
 	}
 
-	for(u32 i = 0; i < m_ZombCount; ++i) {
+	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
 		if(!m_ZombAlive[i]) continue;
 
 		// clocks
@@ -1990,7 +1995,7 @@ void CGameControllerZOMB::Tick()
 	}
 
 	// core actual move
-	for(u32 i = 0; i < m_ZombCount; ++i) {
+	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
 		if(!m_ZombAlive[i]) continue;
 		m_ZombCharCore[i].m_Input = m_ZombInput[i];
 
@@ -2067,7 +2072,7 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 	IGameController::Snap(SnappingClientID);
 
 	// send zombie player and character infos
-	for(u32 i = 0; i < m_ZombCount; ++i) {
+	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
 		if(!m_ZombAlive[i]) {
 			continue;
 		}
@@ -2334,6 +2339,10 @@ void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i3
 	}
 
 	u32 zid = CID - MAX_SURVIVORS;
+
+	if(Weapon == WEAPON_LASER) {
+		Dmg *= 1.5f;
+	}
 
 	if(m_ZombBuff[zid]&BUFF_ARMORED) {
 		Dmg *= (1.f - ARMOR_DMG_REDUCTION);
