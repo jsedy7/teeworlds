@@ -13,6 +13,7 @@
 
 /* TODO:
  * - Queen
+ * - Beserker (enrage nearby zombies, enraged himself at spawn)
  * - Boss zombies?
  */
 
@@ -69,7 +70,7 @@ enum {
 	ZTYPE_MUDGE,
 	ZTYPE_HUNTER,
 	ZTYPE_DOMINANT,
-
+	ZTYPE_BERSERKER,
 
 	ZTYPE_MAX,
 	ZTYPE_INVALID,
@@ -82,7 +83,8 @@ static const char* g_ZombName[] = {
 	"Bull",
 	"Mudge",
 	"Hunter",
-	"Dominant"
+	"Dominant",
+	"Berserker"
 };
 
 static const u32 g_ZombMaxHealth[] = {
@@ -92,7 +94,8 @@ static const u32 g_ZombMaxHealth[] = {
 	20, // ZTYPE_BULL
 	8, // ZTYPE_MUDGE
 	7, // ZTYPE_HUNTER
-	15 // ZTYPE_DOMINANT
+	15, // ZTYPE_DOMINANT
+	17 // ZTYPE_BERSERKER
 };
 
 static const f32 g_ZombAttackSpeed[] = {
@@ -101,8 +104,9 @@ static const f32 g_ZombAttackSpeed[] = {
 	0.0001f, // ZTYPE_BOOMER
 	1.0f, // ZTYPE_BULL
 	3.0f, // ZTYPE_MUDGE
-	5.0f, // ZTYPE_HUNTER
-	1.2f // ZTYPE_DOMINANT
+	2.0f, // ZTYPE_HUNTER
+	0.6f, // ZTYPE_DOMINANT
+	4.5f // ZTYPE_BERSERKER
 };
 
 static const i32 g_ZombAttackDmg[] = {
@@ -112,7 +116,8 @@ static const i32 g_ZombAttackDmg[] = {
 	3, // ZTYPE_BULL
 	1, // ZTYPE_MUDGE
 	1, // ZTYPE_HUNTER
-	1 // ZTYPE_DOMINANT
+	2, // ZTYPE_DOMINANT
+	1, // ZTYPE_BERSERKER
 };
 
 static const f32 g_ZombKnockbackMultiplier[] = {
@@ -121,8 +126,9 @@ static const f32 g_ZombKnockbackMultiplier[] = {
 	0.f, // ZTYPE_BOOMER
 	0.5f, // ZTYPE_BULL
 	0.f, // ZTYPE_MUDGE
-	1.f, // ZTYPE_HUNTER
+	1.5f, // ZTYPE_HUNTER
 	1.f, // ZTYPE_DOMINANT
+	0.5f, // ZTYPE_BERSERKER
 };
 
 static const i32 g_ZombGrabLimit[] = {
@@ -133,6 +139,7 @@ static const i32 g_ZombGrabLimit[] = {
 	SecondsToTick(30.f), // ZTYPE_MUDGE
 	SecondsToTick(0.5f), // ZTYPE_HUNTER
 	SecondsToTick(0.0f), // ZTYPE_DOMINANT
+	SecondsToTick(0.1f), // ZTYPE_BERSERKER
 };
 
 static const i32 g_ZombHookCD[] = {
@@ -143,6 +150,7 @@ static const i32 g_ZombHookCD[] = {
 	SecondsToTick(3.f), // ZTYPE_MUDGE
 	SecondsToTick(2.f), // ZTYPE_HUNTER
 	SecondsToTick(999.f), // ZTYPE_DOMINANT
+	SecondsToTick(0.5f), // ZTYPE_BERSERKER
 };
 
 enum {
@@ -172,7 +180,7 @@ static i32 RandInt(i32 min, i32 max)
 
 void CGameControllerZOMB::SpawnZombie(i32 zid, u8 type, bool isElite, u32 enrageTime)
 {
-	bool isEnraged = (enrageTime == 0);
+	bool isEnraged = (enrageTime == 0 || type == ZTYPE_BERSERKER);
 	// do we need to update clients
 	bool needSendInfos = false;
 	if(m_ZombType[zid] != type ||
@@ -696,7 +704,7 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 	nci.m_aUseCustomColors[SKINPART_MARKING] = 0;
 	nci.m_aSkinPartColors[SKINPART_MARKING] = 0;
 
-	if(m_ZombBuff[zid]&BUFF_ENRAGED) {
+	if(m_ZombBuff[zid]&BUFF_ENRAGED && m_ZombType[zid] != ZTYPE_BERSERKER) {
 		nci.m_apSkinPartNames[SKINPART_MARKING] = "enraged";
 	}
 	else {
@@ -746,6 +754,11 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 			handFeetColor = PackColor(155, 182, 39); // blueish
 			break;
 
+		case ZTYPE_BERSERKER:
+			nci.m_apSkinPartNames[SKINPART_BODY] = "berserker";
+			handFeetColor = red;
+			break;
+
 		default: break;
 	}
 
@@ -774,10 +787,7 @@ void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos, bool ta
 	CNetObj_PlayerInput& input = m_ZombInput[zid];
 
 	vec2& dest = m_ZombDestination[zid];
-	if(targetLOS) {
-		dest = targetPos;
-	}
-	else if(m_ZombPathFindClock[zid] <= 0) {
+	if(m_ZombPathFindClock[zid] <= 0) {
 		dest = PathFind(pos, targetPos);
 		m_ZombPathFindClock[zid] = SecondsToTick(0.1f);
 	}
@@ -831,7 +841,7 @@ void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos, bool ta
 	}
 
 	// don't excessively jump when target does
-	if(targetLOS && yDist < 20.f) {
+	if(dest == targetPos && targetLOS && yDist < 20.f) {
 		input.m_Jump = 0;
 	}
 }
@@ -1005,7 +1015,7 @@ void CGameControllerZOMB::HandleBull(u32 zid, const vec2& targetPos, f32 targetD
 			dmg *= 2;
 		}
 
-		f32 checkRadius = 28.f * 3.f;
+		f32 checkRadius = 100.f;
 		f32 chargeSpeed = length(m_ZombChargeVel[zid]);
 		u32 checkCount = max(1, (i32)(chargeSpeed / checkRadius));
 
@@ -1190,6 +1200,20 @@ void CGameControllerZOMB::HandleDominant(u32 zid, const vec2& targetPos, f32 tar
 	}
 	else {
 		m_ZombActiveWeapon[zid] = WEAPON_HAMMER;
+	}
+}
+
+void CGameControllerZOMB::HandleBerserker(u32 zid)
+{
+	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
+		if(i == zid || !m_ZombAlive[i] || m_ZombBuff[i]&BUFF_ENRAGED) {
+			continue;
+		}
+
+		// enrage nearby zombies
+		if(distance(m_ZombCharCore[zid].m_Pos, m_ZombCharCore[i].m_Pos) < 150.f) {
+			m_ZombEnrageClock[i] = 1;
+		}
 	}
 }
 
@@ -1905,8 +1929,7 @@ void CGameControllerZOMB::Tick()
 		}
 
 		// enrage
-		if(m_ZombEnrageClock[i] <= 0 &&
-		   (m_ZombBuff[i]&BUFF_ENRAGED) == 0) {
+		if(m_ZombEnrageClock[i] <= 0 && !(m_ZombBuff[i]&BUFF_ENRAGED)) {
 			m_ZombBuff[i] |= BUFF_ENRAGED;
 			for(u32 s = 0; s < MAX_SURVIVORS; ++s) {
 				if(GameServer()->m_apPlayers[s] && Server()->ClientIngame(s)) {
@@ -1988,6 +2011,10 @@ void CGameControllerZOMB::Tick()
 
 			case ZTYPE_DOMINANT:
 				HandleDominant(i, targetPos, targetDist, targetLOS);
+				break;
+
+			case ZTYPE_BERSERKER:
+				HandleBerserker(i);
 				break;
 
 			default: break;

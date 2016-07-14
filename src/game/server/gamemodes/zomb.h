@@ -15,12 +15,12 @@ typedef uint8_t u8;
 typedef int32_t i32;
 typedef uint32_t u32;
 typedef float f32;
-typedef double f64;
 
 class CGameControllerZOMB : public IGameController
 {
 	i32 m_Tick;
 	u32 m_Seed;
+
 	CCharacterCore m_ZombCharCore[MAX_ZOMBS];
 	CNetObj_PlayerInput m_ZombInput[MAX_ZOMBS];
 	i32 m_ZombActiveWeapon[MAX_ZOMBS];
@@ -30,7 +30,7 @@ class CGameControllerZOMB : public IGameController
 	i32 m_ZombDmgTick[MAX_ZOMBS];
 	i32 m_ZombDmgAngle[MAX_ZOMBS];
 
-	bool m_ZombAlive[MAX_ZOMBS];
+	bool m_ZombAlive[MAX_ZOMBS]; // bad design, but whatever
 	i32 m_ZombHealth[MAX_ZOMBS];
 	u8 m_ZombType[MAX_ZOMBS];
 	u8 m_ZombBuff[MAX_ZOMBS];
@@ -136,6 +136,7 @@ class CGameControllerZOMB : public IGameController
 	void HandleMudge(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
 	void HandleHunter(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
 	void HandleDominant(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
+	void HandleBerserker(u32 zid);
 
 	static void ConZombStart(IConsole::IResult *pResult, void *pUserData);
 	void StartZombGame(u32 startingWave = 0);
