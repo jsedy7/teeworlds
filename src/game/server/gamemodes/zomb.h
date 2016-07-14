@@ -9,7 +9,8 @@
 #define MAX_MAP_SIZE 1024 * 1024
 #define MAX_WAVES 128
 #define MAX_SPAWN_QUEUE 256
-#define MAX_LASERS 256
+#define MAX_LASERS 64
+#define MAX_PROJECTILES 256
 
 typedef uint8_t u8;
 typedef int32_t i32;
@@ -46,11 +47,14 @@ class CGameControllerZOMB : public IGameController
 	i32 m_ZombHookClock[MAX_ZOMBS];
 	i32 m_ZombHookGrabClock[MAX_ZOMBS];
 	i32 m_ZombExplodeClock[MAX_ZOMBS];
+	i32 m_ZombHealClock[MAX_ZOMBS];
 
 	i32 m_ZombChargeClock[MAX_ZOMBS];
 	i32 m_ZombChargingClock[MAX_ZOMBS];
 	vec2 m_ZombChargeVel[MAX_ZOMBS];
 	bool m_ZombChargeHit[MAX_ZOMBS][MAX_CLIENTS];
+
+	vec2 m_ZombLastShotDir[MAX_ZOMBS];
 
 	char m_MapName[128];
 	u8 m_Map[MAX_MAP_SIZE];
@@ -97,8 +101,22 @@ class CGameControllerZOMB : public IGameController
 	};
 
 	Laser m_LaserList[MAX_LASERS];
-	u32 m_LaserListCount;
+	u32 m_LaserCount;
 	u32 m_LaserID;
+
+	// projectiles
+	struct Projectile {
+		vec2 startPos;
+		vec2 dir;
+		i32 startTick;
+		i32 type, dmg, ownerCID;
+		f32 curvature, speed;
+		u32 id;
+	};
+
+	Projectile m_ProjectileList[MAX_PROJECTILES];
+	u32 m_ProjectileCount;
+	u32 m_ProjectileID;
 
 #ifdef CONF_DEBUG
 	ivec2 m_DbgPath[256];
@@ -137,11 +155,13 @@ class CGameControllerZOMB : public IGameController
 	void HandleHunter(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
 	void HandleDominant(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
 	void HandleBerserker(u32 zid);
+	void HandleWartule(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
 
 	static void ConZombStart(IConsole::IResult *pResult, void *pUserData);
 	void StartZombGame(u32 startingWave = 0);
 	void GameWon();
 	void GameLost();
+	void GameCleanUp();
 	void ChatMessage(const char* msg);
 	void AnnounceWave(u32 waveID);
 
@@ -155,6 +175,9 @@ class CGameControllerZOMB : public IGameController
 	static void ConLoadWaveFile(IConsole::IResult *pResult, void *pUserData);
 
 	void CreateLaser(vec2 from, vec2 to);
+	void CreateProjectile(vec2 pos, vec2 dir, i32 type, i32 dmg, i32 owner);
+	void TickProjectiles();
+	void CreateExplosion(vec2 pos, f32 inner, f32 outer, f32 force, i32 dmg, i32 ownerCID);
 
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer);

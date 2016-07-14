@@ -12,8 +12,6 @@
 #include <game/server/gamecontext.h>
 
 /* TODO:
- * - Queen
- * - Beserker (enrage nearby zombies, enraged himself at spawn)
  * - Boss zombies?
  */
 
@@ -51,7 +49,11 @@ static char msgBuff__[256];
 #define SPAWN_INTERVAL (SecondsToTick(0.5f))
 #define WAVE_WAIT_TIME (SecondsToTick(10))
 
+#define WARTULE_GRENADE_DMG 4
+
 #define ARMOR_DMG_REDUCTION 0.25f
+#define HEALING_INTERVAL (SecondsToTick(0.5f))
+#define HEALING_AMOUNT 1
 
 enum {
 	SKINPART_BODY = 0,
@@ -71,6 +73,7 @@ enum {
 	ZTYPE_HUNTER,
 	ZTYPE_DOMINANT,
 	ZTYPE_BERSERKER,
+	ZTYPE_WARTULE,
 
 	ZTYPE_MAX,
 	ZTYPE_INVALID,
@@ -84,7 +87,8 @@ static const char* g_ZombName[] = {
 	"Mudge",
 	"Hunter",
 	"Dominant",
-	"Berserker"
+	"Berserker",
+	"Wartule"
 };
 
 static const u32 g_ZombMaxHealth[] = {
@@ -95,7 +99,8 @@ static const u32 g_ZombMaxHealth[] = {
 	8, // ZTYPE_MUDGE
 	7, // ZTYPE_HUNTER
 	15, // ZTYPE_DOMINANT
-	17 // ZTYPE_BERSERKER
+	17, // ZTYPE_BERSERKER
+	15 // ZTYPE_WARTULE
 };
 
 static const f32 g_ZombAttackSpeed[] = {
@@ -106,7 +111,8 @@ static const f32 g_ZombAttackSpeed[] = {
 	3.0f, // ZTYPE_MUDGE
 	2.0f, // ZTYPE_HUNTER
 	0.6f, // ZTYPE_DOMINANT
-	4.5f // ZTYPE_BERSERKER
+	4.5f, // ZTYPE_BERSERKER
+	3.5f // ZTYPE_WARTULE
 };
 
 static const i32 g_ZombAttackDmg[] = {
@@ -118,6 +124,7 @@ static const i32 g_ZombAttackDmg[] = {
 	1, // ZTYPE_HUNTER
 	2, // ZTYPE_DOMINANT
 	1, // ZTYPE_BERSERKER
+	1, // ZTYPE_WARTULE
 };
 
 static const f32 g_ZombKnockbackMultiplier[] = {
@@ -129,6 +136,7 @@ static const f32 g_ZombKnockbackMultiplier[] = {
 	1.5f, // ZTYPE_HUNTER
 	1.f, // ZTYPE_DOMINANT
 	0.5f, // ZTYPE_BERSERKER
+	1.f, // ZTYPE_WARTULE
 };
 
 static const i32 g_ZombGrabLimit[] = {
@@ -140,6 +148,7 @@ static const i32 g_ZombGrabLimit[] = {
 	SecondsToTick(0.5f), // ZTYPE_HUNTER
 	SecondsToTick(0.0f), // ZTYPE_DOMINANT
 	SecondsToTick(0.1f), // ZTYPE_BERSERKER
+	SecondsToTick(0.0f), // ZTYPE_WARTULE
 };
 
 static const i32 g_ZombHookCD[] = {
@@ -151,6 +160,7 @@ static const i32 g_ZombHookCD[] = {
 	SecondsToTick(2.f), // ZTYPE_HUNTER
 	SecondsToTick(999.f), // ZTYPE_DOMINANT
 	SecondsToTick(0.5f), // ZTYPE_BERSERKER
+	SecondsToTick(999.f), // ZTYPE_WARTULE
 };
 
 enum {
@@ -213,11 +223,14 @@ void CGameControllerZOMB::SpawnZombie(i32 zid, u8 type, bool isElite, u32 enrage
 	m_ZombSurvTarget[zid] = NO_TARGET;
 	m_ZombJumpClock[zid] = 0;
 	m_ZombAttackClock[zid] = SecondsToTick(1.f / g_ZombAttackSpeed[type]);
+	m_ZombHookClock[zid] = 0;
 	m_ZombEnrageClock[zid] = SecondsToTick(enrageTime);
 	m_ZombExplodeClock[zid] = -1;
 	m_ZombHookGrabClock[zid] = 0;
 	m_ZombChargeClock[zid] = 0;
 	m_ZombChargingClock[zid] = -1;
+	m_ZombHealClock[zid] = 0;
+	m_ZombLastShotDir[zid] = vec2(-1, 0);
 
 	if(needSendInfos) {
 		for(u32 i = 0; i < MAX_SURVIVORS; ++i) {
@@ -759,6 +772,11 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 			handFeetColor = red;
 			break;
 
+		case ZTYPE_WARTULE:
+			nci.m_apSkinPartNames[SKINPART_BODY] = "wartule";
+			handFeetColor = PackColor(202, 172, 28); // purple;
+			break;
+
 		default: break;
 	}
 
@@ -910,66 +928,8 @@ void CGameControllerZOMB::HandleBoomer(u32 zid, f32 targetDist, bool targetLOS)
 			dmg *= 2;
 		}
 
-		// explosion effect
-		GameServer()->CreateExplosion(pos, zombCID, 0, 0);
-		GameServer()->CreateSound(pos, SOUND_GRENADE_EXPLODE);
-
-		// damage survivors
-		CCharacter *apEnts[MAX_SURVIVORS];
-		i32 count = GameServer()->m_World.FindEntities(pos, BOOMER_EXPLOSION_OUTER_RADIUS,
-													   (CEntity**)apEnts, MAX_SURVIVORS,
-													   CGameWorld::ENTTYPE_CHARACTER);
-
-		f32 radiusDiff = BOOMER_EXPLOSION_OUTER_RADIUS - BOOMER_EXPLOSION_INNER_RADIUS;
-
-		for(i32 s = 0; s < count; ++s) {
-			vec2 d = apEnts[s]->GetPos() - pos;
-			vec2 n = normalize(d);
-			f32 l = length(d);
-			f32 factor = 0.2f;
-			if(l < BOOMER_EXPLOSION_INNER_RADIUS) {
-				factor = 1.f;
-			}
-			else {
-				l -= BOOMER_EXPLOSION_INNER_RADIUS;
-				factor = max(0.2f, l / radiusDiff);
-			}
-
-			apEnts[s]->TakeDamage(n* 30.f * factor, (i32)(dmg * factor),
-					zombCID, WEAPON_GRENADE);
-			u32 cid = apEnts[s]->GetPlayer()->GetCID();
-			CCharacterCore* pCore = GameServer()->m_World.m_Core.m_apCharacters[cid];
-			if(pCore) {
-				pCore->m_HookState = HOOK_RETRACTED;
-			}
-		}
-
-		// knockback zombies
-		for(u32 z = 0; z < MAX_ZOMBS; ++z) {
-			if(!m_ZombAlive[z] || z == zid) continue;
-
-			vec2 d = m_ZombCharCore[z].m_Pos - pos;
-			f32 l = length(d);
-			if(l > BOOMER_EXPLOSION_OUTER_RADIUS) {
-				continue;
-			}
-
-			vec2 n = normalize(d);
-
-			f32 factor = 0.2f;
-			if(l < BOOMER_EXPLOSION_INNER_RADIUS) {
-				factor = 1.f;
-			}
-			else {
-				l -= BOOMER_EXPLOSION_INNER_RADIUS;
-				factor = max(0.2f, l / radiusDiff);
-			}
-
-			m_ZombCharCore[z].m_Vel += n * 30.f * factor *
-					g_ZombKnockbackMultiplier[m_ZombType[z]];
-			m_ZombHookClock[z] = SecondsToTick(1);
-			m_ZombInput[z].m_Hook = 0;
-		}
+		// explosion
+		CreateExplosion(pos, BOOMER_EXPLOSION_INNER_RADIUS, BOOMER_EXPLOSION_OUTER_RADIUS, 30.f, dmg, zombCID);
 	}
 
 	// start the fuse
@@ -1006,8 +966,8 @@ void CGameControllerZOMB::HandleBull(u32 zid, const vec2& targetPos, f32 targetD
 		m_ZombChargeClock[zid] = BULL_CHARGE_CD; // don't count cd while charging
 
 		// look where it is charging
-		m_ZombInput[zid].m_TargetX = m_ZombChargeVel[zid].x;
-		m_ZombInput[zid].m_TargetY = m_ZombChargeVel[zid].y;
+		m_ZombInput[zid].m_TargetX = m_ZombChargeVel[zid].x * 10.f;
+		m_ZombInput[zid].m_TargetY = m_ZombChargeVel[zid].y * 10.f;
 		m_ZombInput[zid].m_Hook = 0;
 
 		i32 dmg = g_ZombAttackDmg[m_ZombType[zid]];
@@ -1173,6 +1133,8 @@ void CGameControllerZOMB::HandleHunter(u32 zid, const vec2& targetPos, f32 targe
 
 void CGameControllerZOMB::HandleDominant(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS)
 {
+	m_ZombInput[zid].m_Hook = 0; // dominants don't hook
+
 	// pew pew
 	if(targetDist > 56.f && targetLOS && targetDist < 400.f) {
 		m_ZombActiveWeapon[zid] = WEAPON_LASER;
@@ -1217,6 +1179,41 @@ void CGameControllerZOMB::HandleBerserker(u32 zid)
 	}
 }
 
+void CGameControllerZOMB::HandleWartule(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS)
+{
+	m_ZombInput[zid].m_Hook = 0; // wartules don't hook
+
+	// throw grenades at people
+	if(targetDist > 80.f && targetLOS && targetDist < 500.f) {
+		m_ZombActiveWeapon[zid] = WEAPON_GRENADE;
+
+		if(m_ZombAttackClock[zid] <= 0) {
+			GameServer()->CreateSound(m_ZombCharCore[zid].m_Pos, SOUND_GRENADE_FIRE);
+
+			i32 dmg = WARTULE_GRENADE_DMG;
+			if(m_ZombBuff[zid]&BUFF_ELITE) {
+				dmg *= 2;
+			}
+
+			f32 shootAngle = angle(targetPos - m_ZombCharCore[zid].m_Pos);
+			shootAngle += (f32)RandInt(-30, 30) * pi / 180.f;
+			vec2 shootDir = direction(shootAngle);
+
+			CreateProjectile(m_ZombCharCore[zid].m_Pos, shootDir,
+							 WEAPON_GRENADE, dmg, ZombCID(zid));
+
+			m_ZombLastShotDir[zid] = shootDir;
+			m_ZombAttackClock[zid] = SecondsToTick(1.f / g_ZombAttackSpeed[m_ZombType[zid]]);
+		}
+
+		m_ZombInput[zid].m_TargetX = m_ZombLastShotDir[zid].x * 10.f;
+		m_ZombInput[zid].m_TargetY = m_ZombLastShotDir[zid].y * 10.f;
+	}
+	else {
+		m_ZombActiveWeapon[zid] = WEAPON_HAMMER;
+	}
+}
+
 void CGameControllerZOMB::ConZombStart(IConsole::IResult* pResult, void* pUserData)
 {
 	CGameControllerZOMB *pThis = (CGameControllerZOMB *)pUserData;
@@ -1257,20 +1254,23 @@ void CGameControllerZOMB::GameWon()
 {
 	ChatMessage(">> Game won, good job.");
 	EndMatch();
-	m_ZombGameState = ZSTATE_NONE;
-	m_IsReviveCtfActive = false;
-
-	for(u32 i = 0; i < MAX_SURVIVORS; ++i) {
-		if(GameServer()->m_apPlayers[i] && !GameServer()->GetPlayerChar(i)) {
-			GameServer()->m_apPlayers[i]->SetTeam(TEAM_RED, false);
-		}
-	}
+	GameCleanUp();
 }
 
 void CGameControllerZOMB::GameLost()
 {
 	ChatMessage(">> You LOST.");
 	EndMatch();
+
+	GameCleanUp();
+
+	if(g_Config.m_SvZombAutoRestart) {
+		StartZombGame();
+	}
+}
+
+void CGameControllerZOMB::GameCleanUp()
+{
 	m_ZombGameState = ZSTATE_NONE;
 	m_IsReviveCtfActive = false;
 
@@ -1286,9 +1286,8 @@ void CGameControllerZOMB::GameLost()
 		}
 	}
 
-	if(g_Config.m_SvZombAutoRestart) {
-		StartZombGame();
-	}
+	m_LaserCount = 0;
+	m_ProjectileCount = 0;
 }
 
 void CGameControllerZOMB::ChatMessage(const char* msg)
@@ -1704,10 +1703,155 @@ void CGameControllerZOMB::ConLoadWaveFile(IConsole::IResult* pResult, void* pUse
 
 void CGameControllerZOMB::CreateLaser(vec2 from, vec2 to)
 {
-	u32 id = m_LaserListCount++;
+	u32 id = m_LaserCount++;
 	m_LaserList[id].to = to;
 	m_LaserList[id].from = from;
 	m_LaserList[id].tick = m_Tick;
+}
+
+void CGameControllerZOMB::CreateProjectile(vec2 pos, vec2 dir, i32 type, i32 dmg, i32 owner)
+{
+	u32 id = m_ProjectileCount++;
+	m_ProjectileList[id].id = m_ProjectileID++;
+	m_ProjectileList[id].startPos = pos;
+	m_ProjectileList[id].startTick = m_Tick;
+	m_ProjectileList[id].dir = dir;
+	m_ProjectileList[id].type = type;
+	m_ProjectileList[id].dmg = dmg;
+	m_ProjectileList[id].ownerCID = owner;
+
+	switch(type)
+	{
+		case WEAPON_GRENADE:
+			m_ProjectileList[id].curvature = GameServer()->Tuning()->m_GrenadeCurvature;
+			m_ProjectileList[id].speed = GameServer()->Tuning()->m_GrenadeSpeed;
+			break;
+
+		case WEAPON_SHOTGUN:
+			m_ProjectileList[id].curvature = GameServer()->Tuning()->m_ShotgunCurvature;
+			m_ProjectileList[id].speed = GameServer()->Tuning()->m_ShotgunSpeed;
+			break;
+
+		case WEAPON_GUN:
+			m_ProjectileList[id].curvature = GameServer()->Tuning()->m_GunCurvature;
+			m_ProjectileList[id].speed = GameServer()->Tuning()->m_GunSpeed;
+			break;
+	}
+}
+
+void CGameControllerZOMB::TickProjectiles()
+{
+	u32 toDelete[256];
+	u32 toDeleteCount = 0;
+
+	for(u32 i = 0; i < m_ProjectileCount; ++i) {
+		f32 pt = (m_Tick - m_ProjectileList[i].startTick - 1)/(f32)SERVER_TICK_SPEED;
+		f32 ct = (m_Tick - m_ProjectileList[i].startTick)/(f32)SERVER_TICK_SPEED;
+		vec2 prevPos = CalcPos(m_ProjectileList[i].startPos, m_ProjectileList[i].dir,
+							   m_ProjectileList[i].curvature, m_ProjectileList[i].speed, pt);
+		vec2 curPos = CalcPos(m_ProjectileList[i].startPos, m_ProjectileList[i].dir,
+							  m_ProjectileList[i].curvature, m_ProjectileList[i].speed, ct);
+		bool collided = (GameServer()->Collision()->IntersectLine(prevPos, curPos, &curPos, 0) != 0);
+
+		// out of bounds
+		i32 rx = round_to_int(curPos.x) / 32;
+		i32 ry = round_to_int(curPos.y) / 32;
+		if(rx < -200 || rx >= (i32)m_MapWidth+200 ||
+		   ry < -200 || ry >= (i32)m_MapHeight+200) {
+			collided = true;
+		}
+
+		bool deleted = false;
+		if(collided && m_ProjectileList[i].type == WEAPON_GRENADE) {
+			CreateExplosion(curPos, 48.f, 135.f, 12.f, m_ProjectileList[i].dmg,
+							m_ProjectileList[i].ownerCID);
+			deleted = true;
+		}
+
+
+		CCharacter* pTargetChr = GameServer()->m_World.IntersectCharacter(prevPos, curPos, 6.0f, curPos, 0);
+		if(pTargetChr) {
+			if(m_ProjectileList[i].type == WEAPON_GRENADE) {
+				CreateExplosion(curPos, 48.f, 135.f, 12.f, m_ProjectileList[i].dmg,
+								m_ProjectileList[i].ownerCID);
+
+			}
+			deleted = true;
+		}
+
+		if(deleted) {
+			toDelete[toDeleteCount++] = i;
+		}
+	}
+
+	for(u32 i = 0; i < toDeleteCount; ++i) {
+		if(m_ProjectileCount > 1) {
+			m_ProjectileList[toDelete[i]] = m_ProjectileList[m_ProjectileCount - 1];
+		}
+		--m_ProjectileCount;
+	}
+}
+
+void CGameControllerZOMB::CreateExplosion(vec2 pos, f32 inner, f32 outer, f32 force, i32 dmg, i32 ownerCID)
+{
+	GameServer()->CreateExplosion(pos, ownerCID, 0, 0);
+	GameServer()->CreateSound(pos, SOUND_GRENADE_EXPLODE);
+
+	CCharacter *apEnts[MAX_SURVIVORS];
+	i32 count = GameServer()->m_World.FindEntities(pos, outer, (CEntity**)apEnts, MAX_SURVIVORS,
+												   CGameWorld::ENTTYPE_CHARACTER);
+
+	f32 radiusDiff = outer - inner;
+
+	for(i32 s = 0; s < count; ++s) {
+		vec2 d = apEnts[s]->GetPos() - pos;
+		vec2 n = normalize(d);
+		f32 l = length(d);
+		f32 factor = 0.2f;
+		if(l < inner) {
+			factor = 1.f;
+		}
+		else {
+			l -= inner;
+			factor = max(0.2f, l / radiusDiff);
+		}
+
+		apEnts[s]->TakeDamage(n * force * factor, (i32)(dmg * factor),
+				ownerCID, WEAPON_GRENADE);
+
+		u32 cid = apEnts[s]->GetPlayer()->GetCID();
+		CCharacterCore* pCore = GameServer()->m_World.m_Core.m_apCharacters[cid];
+		if(pCore) {
+			pCore->m_HookState = HOOK_RETRACTED;
+		}
+	}
+
+	// knockback zombies
+	for(u32 z = 0; z < MAX_ZOMBS; ++z) {
+		if(!m_ZombAlive[z]) continue;
+
+		vec2 d = m_ZombCharCore[z].m_Pos - pos;
+		f32 l = length(d);
+		if(l > outer) {
+			continue;
+		}
+
+		vec2 n = normalize(d);
+
+		f32 factor = 0.2f;
+		if(l < inner) {
+			factor = 1.f;
+		}
+		else {
+			l -= inner;
+			factor = max(0.2f, l / radiusDiff);
+		}
+
+		m_ZombCharCore[z].m_Vel += n * force * factor *
+				g_ZombKnockbackMultiplier[m_ZombType[z]];
+		m_ZombHookClock[z] = SecondsToTick(1);
+		m_ZombInput[z].m_Hook = 0;
+	}
 }
 
 void CGameControllerZOMB::TickReviveCtf()
@@ -1840,14 +1984,29 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 
 	GameServer()->Console()->ExecuteLine("add_vote \"Start a Zomb game\" zomb_start");
 
-	m_LaserListCount = 0;
+	m_LaserCount = 0;
 	m_LaserID = 512;
+	m_ProjectileCount = 0;
+	m_ProjectileID = 512;
 }
 
 void CGameControllerZOMB::Tick()
 {
 	m_Tick = Server()->Tick();
 	IGameController::Tick();
+
+	// lasers
+	for(i32 i = 0; i < (i32)m_LaserCount; ++i) {
+		if(m_Tick > (m_LaserList[i].tick + SecondsToTick(0.4f))) {
+			if(m_LaserCount > 1) {
+				m_LaserList[i] = m_LaserList[m_LaserCount - 1];
+			}
+			--m_LaserCount;
+			--i;
+		}
+	}
+
+	TickProjectiles();
 
 	if(m_ZombGameState == ZSTATE_WAVE_GAME) {
 		// wait in between waves
@@ -1902,10 +2061,17 @@ void CGameControllerZOMB::Tick()
 		}
 	}
 
+	// aura givers
 	bool domninantAura = false;
-	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
-		if(m_ZombAlive[i] && m_ZombType[i] == ZTYPE_DOMINANT) {
-			domninantAura = true;
+	bool wartuleAura = false;
+	for(u32 i = 0; i < MAX_ZOMBS && (!domninantAura || !wartuleAura); ++i) {
+		if(m_ZombAlive[i]) {
+			if(m_ZombType[i] == ZTYPE_DOMINANT) {
+				domninantAura = true;
+			}
+			if(m_ZombType[i] == ZTYPE_WARTULE) {
+				wartuleAura = true;
+			}
 		}
 	}
 
@@ -1919,6 +2085,7 @@ void CGameControllerZOMB::Tick()
 		--m_ZombEnrageClock[i];
 		--m_ZombHookClock[i];
 		--m_ZombChargeClock[i];
+		--m_ZombHealClock[i];
 
 		// auras
 		if(domninantAura && m_ZombType[i] != ZTYPE_DOMINANT) {
@@ -1926,6 +2093,13 @@ void CGameControllerZOMB::Tick()
 		}
 		else {
 			m_ZombBuff[i] &= ~BUFF_ARMORED;
+		}
+
+		if(wartuleAura && m_ZombType[i] != ZTYPE_WARTULE) {
+			m_ZombBuff[i] |= BUFF_HEALING;
+		}
+		else {
+			m_ZombBuff[i] &= ~BUFF_HEALING;
 		}
 
 		// enrage
@@ -1943,6 +2117,15 @@ void CGameControllerZOMB::Tick()
 			--m_ZombAttackClock[i];
 			--m_ZombHookClock[i];
 			--m_ZombChargeClock[i];
+		}
+
+		// healing
+		if(m_ZombBuff[i]&BUFF_HEALING && m_ZombHealClock[i] <= 0) {
+			m_ZombHealClock[i] = HEALING_INTERVAL;
+			m_ZombHealth[i] += HEALING_AMOUNT;
+			if(m_ZombHealth[i] > (i32)g_ZombMaxHealth[m_ZombType[i]]) {
+				m_ZombHealth[i] = g_ZombMaxHealth[m_ZombType[i]];
+			}
 		}
 
 		vec2 pos = m_ZombCharCore[i].m_Pos;
@@ -2015,6 +2198,10 @@ void CGameControllerZOMB::Tick()
 
 			case ZTYPE_BERSERKER:
 				HandleBerserker(i);
+				break;
+
+			case ZTYPE_WARTULE:
+				HandleWartule(i, targetPos, targetDist, targetLOS);
 				break;
 
 			default: break;
@@ -2172,17 +2359,7 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 	}
 
 	// lasers
-	for(i32 i = 0; i < (i32)m_LaserListCount; ++i) {
-		if(m_Tick > (m_LaserList[i].tick + SecondsToTick(0.4f))) {
-			if(m_LaserListCount > 1) {
-				m_LaserList[i] = m_LaserList[m_LaserListCount - 1];
-			}
-			--m_LaserListCount;
-			--i;
-		}
-	}
-
-	for(u32 i = 0; i < m_LaserListCount; ++i) {
+	for(u32 i = 0; i < m_LaserCount; ++i) {
 		CNetObj_Laser *pLaser = (CNetObj_Laser *)Server()->SnapNewItem(NETOBJTYPE_LASER, m_LaserID++,
 																	   sizeof(CNetObj_Laser));
 		if(!pLaser)
@@ -2193,6 +2370,20 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 		pLaser->m_FromX = m_LaserList[i].from.x;
 		pLaser->m_FromY = m_LaserList[i].from.y;
 		pLaser->m_StartTick = m_LaserList[i].tick;
+	}
+
+	// projectiles
+	for(u32 i = 0; i < m_ProjectileCount; ++i) {
+		CNetObj_Projectile *pProj = (CNetObj_Projectile *)Server()->SnapNewItem(NETOBJTYPE_PROJECTILE,
+												m_ProjectileList[i].id, sizeof(CNetObj_Projectile));
+		if(pProj) {
+			pProj->m_X = m_ProjectileList[i].startPos.x;
+			pProj->m_Y = m_ProjectileList[i].startPos.y;
+			pProj->m_VelX = m_ProjectileList[i].dir.x * 100.0f;
+			pProj->m_VelY = m_ProjectileList[i].dir.y * 100.0f;
+			pProj->m_StartTick = m_ProjectileList[i].startTick;
+			pProj->m_Type = m_ProjectileList[i].type;
+		}
 	}
 
 	// revive ctf
