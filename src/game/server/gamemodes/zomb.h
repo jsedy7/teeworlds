@@ -56,6 +56,9 @@ class CGameControllerZOMB : public IGameController
 
 	vec2 m_ZombLastShotDir[MAX_ZOMBS];
 
+	i32 m_ZombEyes[MAX_ZOMBS];
+	i32 m_ZombEyesClock[MAX_ZOMBS];
+
 	char m_MapName[128];
 	u8 m_Map[MAX_MAP_SIZE];
 	u32 m_MapWidth;
@@ -108,7 +111,7 @@ class CGameControllerZOMB : public IGameController
 	struct Projectile {
 		vec2 startPos;
 		vec2 dir;
-		i32 startTick;
+		i32 startTick, lifespan;
 		i32 type, dmg, ownerCID;
 		f32 curvature, speed;
 		u32 id;
@@ -175,9 +178,11 @@ class CGameControllerZOMB : public IGameController
 	static void ConLoadWaveFile(IConsole::IResult *pResult, void *pUserData);
 
 	void CreateLaser(vec2 from, vec2 to);
-	void CreateProjectile(vec2 pos, vec2 dir, i32 type, i32 dmg, i32 owner);
+	void CreateProjectile(vec2 pos, vec2 dir, i32 type, i32 dmg, i32 owner, i32 lifespan);
 	void TickProjectiles();
 	void CreateExplosion(vec2 pos, f32 inner, f32 outer, f32 force, i32 dmg, i32 ownerCID);
+
+	void ChangeEyes(i32 zid, i32 type, f32 time);
 
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer);

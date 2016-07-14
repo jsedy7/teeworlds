@@ -13,6 +13,7 @@
 
 /* TODO:
  * - Boss zombies?
+ * - Tweak wartule
  */
 
 static char msgBuff__[256];
@@ -49,7 +50,8 @@ static char msgBuff__[256];
 #define SPAWN_INTERVAL (SecondsToTick(0.5f))
 #define WAVE_WAIT_TIME (SecondsToTick(10))
 
-#define WARTULE_GRENADE_DMG 4
+#define BERSERKER_ENRAGE_RADIUS 300.f
+#define WARTULE_GRENADE_DMG 2
 
 #define ARMOR_DMG_REDUCTION 0.25f
 #define HEALING_INTERVAL (SecondsToTick(0.5f))
@@ -112,7 +114,7 @@ static const f32 g_ZombAttackSpeed[] = {
 	2.0f, // ZTYPE_HUNTER
 	0.6f, // ZTYPE_DOMINANT
 	4.5f, // ZTYPE_BERSERKER
-	3.5f // ZTYPE_WARTULE
+	2.0f // ZTYPE_WARTULE
 };
 
 static const i32 g_ZombAttackDmg[] = {
@@ -231,6 +233,7 @@ void CGameControllerZOMB::SpawnZombie(i32 zid, u8 type, bool isElite, u32 enrage
 	m_ZombChargingClock[zid] = -1;
 	m_ZombHealClock[zid] = 0;
 	m_ZombLastShotDir[zid] = vec2(-1, 0);
+	m_ZombEyesClock[zid] = -1;
 
 	if(needSendInfos) {
 		for(u32 i = 0; i < MAX_SURVIVORS; ++i) {
@@ -763,8 +766,6 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 
 		case ZTYPE_DOMINANT:
 			nci.m_apSkinPartNames[SKINPART_BODY] = "dominant";
-			nci.m_apSkinPartNames[SKINPART_EYES] = "dominant_eyes";
-			handFeetColor = PackColor(155, 182, 39); // blueish
 			break;
 
 		case ZTYPE_BERSERKER:
@@ -774,7 +775,6 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 
 		case ZTYPE_WARTULE:
 			nci.m_apSkinPartNames[SKINPART_BODY] = "wartule";
-			handFeetColor = PackColor(202, 172, 28); // purple;
 			break;
 
 		default: break;
@@ -939,6 +939,7 @@ void CGameControllerZOMB::HandleBoomer(u32 zid, f32 targetDist, bool targetLOS)
 		m_ZombHookClock[zid] = SecondsToTick(1.f);
 		// send some love
 		GameServer()->SendEmoticon(zombCID, 2);
+		ChangeEyes(zid, EMOTE_HAPPY, 3.f);
 	}
 }
 
@@ -1142,13 +1143,6 @@ void CGameControllerZOMB::HandleDominant(u32 zid, const vec2& targetPos, f32 tar
 			GameServer()->CreateSound(m_ZombCharCore[zid].m_Pos, SOUND_LASER_FIRE);
 			CreateLaser(m_ZombCharCore[zid].m_Pos, targetPos);
 
-			// pull a bit
-			vec2 pullDir = normalize(m_ZombCharCore[zid].m_Pos - targetPos);
-			CCharacterCore* pTargetCore = GameServer()->m_World.m_Core.m_apCharacters[m_ZombSurvTarget[zid]];
-			if(pTargetCore) {
-				pTargetCore->m_Vel += pullDir * 20.f;
-			}
-
 			i32 dmg = g_ZombAttackDmg[m_ZombType[zid]];
 			if(m_ZombBuff[zid]&BUFF_ELITE) {
 				dmg *= 2;
@@ -1173,7 +1167,7 @@ void CGameControllerZOMB::HandleBerserker(u32 zid)
 		}
 
 		// enrage nearby zombies
-		if(distance(m_ZombCharCore[zid].m_Pos, m_ZombCharCore[i].m_Pos) < 150.f) {
+		if(distance(m_ZombCharCore[zid].m_Pos, m_ZombCharCore[i].m_Pos) < BERSERKER_ENRAGE_RADIUS) {
 			m_ZombEnrageClock[i] = 1;
 		}
 	}
@@ -1184,8 +1178,12 @@ void CGameControllerZOMB::HandleWartule(u32 zid, const vec2& targetPos, f32 targ
 	m_ZombInput[zid].m_Hook = 0; // wartules don't hook
 
 	// throw grenades at people
-	if(targetDist > 80.f && targetLOS && targetDist < 500.f) {
+	if(targetDist > 80.f && targetLOS && targetDist < 350.f) {
 		m_ZombActiveWeapon[zid] = WEAPON_GRENADE;
+		// flee! :s (for 1 s)
+		m_ZombDestination[zid] = -targetPos;
+		m_ZombPathFindClock[zid] = SecondsToTick(1.f);
+		ChangeEyes(zid, EMOTE_PAIN, 1.f);
 
 		if(m_ZombAttackClock[zid] <= 0) {
 			GameServer()->CreateSound(m_ZombCharCore[zid].m_Pos, SOUND_GRENADE_FIRE);
@@ -1196,11 +1194,11 @@ void CGameControllerZOMB::HandleWartule(u32 zid, const vec2& targetPos, f32 targ
 			}
 
 			f32 shootAngle = angle(targetPos - m_ZombCharCore[zid].m_Pos);
-			shootAngle += (f32)RandInt(-30, 30) * pi / 180.f;
+			shootAngle += (f32)RandInt(-15, 15) * pi / 180.f;
 			vec2 shootDir = direction(shootAngle);
 
 			CreateProjectile(m_ZombCharCore[zid].m_Pos, shootDir,
-							 WEAPON_GRENADE, dmg, ZombCID(zid));
+							 WEAPON_GRENADE, dmg, ZombCID(zid), SecondsToTick(0.2f));
 
 			m_ZombLastShotDir[zid] = shootDir;
 			m_ZombAttackClock[zid] = SecondsToTick(1.f / g_ZombAttackSpeed[m_ZombType[zid]]);
@@ -1709,12 +1707,13 @@ void CGameControllerZOMB::CreateLaser(vec2 from, vec2 to)
 	m_LaserList[id].tick = m_Tick;
 }
 
-void CGameControllerZOMB::CreateProjectile(vec2 pos, vec2 dir, i32 type, i32 dmg, i32 owner)
+void CGameControllerZOMB::CreateProjectile(vec2 pos, vec2 dir, i32 type, i32 dmg, i32 owner, i32 lifespan)
 {
 	u32 id = m_ProjectileCount++;
 	m_ProjectileList[id].id = m_ProjectileID++;
 	m_ProjectileList[id].startPos = pos;
 	m_ProjectileList[id].startTick = m_Tick;
+	m_ProjectileList[id].lifespan = lifespan;
 	m_ProjectileList[id].dir = dir;
 	m_ProjectileList[id].type = type;
 	m_ProjectileList[id].dmg = dmg;
@@ -1745,12 +1744,25 @@ void CGameControllerZOMB::TickProjectiles()
 	u32 toDeleteCount = 0;
 
 	for(u32 i = 0; i < m_ProjectileCount; ++i) {
+
+
 		f32 pt = (m_Tick - m_ProjectileList[i].startTick - 1)/(f32)SERVER_TICK_SPEED;
 		f32 ct = (m_Tick - m_ProjectileList[i].startTick)/(f32)SERVER_TICK_SPEED;
 		vec2 prevPos = CalcPos(m_ProjectileList[i].startPos, m_ProjectileList[i].dir,
 							   m_ProjectileList[i].curvature, m_ProjectileList[i].speed, pt);
 		vec2 curPos = CalcPos(m_ProjectileList[i].startPos, m_ProjectileList[i].dir,
 							  m_ProjectileList[i].curvature, m_ProjectileList[i].speed, ct);
+
+		if(m_ProjectileList[i].lifespan-- <= 0) {
+			if(m_ProjectileList[i].type == WEAPON_GRENADE) {
+				CreateExplosion(curPos, 48.f, 135.f, 12.f, m_ProjectileList[i].dmg,
+								m_ProjectileList[i].ownerCID);
+			}
+
+			toDelete[toDeleteCount++] = i;
+			continue;
+		}
+
 		bool collided = (GameServer()->Collision()->IntersectLine(prevPos, curPos, &curPos, 0) != 0);
 
 		// out of bounds
@@ -1758,14 +1770,16 @@ void CGameControllerZOMB::TickProjectiles()
 		i32 ry = round_to_int(curPos.y) / 32;
 		if(rx < -200 || rx >= (i32)m_MapWidth+200 ||
 		   ry < -200 || ry >= (i32)m_MapHeight+200) {
-			collided = true;
+			toDelete[toDeleteCount++] = i;
+			continue;
 		}
 
-		bool deleted = false;
+
 		if(collided && m_ProjectileList[i].type == WEAPON_GRENADE) {
 			CreateExplosion(curPos, 48.f, 135.f, 12.f, m_ProjectileList[i].dmg,
 							m_ProjectileList[i].ownerCID);
-			deleted = true;
+			toDelete[toDeleteCount++] = i;
+			continue;
 		}
 
 
@@ -1776,11 +1790,8 @@ void CGameControllerZOMB::TickProjectiles()
 								m_ProjectileList[i].ownerCID);
 
 			}
-			deleted = true;
-		}
-
-		if(deleted) {
 			toDelete[toDeleteCount++] = i;
+			continue;
 		}
 	}
 
@@ -1852,6 +1863,12 @@ void CGameControllerZOMB::CreateExplosion(vec2 pos, f32 inner, f32 outer, f32 fo
 		m_ZombHookClock[z] = SecondsToTick(1);
 		m_ZombInput[z].m_Hook = 0;
 	}
+}
+
+void CGameControllerZOMB::ChangeEyes(i32 zid, i32 type, f32 time)
+{
+	m_ZombEyes[zid] = type;
+	m_ZombEyesClock[zid] = SecondsToTick(time);
 }
 
 void CGameControllerZOMB::TickReviveCtf()
@@ -2086,6 +2103,7 @@ void CGameControllerZOMB::Tick()
 		--m_ZombHookClock[i];
 		--m_ZombChargeClock[i];
 		--m_ZombHealClock[i];
+		--m_ZombEyesClock[i];
 
 		// auras
 		if(domninantAura && m_ZombType[i] != ZTYPE_DOMINANT) {
@@ -2318,9 +2336,9 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 		if(m_ZombBuff[i]&BUFF_ENRAGED) {
 			pCharacter->m_Emote = EMOTE_SURPRISE;
 		}
-		// boomer found his soulmate
-		if(m_ZombType[i] == ZTYPE_BOOMER && m_ZombExplodeClock[i] > 0) {
-			pCharacter->m_Emote = EMOTE_HAPPY;
+		// eye emote
+		if(m_ZombEyesClock[i] > 0) {
+			pCharacter->m_Emote = m_ZombEyes[i];
 		}
 
 		pCharacter->m_TriggeredEvents = m_ZombCharCore[i].m_TriggeredEvents;
@@ -2552,7 +2570,7 @@ int CGameControllerZOMB::OnCharacterDeath(CCharacter* pVictim, CPlayer* pKiller,
 void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i32 Weapon)
 {
 	// don't take damage from other zombies
-	if(IsZombie(From)) {
+	if(IsZombie(From) || Dmg <= 0) {
 		return;
 	}
 
@@ -2586,4 +2604,6 @@ void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i3
 	}
 
 	m_ZombCharCore[zid].m_Vel += Force * g_ZombKnockbackMultiplier[m_ZombType[zid]];
+
+	ChangeEyes(zid, EMOTE_PAIN, 1.f);
 }
