@@ -101,6 +101,7 @@ class CGameControllerZOMB : public IGameController
 	struct Laser {
 		vec2 from, to;
 		i32 tick;
+		u32 id;
 	};
 
 	Laser m_LaserList[MAX_LASERS];

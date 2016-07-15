@@ -110,10 +110,10 @@ static const f32 g_ZombAttackSpeed[] = {
 	1.f, // ZTYPE_TANK
 	0.0001f, // ZTYPE_BOOMER
 	1.0f, // ZTYPE_BULL
-	3.0f, // ZTYPE_MUDGE
+	2.0f, // ZTYPE_MUDGE
 	2.0f, // ZTYPE_HUNTER
 	0.6f, // ZTYPE_DOMINANT
-	4.5f, // ZTYPE_BERSERKER
+	4.0f, // ZTYPE_BERSERKER
 	2.0f // ZTYPE_WARTULE
 };
 
@@ -149,7 +149,7 @@ static const i32 g_ZombGrabLimit[] = {
 	SecondsToTick(30.f), // ZTYPE_MUDGE
 	SecondsToTick(0.5f), // ZTYPE_HUNTER
 	SecondsToTick(0.0f), // ZTYPE_DOMINANT
-	SecondsToTick(0.1f), // ZTYPE_BERSERKER
+	SecondsToTick(0.3f), // ZTYPE_BERSERKER
 	SecondsToTick(0.0f), // ZTYPE_WARTULE
 };
 
@@ -161,7 +161,7 @@ static const i32 g_ZombHookCD[] = {
 	SecondsToTick(3.f), // ZTYPE_MUDGE
 	SecondsToTick(2.f), // ZTYPE_HUNTER
 	SecondsToTick(999.f), // ZTYPE_DOMINANT
-	SecondsToTick(0.5f), // ZTYPE_BERSERKER
+	SecondsToTick(1.5f), // ZTYPE_BERSERKER
 	SecondsToTick(999.f), // ZTYPE_WARTULE
 };
 
@@ -1178,14 +1178,18 @@ void CGameControllerZOMB::HandleWartule(u32 zid, const vec2& targetPos, f32 targ
 	m_ZombInput[zid].m_Hook = 0; // wartules don't hook
 
 	// throw grenades at people
-	if(targetDist > 80.f && targetLOS && targetDist < 350.f) {
+	if(targetDist > 80.f && targetLOS) {
 		m_ZombActiveWeapon[zid] = WEAPON_GRENADE;
-		// flee! :s (for 1 s)
-		m_ZombDestination[zid] = -targetPos;
-		m_ZombPathFindClock[zid] = SecondsToTick(1.f);
-		ChangeEyes(zid, EMOTE_PAIN, 1.f);
 
-		if(m_ZombAttackClock[zid] <= 0) {
+		if(targetDist < 350.f) {
+			// flee! :s (for 1 s)
+			m_ZombDestination[zid].x = -targetPos.x;
+			m_ZombPathFindClock[zid] = SecondsToTick(1.f);
+			ChangeEyes(zid, EMOTE_PAIN, 1.f);
+		}
+
+		if(m_ZombAttackClock[zid] <= 0 &&
+		   (m_ZombPathFindClock[zid] > SecondsToTick(0.25f) || targetDist < 400.f)) { // hacky
 			GameServer()->CreateSound(m_ZombCharCore[zid].m_Pos, SOUND_GRENADE_FIRE);
 
 			i32 dmg = WARTULE_GRENADE_DMG;
@@ -1209,6 +1213,7 @@ void CGameControllerZOMB::HandleWartule(u32 zid, const vec2& targetPos, f32 targ
 	}
 	else {
 		m_ZombActiveWeapon[zid] = WEAPON_HAMMER;
+		m_ZombLastShotDir[zid] = targetPos - m_ZombCharCore[zid].m_Pos;
 	}
 }
 
@@ -1705,6 +1710,7 @@ void CGameControllerZOMB::CreateLaser(vec2 from, vec2 to)
 	m_LaserList[id].to = to;
 	m_LaserList[id].from = from;
 	m_LaserList[id].tick = m_Tick;
+	m_LaserList[id].id = m_LaserID++;
 }
 
 void CGameControllerZOMB::CreateProjectile(vec2 pos, vec2 dir, i32 type, i32 dmg, i32 owner, i32 lifespan)
@@ -2295,13 +2301,29 @@ void CGameControllerZOMB::Tick()
 	}
 }
 
+
+inline bool networkClipped(vec2 viewPos, vec2 checkPos)
+{
+	f32 dx = viewPos.x-checkPos.x;
+	f32 dy = viewPos.y-checkPos.y;
+
+	if(absolute(dx) > 1000.0f || absolute(dy) > 800.0f ||
+	   distance(viewPos, checkPos) > 1100.0f) {
+		return true;
+	}
+	return false;
+}
+
 void CGameControllerZOMB::Snap(i32 SnappingClientID)
 {
-	if(!IsSurvivor(SnappingClientID)) {
+	if(!GameServer()->m_apPlayers[SnappingClientID] ||
+	   !IsSurvivor(SnappingClientID)) {
 		return;
 	}
 
 	IGameController::Snap(SnappingClientID);
+
+	const vec2& viewPos = GameServer()->m_apPlayers[SnappingClientID]->m_ViewPos;
 
 	// send zombie player and character infos
 	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
@@ -2321,6 +2343,10 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 		pPlayerInfo->m_PlayerFlags = PLAYERFLAG_READY;
 		pPlayerInfo->m_Latency = zombCID;
 		pPlayerInfo->m_Score = zombCID;
+
+		if(networkClipped(viewPos, m_ZombCharCore[i].m_Pos)) {
+			continue;
+		}
 
 		CNetObj_Character *pCharacter = (CNetObj_Character *)Server()->SnapNewItem(NETOBJTYPE_CHARACTER,
 													zombCID, sizeof(CNetObj_Character));
@@ -2378,7 +2404,11 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 
 	// lasers
 	for(u32 i = 0; i < m_LaserCount; ++i) {
-		CNetObj_Laser *pLaser = (CNetObj_Laser *)Server()->SnapNewItem(NETOBJTYPE_LASER, m_LaserID++,
+		if(networkClipped(viewPos, m_LaserList[i].from)) {
+			continue;
+		}
+
+		CNetObj_Laser *pLaser = (CNetObj_Laser *)Server()->SnapNewItem(NETOBJTYPE_LASER, m_LaserList[i].id,
 																	   sizeof(CNetObj_Laser));
 		if(!pLaser)
 			return;
@@ -2392,6 +2422,17 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 
 	// projectiles
 	for(u32 i = 0; i < m_ProjectileCount; ++i) {
+		f32 ct = (m_Tick - m_ProjectileList[i].startTick) / (f32)SERVER_TICK_SPEED;
+		vec2 projPos = CalcPos(m_ProjectileList[i].startPos,
+							   m_ProjectileList[i].dir,
+							   m_ProjectileList[i].curvature,
+							   m_ProjectileList[i].speed,
+							   ct);
+
+		if(networkClipped(viewPos, projPos)) {
+			continue;
+		}
+
 		CNetObj_Projectile *pProj = (CNetObj_Projectile *)Server()->SnapNewItem(NETOBJTYPE_PROJECTILE,
 												m_ProjectileList[i].id, sizeof(CNetObj_Projectile));
 		if(pProj) {
