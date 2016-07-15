@@ -31,6 +31,10 @@ static char msgBuff__[256];
 #define NO_TARGET -1
 #define SecondsToTick(sec) (i32)(sec * SERVER_TICK_SPEED)
 
+#define SPAWN_INTERVAL (SecondsToTick(0.5f))
+#define WAVE_WAIT_TIME (SecondsToTick(10))
+#define RESTART_WAIT_TIME (SecondsToTick(15))
+
 #define HOOK_RANGE 375.f
 #define DEFAULT_ENRAGE_TIME SecondsToTick(30)
 
@@ -46,9 +50,6 @@ static char msgBuff__[256];
 #define HUNTER_CHARGE_CD (SecondsToTick(1.5f))
 #define HUNTER_CHARGE_SPEED 2700.f
 #define HUNTER_CHARGE_DMG 3
-
-#define SPAWN_INTERVAL (SecondsToTick(0.5f))
-#define WAVE_WAIT_TIME (SecondsToTick(10))
 
 #define BERSERKER_ENRAGE_RADIUS 300.f
 #define WARTULE_GRENADE_DMG 2
@@ -1233,7 +1234,7 @@ void CGameControllerZOMB::StartZombGame(u32 startingWave)
 {
 	m_CurrentWave = startingWave;
 	m_SpawnCmdID = 0;
-	m_SpawnClock = SecondsToTick(13); // 10s to setup (3s countown)
+	m_SpawnClock = SecondsToTick(10); // 10s to setup
 	m_WaveWaitClock = -1;
 	AnnounceWave(m_CurrentWave);
 	ChatMessage(">> 10s to setup.");
@@ -1251,6 +1252,7 @@ void CGameControllerZOMB::StartZombGame(u32 startingWave)
 	}
 
 	m_Seed = RandInt(0, 9999);
+	m_RestartClock = -1;
 }
 
 void CGameControllerZOMB::GameWon()
@@ -1268,7 +1270,8 @@ void CGameControllerZOMB::GameLost()
 	GameCleanUp();
 
 	if(g_Config.m_SvZombAutoRestart) {
-		StartZombGame();
+		m_RestartClock = RESTART_WAIT_TIME;
+		ChatMessage("Game restarting in 15s...");
 	}
 }
 
@@ -1990,6 +1993,7 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 									  this, "Load a ZOMB wave file");
 
 	m_ZombGameState = ZSTATE_NONE;
+	m_RestartClock = -1;
 
 	m_BlueFlagSpawnCount = 0;
 	m_IsReviveCtfActive = false;
@@ -2015,6 +2019,17 @@ void CGameControllerZOMB::Tick()
 {
 	m_Tick = Server()->Tick();
 	IGameController::Tick();
+
+	if(GameServer()->m_World.m_Paused) {
+		return;
+	}
+
+	if(m_RestartClock > 0) {
+		--m_RestartClock;
+		if(m_RestartClock == 0) {
+			StartZombGame(0);
+		}
+	}
 
 	// lasers
 	for(i32 i = 0; i < (i32)m_LaserCount; ++i) {

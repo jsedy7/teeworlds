@@ -97,6 +97,8 @@ class CGameControllerZOMB : public IGameController
 	bool m_IsReviveCtfActive;
 	bool m_CanPlayersRespawn;
 
+	i32 m_RestartClock;
+
 	// lasers
 	struct Laser {
 		vec2 from, to;
