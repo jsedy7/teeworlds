@@ -11,11 +11,6 @@
 #include <game/server/entities/character.h>
 #include <game/server/gamecontext.h>
 
-/* TODO:
- * - Boss zombies?
- * - In between games wait time (like 10s)
- */
-
 static char msgBuff__[256];
 #define dbg_zomb_msg(...)\
 	memset(msgBuff__, 0, sizeof(msgBuff__));\
@@ -33,7 +28,6 @@ static char msgBuff__[256];
 
 #define SPAWN_INTERVAL (SecondsToTick(0.5f))
 #define WAVE_WAIT_TIME (SecondsToTick(10))
-#define RESTART_WAIT_TIME (SecondsToTick(15))
 
 #define HOOK_RANGE 375.f
 #define DEFAULT_ENRAGE_TIME SecondsToTick(30)
@@ -57,6 +51,7 @@ static char msgBuff__[256];
 #define ARMOR_DMG_REDUCTION 0.25f
 #define HEALING_INTERVAL (SecondsToTick(0.5f))
 #define HEALING_AMOUNT 1
+#define ELITE_DMG_MULTIPLIER 1.5f
 
 enum {
 	SKINPART_BODY = 0,
@@ -718,6 +713,10 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 	nci.m_aUseCustomColors[SKINPART_EYES] = 0;
 	nci.m_aSkinPartColors[SKINPART_EYES] = 0;
 
+	if(m_ZombBuff[zid]&BUFF_ELITE) {
+		nci.m_apSkinPartNames[SKINPART_EYES] = "zombie_eyes_elite";
+	}
+
 	nci.m_aUseCustomColors[SKINPART_MARKING] = 0;
 	nci.m_aSkinPartColors[SKINPART_MARKING] = 0;
 
@@ -730,11 +729,6 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 
 	nci.m_aUseCustomColors[SKINPART_BODY] = 0;
 	nci.m_aSkinPartColors[SKINPART_BODY] = 0;
-
-	if(m_ZombBuff[zid]&BUFF_ELITE) {
-		nci.m_aUseCustomColors[SKINPART_BODY] = 1;
-		nci.m_aSkinPartColors[SKINPART_BODY] = yellow;
-	}
 
 	nci.m_pName = g_ZombName[m_ZombType[zid]];
 
@@ -781,8 +775,6 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 		default: break;
 	}
 
-
-	// NOTE: is this really needed?
 	if(m_ZombBuff[zid]&BUFF_ENRAGED) {
 		handFeetColor = red;
 	}
@@ -974,7 +966,7 @@ void CGameControllerZOMB::HandleBull(u32 zid, const vec2& targetPos, f32 targetD
 
 		i32 dmg = g_ZombAttackDmg[m_ZombType[zid]];
 		if(m_ZombBuff[zid]&BUFF_ELITE) {
-			dmg *= 2;
+			dmg *= ELITE_DMG_MULTIPLIER;
 		}
 
 		f32 checkRadius = 100.f;
@@ -1146,7 +1138,7 @@ void CGameControllerZOMB::HandleDominant(u32 zid, const vec2& targetPos, f32 tar
 
 			i32 dmg = g_ZombAttackDmg[m_ZombType[zid]];
 			if(m_ZombBuff[zid]&BUFF_ELITE) {
-				dmg *= 2;
+				dmg *= ELITE_DMG_MULTIPLIER;
 			}
 
 			GameServer()->GetPlayerChar(m_ZombSurvTarget[zid])->TakeDamage(vec2(0,0), dmg,
@@ -1195,7 +1187,7 @@ void CGameControllerZOMB::HandleWartule(u32 zid, const vec2& targetPos, f32 targ
 
 			i32 dmg = WARTULE_GRENADE_DMG;
 			if(m_ZombBuff[zid]&BUFF_ELITE) {
-				dmg *= 2;
+				dmg *= ELITE_DMG_MULTIPLIER;
 			}
 
 			f32 shootAngle = angle(targetPos - m_ZombCharCore[zid].m_Pos);
@@ -1242,8 +1234,6 @@ void CGameControllerZOMB::StartZombGame(u32 startingWave)
 	m_ZombGameState = ZSTATE_WAVE_GAME;
 	m_CanPlayersRespawn = true;
 
-	// needed so when SpawnZombie() checks type it sends infos
-	// (for the first spawn)
 	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
 		if(m_ZombAlive[i]) {
 			KillZombie(i, -1);
@@ -1269,9 +1259,11 @@ void CGameControllerZOMB::GameLost()
 
 	GameCleanUp();
 
-	if(g_Config.m_SvZombAutoRestart) {
-		m_RestartClock = RESTART_WAIT_TIME;
-		ChatMessage("Game restarting in 15s...");
+	if(g_Config.m_SvZombAutoRestart > 0) {
+		m_RestartClock = SecondsToTick(g_Config.m_SvZombAutoRestart);
+		char restartMsg[128];
+		str_format(restartMsg, sizeof(restartMsg), "Game restarting in %ds...", g_Config.m_SvZombAutoRestart);
+		ChatMessage(restartMsg);
 	}
 }
 
@@ -1982,8 +1974,6 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 
 	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
 		m_ZombCharCore[i].Init(&GameServer()->m_World.m_Core, GameServer()->Collision());
-		// needed so when SpawnZombie() checks type it sends infos
-		// (for the first spawn)
 		m_ZombType[i] = ZTYPE_INVALID;
 	}
 
@@ -2020,15 +2010,15 @@ void CGameControllerZOMB::Tick()
 	m_Tick = Server()->Tick();
 	IGameController::Tick();
 
-	if(GameServer()->m_World.m_Paused) {
-		return;
-	}
-
 	if(m_RestartClock > 0) {
 		--m_RestartClock;
 		if(m_RestartClock == 0) {
 			StartZombGame(0);
 		}
+	}
+
+	if(GameServer()->m_World.m_Paused) {
+		return;
 	}
 
 	// lasers
@@ -2160,8 +2150,12 @@ void CGameControllerZOMB::Tick()
 		if(m_ZombBuff[i]&BUFF_HEALING && m_ZombHealClock[i] <= 0) {
 			m_ZombHealClock[i] = HEALING_INTERVAL;
 			m_ZombHealth[i] += HEALING_AMOUNT;
-			if(m_ZombHealth[i] > (i32)g_ZombMaxHealth[m_ZombType[i]]) {
-				m_ZombHealth[i] = g_ZombMaxHealth[m_ZombType[i]];
+			i32 maxHealth = g_ZombMaxHealth[m_ZombType[i]];
+			if(m_ZombBuff[i]&BUFF_ELITE) {
+				maxHealth *= 2;
+			}
+			if(m_ZombHealth[i] > maxHealth) {
+				m_ZombHealth[i] = maxHealth;
 			}
 		}
 
@@ -2200,9 +2194,9 @@ void CGameControllerZOMB::Tick()
 		// attack!
 		if(m_ZombAttackClock[i] <= 0 && targetDist < 56.f) {
 			i32 dmg = g_ZombAttackDmg[m_ZombType[i]];
-			// double damage if elite
+
 			if(m_ZombBuff[i]&BUFF_ELITE) {
-				dmg *= 2;
+				dmg *= ELITE_DMG_MULTIPLIER;
 			}
 
 			SwingHammer(i, dmg, 2.f);
