@@ -13,7 +13,7 @@
 
 /* TODO:
  * - Boss zombies?
- * - Tweak wartule
+ * - In between games wait time (like 10s)
  */
 
 static char msgBuff__[256];
@@ -1284,8 +1284,9 @@ void CGameControllerZOMB::GameCleanUp()
 	}
 
 	for(u32 i = 0; i < MAX_SURVIVORS; ++i) {
-		if(GameServer()->m_apPlayers[i] && !GameServer()->GetPlayerChar(i)) {
-			GameServer()->m_apPlayers[i]->SetTeam(TEAM_RED, false);
+		if(GameServer()->m_apPlayers[i]) {
+			GameServer()->m_apPlayers[i]->m_RespawnDisabled = false;
+			GameServer()->m_apPlayers[i]->m_DeadSpecMode = false;
 		}
 	}
 
@@ -1356,7 +1357,8 @@ void CGameControllerZOMB::ReviveSurvivors()
 
 	for(u32 i = 0; i < MAX_SURVIVORS; ++i) {
 		if(GameServer()->m_apPlayers[i] && !GameServer()->GetPlayerChar(i)) {
-			GameServer()->m_apPlayers[i]->SetTeam(TEAM_RED, false);
+			GameServer()->m_apPlayers[i]->m_RespawnDisabled = false;
+			GameServer()->m_apPlayers[i]->m_DeadSpecMode = false;
 			GameServer()->m_apPlayers[i]->TryRespawn();
 		}
 	}
@@ -1880,13 +1882,9 @@ void CGameControllerZOMB::ChangeEyes(i32 zid, i32 type, f32 time)
 void CGameControllerZOMB::TickReviveCtf()
 {
 	bool everyoneDead = true;
-	for(u32 i = 0; i < MAX_SURVIVORS; ++i) {
+	for(u32 i = 0; i < MAX_SURVIVORS && everyoneDead; ++i) {
 		if(GameServer()->GetPlayerChar(i)) {
 			everyoneDead = false;
-		}
-		else if(GameServer()->m_apPlayers[i] &&
-				GameServer()->m_apPlayers[i]->GetTeam() != TEAM_SPECTATORS) {
-			GameServer()->m_apPlayers[i]->SetTeam(TEAM_SPECTATORS, false);
 		}
 	}
 
@@ -2518,8 +2516,6 @@ void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 		if(!m_ZombAlive[i]) continue;
 		SendZombieInfos(i, pPlayer->GetCID());
 	}
-
-	pPlayer->SetTeam(TEAM_RED, false);
 }
 
 bool CGameControllerZOMB::IsFriendlyFire(int ClientID1, int ClientID2) const
@@ -2596,16 +2592,32 @@ bool CGameControllerZOMB::CanSpawn(int Team, vec2* pPos) const
 
 int CGameControllerZOMB::OnCharacterDeath(CCharacter* pVictim, CPlayer* pKiller, int Weapon)
 {
-	if(!m_IsReviveCtfActive && m_ZombGameState != ZSTATE_NONE) {
-		ActivateReviveCtf();
-	}
+	if(pVictim->GetPlayer()->GetTeam() != TEAM_SPECTATORS && Weapon != WEAPON_GAME) {
+		if(m_ZombGameState != ZSTATE_NONE) {
+			pVictim->GetPlayer()->m_RespawnDisabled = true;
+			pVictim->GetPlayer()->m_DeadSpecMode = true;
+		}
 
-	if(m_RedFlagCarrier == pVictim->GetPlayer()->GetCID()) {
-		m_RedFlagCarrier = -1;
-		GameServer()->CreateSound(m_RedFlagPos, SOUND_CTF_DROP);
+		if(!m_IsReviveCtfActive && m_ZombGameState != ZSTATE_NONE) {
+			ActivateReviveCtf();
+		}
+
+		if(m_RedFlagCarrier == pVictim->GetPlayer()->GetCID()) {
+			m_RedFlagCarrier = -1;
+			GameServer()->CreateSound(m_RedFlagPos, SOUND_CTF_DROP);
+		}
 	}
 
 	return IGameController::OnCharacterDeath(pVictim, pKiller, Weapon);
+}
+
+bool CGameControllerZOMB::CanChangeTeam(CPlayer* pPlayer, int JoinTeam) const
+{
+	if(m_ZombGameState != ZSTATE_NONE && JoinTeam != TEAM_SPECTATORS) {
+		return false;
+	}
+
+	return IGameController::CanChangeTeam(pPlayer, JoinTeam);
 }
 
 void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i32 Weapon)

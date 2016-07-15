@@ -195,6 +195,7 @@ public:
 	bool HasEnoughPlayers() const;
 	bool CanSpawn(int Team, vec2 *pPos) const;
 	int OnCharacterDeath(class CCharacter *pVictim, class CPlayer *pKiller, int Weapon);
+	bool CanChangeTeam(CPlayer *pPlayer, int JoinTeam) const;
 	void ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i32 Weapon);
 };
 
