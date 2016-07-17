@@ -70,6 +70,7 @@ class CGameControllerZOMB : public IGameController
 	u32 m_SurvSpawnPointCount;
 
 	u32 m_ZombGameState;
+	u32 m_ZombLastGameState;
 
 	// waves
 	struct SpawnCmd {
@@ -98,6 +99,10 @@ class CGameControllerZOMB : public IGameController
 	bool m_CanPlayersRespawn;
 
 	i32 m_RestartClock;
+
+	SpawnCmd m_SurvQueue[MAX_SPAWN_QUEUE];
+	u32 m_SurvQueueCount;
+	u32 m_SurvivalStartTick;
 
 	// lasers
 	struct Laser {
@@ -162,6 +167,7 @@ class CGameControllerZOMB : public IGameController
 	void HandleDominant(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
 	void HandleBerserker(u32 zid);
 	void HandleWartule(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
+	void TickZombies();
 
 	static void ConZombStart(IConsole::IResult *pResult, void *pUserData);
 	void StartZombGame(u32 startingWave = 0);
@@ -170,6 +176,7 @@ class CGameControllerZOMB : public IGameController
 	void GameCleanUp();
 	void ChatMessage(const char* msg);
 	void AnnounceWave(u32 waveID);
+	void TickWaveGame();
 
 	void ActivateReviveCtf();
 	void ReviveSurvivors();
@@ -186,6 +193,10 @@ class CGameControllerZOMB : public IGameController
 	void CreateExplosion(vec2 pos, f32 inner, f32 outer, f32 force, i32 dmg, i32 ownerCID);
 
 	void ChangeEyes(i32 zid, i32 type, f32 time);
+
+	static void ConZombStartSurv(IConsole::IResult *pResult, void *pUserData);
+	void StartZombSurv(i32 seed = -1);
+	void TickSurvivalGame();
 
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer);

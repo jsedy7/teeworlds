@@ -11,6 +11,12 @@
 #include <game/server/entities/character.h>
 #include <game/server/gamecontext.h>
 
+/**
+ * TODO:
+ * - survival: make zombs mutate
+ * - survival: seed
+ */
+
 static char msgBuff__[256];
 #define dbg_zomb_msg(...)\
 	memset(msgBuff__, 0, sizeof(msgBuff__));\
@@ -27,10 +33,12 @@ static char msgBuff__[256];
 #define SecondsToTick(sec) (i32)(sec * SERVER_TICK_SPEED)
 
 #define SPAWN_INTERVAL (SecondsToTick(0.5f))
+#define SPAWN_INTERVAL_SURV (SecondsToTick(1.5f))
 #define WAVE_WAIT_TIME (SecondsToTick(10))
 
 #define HOOK_RANGE 375.f
-#define DEFAULT_ENRAGE_TIME SecondsToTick(30)
+#define DEFAULT_ENRAGE_TIME 30
+#define SURVIVAL_ENRAGE_TIME 15
 
 #define BOOMER_EXPLOSION_INNER_RADIUS 150.f
 #define BOOMER_EXPLOSION_OUTER_RADIUS 300.f
@@ -52,6 +60,8 @@ static char msgBuff__[256];
 #define HEALING_INTERVAL (SecondsToTick(0.5f))
 #define HEALING_AMOUNT 1
 #define ELITE_DMG_MULTIPLIER 1.5f
+
+#define SURVIVAL_MAX_TIME (SecondsToTick(400))
 
 enum {
 	SKINPART_BODY = 0,
@@ -184,6 +194,93 @@ static i32 RandInt(i32 min, i32 max)
 {
 	dbg_assert(max > min, "RandInt(min, max) max must be > min");
 	return (min + (rand() / (f32)RAND_MAX) * (max + 1 - min));
+}
+
+// simplex noise
+static const u8 g_perm[512] = {
+	161, 171, 188, 119, 28, 100, 98, 173, 10, 113, 208, 136,
+	129, 76, 225, 160, 204, 78, 12, 132, 164, 153, 199, 110,
+	66, 180, 227, 149, 127, 156, 88, 70, 168, 145, 131, 61,
+	134, 67, 250, 69, 172, 157, 45, 81, 104, 154, 47, 32, 198,
+	74, 11, 20, 63, 42, 35, 23, 99, 178, 121, 115, 213, 111,
+	159, 184, 75, 36, 165, 224, 221, 185, 128, 106, 4, 64, 109,
+	57, 3, 58, 218, 30, 179, 25, 167, 124, 235, 72, 14, 248,
+	182, 107, 123, 43, 243, 31, 231, 144, 162, 86, 130, 48, 237,
+	33, 55, 56, 193, 41, 54, 103, 143, 24, 1, 22, 210, 158, 239,
+	117, 202, 87, 146, 85, 80, 118, 169, 255, 238, 181, 163, 27,
+	226, 9, 94, 135, 125, 176, 60, 140, 249, 229, 194, 93, 211,
+	240, 16, 77, 205, 203, 216, 215, 105, 191, 138, 6, 201, 230,
+	133, 234, 5, 53, 97, 83, 89, 170, 51, 50, 192, 228, 112, 92,
+	247, 190, 8, 186, 15, 245, 241, 108, 65, 177, 79, 68, 59,
+	252, 196, 49, 7, 200, 183, 137, 242, 152, 141, 95, 71, 214,
+	116, 189, 148, 166, 37, 253, 219, 246, 73, 175, 19, 209, 84,
+	232, 139, 233, 244, 217, 62, 206, 150, 39, 40, 13, 29, 26, 101,
+	34, 0, 251, 102, 91, 142, 18, 21, 197, 174, 223, 126, 207, 17,
+	114, 155, 147, 236, 195, 52, 44, 120, 96, 212, 82, 222, 38, 46,
+	122, 220, 151, 90, 254, 2, 187,
+
+	161, 171, 188, 119, 28, 100, 98, 173, 10, 113, 208, 136,
+	129, 76, 225, 160, 204, 78, 12, 132, 164, 153, 199, 110,
+	66, 180, 227, 149, 127, 156, 88, 70, 168, 145, 131, 61,
+	134, 67, 250, 69, 172, 157, 45, 81, 104, 154, 47, 32, 198,
+	74, 11, 20, 63, 42, 35, 23, 99, 178, 121, 115, 213, 111,
+	159, 184, 75, 36, 165, 224, 221, 185, 128, 106, 4, 64, 109,
+	57, 3, 58, 218, 30, 179, 25, 167, 124, 235, 72, 14, 248,
+	182, 107, 123, 43, 243, 31, 231, 144, 162, 86, 130, 48, 237,
+	33, 55, 56, 193, 41, 54, 103, 143, 24, 1, 22, 210, 158, 239,
+	117, 202, 87, 146, 85, 80, 118, 169, 255, 238, 181, 163, 27,
+	226, 9, 94, 135, 125, 176, 60, 140, 249, 229, 194, 93, 211,
+	240, 16, 77, 205, 203, 216, 215, 105, 191, 138, 6, 201, 230,
+	133, 234, 5, 53, 97, 83, 89, 170, 51, 50, 192, 228, 112, 92,
+	247, 190, 8, 186, 15, 245, 241, 108, 65, 177, 79, 68, 59,
+	252, 196, 49, 7, 200, 183, 137, 242, 152, 141, 95, 71, 214,
+	116, 189, 148, 166, 37, 253, 219, 246, 73, 175, 19, 209, 84,
+	232, 139, 233, 244, 217, 62, 206, 150, 39, 40, 13, 29, 26, 101,
+	34, 0, 251, 102, 91, 142, 18, 21, 197, 174, 223, 126, 207, 17,
+	114, 155, 147, 236, 195, 52, 44, 120, 96, 212, 82, 222, 38, 46,
+	122, 220, 151, 90, 254, 2, 187
+};
+
+inline f32 grad(i32 hash, f32 x, f32 y)
+{
+	i32 h = hash & 0x7;
+	f32 u = h < 4 ? x : y;
+	f32 v = h < 4 ? y : x;
+	return ((h & 1)? -u : u) + ((h & 2)? -2.0f*v : 2.0f*v);
+}
+
+inline f32 grad(i32 hash, f32 x)
+{
+	i32 h = hash & 15;
+	f32 grad = 1.0f + (h & 7);
+	if(h & 8) grad = -grad;
+	return (grad * x);
+}
+
+inline i32 fastFloor(f32 x)
+{
+	if(x > 0) {
+		return (i32)x;
+	}
+	return (i32)x - 1;
+}
+
+f32 noise1D(f32 x)
+{
+	i32 i0 = fastFloor(x);
+	i32 i1 = i0 + 1;
+	f32 x0 = x - i0;
+	f32 x1 = x0 - 1.0f;
+
+	f32 n0, n1;
+	f32 t0 = 1.0f - x0*x0;
+	t0 *= t0;
+	n0 = t0 * t0 * grad(g_perm[i0 & 0xff], x0);
+
+	f32 t1 = 1.0f - x1*x1;
+	t1 *= t1;
+	n1 = t1 * t1 * grad(g_perm[i1 & 0xff], x1);
+	return 0.395f * (n0 + n1);
 }
 
 void CGameControllerZOMB::SpawnZombie(i32 zid, u8 type, bool isElite, u32 enrageTime)
@@ -1210,6 +1307,225 @@ void CGameControllerZOMB::HandleWartule(u32 zid, const vec2& targetPos, f32 targ
 	}
 }
 
+void CGameControllerZOMB::TickZombies()
+{
+	// aura givers
+	bool domninantAura = false;
+	bool wartuleAura = false;
+	for(u32 i = 0; i < MAX_ZOMBS && (!domninantAura || !wartuleAura); ++i) {
+		if(m_ZombAlive[i]) {
+			if(m_ZombType[i] == ZTYPE_DOMINANT) {
+				domninantAura = true;
+			}
+			if(m_ZombType[i] == ZTYPE_WARTULE) {
+				wartuleAura = true;
+			}
+		}
+	}
+
+	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
+		if(!m_ZombAlive[i]) continue;
+
+		// clocks
+		--m_ZombPathFindClock[i];
+		--m_ZombJumpClock[i];
+		--m_ZombAttackClock[i];
+		--m_ZombEnrageClock[i];
+		--m_ZombHookClock[i];
+		--m_ZombChargeClock[i];
+		--m_ZombHealClock[i];
+		--m_ZombEyesClock[i];
+
+		// auras
+		if(domninantAura && m_ZombType[i] != ZTYPE_DOMINANT) {
+			m_ZombBuff[i] |= BUFF_ARMORED;
+		}
+		else {
+			m_ZombBuff[i] &= ~BUFF_ARMORED;
+		}
+
+		if(wartuleAura && m_ZombType[i] != ZTYPE_WARTULE) {
+			m_ZombBuff[i] |= BUFF_HEALING;
+		}
+		else {
+			m_ZombBuff[i] &= ~BUFF_HEALING;
+		}
+
+		// enrage
+		if(m_ZombEnrageClock[i] <= 0 && !(m_ZombBuff[i]&BUFF_ENRAGED)) {
+			m_ZombBuff[i] |= BUFF_ENRAGED;
+			for(u32 s = 0; s < MAX_SURVIVORS; ++s) {
+				if(GameServer()->m_apPlayers[s] && Server()->ClientIngame(s)) {
+					SendZombieInfos(i, s);
+				}
+			}
+		}
+
+		// double if enraged
+		if(m_ZombBuff[i]&BUFF_ENRAGED) {
+			--m_ZombAttackClock[i];
+			--m_ZombHookClock[i];
+			--m_ZombChargeClock[i];
+		}
+
+		// healing
+		if(m_ZombBuff[i]&BUFF_HEALING && m_ZombHealClock[i] <= 0) {
+			m_ZombHealClock[i] = HEALING_INTERVAL;
+			m_ZombHealth[i] += HEALING_AMOUNT;
+			i32 maxHealth = g_ZombMaxHealth[m_ZombType[i]];
+			if(m_ZombBuff[i]&BUFF_ELITE) {
+				maxHealth *= 2;
+			}
+			if(m_ZombHealth[i] > maxHealth) {
+				m_ZombHealth[i] = maxHealth;
+			}
+		}
+
+		vec2 pos = m_ZombCharCore[i].m_Pos;
+
+		// find closest target
+		f32 closestDist = -1.f;
+		i32 survTargetID = NO_TARGET;
+		for(u32 s = 0; s < MAX_SURVIVORS; ++s) {
+			CCharacter* pSurvChar = GameServer()->GetPlayerChar(s);
+			if(pSurvChar) {
+				f32 dist = length(pos - pSurvChar->GetPos());
+				if(closestDist < 0.f || dist < closestDist) {
+					closestDist = dist;
+					survTargetID = s;
+				}
+			}
+		}
+
+		m_ZombSurvTarget[i] = survTargetID;
+
+		if(m_ZombSurvTarget[i] == NO_TARGET) {
+			continue;
+		}
+
+
+		vec2 targetPos = GameServer()->GetPlayerChar(m_ZombSurvTarget[i])->GetPos();
+		f32 targetDist = distance(pos, targetPos);
+		bool targetLOS = (GameServer()->Collision()->IntersectLine(pos, targetPos, 0, 0) == 0);
+
+		HandleMovement(i, targetPos, targetLOS);
+
+		m_ZombInput[i].m_TargetX = targetPos.x - pos.x;
+		m_ZombInput[i].m_TargetY = targetPos.y - pos.y;
+
+		// attack!
+		if(m_ZombAttackClock[i] <= 0 && targetDist < 56.f) {
+			i32 dmg = g_ZombAttackDmg[m_ZombType[i]];
+
+			if(m_ZombBuff[i]&BUFF_ELITE) {
+				dmg *= ELITE_DMG_MULTIPLIER;
+			}
+
+			SwingHammer(i, dmg, 2.f);
+			m_ZombAttackClock[i] = SecondsToTick(1.f / g_ZombAttackSpeed[m_ZombType[i]]);
+		}
+
+		HandleHook(i, targetDist, targetLOS);
+
+		// special behaviors
+		switch(m_ZombType[i]) {
+			case ZTYPE_BOOMER:
+				HandleBoomer(i, targetDist, targetLOS);
+				break;
+
+			case ZTYPE_BULL:
+				HandleBull(i, targetPos, targetDist, targetLOS);
+				break;
+
+			case ZTYPE_MUDGE:
+				HandleMudge(i, targetPos, targetDist, targetLOS);
+				break;
+
+			case ZTYPE_HUNTER:
+				HandleHunter(i, targetPos, targetDist, targetLOS);
+				break;
+
+			case ZTYPE_DOMINANT:
+				HandleDominant(i, targetPos, targetDist, targetLOS);
+				break;
+
+			case ZTYPE_BERSERKER:
+				HandleBerserker(i);
+				break;
+
+			case ZTYPE_WARTULE:
+				HandleWartule(i, targetPos, targetDist, targetLOS);
+				break;
+
+			default: break;
+		}
+	}
+
+	// core actual move
+	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
+		if(!m_ZombAlive[i]) continue;
+		m_ZombCharCore[i].m_Input = m_ZombInput[i];
+
+		// handle jump
+		m_ZombCharCore[i].m_Jumped = 0;
+		i32 jumpTriggers = 0;
+		if(m_ZombCharCore[i].m_Input.m_Jump) {
+			f32 jumpStr = 14.f;
+			if(m_ZombCharCore[i].m_Input.m_Jump == ZOMBIE_BIGJUMP) {
+				jumpStr = 22.f;
+				jumpTriggers |= COREEVENTFLAG_AIR_JUMP;
+				m_ZombCharCore[i].m_Jumped |= 3;
+			}
+			else if(m_ZombCharCore[i].m_Input.m_Jump == ZOMBIE_AIRJUMP) {
+				jumpTriggers |= COREEVENTFLAG_AIR_JUMP;
+				m_ZombCharCore[i].m_Jumped |= 3;
+			}
+			else {
+				jumpTriggers |= COREEVENTFLAG_GROUND_JUMP;
+				m_ZombCharCore[i].m_Jumped |= 1;
+			}
+
+			m_ZombCharCore[i].m_Vel.y = -jumpStr;
+			m_ZombCharCore[i].m_Input.m_Jump = 0;
+		}
+
+		m_ZombCharCore[i].Tick(true);
+
+		m_ZombCharCore[i].m_TriggeredEvents |= jumpTriggers;
+
+		// smooth out small movement
+		f32 xDist = abs(m_ZombDestination[i].x - m_ZombCharCore[i].m_Pos.x);
+		if(xDist < 5.f) {
+			m_ZombCharCore[i].m_Vel.x = (m_ZombDestination[i].x - m_ZombCharCore[i].m_Pos.x);
+		}
+
+		if(m_ZombChargingClock[i] > 0) {
+			--m_ZombChargingClock[i];
+
+			// reset input except from firing
+			i32 doFire = m_ZombInput[i].m_Fire;
+			m_ZombInput[i] = CNetObj_PlayerInput();
+			m_ZombInput[i].m_Fire = doFire;
+
+			// don't move naturally
+			m_ZombCharCore[i].m_Vel = vec2(0, 0);
+
+			vec2 chargeVel = m_ZombChargeVel[i];
+			GameServer()->Collision()->MoveBox(&m_ZombCharCore[i].m_Pos,
+											   &chargeVel,
+											   vec2(28.f, 28.f),
+											   0.f);
+		}
+
+		m_ZombCharCore[i].Move();
+
+		// predict charge
+		if(m_ZombChargingClock[i] > 0) {
+			m_ZombCharCore[i].m_Vel = m_ZombChargeVel[i];
+		}
+	}
+}
+
 void CGameControllerZOMB::ConZombStart(IConsole::IResult* pResult, void* pUserData)
 {
 	CGameControllerZOMB *pThis = (CGameControllerZOMB *)pUserData;
@@ -1256,6 +1572,8 @@ void CGameControllerZOMB::GameLost()
 {
 	ChatMessage(">> You LOST.");
 	EndMatch();
+
+	m_ZombLastGameState = m_ZombGameState;
 
 	GameCleanUp();
 
@@ -1310,13 +1628,67 @@ void CGameControllerZOMB::AnnounceWave(u32 waveID)
 	Server()->SendPackMsg(&chatMsg, MSGFLAG_VITAL, -1);
 }
 
+void CGameControllerZOMB::TickWaveGame()
+{
+	// wait in between waves
+	if(m_WaveWaitClock > 0) {
+		--m_WaveWaitClock;
+		if(m_WaveWaitClock == 0) {
+			++m_CurrentWave;
+			m_SpawnClock = SPAWN_INTERVAL;
+		}
+	}
+	else if(m_SpawnClock > 0) {
+		--m_SpawnClock;
+
+		if(m_SpawnClock == 0 && m_SpawnCmdID < m_WaveSpawnCount[m_CurrentWave]) {
+			for(u32 i = 0; i < MAX_ZOMBS; ++i) {
+				if(m_ZombAlive[i]) continue;
+				u32 cmdID = m_SpawnCmdID++;
+				u8 type = m_WaveData[m_CurrentWave][cmdID].type;
+				bool isElite = m_WaveData[m_CurrentWave][cmdID].isElite;
+				SpawnZombie(i, type, isElite, m_WaveEnrageTime[m_CurrentWave]);
+				break;
+			}
+
+			m_SpawnClock = SPAWN_INTERVAL / m_ZombSpawnPointCount;
+		}
+	}
+
+	// end of the wave
+	if(m_SpawnCmdID == m_WaveSpawnCount[m_CurrentWave]) {
+		bool areZombsDead = true;
+		for(u32 i = 0; i < MAX_ZOMBS; ++i) {
+			if(m_ZombAlive[i]) {
+				areZombsDead = false;
+				break;
+			}
+		}
+
+		if(areZombsDead) {
+			ReviveSurvivors();
+			m_WaveWaitClock = WAVE_WAIT_TIME;
+			m_SpawnCmdID = 0;
+
+			if(m_CurrentWave == (m_WaveCount-1)) {
+				GameWon();
+			}
+			else {
+				ChatMessage(">> Wave complete.");
+				ChatMessage(">> 10s until next wave.");
+				AnnounceWave(m_CurrentWave + 1);
+			}
+		}
+	}
+}
+
 void CGameControllerZOMB::ActivateReviveCtf()
 {
 	m_RedFlagPos = m_RedFlagSpawn;
 	m_BlueFlagPos = m_BlueFlagSpawn[m_Tick%m_BlueFlagSpawnCount];
 	m_RedFlagCarrier = -1;
 	m_RedFlagVel = vec2(0, 0);
-	GameServer()->CreateSound(m_RedFlagPos, SOUND_CTF_RETURN);
+	GameServer()->CreateSound(m_RedFlagPos, SOUND_CTF_GRAB_EN);
 	m_IsReviveCtfActive = true;
 	m_CanPlayersRespawn = false;
 
@@ -1874,6 +2246,83 @@ void CGameControllerZOMB::ChangeEyes(i32 zid, i32 type, f32 time)
 	m_ZombEyesClock[zid] = SecondsToTick(time);
 }
 
+void CGameControllerZOMB::ConZombStartSurv(IConsole::IResult* pResult, void* pUserData)
+{
+	CGameControllerZOMB *pThis = (CGameControllerZOMB *)pUserData;
+	pThis->StartZombSurv(123456);
+}
+
+void CGameControllerZOMB::StartZombSurv(i32 seed)
+{
+	m_SurvQueueCount = 0;
+	m_SpawnClock = SecondsToTick(10); // 10s to setup
+	m_SurvivalStartTick = m_Tick + m_SpawnClock;
+	ChatMessage(">> Survive!");
+	ChatMessage(">> 10s to setup.");
+	StartMatch();
+	m_ZombGameState = ZSTATE_SURV_GAME;
+	m_CanPlayersRespawn = true;
+
+	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
+		if(m_ZombAlive[i]) {
+			KillZombie(i, -1);
+		}
+		m_ZombType[i] = ZTYPE_INVALID;
+	}
+
+	if(seed == -1) {
+		m_Seed = RandInt(0, 9999);
+	}
+	else {
+		m_Seed = seed;
+	}
+
+	m_RestartClock = -1;
+}
+
+void CGameControllerZOMB::TickSurvivalGame()
+{
+	if(m_SurvQueueCount == 0) {
+		i32 specialMaxCount = (m_Tick - m_SurvivalStartTick)/(f32)SURVIVAL_MAX_TIME * MAX_ZOMBS;
+		i32 specialsCurCount = 0;
+		for(u32 i = 0; i < MAX_ZOMBS; ++i) {
+			if(m_ZombAlive[i] && m_ZombType[i] != ZTYPE_BASIC) {
+				++specialsCurCount;
+			}
+		}
+
+		i32 specialsToSpawn = specialMaxCount - specialsCurCount;
+		if(specialsToSpawn > 0) {
+			f32 sec = m_Tick/(f32)SERVER_TICK_SPEED * 18.73f;
+			f32 n = (noise1D(sec) + 1.f) * 0.6f;
+			u8 type = clamp((i32)(n * (ZTYPE_MAX-1) + 1), 1, ZTYPE_MAX-1);
+			//std_zomb_msg("sec: %.2f n: %.2f type: %s", sec, n, g_ZombName[type]);
+			m_SurvQueue[m_SurvQueueCount++] = SpawnCmd{type, 0};
+		}
+		else {
+			m_SurvQueue[m_SurvQueueCount++] = SpawnCmd{ZTYPE_BASIC, 0};
+		}
+	}
+
+	if(m_SpawnClock > 0) {
+		--m_SpawnClock;
+
+		if(m_SpawnClock == 0) {
+			for(u32 i = 0; i < MAX_ZOMBS; ++i) {
+				if(m_ZombAlive[i]) continue;
+				u8 type = m_SurvQueue[0].type;
+				bool isElite = m_SurvQueue[0].isElite;
+				SpawnZombie(i, type, isElite, SURVIVAL_ENRAGE_TIME);
+				memmove(m_SurvQueue, m_SurvQueue+1, m_SurvQueueCount * sizeof(SpawnCmd));
+				--m_SurvQueueCount;
+				break;
+			}
+
+			m_SpawnClock = SPAWN_INTERVAL_SURV;
+		}
+	}
+}
+
 void CGameControllerZOMB::TickReviveCtf()
 {
 	bool everyoneDead = true;
@@ -1981,6 +2430,8 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 									  this, "Start a ZOMB game");
 	GameServer()->Console()->Register("zomb_load", "s", CFGFLAG_SERVER, ConLoadWaveFile,
 									  this, "Load a ZOMB wave file");
+	GameServer()->Console()->Register("zomb_surv", "?i", CFGFLAG_SERVER, ConZombStartSurv,
+									  this, "Start a ZOMB survival game");
 
 	m_ZombGameState = ZSTATE_NONE;
 	m_RestartClock = -1;
@@ -2013,7 +2464,12 @@ void CGameControllerZOMB::Tick()
 	if(m_RestartClock > 0) {
 		--m_RestartClock;
 		if(m_RestartClock == 0) {
-			StartZombGame(0);
+			if(m_ZombLastGameState == ZSTATE_WAVE_GAME) {
+				StartZombGame(0);
+			}
+			else if(m_ZombLastGameState == ZSTATE_SURV_GAME) {
+				StartZombSurv(123456);
+			}
 		}
 	}
 
@@ -2035,273 +2491,13 @@ void CGameControllerZOMB::Tick()
 	TickProjectiles();
 
 	if(m_ZombGameState == ZSTATE_WAVE_GAME) {
-		// wait in between waves
-		if(m_WaveWaitClock > 0) {
-			--m_WaveWaitClock;
-			if(m_WaveWaitClock == 0) {
-				++m_CurrentWave;
-				m_SpawnClock = SPAWN_INTERVAL;
-			}
-		}
-		else if(m_SpawnClock > 0) {
-			--m_SpawnClock;
-
-			if(m_SpawnClock == 0 && m_SpawnCmdID < m_WaveSpawnCount[m_CurrentWave]) {
-				for(u32 i = 0; i < MAX_ZOMBS; ++i) {
-					if(m_ZombAlive[i]) continue;
-					u32 cmdID = m_SpawnCmdID++;
-					u8 type = m_WaveData[m_CurrentWave][cmdID].type;
-					bool isElite = m_WaveData[m_CurrentWave][cmdID].isElite;
-					SpawnZombie(i, type, isElite, m_WaveEnrageTime[m_CurrentWave]);
-					break;
-				}
-
-				m_SpawnClock = SPAWN_INTERVAL / m_ZombSpawnPointCount;
-			}
-		}
-
-		// end of the wave
-		if(m_SpawnCmdID == m_WaveSpawnCount[m_CurrentWave]) {
-			bool areZombsDead = true;
-			for(u32 i = 0; i < MAX_ZOMBS; ++i) {
-				if(m_ZombAlive[i]) {
-					areZombsDead = false;
-					break;
-				}
-			}
-
-			if(areZombsDead) {
-				ReviveSurvivors();
-				m_WaveWaitClock = WAVE_WAIT_TIME;
-				m_SpawnCmdID = 0;
-
-				if(m_CurrentWave == (m_WaveCount-1)) {
-					GameWon();
-				}
-				else {
-					ChatMessage(">> Wave complete.");
-					ChatMessage(">> 10s until next wave.");
-					AnnounceWave(m_CurrentWave + 1);
-				}
-			}
-		}
+		TickWaveGame();
+	}
+	else if(m_ZombGameState == ZSTATE_SURV_GAME) {
+		TickSurvivalGame();
 	}
 
-	// aura givers
-	bool domninantAura = false;
-	bool wartuleAura = false;
-	for(u32 i = 0; i < MAX_ZOMBS && (!domninantAura || !wartuleAura); ++i) {
-		if(m_ZombAlive[i]) {
-			if(m_ZombType[i] == ZTYPE_DOMINANT) {
-				domninantAura = true;
-			}
-			if(m_ZombType[i] == ZTYPE_WARTULE) {
-				wartuleAura = true;
-			}
-		}
-	}
-
-	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
-		if(!m_ZombAlive[i]) continue;
-
-		// clocks
-		--m_ZombPathFindClock[i];
-		--m_ZombJumpClock[i];
-		--m_ZombAttackClock[i];
-		--m_ZombEnrageClock[i];
-		--m_ZombHookClock[i];
-		--m_ZombChargeClock[i];
-		--m_ZombHealClock[i];
-		--m_ZombEyesClock[i];
-
-		// auras
-		if(domninantAura && m_ZombType[i] != ZTYPE_DOMINANT) {
-			m_ZombBuff[i] |= BUFF_ARMORED;
-		}
-		else {
-			m_ZombBuff[i] &= ~BUFF_ARMORED;
-		}
-
-		if(wartuleAura && m_ZombType[i] != ZTYPE_WARTULE) {
-			m_ZombBuff[i] |= BUFF_HEALING;
-		}
-		else {
-			m_ZombBuff[i] &= ~BUFF_HEALING;
-		}
-
-		// enrage
-		if(m_ZombEnrageClock[i] <= 0 && !(m_ZombBuff[i]&BUFF_ENRAGED)) {
-			m_ZombBuff[i] |= BUFF_ENRAGED;
-			for(u32 s = 0; s < MAX_SURVIVORS; ++s) {
-				if(GameServer()->m_apPlayers[s] && Server()->ClientIngame(s)) {
-					SendZombieInfos(i, s);
-				}
-			}
-		}
-
-		// double if enraged
-		if(m_ZombBuff[i]&BUFF_ENRAGED) {
-			--m_ZombAttackClock[i];
-			--m_ZombHookClock[i];
-			--m_ZombChargeClock[i];
-		}
-
-		// healing
-		if(m_ZombBuff[i]&BUFF_HEALING && m_ZombHealClock[i] <= 0) {
-			m_ZombHealClock[i] = HEALING_INTERVAL;
-			m_ZombHealth[i] += HEALING_AMOUNT;
-			i32 maxHealth = g_ZombMaxHealth[m_ZombType[i]];
-			if(m_ZombBuff[i]&BUFF_ELITE) {
-				maxHealth *= 2;
-			}
-			if(m_ZombHealth[i] > maxHealth) {
-				m_ZombHealth[i] = maxHealth;
-			}
-		}
-
-		vec2 pos = m_ZombCharCore[i].m_Pos;
-
-		// find closest target
-		f32 closestDist = -1.f;
-		i32 survTargetID = NO_TARGET;
-		for(u32 s = 0; s < MAX_SURVIVORS; ++s) {
-			CCharacter* pSurvChar = GameServer()->GetPlayerChar(s);
-			if(pSurvChar) {
-				f32 dist = length(pos - pSurvChar->GetPos());
-				if(closestDist < 0.f || dist < closestDist) {
-					closestDist = dist;
-					survTargetID = s;
-				}
-			}
-		}
-
-		m_ZombSurvTarget[i] = survTargetID;
-
-		if(m_ZombSurvTarget[i] == NO_TARGET) {
-			continue;
-		}
-
-
-		vec2 targetPos = GameServer()->GetPlayerChar(m_ZombSurvTarget[i])->GetPos();
-		f32 targetDist = distance(pos, targetPos);
-		bool targetLOS = (GameServer()->Collision()->IntersectLine(pos, targetPos, 0, 0) == 0);
-
-		HandleMovement(i, targetPos, targetLOS);
-
-		m_ZombInput[i].m_TargetX = targetPos.x - pos.x;
-		m_ZombInput[i].m_TargetY = targetPos.y - pos.y;
-
-		// attack!
-		if(m_ZombAttackClock[i] <= 0 && targetDist < 56.f) {
-			i32 dmg = g_ZombAttackDmg[m_ZombType[i]];
-
-			if(m_ZombBuff[i]&BUFF_ELITE) {
-				dmg *= ELITE_DMG_MULTIPLIER;
-			}
-
-			SwingHammer(i, dmg, 2.f);
-			m_ZombAttackClock[i] = SecondsToTick(1.f / g_ZombAttackSpeed[m_ZombType[i]]);
-		}
-
-		HandleHook(i, targetDist, targetLOS);
-
-		// special behaviors
-		switch(m_ZombType[i]) {
-			case ZTYPE_BOOMER:
-				HandleBoomer(i, targetDist, targetLOS);
-				break;
-
-			case ZTYPE_BULL:
-				HandleBull(i, targetPos, targetDist, targetLOS);
-				break;
-
-			case ZTYPE_MUDGE:
-				HandleMudge(i, targetPos, targetDist, targetLOS);
-				break;
-
-			case ZTYPE_HUNTER:
-				HandleHunter(i, targetPos, targetDist, targetLOS);
-				break;
-
-			case ZTYPE_DOMINANT:
-				HandleDominant(i, targetPos, targetDist, targetLOS);
-				break;
-
-			case ZTYPE_BERSERKER:
-				HandleBerserker(i);
-				break;
-
-			case ZTYPE_WARTULE:
-				HandleWartule(i, targetPos, targetDist, targetLOS);
-				break;
-
-			default: break;
-		}
-	}
-
-	// core actual move
-	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
-		if(!m_ZombAlive[i]) continue;
-		m_ZombCharCore[i].m_Input = m_ZombInput[i];
-
-		// handle jump
-		m_ZombCharCore[i].m_Jumped = 0;
-		i32 jumpTriggers = 0;
-		if(m_ZombCharCore[i].m_Input.m_Jump) {
-			f32 jumpStr = 14.f;
-			if(m_ZombCharCore[i].m_Input.m_Jump == ZOMBIE_BIGJUMP) {
-				jumpStr = 22.f;
-				jumpTriggers |= COREEVENTFLAG_AIR_JUMP;
-				m_ZombCharCore[i].m_Jumped |= 3;
-			}
-			else if(m_ZombCharCore[i].m_Input.m_Jump == ZOMBIE_AIRJUMP) {
-				jumpTriggers |= COREEVENTFLAG_AIR_JUMP;
-				m_ZombCharCore[i].m_Jumped |= 3;
-			}
-			else {
-				jumpTriggers |= COREEVENTFLAG_GROUND_JUMP;
-				m_ZombCharCore[i].m_Jumped |= 1;
-			}
-
-			m_ZombCharCore[i].m_Vel.y = -jumpStr;
-			m_ZombCharCore[i].m_Input.m_Jump = 0;
-		}
-
-		m_ZombCharCore[i].Tick(true);
-
-		m_ZombCharCore[i].m_TriggeredEvents |= jumpTriggers;
-
-		// smooth out small movement
-		f32 xDist = abs(m_ZombDestination[i].x - m_ZombCharCore[i].m_Pos.x);
-		if(xDist < 5.f) {
-			m_ZombCharCore[i].m_Vel.x = (m_ZombDestination[i].x - m_ZombCharCore[i].m_Pos.x);
-		}
-
-		if(m_ZombChargingClock[i] > 0) {
-			--m_ZombChargingClock[i];
-
-			// reset input except from firing
-			i32 doFire = m_ZombInput[i].m_Fire;
-			m_ZombInput[i] = CNetObj_PlayerInput();
-			m_ZombInput[i].m_Fire = doFire;
-
-			// don't move naturally
-			m_ZombCharCore[i].m_Vel = vec2(0, 0);
-
-			vec2 chargeVel = m_ZombChargeVel[i];
-			GameServer()->Collision()->MoveBox(&m_ZombCharCore[i].m_Pos,
-											   &chargeVel,
-											   vec2(28.f, 28.f),
-											   0.f);
-		}
-
-		m_ZombCharCore[i].Move();
-
-		// predict charge
-		if(m_ZombChargingClock[i] > 0) {
-			m_ZombCharCore[i].m_Vel = m_ZombChargeVel[i];
-		}
-	}
+	TickZombies();
 
 	if(m_IsReviveCtfActive && m_ZombGameState != ZSTATE_NONE) {
 		TickReviveCtf();
@@ -2601,7 +2797,7 @@ bool CGameControllerZOMB::CanSpawn(int Team, vec2* pPos) const
 
 int CGameControllerZOMB::OnCharacterDeath(CCharacter* pVictim, CPlayer* pKiller, int Weapon)
 {
-	if(pVictim->GetPlayer()->GetTeam() != TEAM_SPECTATORS && Weapon != WEAPON_GAME) {
+	if(Weapon != WEAPON_GAME) {
 		if(m_ZombGameState != ZSTATE_NONE) {
 			pVictim->GetPlayer()->m_RespawnDisabled = true;
 			pVictim->GetPlayer()->m_DeadSpecMode = true;
@@ -2622,11 +2818,10 @@ int CGameControllerZOMB::OnCharacterDeath(CCharacter* pVictim, CPlayer* pKiller,
 
 bool CGameControllerZOMB::CanChangeTeam(CPlayer* pPlayer, int JoinTeam) const
 {
-	if(m_ZombGameState != ZSTATE_NONE && JoinTeam != TEAM_SPECTATORS) {
+	if(m_ZombGameState != ZSTATE_NONE) {
 		return false;
 	}
-
-	return IGameController::CanChangeTeam(pPlayer, JoinTeam);
+	return true;
 }
 
 void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i32 Weapon)
