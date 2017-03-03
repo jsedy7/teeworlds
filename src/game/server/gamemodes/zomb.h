@@ -144,7 +144,7 @@ class CGameControllerZOMB : public IGameController
 	void DebugLine(ivec2 s, ivec2 e);
 #endif
 
-	void SpawnZombie(i32 zid, u8 type, bool isElite, u32 enrageTime);
+	void SpawnZombie(i32 zid, u8 type, u8 isElite, u32 enrageTime);
 	void KillZombie(i32 zid, i32 killerCID);
 	void SwingHammer(i32 zid, u32 dmg, f32 knockback);
 

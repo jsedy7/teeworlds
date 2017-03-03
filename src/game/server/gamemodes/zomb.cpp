@@ -2,6 +2,7 @@
 #include "zomb.h"
 #include <stdio.h>
 #include <io.h>
+#include <string.h>
 #include <engine/server.h>
 #include <engine/console.h>
 #include <engine/shared/config.h>
@@ -27,6 +28,11 @@ static char msgBuff__[256];
 	memset(msgBuff__, 0, sizeof(msgBuff__));\
 	str_format(msgBuff__, 256, ##__VA_ARGS__);\
 	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "zomb", msgBuff__);
+
+template<typename T>
+inline T z_abs(T var) {
+	return var < T(0) ? -var : var;
+}
 
 #define ZombCID(id) (id + MAX_SURVIVORS)
 #define NO_TARGET -1
@@ -283,7 +289,7 @@ f32 noise1D(f32 x)
 	return 0.395f * (n0 + n1);
 }
 
-void CGameControllerZOMB::SpawnZombie(i32 zid, u8 type, bool isElite, u32 enrageTime)
+void CGameControllerZOMB::SpawnZombie(i32 zid, u8 type, u8 isElite, u32 enrageTime)
 {
 	bool isEnraged = (enrageTime == 0 || type == ZTYPE_BERSERKER);
 	// do we need to update clients
@@ -698,7 +704,7 @@ vec2 CGameControllerZOMB::PathFind(vec2 start, vec2 end)
 				if(JumpStraight(succPos, succDir, mEnd, &jumps)) {
 					ivec2 jumpPos = succPos + succDir * jumps;
 					f32 g = pCurrent->g + jumps;
-					f32 h = abs(mEnd.x - jumpPos.x) + abs(mEnd.y - jumpPos.y);
+					f32 h = z_abs(mEnd.x - jumpPos.x) + z_abs(mEnd.y - jumpPos.y);
 
 					if(jumpPos == mEnd) {
 						addToList(closedList, addNode(Node(jumpPos, 0, 0, pCurrent)));
@@ -727,7 +733,7 @@ vec2 CGameControllerZOMB::PathFind(vec2 start, vec2 end)
 				if(JumpDiagonal(succPos, succDir, mEnd, &jumps)) {
 					ivec2 jumpPos = succPos + succDir * jumps;
 					f32 g = pCurrent->g + jumps * 2.f;
-					f32 h = abs(mEnd.x - jumpPos.x) + abs(mEnd.y - jumpPos.y);
+					f32 h = z_abs(mEnd.x - jumpPos.x) + z_abs(mEnd.y - jumpPos.y);
 
 					if(jumpPos == mEnd) {
 						addToList(closedList, addNode(Node(jumpPos, 0, 0, pCurrent)));
@@ -853,7 +859,7 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 
 		case ZTYPE_HUNTER:
 			nci.m_apSkinPartNames[SKINPART_BODY] = "hunter";
-			handFeetColor = PackColor(28, 255, 192);
+			handFeetColor = PackColor(0, 0, 33); // grey
 			break;
 
 		case ZTYPE_DOMINANT:
@@ -916,8 +922,8 @@ void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos, bool ta
 		}
 
 		if(pos.y < pCore->m_Pos.y &&
-		   abs(pos.x - pCore->m_Pos.x) < phyzSize &&
-		   abs(pos.y - pCore->m_Pos.y) < (phyzSize*1.5f)) {
+		   z_abs(pos.x - pCore->m_Pos.x) < phyzSize &&
+		   z_abs(pos.y - pCore->m_Pos.y) < (phyzSize*1.5f)) {
 			grounded = true;
 			break;
 		}
@@ -929,7 +935,7 @@ void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos, bool ta
 
 	// jump
 	input.m_Jump = 0;
-	f32 yDist = abs(dest.y - pos.y);
+	f32 yDist = z_abs(dest.y - pos.y);
 	if(m_ZombJumpClock[zid] <= 0 && dest.y < pos.y) {
 		if(yDist > 2.f) {
 			if(grounded) {
@@ -1494,7 +1500,7 @@ void CGameControllerZOMB::TickZombies()
 		m_ZombCharCore[i].m_TriggeredEvents |= jumpTriggers;
 
 		// smooth out small movement
-		f32 xDist = abs(m_ZombDestination[i].x - m_ZombCharCore[i].m_Pos.x);
+		f32 xDist = z_abs(m_ZombDestination[i].x - m_ZombCharCore[i].m_Pos.x);
 		if(xDist < 5.f) {
 			m_ZombCharCore[i].m_Vel.x = (m_ZombDestination[i].x - m_ZombCharCore[i].m_Pos.x);
 		}
@@ -2416,6 +2422,7 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	}
 
 	// init zombies
+	mem_zero(m_ZombAlive, sizeof(m_ZombAlive));
 	mem_zero(m_ZombAttackTick, sizeof(m_ZombAttackTick));
 	mem_zero(m_ZombDmgTick, sizeof(m_ZombDmgTick));
 	mem_zero(m_ZombDmgAngle, sizeof(m_ZombDmgAngle));
@@ -2454,6 +2461,11 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	m_LaserID = 512;
 	m_ProjectileCount = 0;
 	m_ProjectileID = 512;
+
+#ifdef CONF_DEBUG
+	m_DbgPathLen = 0;
+	m_DbgLinesCount = 0;
+#endif
 }
 
 void CGameControllerZOMB::Tick()
