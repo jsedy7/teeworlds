@@ -14,8 +14,10 @@
 
 /**
  * TODO:
- * - survival: make zombs mutate
+ * - survival: make zombs mutate?
  * - survival: seed
+ * - Higher spawn map
+ * - reduce normal zombie hook range
  */
 
 static char msgBuff__[256];
@@ -42,7 +44,7 @@ inline T z_abs(T var) {
 #define SPAWN_INTERVAL_SURV (SecondsToTick(1.5f))
 #define WAVE_WAIT_TIME (SecondsToTick(10))
 
-#define HOOK_RANGE 375.f
+#define HOOK_RANGE 300.f
 #define DEFAULT_ENRAGE_TIME 30
 #define SURVIVAL_ENRAGE_TIME 15
 
@@ -859,7 +861,7 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 
 		case ZTYPE_HUNTER:
 			nci.m_apSkinPartNames[SKINPART_BODY] = "hunter";
-			handFeetColor = PackColor(0, 0, 33); // grey
+			handFeetColor = PackColor(0, 0, 15); // grey
 			break;
 
 		case ZTYPE_DOMINANT:
