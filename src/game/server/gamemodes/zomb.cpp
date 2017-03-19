@@ -790,12 +790,14 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 	// send zombie client informations
 	u32 zombCID = ZombCID(zid);
 
+#ifdef TEEWORLDS_LEGACY
 	// send drop first
 	// this will pop a chat message
 	CNetMsg_Sv_ClientDrop Msg;
 	Msg.m_ClientID = zombCID;
 	Msg.m_pReason = "";
 	Server()->SendPackMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_NORECORD, CID);
+#endif // TEEWORLDS_LEGACY
 
 	// then update
 	CNetMsg_Sv_ClientInfo nci;
@@ -1565,7 +1567,7 @@ void CGameControllerZOMB::StartZombGame(u32 startingWave)
 		m_ZombType[i] = ZTYPE_INVALID;
 	}
 
-	m_Seed = RandInt(0, 9999);
+	m_Seed = RandInt(0, 9999); // temporary
 	m_RestartClock = -1;
 }
 
