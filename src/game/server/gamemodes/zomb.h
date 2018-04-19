@@ -35,7 +35,7 @@ class CGameControllerZOMB : public IGameController
 
 	bool m_ZombAlive[MAX_ZOMBS]; // bad design, but whatever
 	i32 m_ZombHealth[MAX_ZOMBS];
-	u8 m_ZombType[MAX_ZOMBS];
+    u8 m_ZombType[MAX_ZOMBS];
 	u8 m_ZombBuff[MAX_ZOMBS];
 
 	i32 m_ZombSurvTarget[MAX_ZOMBS];

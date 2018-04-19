@@ -93,7 +93,6 @@ enum {
     ZTYPE_WARTULE,
 
     ZTYPE_MAX,
-    ZTYPE_INVALID,
 };
 
 static const char* g_ZombName[] = {
@@ -967,7 +966,7 @@ void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos, bool ta
     vec2& dest = m_ZombDestination[zid];
     if(m_ZombPathFindClock[zid] <= 0) {
         dest = PathFind(pos, targetPos);
-        m_ZombPathFindClock[zid] = SecondsToTick(0.1f);
+        m_ZombPathFindClock[zid] = 2;
     }
 
     input.m_Direction = -1;
@@ -985,6 +984,7 @@ void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos, bool ta
             continue;
         }
 
+        // on top of another character
         if(pos.y < pCore->m_Pos.y &&
            z_abs(pos.x - pCore->m_Pos.x) < phyzSize &&
            z_abs(pos.y - pCore->m_Pos.y) < (phyzSize*1.5f)) {
@@ -1001,7 +1001,7 @@ void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos, bool ta
     input.m_Jump = 0;
     f32 yDist = z_abs(dest.y - pos.y);
     if(m_ZombJumpClock[zid] <= 0 && dest.y < pos.y) {
-        if(yDist > 2.f) {
+        if(yDist > 28.f) {
             if(grounded) {
                 input.m_Jump = ZOMBIE_GROUNDJUMP;
                 m_ZombJumpClock[zid] = SecondsToTick(0.5f);
@@ -1089,7 +1089,12 @@ void CGameControllerZOMB::HandleBoomer(u32 zid, f32 targetDist, bool targetLOS)
         }
 
         // explosion
-        CreateZombExplosion(pos, BOOMER_EXPLOSION_INNER_RADIUS, BOOMER_EXPLOSION_OUTER_RADIUS, 30.f, dmg, zombCID);
+        CreateZombExplosion(pos, BOOMER_EXPLOSION_INNER_RADIUS, BOOMER_EXPLOSION_OUTER_RADIUS, 30.f, dmg,
+                            zombCID);
+        // amplify sound a bit
+        GameServer()->CreateSound(pos, SOUND_GRENADE_EXPLODE);
+        GameServer()->CreateSound(pos, SOUND_GRENADE_EXPLODE);
+        GameServer()->CreateSound(pos, SOUND_GRENADE_EXPLODE);
     }
 
     // start the fuse
@@ -1350,8 +1355,6 @@ void CGameControllerZOMB::HandleWartule(u32 zid, const vec2& targetPos, f32 targ
 
         if(m_ZombAttackClock[zid] <= 0 &&
            (m_ZombPathFindClock[zid] > SecondsToTick(0.25f) || targetDist < 400.f)) { // hacky
-            GameServer()->CreateSound(m_ZombCharCore[zid].m_Pos, SOUND_GRENADE_FIRE);
-
             i32 dmg = WARTULE_GRENADE_DMG;
             if(m_ZombBuff[zid]&BUFF_ELITE) {
                 dmg *= ELITE_DMG_MULTIPLIER;
@@ -1361,6 +1364,7 @@ void CGameControllerZOMB::HandleWartule(u32 zid, const vec2& targetPos, f32 targ
             shootAngle += (f32)RandInt(-15, 15) * pi / 180.f;
             vec2 shootDir = direction(shootAngle);
 
+            GameServer()->CreateSound(m_ZombCharCore[zid].m_Pos, SOUND_GRENADE_FIRE);
             CreateProjectile(m_ZombCharCore[zid].m_Pos, shootDir,
                              WEAPON_GRENADE, dmg, ZombCID(zid), SecondsToTick(0.2f));
 
@@ -1624,7 +1628,6 @@ void CGameControllerZOMB::StartZombGame(u32 startingWave)
         if(m_ZombAlive[i]) {
             KillZombie(i, -1);
         }
-        m_ZombType[i] = ZTYPE_INVALID;
     }
 
     m_Seed = RandInt(0, 9999); // temporary
@@ -2371,7 +2374,6 @@ void CGameControllerZOMB::StartZombSurv(i32 seed)
         if(m_ZombAlive[i]) {
             KillZombie(i, -1);
         }
-        m_ZombType[i] = ZTYPE_INVALID;
     }
 
     if(seed == -1) {
@@ -2554,7 +2556,7 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 
     for(u32 i = 0; i < MAX_ZOMBS; ++i) {
         m_ZombCharCore[i].Init(&GameServer()->m_World.m_Core, GameServer()->Collision());
-        m_ZombType[i] = ZTYPE_INVALID;
+        m_ZombType[i] = ZTYPE_BASIC;
     }
 
     GameServer()->Console()->Register("zomb_start", "?i", CFGFLAG_SERVER, ConZombStart,
@@ -2861,7 +2863,6 @@ void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
     IGameController::OnPlayerConnect(pPlayer);
 
     for(u32 i = 0; i < MAX_ZOMBS; ++i) {
-        if(!m_ZombAlive[i]) continue;
         SendZombieInfos(i, pPlayer->GetCID());
     }
 }
