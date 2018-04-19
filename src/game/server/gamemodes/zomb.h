@@ -17,6 +17,7 @@ typedef uint8_t u8;
 typedef int32_t i32;
 typedef uint32_t u32;
 typedef float f32;
+typedef double f64;
 
 class CGameControllerZOMB : public IGameController
 {
@@ -191,7 +192,8 @@ class CGameControllerZOMB : public IGameController
 	void CreateLaser(vec2 from, vec2 to);
 	void CreateProjectile(vec2 pos, vec2 dir, i32 type, i32 dmg, i32 owner, i32 lifespan);
 	void TickProjectiles();
-	void CreateExplosion(vec2 pos, f32 inner, f32 outer, f32 force, i32 dmg, i32 ownerCID);
+    void CreateZombExplosion(vec2 pos, f32 inner, f32 outer, f32 force, i32 dmg, i32 ownerCID);
+    void CreatePlayerExplosion(vec2 Pos, i32 Dmg, i32 OwnerCID, i32 Weapon);
 
 	void ChangeEyes(i32 zid, i32 type, f32 time);
 
@@ -210,18 +212,27 @@ public:
 	bool CanSpawn(int Team, vec2 *pPos) const;
 	int OnCharacterDeath(class CCharacter *pVictim, class CPlayer *pKiller, int Weapon);
 	bool CanChangeTeam(CPlayer *pPlayer, int JoinTeam) const;
+
 	void ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i32 Weapon);
+    i32 PlayerTryHitHammer(i32 CID, vec2 pos, vec2 direction);
+    bool PlayerTryHitLaser(i32 CID, vec2 start, vec2 end, vec2& at);
+    bool PlayerProjectileTick(i32 ownerCID, vec2 prevPos, vec2 curPos, i32 weapon, vec2 dir, bool doDestroy);
 };
 
+// == "ZOMB"
+#define IsControllerZomb(GameServer) (*((uint32_t*)GameServer->GameType()) == 0x424D4F5A)
+
+/*
 #define IsControllerZomb(GameServer) (GameServer->GameType()[0] == 'Z' && \
 	GameServer->GameType()[1] == 'O' &&\
 	GameServer->GameType()[2] == 'M' &&\
 	GameServer->GameType()[3] == 'B')
+*/
 
-inline bool IsSurvivor(i32 CID) {
+inline bool CharIsSurvivor(i32 CID) {
 	return (CID < MAX_SURVIVORS);
 }
 
-inline bool IsZombie(i32 CID) {
+inline bool CharIsZombie(i32 CID) {
 	return (CID >= MAX_SURVIVORS);
 }
