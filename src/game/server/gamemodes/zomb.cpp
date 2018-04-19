@@ -2392,7 +2392,8 @@ inline f32 selectRoulette(const f32* chance, const f32 count, const f32 chanceTo
 void CGameControllerZOMB::TickSurvivalGame()
 {
     if(m_SurvQueueCount == 0) {
-        i32 specialMaxCount = (m_Tick - m_SurvivalStartTick)/(f32)SURVIVAL_MAX_TIME * MAX_ZOMBS;
+        const f32 progress = (m_Tick - m_SurvivalStartTick)/(f32)SURVIVAL_MAX_TIME;
+        i32 specialMaxCount = progress * MAX_ZOMBS;
         i32 specialsCurCount = 0;
         for(u32 i = 0; i < MAX_ZOMBS; ++i) {
             if(m_ZombAlive[i] && m_ZombType[i] != ZTYPE_BASIC) {
@@ -2416,6 +2417,7 @@ void CGameControllerZOMB::TickSurvivalGame()
                     break;
                 }
             }
+            u8 elite = randf01(&m_Seed) < max(0.1f, progress);
             dbg_assert(ztype != ZTYPE_BASIC, "Should not happen");
 #else
             f32 n = (noise1D(sec) + 1.f) * 0.6f;
@@ -2424,10 +2426,11 @@ void CGameControllerZOMB::TickSurvivalGame()
 #endif
 
             std_zomb_msg("sec: %.2f n: %.2f type: %s", sec, n, g_ZombName[ztype]);
-            m_SurvQueue[m_SurvQueueCount++] = SpawnCmd{ztype, 0};
+            m_SurvQueue[m_SurvQueueCount++] = SpawnCmd{ztype, elite};
         }
         else {
-            m_SurvQueue[m_SurvQueueCount++] = SpawnCmd{ZTYPE_BASIC, 0};
+            u8 elite = randf01(&m_Seed) < max(0.1f, progress);
+            m_SurvQueue[m_SurvQueueCount++] = SpawnCmd{ZTYPE_BASIC, elite};
         }
     }
 
@@ -2982,10 +2985,6 @@ void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i3
                 Mask |= CmaskOne(i);
         }
         GameServer()->CreateSound(GameServer()->m_apPlayers[From]->m_ViewPos, SOUND_HIT, Mask);
-    }
-
-    if(Weapon == WEAPON_SHOTGUN) {
-        Dmg *= 2.0f;
     }
 
     if(m_ZombBuff[zid]&BUFF_ARMORED) {
