@@ -18,6 +18,7 @@
 #include "gamemodes/lts.h"
 #include "gamemodes/mod.h"
 #include "gamemodes/tdm.h"
+#include "gamemodes/zomb.h"
 #include "gamecontext.h"
 #include "player.h"
 
@@ -1439,6 +1440,8 @@ void CGameContext::OnInit()
 		m_pController = new CGameControllerLTS(this);
 	else if(str_comp_nocase(g_Config.m_SvGametype, "tdm") == 0)
 		m_pController = new CGameControllerTDM(this);
+    else if(str_comp_nocase(g_Config.m_SvGametype, "zomb") == 0)
+        m_pController = new CGameControllerZOMB(this);
 	else
 		m_pController = new CGameControllerDM(this);
 

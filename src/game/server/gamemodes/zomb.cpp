@@ -1690,7 +1690,7 @@ void CGameControllerZOMB::GameCleanUp()
 void CGameControllerZOMB::ChatMessage(const char* msg)
 {
     CNetMsg_Sv_Chat chatMsg;
-    chatMsg.m_Team = 0;
+    chatMsg.m_Mode = CHAT_ALL;
     chatMsg.m_ClientID = -1;
     chatMsg.m_pMessage = msg;
     Server()->SendPackMsg(&chatMsg, MSGFLAG_VITAL, -1);
@@ -1699,7 +1699,7 @@ void CGameControllerZOMB::ChatMessage(const char* msg)
 void CGameControllerZOMB::AnnounceWave(u32 waveID)
 {
     CNetMsg_Sv_Chat chatMsg;
-    chatMsg.m_Team = 0;
+    chatMsg.m_Mode = CHAT_ALL;
     chatMsg.m_ClientID = -1;
     char msgBuff[256];
     str_format(msgBuff, sizeof(msgBuff), ">> WAVE %d (%d zombies)", waveID + 1,
@@ -3047,9 +3047,35 @@ i32 CGameControllerZOMB::PlayerTryHitHammer(i32 CID, vec2 pos, vec2 direction)
     return hits;
 }
 
+i32 CGameControllerZOMB::IntersectCharacterCore(vec2 Pos0, vec2 Pos1, float Radius, vec2& NewPos,
+                                                CCharacterCore *pNotThis)
+{
+   float ClosestLen = distance(Pos0, Pos1) * 100.0f;
+   int closest = -1;
+
+   for(int i = 0; i < MAX_CLIENTS; ++i) {
+       CCharacterCore* p = GameServer()->m_World.m_Core.m_apCharacters[i];
+       if(!p || p == pNotThis)
+           continue;
+
+       vec2 IntersectPos = closest_point_on_line(Pos0, Pos1, p->m_Pos);
+       float Len = distance(p->m_Pos, IntersectPos);
+       if(Len < 28.f + Radius) {
+           Len = distance(Pos0, IntersectPos);
+           if(Len < ClosestLen) {
+               NewPos = IntersectPos;
+               ClosestLen = Len;
+               closest = i;
+           }
+       }
+   }
+
+   return closest;
+}
+
 bool CGameControllerZOMB::PlayerTryHitLaser(i32 CID, vec2 start, vec2 end, vec2& at)
 {
-    int hitCID = GameServer()->m_World.IntersectCharacterCore(start, end, 0.f, at,
+    int hitCID = IntersectCharacterCore(start, end, 0.f, at,
                     GameServer()->m_World.m_Core.m_apCharacters[CID]);
     if(hitCID == -1) {
         return false;
@@ -3068,7 +3094,7 @@ bool CGameControllerZOMB::PlayerTryHitLaser(i32 CID, vec2 start, vec2 end, vec2&
 bool CGameControllerZOMB::PlayerProjectileTick(i32 ownerCID, vec2 prevPos, vec2 curPos, i32 weapon,
                                                vec2 dir, bool doDestroy)
 {
-    int hitCID = GameServer()->m_World.IntersectCharacterCore(prevPos, curPos, 6.0f, curPos,
+    int hitCID = IntersectCharacterCore(prevPos, curPos, 6.0f, curPos,
                                         GameServer()->m_World.m_Core.m_apCharacters[ownerCID]);
 
     int rx = round_to_int(curPos.x) / 32;

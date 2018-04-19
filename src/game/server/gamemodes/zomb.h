@@ -201,6 +201,8 @@ class CGameControllerZOMB : public IGameController
 	void StartZombSurv(i32 seed = -1);
 	void TickSurvivalGame();
 
+    i32 IntersectCharacterCore(vec2 Pos0, vec2 Pos1, float Radius, vec2& NewPos, CCharacterCore *pNotThis);
+
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer);
 	void Tick();
