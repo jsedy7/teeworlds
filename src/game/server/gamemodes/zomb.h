@@ -216,6 +216,7 @@ public:
 	bool CanChangeTeam(CPlayer *pPlayer, int JoinTeam) const;
 
 	void ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i32 Weapon);
+    void PlayerFireShotgun(i32 CID, vec2 Pos, vec2 Direction);
     i32 PlayerTryHitHammer(i32 CID, vec2 pos, vec2 direction);
     bool PlayerTryHitLaser(i32 CID, vec2 start, vec2 end, vec2& at);
     bool PlayerProjectileTick(i32 ownerCID, vec2 prevPos, vec2 curPos, i32 weapon, vec2 dir, bool doDestroy);

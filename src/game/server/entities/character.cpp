@@ -352,6 +352,12 @@ void CCharacter::FireWeapon()
 
 		case WEAPON_SHOTGUN:
 		{
+            if(IsControllerZomb(GameServer())) {
+                ((CGameControllerZOMB*)GameServer()->m_pController)->
+                        PlayerFireShotgun(m_pPlayer->GetCID(), m_Pos, Direction);
+                break;
+            }
+
 			int ShotSpread = 2;
 
 			for(int i = -ShotSpread; i <= ShotSpread; ++i)

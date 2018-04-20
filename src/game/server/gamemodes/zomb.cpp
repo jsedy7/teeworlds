@@ -13,6 +13,7 @@
 #include <game/server/entities/character.h>
 #include <game/server/gamecontext.h>
 #include <generated/server_data.h>
+#include <game/server/entities/projectile.h>
 
 /**
  * TODO:
@@ -208,7 +209,7 @@ static f32 g_ZombSpawnChanceTotal = 0.0f;
 static const i32 g_WeaponDmgOnZomb[] = {
     3,  //WEAPON_HAMMER
     2,  //WEAPON_GUN
-    2,  //WEAPON_SHOTGUN
+    1,  //WEAPON_SHOTGUN
     5,  //WEAPON_GRENADE
     7,  //WEAPON_LASER
     10, //WEAPON_NINJA
@@ -3014,6 +3015,28 @@ void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i3
     m_ZombCharCore[zid].m_Vel += Force * g_ZombKnockbackMultiplier[m_ZombType[zid]];
 
     ChangeEyes(zid, EMOTE_PAIN, 1.f);
+}
+
+void CGameControllerZOMB::PlayerFireShotgun(i32 CID, vec2 Pos, vec2 Direction)
+{
+    const vec2 ProjStartPos = Pos + Direction *28.f*0.75f;
+    const i32 ShotSpread = 3;
+
+    for(i32 i = -ShotSpread; i <= ShotSpread; ++i) {
+        float a = angle(Direction);
+        a += 0.08f * i;
+        float v = 1-(absolute(i)/(float)ShotSpread);
+        float Speed = mix((float)GameServer()->Tuning()->m_ShotgunSpeeddiff, 1.0f, v);
+
+        new CProjectile(&GameServer()->m_World, WEAPON_SHOTGUN,
+            CID,
+            ProjStartPos,
+            vec2(cosf(a), sinf(a))*Speed,
+            (int)(Server()->TickSpeed()*GameServer()->Tuning()->m_ShotgunLifetime),
+            1, false, 0, -1, WEAPON_SHOTGUN);
+    }
+
+    GameServer()->CreateSound(Pos, SOUND_SHOTGUN_FIRE);
 }
 
 i32 CGameControllerZOMB::PlayerTryHitHammer(i32 CID, vec2 pos, vec2 direction)
