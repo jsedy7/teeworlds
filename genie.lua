@@ -75,7 +75,8 @@ solution "Teeworlds"
 		"EnableSSE",
 		"EnableSSE2",
 		"EnableAVX",
-		"EnableAVX2",
+        "EnableAVX2",
+        "StaticRuntime" -- important
 	}
 	
 	defines {
@@ -85,7 +86,7 @@ solution "Teeworlds"
 	}
 	
 	-- disable exception related warnings
-	buildoptions{ "/wd4577", "/wd4530" }
+	buildoptions{ "/wd4577", "/wd4530", "/wd4244", "/wd4577"}
 	
 project "zlib"
     kind "StaticLib"
