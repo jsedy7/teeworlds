@@ -44,11 +44,11 @@ inline T z_abs(T var) {
 #define SecondsToTick(sec) (i32)(sec * SERVER_TICK_SPEED)
 
 #define SPAWN_INTERVAL (SecondsToTick(0.5f))
-#define SPAWN_INTERVAL_SURV (SecondsToTick(1.5f))
+#define SPAWN_INTERVAL_SURV (SecondsToTick(5.f))
 #define WAVE_WAIT_TIME (SecondsToTick(10))
 
 #define DEFAULT_ENRAGE_TIME 30
-#define SURVIVAL_ENRAGE_TIME 15
+#define SURVIVAL_ENRAGE_TIME 30
 
 #define BOOMER_EXPLOSION_INNER_RADIUS 150.f
 #define BOOMER_EXPLOSION_OUTER_RADIUS 300.f
@@ -71,7 +71,7 @@ inline T z_abs(T var) {
 #define HEALING_AMOUNT 1
 #define ELITE_DMG_MULTIPLIER 1.5f
 
-#define SURVIVAL_MAX_TIME (SecondsToTick(400))
+#define SURVIVAL_MAX_TIME (SecondsToTick(240))
 
 enum {
     SKINPART_BODY = 0,
@@ -243,99 +243,6 @@ enum {
     ZSTATE_SURV_GAME,
 };
 
-static i32 RandInt(i32 min, i32 max)
-{
-    dbg_assert(max > min, "RandInt(min, max) max must be > min");
-    return (min + (rand() / (f32)RAND_MAX) * (max + 1 - min));
-}
-
-// simplex noise
-static const u8 g_perm[512] = {
-    161, 171, 188, 119, 28, 100, 98, 173, 10, 113, 208, 136,
-    129, 76, 225, 160, 204, 78, 12, 132, 164, 153, 199, 110,
-    66, 180, 227, 149, 127, 156, 88, 70, 168, 145, 131, 61,
-    134, 67, 250, 69, 172, 157, 45, 81, 104, 154, 47, 32, 198,
-    74, 11, 20, 63, 42, 35, 23, 99, 178, 121, 115, 213, 111,
-    159, 184, 75, 36, 165, 224, 221, 185, 128, 106, 4, 64, 109,
-    57, 3, 58, 218, 30, 179, 25, 167, 124, 235, 72, 14, 248,
-    182, 107, 123, 43, 243, 31, 231, 144, 162, 86, 130, 48, 237,
-    33, 55, 56, 193, 41, 54, 103, 143, 24, 1, 22, 210, 158, 239,
-    117, 202, 87, 146, 85, 80, 118, 169, 255, 238, 181, 163, 27,
-    226, 9, 94, 135, 125, 176, 60, 140, 249, 229, 194, 93, 211,
-    240, 16, 77, 205, 203, 216, 215, 105, 191, 138, 6, 201, 230,
-    133, 234, 5, 53, 97, 83, 89, 170, 51, 50, 192, 228, 112, 92,
-    247, 190, 8, 186, 15, 245, 241, 108, 65, 177, 79, 68, 59,
-    252, 196, 49, 7, 200, 183, 137, 242, 152, 141, 95, 71, 214,
-    116, 189, 148, 166, 37, 253, 219, 246, 73, 175, 19, 209, 84,
-    232, 139, 233, 244, 217, 62, 206, 150, 39, 40, 13, 29, 26, 101,
-    34, 0, 251, 102, 91, 142, 18, 21, 197, 174, 223, 126, 207, 17,
-    114, 155, 147, 236, 195, 52, 44, 120, 96, 212, 82, 222, 38, 46,
-    122, 220, 151, 90, 254, 2, 187,
-
-    161, 171, 188, 119, 28, 100, 98, 173, 10, 113, 208, 136,
-    129, 76, 225, 160, 204, 78, 12, 132, 164, 153, 199, 110,
-    66, 180, 227, 149, 127, 156, 88, 70, 168, 145, 131, 61,
-    134, 67, 250, 69, 172, 157, 45, 81, 104, 154, 47, 32, 198,
-    74, 11, 20, 63, 42, 35, 23, 99, 178, 121, 115, 213, 111,
-    159, 184, 75, 36, 165, 224, 221, 185, 128, 106, 4, 64, 109,
-    57, 3, 58, 218, 30, 179, 25, 167, 124, 235, 72, 14, 248,
-    182, 107, 123, 43, 243, 31, 231, 144, 162, 86, 130, 48, 237,
-    33, 55, 56, 193, 41, 54, 103, 143, 24, 1, 22, 210, 158, 239,
-    117, 202, 87, 146, 85, 80, 118, 169, 255, 238, 181, 163, 27,
-    226, 9, 94, 135, 125, 176, 60, 140, 249, 229, 194, 93, 211,
-    240, 16, 77, 205, 203, 216, 215, 105, 191, 138, 6, 201, 230,
-    133, 234, 5, 53, 97, 83, 89, 170, 51, 50, 192, 228, 112, 92,
-    247, 190, 8, 186, 15, 245, 241, 108, 65, 177, 79, 68, 59,
-    252, 196, 49, 7, 200, 183, 137, 242, 152, 141, 95, 71, 214,
-    116, 189, 148, 166, 37, 253, 219, 246, 73, 175, 19, 209, 84,
-    232, 139, 233, 244, 217, 62, 206, 150, 39, 40, 13, 29, 26, 101,
-    34, 0, 251, 102, 91, 142, 18, 21, 197, 174, 223, 126, 207, 17,
-    114, 155, 147, 236, 195, 52, 44, 120, 96, 212, 82, 222, 38, 46,
-    122, 220, 151, 90, 254, 2, 187
-};
-
-inline f32 grad(i32 hash, f32 x, f32 y)
-{
-    i32 h = hash & 0x7;
-    f32 u = h < 4 ? x : y;
-    f32 v = h < 4 ? y : x;
-    return ((h & 1)? -u : u) + ((h & 2)? -2.0f*v : 2.0f*v);
-}
-
-inline f32 grad(i32 hash, f32 x)
-{
-    i32 h = hash & 15;
-    f32 grad = 1.0f + (h & 7);
-    if(h & 8) grad = -grad;
-    return (grad * x);
-}
-
-inline i32 fastFloor(f32 x)
-{
-    if(x > 0) {
-        return (i32)x;
-    }
-    return (i32)x - 1;
-}
-
-f32 noise1D(f32 x)
-{
-    i32 i0 = fastFloor(x);
-    i32 i1 = i0 + 1;
-    f32 x0 = x - i0;
-    f32 x1 = x0 - 1.0f;
-
-    f32 n0, n1;
-    f32 t0 = 1.0f - x0*x0;
-    t0 *= t0;
-    n0 = t0 * t0 * grad(g_perm[i0 & 0xff], x0);
-
-    f32 t1 = 1.0f - x1*x1;
-    t1 *= t1;
-    n1 = t1 * t1 * grad(g_perm[i1 & 0xff], x1);
-    return 0.395f * (n0 + n1);
-}
-
 inline u32 xorshift32(u32* seed)
 {
     u32 x = *seed;
@@ -349,6 +256,12 @@ inline u32 xorshift32(u32* seed)
 inline f64 randf01(u32* seed)
 {
     return (f64)xorshift32(seed)/0xffffffff;
+}
+
+inline i32 randi(u32* seed, i32 vmin, i32 vmax)
+{
+    dbg_assert(vmax > vmin, "vmax must be > vmin");
+    return vmin + (xorshift32(seed) % (vmax - vmin + 1));
 }
 
 void CGameControllerZOMB::SpawnZombie(i32 zid, u8 type, u8 isElite, u32 enrageTime)
@@ -379,7 +292,7 @@ void CGameControllerZOMB::SpawnZombie(i32 zid, u8 type, u8 isElite, u32 enrageTi
 
     vec2 spawnPos = m_ZombSpawnPoint[(zid + m_Seed)%m_ZombSpawnPointCount];
     m_ZombCharCore[zid].Reset();
-    m_ZombCharCore[zid].m_Pos = spawnPos;
+    m_ZombCharCore[zid].m_Pos = spawnPos + vec2(randf01(&m_Seed) * 2.0f, randf01(&m_Seed) * 2.0f);
     GameServer()->m_World.m_Core.m_apCharacters[ZombCID(zid)] = &m_ZombCharCore[zid];
 
     m_ZombInput[zid] = CNetObj_PlayerInput();
@@ -527,9 +440,14 @@ inline bool CGameControllerZOMB::InMapBounds(const ivec2& pos)
             pos.y >= 0 && pos.y < (i32)m_MapHeight);
 }
 
-inline bool CGameControllerZOMB::IsBlocked(const ivec2& pos)
+inline bool CGameControllerZOMB::IsBlockedOrOob(const ivec2& pos)
 {
     return (!InMapBounds(pos) || m_Map[pos.y * m_MapWidth + pos.x] != 0);
+}
+
+inline bool CGameControllerZOMB::IsBlocked(const ivec2& pos)
+{
+    return m_Map[pos.y * m_MapWidth + pos.x] != 0;
 }
 
 static Node* openList[MAX_MAP_SIZE];
@@ -561,20 +479,20 @@ bool CGameControllerZOMB::JumpStraight(const ivec2& start, const ivec2& dir, con
         }
 
         // hit a wall, diregard jump
-        if(!InMapBounds(jumpPos) || IsBlocked(jumpPos)) {
+        if(!InMapBounds(jumpPos) || IsBlockedOrOob(jumpPos)) {
             return false;
         }
 
         // forced neighours check
         ivec2 wallPos = jumpPos + forcedCheckDir[0];
         ivec2 freePos = jumpPos + forcedCheckDir[0] + dir;
-        if(IsBlocked(wallPos) && !IsBlocked(freePos)) {
+        if(IsBlockedOrOob(wallPos) && !IsBlockedOrOob(freePos)) {
             return true;
         }
 
         wallPos = jumpPos + forcedCheckDir[1];
         freePos = jumpPos + forcedCheckDir[1] + dir;
-        if(IsBlocked(wallPos) && !IsBlocked(freePos)) {
+        if(IsBlockedOrOob(wallPos) && !IsBlockedOrOob(freePos)) {
             return true;
         }
 
@@ -613,20 +531,20 @@ bool CGameControllerZOMB::JumpDiagonal(const ivec2& start, const ivec2& dir, con
         }
 
         // hit a wall, diregard jump
-        if(!InMapBounds(jumpPos) || IsBlocked(jumpPos)) {
+        if(!InMapBounds(jumpPos) || IsBlockedOrOob(jumpPos)) {
             return false;
         }
 
         // forced neighours check
         ivec2 wallPos = jumpPos + forcedCheckDir[0];
         ivec2 freePos = jumpPos + forcedCheckDir[0] + ivec2(0, dir.y);
-        if(IsBlocked(wallPos) && !IsBlocked(freePos)) {
+        if(IsBlockedOrOob(wallPos) && !IsBlockedOrOob(freePos)) {
             return true;
         }
 
         wallPos = jumpPos + forcedCheckDir[1];
         freePos = jumpPos + forcedCheckDir[1] + ivec2(dir.x, 0);
-        if(IsBlocked(wallPos) && !IsBlocked(freePos)) {
+        if(IsBlockedOrOob(wallPos) && !IsBlockedOrOob(freePos)) {
             return true;
         }
 
@@ -646,8 +564,13 @@ vec2 CGameControllerZOMB::PathFind(vec2 start, vec2 end)
         return end;
     }
 
-    if(IsBlocked(mStart) || IsBlocked(mStart)) {
-        dbg_zomb_msg("Error: PathFind() start and end point must be clear.");
+    if(!InMapBounds(mEnd)) {
+        mEnd.x = clamp(mEnd.x, 0, m_MapWidth-1);
+        mEnd.y = clamp(mEnd.y, 0, m_MapHeight-1);
+    }
+
+    if(IsBlockedOrOob(mStart) || IsBlocked(mEnd)) {
+        // dbg_zomb_msg("Error: PathFind() start and end point must be clear.");
         return end;
     }
 
@@ -703,26 +626,26 @@ vec2 CGameControllerZOMB::PathFind(vec2 start, vec2 end)
 
             // straight (add fromDir + adjacent diags)
             if(fromDir.x == 0 || fromDir.y == 0) {
-                if(!IsBlocked(cp + fromDir)) {
+                if(!IsBlockedOrOob(cp + fromDir)) {
                     nbDir[nbCount++] = fromDir;
 
                     if(fromDir.x == 0) {
                         ivec2 diagR(1, fromDir.y);
-                        if(!IsBlocked(cp + diagR)) {
+                        if(!IsBlockedOrOob(cp + diagR)) {
                             nbDir[nbCount++] = diagR;
                         }
                         ivec2 diagL(-1, fromDir.y);
-                        if(!IsBlocked(cp + diagL)) {
+                        if(!IsBlockedOrOob(cp + diagL)) {
                             nbDir[nbCount++] = diagL;
                         }
                     }
                     else if(fromDir.y == 0) {
                         ivec2 diagB(fromDir.x, 1);
-                        if(!IsBlocked(cp + diagB)) {
+                        if(!IsBlockedOrOob(cp + diagB)) {
                             nbDir[nbCount++] = diagB;
                         }
                         ivec2 diagT(fromDir.x, -1);
-                        if(!IsBlocked(cp + diagT)) {
+                        if(!IsBlockedOrOob(cp + diagT)) {
                             nbDir[nbCount++] = diagT;
                         }
                     }
@@ -733,24 +656,24 @@ vec2 CGameControllerZOMB::PathFind(vec2 start, vec2 end)
                 ivec2 stX(fromDir.x, 0);
                 ivec2 stY(0, fromDir.y);
 
-                if(!IsBlocked(cp + fromDir) &&
-                   (!IsBlocked(cp + stX) || !IsBlocked(cp + stY))) {
+                if(!IsBlockedOrOob(cp + fromDir) &&
+                   (!IsBlockedOrOob(cp + stX) || !IsBlockedOrOob(cp + stY))) {
                     nbDir[nbCount++] = fromDir;
                 }
-                if(!IsBlocked(cp + stX)) {
+                if(!IsBlockedOrOob(cp + stX)) {
                     nbDir[nbCount++] = stX;
                 }
-                if(!IsBlocked(cp + stY)) {
+                if(!IsBlockedOrOob(cp + stY)) {
                     nbDir[nbCount++] = stY;
                 }
 
                 // forced neighbours
                 ivec2 fn1(-stX.x, stY.y);
-                if(IsBlocked(cp - stX) && !IsBlocked(cp + stY) && !IsBlocked(cp + fn1)) {
+                if(IsBlockedOrOob(cp - stX) && !IsBlockedOrOob(cp + stY) && !IsBlockedOrOob(cp + fn1)) {
                     nbDir[nbCount++] = fn1;
                 }
                 ivec2 fn2(stX.x, -stY.y);
-                if(IsBlocked(cp - stY) && !IsBlocked(cp + stX) && !IsBlocked(cp + fn2)) {
+                if(IsBlockedOrOob(cp - stY) && !IsBlockedOrOob(cp + stX) && !IsBlockedOrOob(cp + fn2)) {
                     nbDir[nbCount++] = fn2;
                 }
             }
@@ -1002,7 +925,7 @@ void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos, bool ta
     input.m_Jump = 0;
     f32 yDist = z_abs(dest.y - pos.y);
     if(m_ZombJumpClock[zid] <= 0 && dest.y < pos.y) {
-        if(yDist > 28.f) {
+        if(yDist > 10.f) {
             if(grounded) {
                 input.m_Jump = ZOMBIE_GROUNDJUMP;
                 m_ZombJumpClock[zid] = SecondsToTick(0.5f);
@@ -1362,7 +1285,7 @@ void CGameControllerZOMB::HandleWartule(u32 zid, const vec2& targetPos, f32 targ
             }
 
             f32 shootAngle = angle(targetPos - m_ZombCharCore[zid].m_Pos);
-            shootAngle += (f32)RandInt(-15, 15) * pi / 180.f;
+            shootAngle += randi(&m_Seed, -15, 15) * pi / 180.f;
             vec2 shootDir = direction(shootAngle);
 
             GameServer()->CreateSound(m_ZombCharCore[zid].m_Pos, SOUND_GRENADE_FIRE);
@@ -1631,11 +1554,11 @@ void CGameControllerZOMB::StartZombGame(u32 startingWave)
         }
     }
 
-    m_Seed = RandInt(0, 9999); // temporary
+    m_Seed = time(NULL);
     m_RestartClock = -1;
 }
 
-void CGameControllerZOMB::GameWon()
+void CGameControllerZOMB::WaveGameWon()
 {
     ChatMessage(">> Game won, good job.");
     EndMatch();
@@ -1684,6 +1607,7 @@ void CGameControllerZOMB::GameCleanUp()
         if(GameServer()->m_apPlayers[i]) {
             GameServer()->m_apPlayers[i]->m_RespawnDisabled = false;
             GameServer()->m_apPlayers[i]->m_DeadSpecMode = false;
+            GameServer()->m_apPlayers[i]->m_Score = 0;
         }
     }
 
@@ -1755,7 +1679,7 @@ void CGameControllerZOMB::TickWaveGame()
             m_SpawnCmdID = 0;
 
             if(m_CurrentWave == (m_WaveCount-1)) {
-                GameWon();
+                WaveGameWon();
             }
             else {
                 ChatMessage(">> Wave complete.");
@@ -1772,7 +1696,7 @@ void CGameControllerZOMB::ActivateReviveCtf()
     m_BlueFlagPos = m_BlueFlagSpawn[m_Tick%m_BlueFlagSpawnCount];
     m_RedFlagCarrier = -1;
     m_RedFlagVel = vec2(0, 0);
-    GameServer()->CreateSound(m_RedFlagPos, SOUND_CTF_GRAB_EN);
+    GameServer()->SendGameMsg(GAMEMSG_CTF_GRAB, 0, -1);
     m_IsReviveCtfActive = true;
     m_CanPlayersRespawn = false;
 
@@ -2324,7 +2248,8 @@ void CGameControllerZOMB::CreateZombExplosion(vec2 pos, f32 inner, f32 outer, f3
 
 void CGameControllerZOMB::CreatePlayerExplosion(vec2 Pos, i32 Dmg, i32 OwnerCID, i32 Weapon)
 {
-    GameServer()->CreateExplosion(Pos, OwnerCID, 0, 0);
+    GameServer()->CreateExplosion(Pos, OwnerCID, WEAPON_GRENADE,
+                                  g_pData->m_Weapons.m_Grenade.m_pBase->m_Damage);
     GameServer()->CreateSound(Pos, SOUND_GRENADE_EXPLODE);
 
     float Radius = g_pData->m_Explosion.m_Radius;
@@ -2362,9 +2287,10 @@ void CGameControllerZOMB::ConZombStartSurv(IConsole::IResult* pResult, void* pUs
 
 void CGameControllerZOMB::StartZombSurv(i32 seed)
 {
+    m_SurvWaveInterval = g_Config.m_SvZombSurvInterval;
     m_SurvQueueCount = 0;
     m_SpawnClock = SecondsToTick(10); // 10s to setup
-    m_SurvivalStartTick = m_Tick + m_SpawnClock;
+    m_SurvivalStartTick = m_Tick;
     ChatMessage(">> Survive!");
     ChatMessage(">> 10s to setup.");
     StartMatch();
@@ -2378,7 +2304,7 @@ void CGameControllerZOMB::StartZombSurv(i32 seed)
     }
 
     if(seed == -1) {
-        m_Seed = RandInt(0, 9999);
+        m_Seed = time(NULL);
     }
     else {
         m_Seed = seed;
@@ -2387,72 +2313,78 @@ void CGameControllerZOMB::StartZombSurv(i32 seed)
     m_RestartClock = -1;
 }
 
-inline f32 selectRoulette(const f32* chance, const f32 count, const f32 chanceTotal)
-{
-
-}
-
 void CGameControllerZOMB::TickSurvivalGame()
 {
+    constexpr i32 POCKET_COUNT = MAX_ZOMBS / 3;
+
     if(m_SurvQueueCount == 0) {
-        const f32 progress = (m_Tick - m_SurvivalStartTick)/(f32)SURVIVAL_MAX_TIME;
-        i32 specialMaxCount = progress * MAX_ZOMBS;
-        i32 specialsCurCount = 0;
-        for(u32 i = 0; i < MAX_ZOMBS; ++i) {
-            if(m_ZombAlive[i] && m_ZombType[i] != ZTYPE_BASIC) {
-                ++specialsCurCount;
-            }
-        }
+        const f32 progress = min(1.0f, (m_Tick - m_SurvivalStartTick)/(f32)SURVIVAL_MAX_TIME);
+        dbg_assert(progress >= 0.0f && progress <= 1.0f, "");
+        const i32 specialMaxCount = max(1, (i32)(progress * POCKET_COUNT));
+        i32 specialsToSpawn = 0;
 
-        i32 specialsToSpawn = specialMaxCount - specialsCurCount;
-        if(specialsToSpawn > 0) {
-            f32 sec = m_Tick/(f32)SERVER_TICK_SPEED * 18.73f;
-#if 1
-            f32 n = randf01(&m_Seed);
-            dbg_assert(n >= 0.0f && n <= 1.0f, "");
-            n *= g_ZombSpawnChanceTotal;
-            f32 r = 0.0f;
-            u8 ztype = ZTYPE_BASIC;
-            for(i32 i = 1; i < ZTYPE_MAX; i++) {
-                r += g_ZombSpawnChance[i];
-                if(n < r) {
-                    ztype = i;
-                    break;
+        if(specialMaxCount > 0) {
+            specialsToSpawn = randi(&m_Seed, specialMaxCount/2, specialMaxCount);
+
+            std_zomb_msg("specialMaxCount=%d specialsToSpawn=%d", specialMaxCount, specialsToSpawn);
+
+            for(i32 s = 0; s < specialsToSpawn; s++) {
+                f32 n = randf01(&m_Seed);
+                dbg_assert(n >= 0.0f && n <= 1.0f, "");
+                n *= g_ZombSpawnChanceTotal;
+
+                // select roulette
+                f32 r = 0.0f;
+                u8 ztype = ZTYPE_BASIC;
+                for(i32 i = 1; i < ZTYPE_MAX; i++) {
+                    r += g_ZombSpawnChance[i];
+                    if(n < r) {
+                        ztype = i;
+                        break;
+                    }
                 }
-            }
-            u8 elite = randf01(&m_Seed) < max(0.1f, progress);
-            dbg_assert(ztype != ZTYPE_BASIC, "Should not happen");
-#else
-            f32 n = (noise1D(sec) + 1.f) * 0.6f;
-            dbg_assert(n >= 0.0f && n <= 1.0f, "");
-            u8 ztype = clamp((i32)(n * (ZTYPE_MAX-1) + 1), 1, ZTYPE_MAX-1);
-#endif
+                dbg_assert(ztype != ZTYPE_BASIC, "Should not happen");
+                u8 elite = randf01(&m_Seed) < max(0.05f, max(progress-0.5f, 0.0f) * 2.0f);
 
-            std_zomb_msg("sec: %.2f n: %.2f type: %s", sec, n, g_ZombName[ztype]);
-            m_SurvQueue[m_SurvQueueCount++] = SpawnCmd{ztype, elite};
+                std_zomb_msg("#%d type=%d elite=%d", s, ztype, elite);
+                m_SurvQueue[m_SurvQueueCount++] = SpawnCmd{ztype, elite};
+            }
         }
-        else {
-            u8 elite = randf01(&m_Seed) < max(0.1f, progress);
+
+        const i32 basicToSpawn = POCKET_COUNT - specialsToSpawn;
+        for(i32 s = 0; s < basicToSpawn; s++) {
+            u8 elite = randf01(&m_Seed) < max(0.025f, max(progress-0.5f, 0.0f) * 2.0f);
             m_SurvQueue[m_SurvQueueCount++] = SpawnCmd{ZTYPE_BASIC, elite};
         }
+
+        std_zomb_msg("progress=%g basic=%d", progress, basicToSpawn);
     }
 
     if(m_SpawnClock > 0) {
         --m_SpawnClock;
+    }
 
-        if(m_SpawnClock == 0) {
-            for(u32 i = 0; i < MAX_ZOMBS; ++i) {
-                if(m_ZombAlive[i]) continue;
-                u8 type = m_SurvQueue[0].type;
-                bool isElite = m_SurvQueue[0].isElite;
-                SpawnZombie(i, type, isElite, SURVIVAL_ENRAGE_TIME);
-                memmove(m_SurvQueue, m_SurvQueue+1, m_SurvQueueCount * sizeof(SpawnCmd));
-                --m_SurvQueueCount;
-                break;
-            }
+    i32 spots = 0;
+    for(i32 i = 0; i < MAX_ZOMBS; ++i) {
+        if(m_ZombAlive[i]) continue;
+        spots++;
+    }
 
-            m_SpawnClock = SPAWN_INTERVAL_SURV;
+    if(m_SpawnClock == 0 && spots >= POCKET_COUNT) {
+        std_zomb_msg("spawning spots=%d", spots);
+        spots = min(POCKET_COUNT, spots);
+
+        for(i32 i = 0; i < MAX_ZOMBS && spots > 0; ++i) {
+            if(m_ZombAlive[i]) continue;
+            u8 type = m_SurvQueue[0].type;
+            bool isElite = m_SurvQueue[0].isElite;
+            SpawnZombie(i, type, isElite, SURVIVAL_ENRAGE_TIME);
+            memmove(m_SurvQueue, m_SurvQueue+1, m_SurvQueueCount * sizeof(SpawnCmd));
+            --m_SurvQueueCount;
+            --spots;
         }
+
+        m_SpawnClock = SecondsToTick(m_SurvWaveInterval);
     }
 }
 
@@ -2486,7 +2418,7 @@ void CGameControllerZOMB::TickReviveCtf()
             m_RedFlagCarrier = apEnts[i]->GetPlayer()->GetCID();
             m_RedFlagVel = vec2(0, 0);
             m_RedFlagPos = apEnts[i]->GetPos();
-            GameServer()->CreateSound(m_RedFlagPos, SOUND_CTF_GRAB_PL);
+            GameServer()->SendGameMsg(GAMEMSG_CTF_GRAB, 1, -1);
             break;
         }
 
@@ -2505,6 +2437,7 @@ void CGameControllerZOMB::TickReviveCtf()
     // capture
     if(distance(m_RedFlagPos, m_BlueFlagPos) < 100.f && CharIsSurvivor(m_RedFlagCarrier)) {
         GameServer()->CreateSound(m_RedFlagPos, SOUND_CTF_CAPTURE);
+        GameServer()->SendGameMsg(GAMEMSG_CTF_CAPTURE, 0, m_RedFlagCarrier, 0 /*time*/, -1); //TODO: add time
         ReviveSurvivors();
     }
 }
@@ -2862,6 +2795,7 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 {
     IGameController::OnPlayerConnect(pPlayer);
+    PlayerActivateDeadSpectate(pPlayer);
 
     for(u32 i = 0; i < MAX_ZOMBS; ++i) {
         SendZombieInfos(i, pPlayer->GetCID());
@@ -2944,8 +2878,7 @@ int CGameControllerZOMB::OnCharacterDeath(CCharacter* pVictim, CPlayer* pKiller,
 {
     if(Weapon != WEAPON_GAME) {
         if(m_ZombGameState != ZSTATE_NONE) {
-            pVictim->GetPlayer()->m_RespawnDisabled = true;
-            pVictim->GetPlayer()->m_DeadSpecMode = true;
+            PlayerActivateDeadSpectate(pVictim->GetPlayer());
         }
 
         if(!m_IsReviveCtfActive && m_ZombGameState != ZSTATE_NONE) {
@@ -2954,7 +2887,7 @@ int CGameControllerZOMB::OnCharacterDeath(CCharacter* pVictim, CPlayer* pKiller,
 
         if(m_RedFlagCarrier == pVictim->GetPlayer()->GetCID()) {
             m_RedFlagCarrier = -1;
-            GameServer()->CreateSound(m_RedFlagPos, SOUND_CTF_DROP);
+            GameServer()->SendGameMsg(GAMEMSG_CTF_DROP, -1);
         }
     }
 
@@ -2969,7 +2902,7 @@ bool CGameControllerZOMB::CanChangeTeam(CPlayer* pPlayer, int JoinTeam) const
     return true;
 }
 
-void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i32 Weapon)
+void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, i32 From, i32 Weapon)
 {
     u32 zid = CID - MAX_SURVIVORS; // TODO: remove
 
@@ -2992,6 +2925,9 @@ void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i3
     if(m_ZombBuff[zid]&BUFF_ARMORED) {
         Dmg *= (1.f - ARMOR_DMG_REDUCTION);
         if(Dmg < 1) {
+            if(randf01(&m_Seed) < ARMOR_DMG_REDUCTION) {
+                return;
+            }
             Dmg = 1;
         }
     }
@@ -3010,6 +2946,7 @@ void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, int From, i3
     m_ZombHealth[zid] -= Dmg;
     if(m_ZombHealth[zid] <= 0) {
         KillZombie(zid, -1);
+        GameServer()->m_apPlayers[From]->m_Score++;
     }
 
     m_ZombCharCore[zid].m_Vel += Force * g_ZombKnockbackMultiplier[m_ZombType[zid]];
@@ -3046,6 +2983,7 @@ i32 CGameControllerZOMB::PlayerTryHitHammer(i32 CID, vec2 pos, vec2 direction)
     const f32 hitAreaRadius = CCharacter::ms_PhysSize * 3.0;
 
     for(int i = 0; i < MAX_ZOMBS; ++i) {
+        if(!m_ZombAlive[i]) continue;
         const vec2& zombPos = m_ZombCharCore[i].m_Pos;
 
         if(distance(zombPos, hitAreaCenter) < hitAreaRadius) {
@@ -3138,4 +3076,18 @@ bool CGameControllerZOMB::PlayerProjectileTick(i32 ownerCID, vec2 prevPos, vec2 
         return true;
     }
     return false;
+}
+
+void CGameControllerZOMB::PlayerActivateDeadSpectate(CPlayer* player)
+{
+    player->m_RespawnDisabled = true;
+    player->m_DeadSpecMode = true;
+
+    for(i32 i = 0; i < MAX_SURVIVORS; i++) {
+        CCharacter* chara = GameServer()->GetPlayerChar(i);
+        if(chara && chara->IsAlive()) {
+            player->SetSpectatorID(SPEC_PLAYER, i);
+            break;
+        }
+    }
 }
