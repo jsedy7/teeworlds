@@ -2,7 +2,7 @@
 dofile("genie_config.lua");
 
 local PROJ_DIR = path.getdirectory(_SCRIPT)
-local BUILD_DIR = path.join(PROJ_DIR, "build_genie")
+local BUILD_DIR = path.join(PROJ_DIR, BUILD_DIR_NAME)
 local GENERATED_DIR = path.join(BUILD_DIR, "src", "generated")
 print(PROJ_DIR)
 print(BUILD_DIR)
@@ -52,7 +52,7 @@ solution "Teeworlds"
 	
 	configuration {}
 	
-	targetdir("../build_genie")
+	targetdir("../"..BUILD_DIR_NAME)
 	
 	includedirs {
 		"src",
@@ -111,6 +111,18 @@ project "md5"
     kind "StaticLib"
     configuration {}
     files {"src/engine/external/md5/*.c"}
+
+ project "versionsrv"
+    kind "ConsoleApp"
+    configuration {}
+    files {files_ENGINE_COMMON_SRC, "src/versionsrv/*.cpp"}
+    links { "zlib", "md5"}
+
+project "mastersrv"
+    kind "ConsoleApp"
+    configuration {}
+    files {files_ENGINE_COMMON_SRC, "src/mastersrv/*.cpp"}
+    links { "zlib", "md5"}
 
 project "teeworlds_srv"
 	kind "ConsoleApp"
