@@ -36,6 +36,8 @@
 #include <engine/shared/ringbuffer.h>
 #include <engine/shared/snapshot.h>
 
+#include <engine/shared/microprofile.h>
+
 #include <game/version.h>
 
 #include <mastersrv/mastersrv.h>
@@ -757,6 +759,8 @@ const char *CClient::ErrorString() const
 
 void CClient::Render()
 {
+	MICROPROFILE_SCOPEI("CClient", "Render", MP_RED1);
+
 	if(g_Config.m_GfxClear)
 		Graphics()->Clear(1,1,0);
 
@@ -1524,6 +1528,8 @@ void DemoPlayer()->SetPause(int paused)
 
 void CClient::Update()
 {
+	MICROPROFILE_SCOPEI("CClient", "Update", MP_YELLOW);
+
 	if(State() == IClient::STATE_DEMOPLAYBACK)
 	{
 		m_DemoPlayer.Update();
@@ -1817,6 +1823,9 @@ void CClient::Run()
 
 	while (1)
 	{
+		MicroProfileFlip(nullptr);
+		MICROPROFILE_SCOPEI("CClient", "Run [Frame]", MP_MAGENTA);
+
 		//
 		VersionUpdate();
 
@@ -1890,6 +1899,8 @@ void CClient::Run()
 
 		// render
 		{
+			MICROPROFILE_SCOPEI("CClient", "Run [Render]", MP_ORANGE);
+
 			if(g_Config.m_ClEditor)
 			{
 				if(!m_EditorActive)
@@ -1951,6 +1962,8 @@ void CClient::Run()
 				}
 			}
 		}
+
+		MICROPROFILE_SCOPEI("CClient", "Run [End]", MP_GREEN2);
 
 		AutoScreenshot_Cleanup();
 
@@ -2364,6 +2377,8 @@ void CClient::HandleTeeworldsConnectLink(const char *pConLink)
 
 int main(int argc, const char **argv) // ignore_convention
 {
+	MicroProfileOnThreadCreate("Main");
+
 #if defined(CONF_FAMILY_WINDOWS)
 	for(int i = 1; i < argc; i++) // ignore_convention
 	{

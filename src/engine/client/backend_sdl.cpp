@@ -8,6 +8,7 @@
 #endif
 
 #include <base/tl/threading.h>
+#include <engine/shared/microprofile.h>
 
 #include "graphics_threaded.h"
 #include "backend_sdl.h"
@@ -26,6 +27,8 @@
 
 void CGraphicsBackend_Threaded::ThreadFunc(void *pUser)
 {
+	MicroProfileOnThreadCreate("CGraphicsBackend_Threaded");
+
 	CGraphicsBackend_Threaded *pThis = (CGraphicsBackend_Threaded *)pUser;
 
 	while(!pThis->m_Shutdown)
@@ -42,6 +45,8 @@ void CGraphicsBackend_Threaded::ThreadFunc(void *pUser)
 			pThis->m_BufferDone.signal();
 		}
 	}
+
+	MicroProfileOnThreadExit();
 }
 
 CGraphicsBackend_Threaded::CGraphicsBackend_Threaded()
@@ -160,7 +165,7 @@ void CCommandProcessorFragment_OpenGL::SetState(const CCommandBuffer::SState &St
 	}
 	else
 		glDisable(GL_SCISSOR_TEST);
-	
+
 
 	// texture
 	int SrcBlendMode = GL_ONE;
@@ -331,7 +336,7 @@ void CCommandProcessorFragment_OpenGL::Cmd_Texture_Create(const CCommandBuffer::
 		}
 	}
 	m_aTextures[pCommand->m_Slot].m_Format = pCommand->m_Format;
-	
+
 	//
 	int Oglformat = TexFormatToOpenGLFormat(pCommand->m_Format);
 	int StoreOglformat = TexFormatToOpenGLFormat(pCommand->m_StoreFormat);
@@ -377,7 +382,7 @@ void CCommandProcessorFragment_OpenGL::Cmd_Texture_Create(const CCommandBuffer::
 			m_aTextures[pCommand->m_Slot].m_MemSize += TexWidth*TexHeight*pCommand->m_PixelSize;
 		}
 	}
-	
+
 	// 3D texture
 	if(pCommand->m_Flags&CCommandBuffer::TEXFLAG_TEXTURE3D)
 	{
@@ -404,7 +409,7 @@ void CCommandProcessorFragment_OpenGL::Cmd_Texture_Create(const CCommandBuffer::
 
 		mem_free(pTexData);
 		pTexData = pTmpData;
-		
+
 		//
 		glGenTextures(1, &m_aTextures[pCommand->m_Slot].m_Tex3D);
 		m_aTextures[pCommand->m_Slot].m_State |= CTexture::STATE_TEX3D;
@@ -415,7 +420,7 @@ void CCommandProcessorFragment_OpenGL::Cmd_Texture_Create(const CCommandBuffer::
 		glTexImage3D(GL_TEXTURE_3D, 0, StoreOglformat, Width, Height, Depth, 0, Oglformat, GL_UNSIGNED_BYTE, pTexData);
 
 		m_aTextures[pCommand->m_Slot].m_MemSize += Width*Height*pCommand->m_PixelSize;
-	}	
+	}
 
 	*m_pTextureMemoryUsage += m_aTextures[pCommand->m_Slot].m_MemSize;
 
@@ -430,8 +435,10 @@ void CCommandProcessorFragment_OpenGL::Cmd_Clear(const CCommandBuffer::SCommand_
 
 void CCommandProcessorFragment_OpenGL::Cmd_Render(const CCommandBuffer::SCommand_Render *pCommand)
 {
+	MICROPROFILE_SCOPEI("CCommandProcessorFragment_OpenGL", "Cmd_Render", MP_CYAN);
+
 	SetState(pCommand->m_State);
-	
+
 	glVertexPointer(3, GL_FLOAT, sizeof(CCommandBuffer::SVertex), (char*)pCommand->m_pVertices);
 	glTexCoordPointer(3, GL_FLOAT, sizeof(CCommandBuffer::SVertex), (char*)pCommand->m_pVertices + sizeof(float)*3);
 	glColorPointer(4, GL_FLOAT, sizeof(CCommandBuffer::SVertex), (char*)pCommand->m_pVertices + sizeof(float)*6);
@@ -462,7 +469,7 @@ void CCommandProcessorFragment_OpenGL::Cmd_Screenshot(const CCommandBuffer::SCom
 	int h = pCommand->m_H == -1 ? aViewport[3] : pCommand->m_H;
 	int x = pCommand->m_X;
 	int y = aViewport[3] - pCommand->m_Y - 1 - (h - 1);
-	
+
 	// we allocate one more row to use when we are flipping the texture
 	unsigned char *pPixelData = (unsigned char *)mem_alloc(w*(h+1)*3, 1);
 	unsigned char *pTempRow = pPixelData+w*h*3;
@@ -540,7 +547,9 @@ void CCommandProcessorFragment_SDL::Cmd_Shutdown(const SCommand_Shutdown *pComma
 
 void CCommandProcessorFragment_SDL::Cmd_Swap(const CCommandBuffer::SCommand_Swap *pCommand)
 {
+	MICROPROFILE_SCOPEI("CCommandProcessorFragment_SDL", "Cmd_Swap", MP_PURPLE);
 	SDL_GL_SwapWindow(m_pWindow);
+	thread_sleep(10);
 
 	if(pCommand->m_Finish)
 		glFinish();
@@ -610,22 +619,24 @@ bool CCommandProcessorFragment_SDL::RunCommand(const CCommandBuffer::SCommand *p
 
 void CCommandProcessor_SDL_OpenGL::RunBuffer(CCommandBuffer *pBuffer)
 {
+	MICROPROFILE_SCOPEI("CCommandProcessor_SDL_OpenGL", "RunBuffer", MP_BISQUE);
+
 	unsigned CmdIndex = 0;
 	while(1)
 	{
 		const CCommandBuffer::SCommand *pBaseCommand = pBuffer->GetCommand(&CmdIndex);
 		if(pBaseCommand == 0x0)
 			break;
-		
+
 		if(m_OpenGL.RunCommand(pBaseCommand))
 			continue;
-		
+
 		if(m_SDL.RunCommand(pBaseCommand))
 			continue;
 
 		if(m_General.RunCommand(pBaseCommand))
 			continue;
-		
+
 		dbg_msg("graphics", "unknown command %d", pBaseCommand->m_Cmd);
 	}
 }
@@ -693,7 +704,7 @@ int CGraphicsBackend_SDL_OpenGL::Init(const char *pName, int *Screen, int *pWidt
 #else
 		SdlFlags |= SDL_WINDOW_FULLSCREEN;
 #endif
-	
+
 	// set gl attributes
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	if(FsaaSamples)
@@ -775,7 +786,7 @@ int CGraphicsBackend_SDL_OpenGL::Shutdown()
 	CmdBuffer.AddCommand(Cmd);
 	RunBuffer(&CmdBuffer);
 	WaitForIdle();
-			
+
 	// stop and delete the processor
 	StopProcessor();
 	delete m_pProcessor;

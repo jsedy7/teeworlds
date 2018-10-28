@@ -9,6 +9,7 @@
 #include <engine/external/pnglite/pnglite.h>
 
 #include <engine/shared/config.h>
+#include <engine/shared/microprofile.h>
 #include <engine/graphics.h>
 #include <engine/storage.h>
 #include <engine/keys.h>
@@ -76,7 +77,7 @@ void CGraphics_Threaded::FlushVertices()
 	{
 		// kick command buffer and try again
 		KickCommandBuffer();
-		
+
 		Cmd.m_pVertices = (CCommandBuffer::SVertex *)m_pCommandBuffer->AllocData(sizeof(CCommandBuffer::SVertex)*NumVerts);
 		if(Cmd.m_pVertices == 0x0)
 		{
@@ -361,13 +362,13 @@ IGraphics::CTextureHandle CGraphics_Threaded::LoadTextureRaw(int Width, int Heig
 	if(Flags&IGraphics::TEXLOAD_MULTI_DIMENSION)
 		Cmd.m_Flags |= CCommandBuffer::TEXFLAG_TEXTURE3D;
 
-	
+
 	// copy texture data
 	int MemSize = Width*Height*Cmd.m_PixelSize;
 	void *pTmpData = mem_alloc(MemSize, sizeof(void*));
 	mem_copy(pTmpData, pData, MemSize);
 	Cmd.m_pData = pTmpData;
-	
+
 
 	//
 	m_pCommandBuffer->AddCommand(Cmd);
@@ -916,6 +917,8 @@ void CGraphics_Threaded::TakeScreenshot(const char *pFilename)
 
 void CGraphics_Threaded::Swap()
 {
+	MICROPROFILE_SCOPEI("CGraphics_Threaded", "Swap", MP_GOLD);
+
 	// TODO: screenshot support
 	if(m_DoScreenshot)
 	{
