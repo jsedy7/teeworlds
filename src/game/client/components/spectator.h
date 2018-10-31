@@ -15,15 +15,18 @@ class CSpectator : public CComponent
 
 	bool m_Active;
 	bool m_WasActive;
+	bool m_ShowMouse;
 
 	int m_SelectedSpectatorID;
 	int m_SelectedSpecMode;
-	vec2 m_SelectorMouse;
+	vec2 m_MousePos;
+	int64 m_MouseMoveTimer;
 
 	static void ConKeySpectator(IConsole::IResult *pResult, void *pUserData);
 	static void ConSpectate(IConsole::IResult *pResult, void *pUserData);
 	static void ConSpectateNext(IConsole::IResult *pResult, void *pUserData);
 	static void ConSpectatePrevious(IConsole::IResult *pResult, void *pUserData);
+	void UpdatePositions();
 
 public:
 	CSpectator();

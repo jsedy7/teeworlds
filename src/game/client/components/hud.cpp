@@ -22,7 +22,7 @@ CHud::CHud()
 {
 	// won't work if zero
 	m_AverageFPS = 1.0f;
-	
+
 	m_WarmupHideTick = 0;
 }
 
@@ -109,7 +109,7 @@ void CHud::RenderStartCountdown()
 
 		if(m_pClient->m_Snap.m_pGameData->m_GameStateEndTick == 0)
 			return;
-		
+
 		FontSize = 16.0f;
 		char aBuf[32];
 		int Seconds = (m_pClient->m_Snap.m_pGameData->m_GameStateEndTick-Client()->GameTick()+SERVER_TICK_SPEED-1)/SERVER_TICK_SPEED;
@@ -279,7 +279,7 @@ void CHud::RenderScoreHud()
 				TextRender()->Text(0, Whole-ScoreWidthMax+(ScoreWidthMax-aScoreWidth[t])/2-Split, StartY+t*20, 14.0f, aScore[t], -1);
 
 				if(aPlayerInfo[t].m_pPlayerInfo)
- 				{
+				{
 					// draw name
 					int ID = aPlayerInfo[t].m_ClientID;
 					char aName[64];
@@ -289,9 +289,9 @@ void CHud::RenderScoreHud()
 
 					// draw tee
 					CTeeRenderInfo Info = m_pClient->m_aClients[ID].m_RenderInfo;
- 					Info.m_Size = 18.0f;
- 					RenderTools()->RenderTee(CAnimState::GetIdle(), &Info, EMOTE_NORMAL, vec2(1,0),
- 						vec2(Whole-ScoreWidthMax-Info.m_Size/2-Split, StartY+1.0f+Info.m_Size/2+t*20));
+					Info.m_Size = 18.0f;
+					RenderTools()->RenderTee(CAnimState::GetIdle(), &Info, EMOTE_NORMAL, vec2(1,0),
+						vec2(Whole-ScoreWidthMax-Info.m_Size/2-Split, StartY+1.0f+Info.m_Size/2+t*20));
 				}
 
 				// draw position
@@ -314,7 +314,7 @@ void CHud::RenderWarmupTimer()
 		float FontSize = 20.0f;
 		float w = 0.0f;
 		const char *pText = Localize("Warmup");
-		
+
 		if(m_WarmupHideTick == 0 || (time_get() - m_WarmupHideTick) / time_freq() < 10)
 		{
 			w = TextRender()->TextWidth(0, FontSize, pText, -1);
@@ -325,7 +325,7 @@ void CHud::RenderWarmupTimer()
 			TextRender()->TextColor(1, 1, 0.5f, 1);
 			TextRender()->Text(0x0, 10, 45, 8, pText, -1);
 		}
-			
+
 		FontSize = 16.0f;
 		if(m_pClient->m_Snap.m_pGameData->m_GameStateEndTick == 0)
 		{
@@ -348,7 +348,7 @@ void CHud::RenderWarmupTimer()
 			else
 				str_format(aBuf, sizeof(aBuf), "%d", round_to_int(Seconds));
 		}
-		
+
 		if(m_WarmupHideTick == 0 || (time_get() - m_WarmupHideTick) / time_freq() < 10)
 		{
 			w = TextRender()->TextWidth(0, FontSize, aBuf, -1);
@@ -584,7 +584,7 @@ void CHud::OnRender()
 		{
 			if(m_pClient->m_Snap.m_SpecInfo.m_SpectatorID != -1)
 				RenderHealthAndAmmo(&m_pClient->m_Snap.m_aCharacters[m_pClient->m_Snap.m_SpecInfo.m_SpectatorID].m_Cur);
-			RenderSpectatorHud();
+			//RenderSpectatorHud();
 		}
 
 		RenderGameTimer();

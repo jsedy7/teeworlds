@@ -109,7 +109,7 @@ void CPlayer::Tick()
 		++m_ScoreStartTick;
 		++m_LastActionTick;
 		++m_TeamChangeTick;
- 	}
+	}
 }
 
 void CPlayer::PostTick()
@@ -261,6 +261,7 @@ void CPlayer::OnDirectInput(CNetObj_PlayerInput *NewInput)
 	if(!m_pCharacter && m_Team != TEAM_SPECTATORS && (NewInput->m_Fire&1))
 		Respawn();
 
+	/*
 	if(!m_pCharacter && m_Team == TEAM_SPECTATORS && (NewInput->m_Fire&1))
 	{
 		if(!m_ActiveSpecSwitch)
@@ -296,6 +297,7 @@ void CPlayer::OnDirectInput(CNetObj_PlayerInput *NewInput)
 	}
 	else if(m_ActiveSpecSwitch)
 		m_ActiveSpecSwitch = false;
+	*/
 
 	// check for activity
 	if(NewInput->m_Direction || m_LatestActivity.m_TargetX != NewInput->m_TargetX ||

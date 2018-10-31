@@ -132,11 +132,19 @@ void CSpectator::OnConsoleInit()
 
 bool CSpectator::OnMouseMove(float x, float y)
 {
-	if(!m_Active)
+	if(!m_ShowMouse || !m_pClient->m_Snap.m_SpecInfo.m_Active)
 		return false;
 
 	UI()->ConvertMouseMove(&x, &y);
-	m_SelectorMouse += vec2(x,y);
+	m_MousePos += vec2(x,y);
+
+	// clamp mouse position to screen
+	m_MousePos.x = clamp(m_MousePos.x, 0.f, (float)Graphics()->ScreenWidth() - 1.0f);
+	m_MousePos.y = clamp(m_MousePos.y, 0.f, (float)Graphics()->ScreenHeight() - 1.0f);
+
+	if(x != 0 || y != 0)
+		m_MouseMoveTimer = time_get();
+
 	return true;
 }
 
@@ -145,6 +153,64 @@ void CSpectator::OnRelease()
 	OnReset();
 }
 
+void CSpectator::UpdatePositions()
+{
+	CGameClient::CSnapState& Snap = m_pClient->m_Snap;
+
+	// spectator position
+	if(Snap.m_SpecInfo.m_Active)
+	{
+		if(Client()->State() == IClient::STATE_DEMOPLAYBACK && DemoPlayer()->GetDemoType() == IDemoPlayer::DEMOTYPE_SERVER &&
+			Snap.m_SpecInfo.m_SpectatorID != -1)
+		{
+			Snap.m_SpecInfo.m_Position = mix(
+				vec2(Snap.m_aCharacters[Snap.m_SpecInfo.m_SpectatorID].m_Prev.m_X, Snap.m_aCharacters[Snap.m_SpecInfo.m_SpectatorID].m_Prev.m_Y),
+				vec2(Snap.m_aCharacters[Snap.m_SpecInfo.m_SpectatorID].m_Cur.m_X, Snap.m_aCharacters[Snap.m_SpecInfo.m_SpectatorID].m_Cur.m_Y),
+				Client()->IntraGameTick());
+			Snap.m_SpecInfo.m_UsePosition = true;
+		}
+		else if(Snap.m_pSpectatorInfo && (Client()->State() == IClient::STATE_DEMOPLAYBACK || Snap.m_SpecInfo.m_SpecMode != SPEC_FREEVIEW))
+		{
+			if(Snap.m_pPrevSpectatorInfo)
+				Snap.m_SpecInfo.m_Position = mix(vec2(Snap.m_pPrevSpectatorInfo->m_X, Snap.m_pPrevSpectatorInfo->m_Y),
+												 vec2(Snap.m_pSpectatorInfo->m_X, Snap.m_pSpectatorInfo->m_Y), Client()->IntraGameTick());
+			else
+				Snap.m_SpecInfo.m_Position = vec2(Snap.m_pSpectatorInfo->m_X, Snap.m_pSpectatorInfo->m_Y);
+			Snap.m_SpecInfo.m_UsePosition = true;
+		}
+	}
+}
+
+void CSpectator::OnRender()
+{
+	if(!m_pClient->m_Snap.m_SpecInfo.m_Active)
+		return;
+
+	UpdatePositions();
+
+	int64 Now = time_get();
+	double MouseLastMovedTime = (Now - m_MouseMoveTimer) / (double)time_freq();
+
+	CUIRect Screen = *UI()->Screen();
+	Graphics()->MapScreen(Screen.x, Screen.y, Screen.w, Screen.h);
+
+	if(MouseLastMovedTime < 3.0)
+	{
+		float mx = (m_MousePos.x/(float)Graphics()->ScreenWidth())*Screen.w;
+		float my = (m_MousePos.y/(float)Graphics()->ScreenHeight())*Screen.h;
+
+		// draw cursor
+		Graphics()->TextureSet(g_pData->m_aImages[IMAGE_CURSOR].m_Id);
+		Graphics()->QuadsBegin();
+		Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
+		IGraphics::CQuadItem QuadItem(mx, my,
+									  24.0f, 24.0f);
+		Graphics()->QuadsDrawTL(&QuadItem, 1);
+		Graphics()->QuadsEnd();
+	}
+}
+
+#if 0
 void CSpectator::OnRender()
 {
 	if(!m_Active)
@@ -319,11 +385,13 @@ void CSpectator::OnRender()
 	Graphics()->QuadsDrawTL(&QuadItem, 1);
 	Graphics()->QuadsEnd();
 }
+#endif
 
 void CSpectator::OnReset()
 {
 	m_WasActive = false;
 	m_Active = false;
+	m_ShowMouse = false;
 	m_SelectedSpecMode = NO_SELECTION;
 	m_SelectedSpectatorID = -1;
 }
@@ -337,11 +405,12 @@ void CSpectator::Spectate(int SpecMode, int SpectatorID)
 		return;
 	}
 
-	if(m_pClient->m_Snap.m_SpecInfo.m_SpecMode == SpecMode && m_pClient->m_Snap.m_SpecInfo.m_SpectatorID == SpectatorID)
+	if(m_pClient->m_Snap.m_SpecInfo.m_SpecMode == SpecMode &&
+	   m_pClient->m_Snap.m_SpecInfo.m_SpectatorID == SpectatorID)
 		return;
 
 	CNetMsg_Cl_SetSpectatorMode Msg;
 	Msg.m_SpecMode = SpecMode;
 	Msg.m_SpectatorID = SpectatorID;
-	Client()->SendPackMsg(&Msg, MSGFLAG_VITAL);
+	//Client()->SendPackMsg(&Msg, MSGFLAG_VITAL);
 }

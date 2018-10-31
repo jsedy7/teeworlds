@@ -249,7 +249,7 @@ void CGameClient::OnInit()
 	m_UI.SetGraphics(Graphics(), TextRender());
 	m_RenderTools.m_pGraphics = Graphics();
 	m_RenderTools.m_pUI = UI();
-	
+
 	int64 Start = time_get();
 
 	// set the language
@@ -390,29 +390,6 @@ void CGameClient::UpdatePositions()
 		m_LocalCharacterPos = mix(
 			vec2(m_Snap.m_pLocalPrevCharacter->m_X, m_Snap.m_pLocalPrevCharacter->m_Y),
 			vec2(m_Snap.m_pLocalCharacter->m_X, m_Snap.m_pLocalCharacter->m_Y), Client()->IntraGameTick());
-	}
-
-	// spectator position
-	if(m_Snap.m_SpecInfo.m_Active)
-	{
-		if(Client()->State() == IClient::STATE_DEMOPLAYBACK && DemoPlayer()->GetDemoType() == IDemoPlayer::DEMOTYPE_SERVER &&
-			m_Snap.m_SpecInfo.m_SpectatorID != -1)
-		{
-			m_Snap.m_SpecInfo.m_Position = mix(
-				vec2(m_Snap.m_aCharacters[m_Snap.m_SpecInfo.m_SpectatorID].m_Prev.m_X, m_Snap.m_aCharacters[m_Snap.m_SpecInfo.m_SpectatorID].m_Prev.m_Y),
-				vec2(m_Snap.m_aCharacters[m_Snap.m_SpecInfo.m_SpectatorID].m_Cur.m_X, m_Snap.m_aCharacters[m_Snap.m_SpecInfo.m_SpectatorID].m_Cur.m_Y),
-				Client()->IntraGameTick());
-			m_Snap.m_SpecInfo.m_UsePosition = true;
-		}
-		else if(m_Snap.m_pSpectatorInfo && (Client()->State() == IClient::STATE_DEMOPLAYBACK || m_Snap.m_SpecInfo.m_SpecMode != SPEC_FREEVIEW))
-		{
-			if(m_Snap.m_pPrevSpectatorInfo)
-				m_Snap.m_SpecInfo.m_Position = mix(vec2(m_Snap.m_pPrevSpectatorInfo->m_X, m_Snap.m_pPrevSpectatorInfo->m_Y),
-													vec2(m_Snap.m_pSpectatorInfo->m_X, m_Snap.m_pSpectatorInfo->m_Y), Client()->IntraGameTick());
-			else
-				m_Snap.m_SpecInfo.m_Position = vec2(m_Snap.m_pSpectatorInfo->m_X, m_Snap.m_pSpectatorInfo->m_Y);
-			m_Snap.m_SpecInfo.m_UsePosition = true;
-		}
 	}
 }
 
@@ -630,7 +607,7 @@ void CGameClient::OnMessage(int MsgId, CUnpacker *pUnpacker)
 			if(m_LocalClientID != -1)
 			{
 				DoEnterMessage(pMsg->m_pName, pMsg->m_ClientID, pMsg->m_Team);
-				
+
 				if(m_pDemoRecorder->IsRecording())
 				{
 					CNetMsg_De_ClientEnter Msg;
@@ -740,7 +717,7 @@ void CGameClient::OnMessage(int MsgId, CUnpacker *pUnpacker)
 		if(pMsg->m_Silent == 0)
 		{
 			DoTeamChangeMessage(m_aClients[pMsg->m_ClientID].m_aName, pMsg->m_ClientID, pMsg->m_Team);
-		}		
+		}
 	}
 	else if(MsgId == NETMSGTYPE_SV_READYTOENTER)
 	{
@@ -974,7 +951,7 @@ void CGameClient::OnNewSnapshot()
 					m_ServerMode = SERVERMODE_PURE;
 				}
 			}
-			
+
 			// network items
 			if(Item.m_Type == NETOBJTYPE_PLAYERINFO)
 			{
@@ -1007,7 +984,7 @@ void CGameClient::OnNewSnapshot()
 				// clamp ammo count for non ninja weapon
 				if(m_Snap.m_aCharacters[Item.m_ID].m_Cur.m_Weapon != WEAPON_NINJA)
 					m_Snap.m_aCharacters[Item.m_ID].m_Cur.m_AmmoCount = clamp(m_Snap.m_aCharacters[Item.m_ID].m_Cur.m_AmmoCount, 0, 10);
-				
+
 				if(pOld)
 				{
 					m_Snap.m_aCharacters[Item.m_ID].m_Active = true;
@@ -1187,7 +1164,7 @@ void CGameClient::OnDemoRecSnap()
 	CNetObj_De_GameInfo *pGameInfo = static_cast<CNetObj_De_GameInfo *>(Client()->SnapNewItem(NETOBJTYPE_DE_GAMEINFO, 0, sizeof(CNetObj_De_GameInfo)));
 	if(!pGameInfo)
 		return;
-	
+
 	pGameInfo->m_GameFlags = m_GameInfo.m_GameFlags;
 	pGameInfo->m_ScoreLimit = m_GameInfo.m_ScoreLimit;
 	pGameInfo->m_TimeLimit = m_GameInfo.m_TimeLimit;
