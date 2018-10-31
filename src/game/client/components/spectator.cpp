@@ -1,6 +1,7 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
 #include <engine/demo.h>
+#include <engine/keys.h>
 #include <engine/graphics.h>
 #include <engine/textrender.h>
 #include <engine/shared/config.h>
@@ -11,6 +12,7 @@
 #include <game/client/animstate.h>
 #include <game/client/render.h>
 
+#include "controls.h"
 #include "spectator.h"
 
 
@@ -148,6 +150,24 @@ bool CSpectator::OnMouseMove(float x, float y)
 	return true;
 }
 
+bool CSpectator::OnInput(IInput::CEvent InputEvent)
+{
+	if(!m_ShowMouse && InputEvent.m_Key == KEY_SPACE && InputEvent.m_Flags&IInput::FLAG_PRESS)
+	{
+		m_ShowMouse = true;
+
+		if(m_MousePos.x == 0)
+		{
+			m_MousePos.x = Graphics()->ScreenWidth() * 0.5f;
+			m_MousePos.y = Graphics()->ScreenHeight() * 0.5f;
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
 void CSpectator::OnRelease()
 {
 	OnReset();
@@ -178,6 +198,22 @@ void CSpectator::UpdatePositions()
 				Snap.m_SpecInfo.m_Position = vec2(Snap.m_pSpectatorInfo->m_X, Snap.m_pSpectatorInfo->m_Y);
 			Snap.m_SpecInfo.m_UsePosition = true;
 		}
+	}
+
+	static int64 LastUpdateTime = time_get();
+	int64 Now = time_get();
+	const double Delta = (Now - LastUpdateTime) / (double)time_freq();
+	LastUpdateTime = Now;
+
+	if(m_ShowMouse)
+	{
+		vec2& CtrlMp = m_pClient->m_pControls->m_MousePos;
+		const float Speed = 500.0f;
+
+		if(m_MousePos.x < 20.0f) CtrlMp.x -= Speed * Delta;
+		if(m_MousePos.y < 20.0f) CtrlMp.y -= Speed * Delta;
+		if(m_MousePos.x > Graphics()->ScreenWidth()-20.0f)  CtrlMp.x += Speed * Delta;
+		if(m_MousePos.y > Graphics()->ScreenHeight()-20.0f) CtrlMp.y += Speed * Delta;
 	}
 }
 
@@ -394,6 +430,7 @@ void CSpectator::OnReset()
 	m_ShowMouse = false;
 	m_SelectedSpecMode = NO_SELECTION;
 	m_SelectedSpectatorID = -1;
+	m_MousePos = vec2(0, 0);
 }
 
 void CSpectator::Spectate(int SpecMode, int SpectatorID)

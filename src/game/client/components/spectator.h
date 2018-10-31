@@ -33,6 +33,7 @@ public:
 
 	virtual void OnConsoleInit();
 	virtual bool OnMouseMove(float x, float y);
+	virtual bool OnInput(IInput::CEvent InputEvent);
 	virtual void OnRender();
 	virtual void OnRelease();
 	virtual void OnReset();
