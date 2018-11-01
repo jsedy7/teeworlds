@@ -12,9 +12,11 @@
 #include <game/client/animstate.h>
 #include <game/client/render.h>
 
+#include "menus.h"
 #include "controls.h"
 #include "spectator.h"
 
+static float s_TextScale = 0.8f;
 
 void CSpectator::ConKeySpectator(IConsole::IResult *pResult, void *pUserData)
 {
@@ -134,32 +136,46 @@ void CSpectator::OnConsoleInit()
 
 bool CSpectator::OnMouseMove(float x, float y)
 {
-	if(!m_ShowMouse || !m_pClient->m_Snap.m_SpecInfo.m_Active)
+	// we snatch mouse movement if spectating is active
+
+	if(!m_pClient->m_Snap.m_SpecInfo.m_Active)
 		return false;
 
-	UI()->ConvertMouseMove(&x, &y);
-	m_MousePos += vec2(x,y);
+	const bool ShowMouse = m_SelectedSpecMode != FREE_VIEW;
 
-	// clamp mouse position to screen
-	m_MousePos.x = clamp(m_MousePos.x, 0.f, (float)Graphics()->ScreenWidth() - 1.0f);
-	m_MousePos.y = clamp(m_MousePos.y, 0.f, (float)Graphics()->ScreenHeight() - 1.0f);
+	if(ShowMouse)
+	{
+		UI()->ConvertMouseMove(&x, &y);
+		m_MouseScreenPos += vec2(x,y);
 
-	if(x != 0 || y != 0)
-		m_MouseMoveTimer = time_get();
+		// clamp mouse position to screen
+		m_MouseScreenPos.x = clamp(m_MouseScreenPos.x, 0.f, (float)Graphics()->ScreenWidth() - 1.0f);
+		m_MouseScreenPos.y = clamp(m_MouseScreenPos.y, 0.f, (float)Graphics()->ScreenHeight() - 1.0f);
+
+		if(x != 0 || y != 0)
+			m_MouseMoveTimer = time_get();
+	}
+	else
+	{
+		// free view
+		m_pClient->m_pControls->m_MousePos += vec2(x, y);
+		// -> this goes to CCamera::OnRender()
+	}
 
 	return true;
 }
 
 bool CSpectator::OnInput(IInput::CEvent InputEvent)
 {
-	if(!m_ShowMouse && InputEvent.m_Key == KEY_SPACE && InputEvent.m_Flags&IInput::FLAG_PRESS)
+	if(m_SelectedSpecMode == FREE_VIEW && InputEvent.m_Key == KEY_SPACE &&
+	   InputEvent.m_Flags&IInput::FLAG_PRESS)
 	{
-		m_ShowMouse = true;
+		CameraOverview();
 
-		if(m_MousePos.x == 0)
+		if(m_MouseScreenPos.x == 0)
 		{
-			m_MousePos.x = Graphics()->ScreenWidth() * 0.5f;
-			m_MousePos.y = Graphics()->ScreenHeight() * 0.5f;
+			m_MouseScreenPos.x = Graphics()->ScreenWidth() * 0.5f;
+			m_MouseScreenPos.y = Graphics()->ScreenHeight() * 0.5f;
 		}
 
 		return true;
@@ -170,33 +186,44 @@ bool CSpectator::OnInput(IInput::CEvent InputEvent)
 
 void CSpectator::OnRelease()
 {
-	OnReset();
+	float mx = UI()->MouseX();
+	float my = UI()->MouseY();
+	CUIRect Screen = *UI()->Screen();
+
+	m_MouseScreenPos.x = (mx / Screen.w) * Graphics()->ScreenWidth();
+	m_MouseScreenPos.y = (my / Screen.h) * Graphics()->ScreenHeight();
 }
 
 void CSpectator::UpdatePositions()
 {
 	CGameClient::CSnapState& Snap = m_pClient->m_Snap;
+	CGameClient::CSnapState::CSpectateInfo& SpecInfo = Snap.m_SpecInfo;
 
 	// spectator position
-	if(Snap.m_SpecInfo.m_Active)
+	if(SpecInfo.m_Active)
 	{
-		if(Client()->State() == IClient::STATE_DEMOPLAYBACK && DemoPlayer()->GetDemoType() == IDemoPlayer::DEMOTYPE_SERVER &&
-			Snap.m_SpecInfo.m_SpectatorID != -1)
+		if(Client()->State() == IClient::STATE_DEMOPLAYBACK &&
+		   DemoPlayer()->GetDemoType() == IDemoPlayer::DEMOTYPE_SERVER &&
+			SpecInfo.m_SpectatorID != -1)
 		{
-			Snap.m_SpecInfo.m_Position = mix(
-				vec2(Snap.m_aCharacters[Snap.m_SpecInfo.m_SpectatorID].m_Prev.m_X, Snap.m_aCharacters[Snap.m_SpecInfo.m_SpectatorID].m_Prev.m_Y),
-				vec2(Snap.m_aCharacters[Snap.m_SpecInfo.m_SpectatorID].m_Cur.m_X, Snap.m_aCharacters[Snap.m_SpecInfo.m_SpectatorID].m_Cur.m_Y),
+			SpecInfo.m_Position = mix(
+				vec2(Snap.m_aCharacters[SpecInfo.m_SpectatorID].m_Prev.m_X,
+					Snap.m_aCharacters[SpecInfo.m_SpectatorID].m_Prev.m_Y),
+				vec2(Snap.m_aCharacters[SpecInfo.m_SpectatorID].m_Cur.m_X,
+					Snap.m_aCharacters[SpecInfo.m_SpectatorID].m_Cur.m_Y),
 				Client()->IntraGameTick());
-			Snap.m_SpecInfo.m_UsePosition = true;
+			SpecInfo.m_UsePosition = true;
 		}
-		else if(Snap.m_pSpectatorInfo && (Client()->State() == IClient::STATE_DEMOPLAYBACK || Snap.m_SpecInfo.m_SpecMode != SPEC_FREEVIEW))
+		else if(Snap.m_pSpectatorInfo &&
+				(Client()->State() == IClient::STATE_DEMOPLAYBACK || SpecInfo.m_SpecMode != SPEC_FREEVIEW))
 		{
 			if(Snap.m_pPrevSpectatorInfo)
-				Snap.m_SpecInfo.m_Position = mix(vec2(Snap.m_pPrevSpectatorInfo->m_X, Snap.m_pPrevSpectatorInfo->m_Y),
-												 vec2(Snap.m_pSpectatorInfo->m_X, Snap.m_pSpectatorInfo->m_Y), Client()->IntraGameTick());
+				SpecInfo.m_Position = mix(vec2(Snap.m_pPrevSpectatorInfo->m_X, Snap.m_pPrevSpectatorInfo->m_Y),
+											vec2(Snap.m_pSpectatorInfo->m_X, Snap.m_pSpectatorInfo->m_Y),
+											Client()->IntraGameTick());
 			else
-				Snap.m_SpecInfo.m_Position = vec2(Snap.m_pSpectatorInfo->m_X, Snap.m_pSpectatorInfo->m_Y);
-			Snap.m_SpecInfo.m_UsePosition = true;
+				SpecInfo.m_Position = vec2(Snap.m_pSpectatorInfo->m_X, Snap.m_pSpectatorInfo->m_Y);
+			SpecInfo.m_UsePosition = true;
 		}
 	}
 
@@ -205,16 +232,55 @@ void CSpectator::UpdatePositions()
 	const double Delta = (Now - LastUpdateTime) / (double)time_freq();
 	LastUpdateTime = Now;
 
-	if(m_ShowMouse)
+	// edge scrolling
+	if(m_SelectedSpecMode == OVERVIEW || m_SelectedSpecMode == FOLLOW)
 	{
 		vec2& CtrlMp = m_pClient->m_pControls->m_MousePos;
-		const float Speed = 500.0f;
+		const float Speed = 700.0f;
+		const float Edge = 30.0f;
 
-		if(m_MousePos.x < 20.0f) CtrlMp.x -= Speed * Delta;
-		if(m_MousePos.y < 20.0f) CtrlMp.y -= Speed * Delta;
-		if(m_MousePos.x > Graphics()->ScreenWidth()-20.0f)  CtrlMp.x += Speed * Delta;
-		if(m_MousePos.y > Graphics()->ScreenHeight()-20.0f) CtrlMp.y += Speed * Delta;
+		if(m_MouseScreenPos.x < Edge) CtrlMp.x -= Speed * Delta;
+		if(m_MouseScreenPos.y < Edge) CtrlMp.y -= Speed * Delta;
+		if(m_MouseScreenPos.x > Graphics()->ScreenWidth()-Edge)  CtrlMp.x += Speed * Delta;
+		if(m_MouseScreenPos.y > Graphics()->ScreenHeight()-Edge) CtrlMp.y += Speed * Delta;
 	}
+}
+
+bool CSpectator::DoButtonSelect(void* pID, const char* pLabel, CUIRect Rect, bool Selected)
+{
+	const bool Hovered = UI()->HotItem() == pID;
+	vec4 ButtonColor = vec4(1.0f, 1.0f, 1.0f, 0.25f);
+	if(Selected)
+		ButtonColor = vec4(0.5f, 0.75f, 1.0f, 0.5f);
+	else if(Hovered)
+		ButtonColor = vec4(1.0f, 1.0f, 1.0f, 0.5f);
+
+	RenderTools()->DrawRoundRect(&Rect, ButtonColor, 3.0f);
+
+	UI()->DoLabel(&Rect, pLabel, Rect.h*s_TextScale*0.8f, CUI::ALIGN_CENTER);
+
+	bool Modified = false;
+	if(UI()->DoButtonLogic(pID, 0, 0, &Rect))
+	{
+		Modified = true;
+	}
+
+	return Modified;
+}
+
+void CSpectator::CameraOverview()
+{
+	m_SelectedSpecMode = OVERVIEW;
+}
+
+void CSpectator::CameraFreeview()
+{
+	m_SelectedSpecMode = FREE_VIEW;
+}
+
+void CSpectator::CameraFollow()
+{
+	m_SelectedSpecMode = FOLLOW;
 }
 
 void CSpectator::OnRender()
@@ -222,25 +288,92 @@ void CSpectator::OnRender()
 	if(!m_pClient->m_Snap.m_SpecInfo.m_Active)
 		return;
 
+	if(m_pClient->m_pMenus->IsActive())
+		return;
+
 	UpdatePositions();
+
+	const bool ShowMouse = m_SelectedSpecMode != FREE_VIEW;
 
 	int64 Now = time_get();
 	double MouseLastMovedTime = (Now - m_MouseMoveTimer) / (double)time_freq();
 
+	// update the ui
+	CUIRect *pScreen = UI()->Screen();
+	float mx = (m_MouseScreenPos.x/(float)Graphics()->ScreenWidth())*pScreen->w;
+	float my = (m_MouseScreenPos.y/(float)Graphics()->ScreenHeight())*pScreen->h;
+
+	if(ShowMouse)
+	{
+		int MouseButtons = 0;
+		if(Input()->KeyIsPressed(KEY_MOUSE_1)) MouseButtons |= 1;
+		if(Input()->KeyIsPressed(KEY_MOUSE_2)) MouseButtons |= 2;
+		if(Input()->KeyIsPressed(KEY_MOUSE_3)) MouseButtons |= 4;
+
+		UI()->Update(mx, my, mx*3.0f, my*3.0f, MouseButtons);
+	}
+
+
 	CUIRect Screen = *UI()->Screen();
 	Graphics()->MapScreen(Screen.x, Screen.y, Screen.w, Screen.h);
 
-	if(MouseLastMovedTime < 3.0)
-	{
-		float mx = (m_MousePos.x/(float)Graphics()->ScreenWidth())*Screen.w;
-		float my = (m_MousePos.y/(float)Graphics()->ScreenHeight())*Screen.h;
+	// spectator right window
+	CUIRect MainView;
+	Screen.VSplitMid(0, &MainView);
+	MainView.VSplitMid(0, &MainView);
+	MainView.h *= 0.5f;
+	MainView.y += MainView.h * 0.5f;
 
-		// draw cursor
+	RenderTools()->DrawRoundRect(&MainView, vec4(0.0f, 0.0f, 0.0f, 0.5f), 5.0f);
+
+	const float Spacing = 3.f;
+	CUIRect LineRect, Button, Label;
+
+	MainView.HSplitTop(Spacing, 0, &MainView);
+	MainView.HSplitTop(20.f, &Label, &MainView);
+	Label.x += 8.f;
+
+	UI()->DoLabel(&Label, Localize("Camera"), Label.h*s_TextScale*0.8f, CUI::ALIGN_LEFT);
+
+	MainView.HSplitTop(Spacing, 0, &MainView);
+	MainView.HSplitTop(20.f, &LineRect, &MainView);
+	LineRect.VMargin(Spacing, &LineRect);
+
+	const float ButWidth = (LineRect.w - Spacing * 2.f) / 3.f;
+	LineRect.VSplitLeft(ButWidth, &Button, &LineRect);
+
+	static int s_ButtonFreeViewID;
+	if(DoButtonSelect(&s_ButtonFreeViewID, "Free-view", Button, m_SelectedSpecMode == FREE_VIEW))
+	{
+		CameraFreeview();
+	}
+
+	LineRect.VSplitLeft(Spacing, 0, &LineRect);
+	LineRect.VSplitLeft(ButWidth, &Button, &LineRect);
+
+	static int s_ButtonOverViewID;
+	if(DoButtonSelect(&s_ButtonOverViewID, "Overview", Button, m_SelectedSpecMode == OVERVIEW))
+	{
+		CameraOverview();
+	}
+
+	LineRect.VSplitLeft(Spacing, 0, &LineRect);
+	LineRect.VSplitLeft(ButWidth, &Button, &LineRect);
+
+	static int s_ButtonFollowID;
+	if(DoButtonSelect(&s_ButtonFollowID, "Follow", Button, m_SelectedSpecMode == FOLLOW))
+	{
+		CameraFollow();
+	}
+
+
+	// draw cursor
+	if(MouseLastMovedTime < 3.0 && ShowMouse)
+	{
 		Graphics()->TextureSet(g_pData->m_aImages[IMAGE_CURSOR].m_Id);
 		Graphics()->QuadsBegin();
 		Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
-		IGraphics::CQuadItem QuadItem(mx, my,
-									  24.0f, 24.0f);
+		IGraphics::CQuadItem QuadItem(mx, my, 24.0f, 24.0f);
 		Graphics()->QuadsDrawTL(&QuadItem, 1);
 		Graphics()->QuadsEnd();
 	}
@@ -427,10 +560,10 @@ void CSpectator::OnReset()
 {
 	m_WasActive = false;
 	m_Active = false;
-	m_ShowMouse = false;
-	m_SelectedSpecMode = NO_SELECTION;
+	CameraFreeview();
 	m_SelectedSpectatorID = -1;
-	m_MousePos = vec2(0, 0);
+	m_MouseScreenPos = vec2(0, 0);
+	m_MouseMoveTimer = 0;
 }
 
 void CSpectator::Spectate(int SpecMode, int SpectatorID)
@@ -449,5 +582,5 @@ void CSpectator::Spectate(int SpecMode, int SpectatorID)
 	CNetMsg_Cl_SetSpectatorMode Msg;
 	Msg.m_SpecMode = SpecMode;
 	Msg.m_SpectatorID = SpectatorID;
-	//Client()->SendPackMsg(&Msg, MSGFLAG_VITAL);
+	Client()->SendPackMsg(&Msg, MSGFLAG_VITAL);
 }
