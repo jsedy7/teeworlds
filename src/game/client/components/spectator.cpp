@@ -141,7 +141,7 @@ bool CSpectator::OnMouseMove(float x, float y)
 	if(!m_pClient->m_Snap.m_SpecInfo.m_Active)
 		return false;
 
-	const bool ShowMouse = m_SelectedSpecMode != FREE_VIEW;
+	const bool ShowMouse = m_SpecMode != FREE_VIEW;
 
 	if(ShowMouse)
 	{
@@ -167,7 +167,7 @@ bool CSpectator::OnMouseMove(float x, float y)
 
 bool CSpectator::OnInput(IInput::CEvent InputEvent)
 {
-	if(m_SelectedSpecMode == FREE_VIEW && InputEvent.m_Key == KEY_SPACE &&
+	if(m_SpecMode == FREE_VIEW && InputEvent.m_Key == KEY_SPACE &&
 	   InputEvent.m_Flags&IInput::FLAG_PRESS)
 	{
 		CameraOverview();
@@ -233,7 +233,7 @@ void CSpectator::UpdatePositions()
 	LastUpdateTime = Now;
 
 	// edge scrolling
-	if(m_SelectedSpecMode == OVERVIEW || m_SelectedSpecMode == FOLLOW)
+	if(m_SpecMode == OVERVIEW || m_SpecMode == FOLLOW)
 	{
 		vec2& CtrlMp = m_pClient->m_pControls->m_MousePos;
 		const float Speed = 700.0f;
@@ -270,17 +270,17 @@ bool CSpectator::DoButtonSelect(void* pID, const char* pLabel, CUIRect Rect, boo
 
 void CSpectator::CameraOverview()
 {
-	m_SelectedSpecMode = OVERVIEW;
+	m_SpecMode = OVERVIEW;
 }
 
 void CSpectator::CameraFreeview()
 {
-	m_SelectedSpecMode = FREE_VIEW;
+	m_SpecMode = FREE_VIEW;
 }
 
 void CSpectator::CameraFollow()
 {
-	m_SelectedSpecMode = FOLLOW;
+	m_SpecMode = FOLLOW;
 }
 
 void CSpectator::OnRender()
@@ -293,7 +293,7 @@ void CSpectator::OnRender()
 
 	UpdatePositions();
 
-	const bool ShowMouse = m_SelectedSpecMode != FREE_VIEW;
+	const bool ShowMouse = m_SpecMode != FREE_VIEW;
 
 	int64 Now = time_get();
 	double MouseLastMovedTime = (Now - m_MouseMoveTimer) / (double)time_freq();
@@ -316,6 +316,7 @@ void CSpectator::OnRender()
 
 	CUIRect Screen = *UI()->Screen();
 	Graphics()->MapScreen(Screen.x, Screen.y, Screen.w, Screen.h);
+	const float Spacing = 3.f;
 
 	// spectator right window
 	CUIRect MainView;
@@ -324,9 +325,13 @@ void CSpectator::OnRender()
 	MainView.h *= 0.5f;
 	MainView.y += MainView.h * 0.5f;
 
+	if(m_SpecMode != FOLLOW)
+	{
+		MainView.h = 40 + Spacing * 3.f;
+	}
+
 	RenderTools()->DrawRoundRect(&MainView, vec4(0.0f, 0.0f, 0.0f, 0.5f), 5.0f);
 
-	const float Spacing = 3.f;
 	CUIRect LineRect, Button, Label;
 
 	MainView.HSplitTop(Spacing, 0, &MainView);
@@ -343,7 +348,7 @@ void CSpectator::OnRender()
 	LineRect.VSplitLeft(ButWidth, &Button, &LineRect);
 
 	static int s_ButtonFreeViewID;
-	if(DoButtonSelect(&s_ButtonFreeViewID, "Free-view", Button, m_SelectedSpecMode == FREE_VIEW))
+	if(DoButtonSelect(&s_ButtonFreeViewID, "Free-view", Button, m_SpecMode == FREE_VIEW))
 	{
 		CameraFreeview();
 	}
@@ -352,7 +357,7 @@ void CSpectator::OnRender()
 	LineRect.VSplitLeft(ButWidth, &Button, &LineRect);
 
 	static int s_ButtonOverViewID;
-	if(DoButtonSelect(&s_ButtonOverViewID, "Overview", Button, m_SelectedSpecMode == OVERVIEW))
+	if(DoButtonSelect(&s_ButtonOverViewID, "Overview", Button, m_SpecMode == OVERVIEW))
 	{
 		CameraOverview();
 	}
@@ -361,9 +366,26 @@ void CSpectator::OnRender()
 	LineRect.VSplitLeft(ButWidth, &Button, &LineRect);
 
 	static int s_ButtonFollowID;
-	if(DoButtonSelect(&s_ButtonFollowID, "Follow", Button, m_SelectedSpecMode == FOLLOW))
+	if(DoButtonSelect(&s_ButtonFollowID, "Follow", Button, m_SpecMode == FOLLOW))
 	{
 		CameraFollow();
+	}
+
+	// spectator bottom window
+	CUIRect BottomView;
+	Screen.HSplitBottom(20.f + Spacing * 2.f, 0, &BottomView);
+	BottomView.x = BottomView.w * 0.5f - BottomView.w * 0.15f;
+	BottomView.w *= 0.3f;
+
+	RenderTools()->DrawUIRect(&BottomView, vec4(0.0f, 0.0f, 0.0f, 0.5f), CUI::CORNER_T, 10.0f);
+
+	BottomView.Margin(Spacing, &BottomView);
+
+	if(m_SpecMode == FREE_VIEW)
+	{
+		BottomView.y += 2.0f;
+		UI()->DoLabel(&BottomView, Localize("Free-view (press space)"),
+					  BottomView.h*s_TextScale*0.7f, CUI::ALIGN_CENTER);
 	}
 
 

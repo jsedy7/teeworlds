@@ -20,7 +20,7 @@ class CSpectator : public CComponent
 	bool m_WasActive;
 
 	int m_SelectedSpectatorID;
-	int m_SelectedSpecMode;
+	int m_SpecMode;
 	vec2 m_MouseScreenPos;
 	int64 m_MouseMoveTimer;
 
