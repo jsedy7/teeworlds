@@ -19,7 +19,7 @@ class CSpectator : public CComponent
 	bool m_Active;
 	bool m_WasActive;
 
-	int m_SelectedSpectatorID;
+	int m_SpectatorID;
 	int m_SpecMode;
 	vec2 m_MouseScreenPos;
 	int64 m_MouseMoveTimer;
@@ -30,6 +30,8 @@ class CSpectator : public CComponent
 	static void ConSpectatePrevious(IConsole::IResult *pResult, void *pUserData);
 	void UpdatePositions();
 	bool DoButtonSelect(void* pID, const char* pLabel, CUIRect Rect, bool Selected);
+	bool DoPlayerButtonSelect(void* pID, CUIRect Rect, bool Selected,
+							  const char* pClan, const char* pName);
 
 	void CameraOverview();
 	void CameraFreeview();

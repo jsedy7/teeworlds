@@ -62,7 +62,7 @@ void CCamera::OnRender()
 			}
 
 			if(m_pClient->m_Snap.m_SpecInfo.m_Active)
-				m_Center = m_pClient->m_Snap.m_SpecInfo.m_Position + CameraOffset;
+				m_Center = m_pClient->m_Snap.m_SpecInfo.m_Position;
 			else
 				m_Center = m_pClient->m_LocalCharacterPos + CameraOffset;
 		}

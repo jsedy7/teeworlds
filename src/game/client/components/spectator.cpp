@@ -268,19 +268,52 @@ bool CSpectator::DoButtonSelect(void* pID, const char* pLabel, CUIRect Rect, boo
 	return Modified;
 }
 
+bool CSpectator::DoPlayerButtonSelect(void* pID, CUIRect Rect, bool Selected, const char* pClan,
+									  const char* pName)
+{
+	const bool Hovered = UI()->HotItem() == pID;
+	vec4 ButtonColor = vec4(1.0f, 1.0f, 1.0f, 0.25f);
+	if(Selected)
+		ButtonColor = vec4(0.5f, 0.75f, 1.0f, 0.5f);
+	else if(Hovered)
+		ButtonColor = vec4(1.0f, 1.0f, 1.0f, 0.5f);
+
+	RenderTools()->DrawRoundRect(&Rect, ButtonColor, 3.0f);
+
+	bool Modified = false;
+	if(UI()->DoButtonLogic(pID, 0, 0, &Rect))
+	{
+		Modified = true;
+	}
+
+	Rect.y += 2.0f;
+
+	char aStr[64];
+	str_format(aStr, sizeof(aStr), "%s %s", pClan, pName); // TODO position clan and name
+	UI()->DoLabel(&Rect, aStr, Rect.h*s_TextScale*0.5f, CUI::ALIGN_CENTER);
+
+	return Modified;
+}
+
 void CSpectator::CameraOverview()
 {
 	m_SpecMode = OVERVIEW;
+	Spectate(SPEC_FREEVIEW, -1);
 }
 
 void CSpectator::CameraFreeview()
 {
 	m_SpecMode = FREE_VIEW;
+	Spectate(SPEC_FREEVIEW, -1);
 }
 
 void CSpectator::CameraFollow()
 {
 	m_SpecMode = FOLLOW;
+	if(m_SpectatorID != -1) // TODO: do more checks
+	{
+		Spectate(SPEC_PLAYER, m_SpectatorID);
+	}
 }
 
 void CSpectator::OnRender()
@@ -369,6 +402,69 @@ void CSpectator::OnRender()
 	if(DoButtonSelect(&s_ButtonFollowID, "Follow", Button, m_SpecMode == FOLLOW))
 	{
 		CameraFollow();
+	}
+
+	CGameClient::CSnapState& Snap = m_pClient->m_Snap;
+	CGameClient::CSnapState::CSpectateInfo& SpecInfo = Snap.m_SpecInfo;
+
+	//static CMenus::CListBoxState s_ListBoxState;
+	/*UiDoListboxHeader(&s_ListBoxState, &MainView, Localize("Skins"), 20.0f, 2.0f);
+	UiDoListboxStart(&s_ListBoxState, &m_RefreshSkinSelector, 50.0f, 0,
+					 s_paSkinList.size(), 10, OldSelected);	*/
+
+	if(m_SpecMode == FOLLOW)
+	{
+		CUIRect FollowListRect;
+		MainView.HSplitTop(Spacing, 0, &FollowListRect);
+		FollowListRect.VMargin(Spacing, &FollowListRect);
+
+		UI()->ClipEnable(&FollowListRect);
+
+		struct FollowPlayerInfo
+		{
+			int m_CID;
+			const char* m_pName;
+			const char* m_pClan;
+			CTeeRenderInfo m_TeeInfo;
+		};
+		static FollowPlayerInfo FollowList[MAX_CLIENTS];
+		int FollowListCount = 0;
+
+		for(int i = 0; i < MAX_CLIENTS; ++i)
+		{
+			if(!Snap.m_paPlayerInfos[i] || m_pClient->m_aClients[i].m_Team == TEAM_SPECTATORS)
+				continue;
+
+			CGameClient::CClientData& Cd = m_pClient->m_aClients[i];
+			FollowPlayerInfo Fpi;
+			Fpi.m_CID = i;
+			Fpi.m_pName = Cd.m_aName;
+			Fpi.m_pClan = Cd.m_aClan;
+			Fpi.m_TeeInfo = Cd.m_RenderInfo;
+			Fpi.m_TeeInfo.m_Size = 35.f;
+			FollowList[FollowListCount++] = Fpi;
+		}
+
+		for(int i = 0; i < FollowListCount; ++i)
+		{
+			FollowPlayerInfo& Fpi = FollowList[i];
+
+			FollowListRect.HSplitTop(Spacing, 0, &FollowListRect);
+			FollowListRect.HSplitTop(30.f, &LineRect, &FollowListRect);
+			LineRect.VMargin(Spacing, &LineRect);
+
+			if(DoPlayerButtonSelect(&FollowList[Fpi.m_CID], LineRect, m_SpectatorID == Fpi.m_CID,
+									Fpi.m_pClan, Fpi.m_pName))
+			{
+				m_SpectatorID = Fpi.m_CID;
+				Spectate(SPEC_PLAYER, m_SpectatorID);
+			}
+
+			RenderTools()->RenderTee(CAnimState::GetIdle(), &Fpi.m_TeeInfo, EMOTE_NORMAL,
+									 vec2(1.0f, 0.0f), vec2(LineRect.x + 17.5f, LineRect.y + 17.5f));
+		}
+
+		UI()->ClipDisable();
 	}
 
 	// spectator bottom window
@@ -582,8 +678,8 @@ void CSpectator::OnReset()
 {
 	m_WasActive = false;
 	m_Active = false;
-	CameraFreeview();
-	m_SelectedSpectatorID = -1;
+	m_SpecMode = FREE_VIEW;
+	m_SpectatorID = -1;
 	m_MouseScreenPos = vec2(0, 0);
 	m_MouseMoveTimer = 0;
 }
