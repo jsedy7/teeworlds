@@ -538,6 +538,7 @@ void CGameContext::OnTick()
 		{
 			CNetObj_PlayerInput Input = {0};
 			Input.m_Jump = random_int() % 200 == 0;
+			Input.m_Direction = random_int() % 200 == 0 ? (random_int() & 1) * 2 - 1: 0;
 			m_apPlayers[i]->OnDirectInput(&Input);
 			m_apPlayers[i]->OnPredictedInput(&Input);
 		}

@@ -29,6 +29,8 @@ CUI::CUI()
 	m_Screen.y = 0;
 	m_Screen.w = 848.0f;
 	m_Screen.h = 480.0f;
+
+	m_Clipped = false;
 }
 
 int CUI::Update(float Mx, float My, float Mwx, float Mwy, int Buttons)
@@ -91,6 +93,8 @@ float CUIRect::Scale() const
 
 void CUI::ClipEnable(const CUIRect *r)
 {
+	m_Clipped = true;
+	m_ClipRect = *r;
 	float XScale = Graphics()->ScreenWidth()/Screen()->w;
 	float YScale = Graphics()->ScreenHeight()/Screen()->h;
 	Graphics()->ClipEnable((int)(r->x*XScale), (int)(r->y*YScale), (int)(r->w*XScale), (int)(r->h*YScale));
@@ -98,6 +102,7 @@ void CUI::ClipEnable(const CUIRect *r)
 
 void CUI::ClipDisable()
 {
+	m_Clipped = false;
 	Graphics()->ClipDisable();
 }
 
@@ -273,6 +278,9 @@ int CUI::DoButtonLogic(const void *pID, const char *pText, int Checked, const CU
 	// logic
 	int ReturnValue = 0;
 	int Inside = MouseInside(pRect);
+	if(m_Clipped)
+		Inside &= MouseInside(&m_ClipRect);
+
 	static int ButtonUsed = 0;
 
 	if(CheckActiveItem(pID))
@@ -319,7 +327,7 @@ int CUI::DoPickerLogic(const void *pID, const CUIRect *pRect, float *pX, float *
 		if(MouseButton(0))
 			SetActiveItem(pID);
 	}
-	
+
 	if(Inside)
 		SetHotItem(pID);
 

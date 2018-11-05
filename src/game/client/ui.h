@@ -39,6 +39,9 @@ class CUI
 	class IGraphics *m_pGraphics;
 	class ITextRender *m_pTextRender;
 
+	bool m_Clipped;
+	CUIRect m_ClipRect;
+
 public:
 	// TODO: Refactor: Fill this in
 	void SetGraphics(class IGraphics *pGraphics, class ITextRender *pTextRender) { m_pGraphics = pGraphics; m_pTextRender = pTextRender;}
