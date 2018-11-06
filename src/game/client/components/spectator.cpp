@@ -15,6 +15,7 @@
 #include "menus.h"
 #include "controls.h"
 #include "spectator.h"
+#include "camera.h"
 
 static float s_TextScale = 0.8f;
 
@@ -167,17 +168,24 @@ bool CSpectator::OnMouseMove(float x, float y)
 
 bool CSpectator::OnInput(IInput::CEvent InputEvent)
 {
-	if(m_SpecMode == FREE_VIEW && InputEvent.m_Key == KEY_SPACE &&
-	   InputEvent.m_Flags&IInput::FLAG_PRESS)
+	if(!m_pClient->m_Snap.m_SpecInfo.m_Active)
+		return false;
+
+	if(InputEvent.m_Key == KEY_SPACE && InputEvent.m_Flags&IInput::FLAG_RELEASE)
 	{
-		CameraOverview();
+		if(m_SpecMode == FREE_VIEW)
+			CameraOverview();
+		else
+			CameraFreeview();
+		return true;
+	}
 
-		if(m_MouseScreenPos.x == 0)
-		{
-			m_MouseScreenPos.x = Graphics()->ScreenWidth() * 0.5f;
-			m_MouseScreenPos.y = Graphics()->ScreenHeight() * 0.5f;
-		}
-
+	if(InputEvent.m_Key == KEY_MOUSE_1 && InputEvent.m_Flags&IInput::FLAG_RELEASE
+	   && (m_SpecMode == FREE_VIEW || m_SpecMode == OVERVIEW))
+	{
+		m_MouseScreenPos.x = 0;
+		m_SpectatorID = m_ClosestCharID;
+		CameraFollow();
 		return true;
 	}
 
@@ -244,6 +252,39 @@ void CSpectator::UpdatePositions()
 		if(m_MouseScreenPos.x > Graphics()->ScreenWidth()-Edge)  CtrlMp.x += Speed * Delta;
 		if(m_MouseScreenPos.y > Graphics()->ScreenHeight()-Edge) CtrlMp.y += Speed * Delta;
 	}
+
+	// find closest character to mouse
+	if(m_SpecMode == OVERVIEW || m_SpecMode == FREE_VIEW)
+	{
+		vec2 CamCenter = m_pClient->m_pControls->m_MousePos;
+		if(m_SpecMode == OVERVIEW)
+		{
+			CamCenter += m_MouseScreenPos -
+						 vec2(Graphics()->ScreenWidth() * 0.5f, Graphics()->ScreenHeight() * 0.5f);
+		}
+		m_ClosestCharID = -1;
+		float ClosestDistance = 150.f;
+
+		for(int i = 0; i < MAX_CLIENTS; ++i)
+		{
+			if(!Snap.m_paPlayerInfos[i] || m_pClient->m_aClients[i].m_Team == TEAM_SPECTATORS ||
+			   !m_pClient->m_Snap.m_aCharacters[i].m_Active)
+				continue;
+
+			CGameClient::CSnapState::CCharacterInfo CharInfo = m_pClient->m_Snap.m_aCharacters[i];
+			const vec2 CharCurPos(CharInfo.m_Cur.m_X, CharInfo.m_Cur.m_Y);
+			const vec2 CharPrevPos(CharInfo.m_Prev.m_X, CharInfo.m_Prev.m_Y);
+			const vec2 CharPos = mix(CharPrevPos, CharCurPos, Client()->IntraGameTick());
+			const float Dist = distance(CamCenter, CharPos);
+
+			if(Dist < ClosestDistance)
+			{
+				ClosestDistance = Dist;
+				m_ClosestCharID = i;
+				m_TargetPos = CharPos;
+			}
+		}
+	}
 }
 
 bool CSpectator::DoButtonSelect(void* pID, const char* pLabel, CUIRect Rect, bool Selected)
@@ -299,6 +340,12 @@ void CSpectator::CameraOverview()
 {
 	m_SpecMode = OVERVIEW;
 	Spectate(SPEC_FREEVIEW, -1);
+
+	if(m_MouseScreenPos.x == 0)
+	{
+		m_MouseScreenPos.x = Graphics()->ScreenWidth() * 0.5f;
+		m_MouseScreenPos.y = Graphics()->ScreenHeight() * 0.5f;
+	}
 }
 
 void CSpectator::CameraFreeview()
@@ -314,6 +361,71 @@ void CSpectator::CameraFollow()
 	{
 		Spectate(SPEC_PLAYER, m_SpectatorID);
 	}
+
+	if(m_MouseScreenPos.x == 0)
+	{
+		m_MouseScreenPos.x = Graphics()->ScreenWidth() * 0.5f;
+		m_MouseScreenPos.y = Graphics()->ScreenHeight() * 0.5f;
+	}
+}
+
+void CSpectator::DrawTargetHighlightWorldSpace(vec2 Pos, vec4 Color)
+{
+	CUIRect Screen;
+	Graphics()->GetScreen(&Screen.x, &Screen.y, &Screen.w, &Screen.h);
+
+	// map screen to world space
+	float aPoints[4];
+	const vec2 CamCenter = m_pClient->m_pCamera->m_Center;
+	RenderTools()->MapScreenToWorld(CamCenter.x, CamCenter.y, 1, 1, 0, 0,
+									Graphics()->ScreenAspect(), 1.0f, aPoints);
+	Graphics()->MapScreen(aPoints[0], aPoints[1], aPoints[2], aPoints[3]);
+
+	Graphics()->BlendNormal();
+	Graphics()->TextureClear();
+
+	Graphics()->QuadsBegin();
+	// premultiply alpha
+	Graphics()->SetColor(Color.r*Color.a, Color.g*Color.a, Color.b*Color.a, Color.a);
+
+	const float x = Pos.x;
+	const float y = Pos.y;
+	const float Radius = 50.0f;
+	const float Thickness = 10.0f;
+
+	// build a ring
+	IGraphics::CFreeformItem Array[32];
+	int NumItems = 0;
+	const int Segments = 32;
+	float FSegments = (float)Segments;
+	for(int i = 0; i < Segments; i++)
+	{
+		const float a1 = i/FSegments * 2*pi;
+		const float a2 = (i+1)/FSegments * 2*pi;
+		const float Ca1 = cosf(a1);
+		const float Ca2 = cosf(a2);
+		const float Sa1 = sinf(a1);
+		const float Sa2 = sinf(a2);
+
+		Array[NumItems++] = IGraphics::CFreeformItem(
+			x+Ca1*(Radius-Thickness), y+Sa1*(Radius-Thickness),
+			x+Ca2*(Radius-Thickness), y+Sa2*(Radius-Thickness),
+			x+Ca1*Radius, y+Sa1*Radius,
+			x+Ca2*Radius, y+Sa2*Radius
+			);
+		if(NumItems == 32)
+		{
+			Graphics()->QuadsDrawFreeform(Array, 32);
+			NumItems = 0;
+		}
+	}
+	if(NumItems)
+		Graphics()->QuadsDrawFreeform(Array, NumItems);
+
+	Graphics()->QuadsEnd();
+
+	// restore screen
+	Graphics()->MapScreen(Screen.x, Screen.y, Screen.w, Screen.h);
 }
 
 void CSpectator::OnRender()
@@ -469,21 +581,44 @@ void CSpectator::OnRender()
 
 	// spectator bottom window
 	CUIRect BottomView;
-	Screen.HSplitBottom(20.f + Spacing * 2.f, 0, &BottomView);
-	BottomView.x = BottomView.w * 0.5f - BottomView.w * 0.15f;
-	BottomView.w *= 0.3f;
 
-	RenderTools()->DrawUIRect(&BottomView, vec4(0.0f, 0.0f, 0.0f, 0.5f), CUI::CORNER_T, 10.0f);
-
-	BottomView.Margin(Spacing, &BottomView);
-
-	if(m_SpecMode == FREE_VIEW)
+	// press space
+	if(m_SpecMode == FREE_VIEW && m_ClosestCharID == -1)
 	{
+		Screen.HSplitBottom(20.f + Spacing * 2.f, 0, &BottomView);
+		BottomView.x = BottomView.w * 0.5f - BottomView.w * 0.15f;
+		BottomView.w *= 0.3f;
+
+		RenderTools()->DrawUIRect(&BottomView, vec4(0.0f, 0.0f, 0.0f, 0.5f), CUI::CORNER_T, 10.0f);
+		BottomView.Margin(Spacing, &BottomView);
+
 		BottomView.y += 2.0f;
 		UI()->DoLabel(&BottomView, Localize("Free-view (press space)"),
 					  BottomView.h*s_TextScale*0.7f, CUI::ALIGN_CENTER);
 	}
 
+	// targeted player UI
+	if((m_SpecMode == FREE_VIEW || m_SpecMode == OVERVIEW) && m_ClosestCharID != -1)
+	{
+		vec4 RingColor(1, 1, 1, 0.5); // TODO: based on target team ?
+		DrawTargetHighlightWorldSpace(m_TargetPos, RingColor);
+#if 0
+		Screen.HSplitBottom(35.f + Spacing * 2.f, 0, &BottomView);
+		BottomView.x = BottomView.w * 0.5f - BottomView.w * 0.15f;
+		BottomView.w *= 0.3f;
+
+		RenderTools()->DrawUIRect(&BottomView, vec4(0.0f, 0.0f, 0.0f, 0.5f), CUI::CORNER_T, 10.0f);
+		BottomView.Margin(Spacing, &BottomView);
+
+		CTeeRenderInfo TeeInfo = m_pClient->m_aClients[m_ClosestCharID].m_RenderInfo;
+		TeeInfo.m_Size = 35.f;
+		RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeInfo, EMOTE_NORMAL,
+								 vec2(1.0f, 0.0f), vec2(BottomView.x + 17.5f, BottomView.y + 17.5f));
+		BottomView.x += 35.f;
+		UI()->DoLabel(&BottomView, m_pClient->m_aClients[m_ClosestCharID].m_aName,
+					  BottomView.h*s_TextScale*0.7f, CUI::ALIGN_LEFT);
+#endif
+	}
 
 	// draw cursor
 	if(MouseLastMovedTime < 3.0 && ShowMouse)

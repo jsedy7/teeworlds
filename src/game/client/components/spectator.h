@@ -21,6 +21,8 @@ class CSpectator : public CComponent
 
 	int m_SpectatorID;
 	int m_SpecMode;
+	int m_ClosestCharID;
+	vec2 m_TargetPos;
 	vec2 m_MouseScreenPos;
 	int64 m_MouseMoveTimer;
 
@@ -36,6 +38,8 @@ class CSpectator : public CComponent
 	void CameraOverview();
 	void CameraFreeview();
 	void CameraFollow();
+
+	void DrawTargetHighlightWorldSpace(vec2 Pos, vec4 Color);
 
 public:
 	CSpectator();
