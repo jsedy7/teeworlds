@@ -6,7 +6,7 @@ from subprocess import call
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 build_dir = os.path.join(script_dir, 'build_genie')
-generated_dir = os.path.join(script_dir, 'src', 'generated')
+generated_dir = os.path.join(build_dir, 'src', 'generated')
 
 # copy data files
 datasrc = glob.glob(os.path.join(script_dir, 'datasrc') + '/**', recursive=True)
@@ -45,8 +45,8 @@ if not os.path.exists(generated_dir):
     os.makedirs(generated_dir)
 
 def generate_source(action, output):
-    print(action + ':')
-    call(['python', 'datasrc/compile.py', action, '>', os.path.join(generated_dir, output)])
+    print('******* ' + action + ' : ' + os.path.join(generated_dir, output))
+    os.system('python datasrc/compile.py ' + action + ' > ' + os.path.join(generated_dir, output))
 
 generate_source('network_source', 'protocol.cpp')
 generate_source('network_header', 'protocol.h')
@@ -54,5 +54,10 @@ generate_source('server_content_source', 'server_data.cpp')
 generate_source('server_content_header', 'server_data.h')
 generate_source('client_content_source', 'client_data.cpp')
 generate_source('client_content_header', 'client_data.h')
+
+def c_hash(list, output):
+    os.system('python scripts/cmd5.py ' + ' '.join(list) + ' > ' + os.path.join(generated_dir, output))
+
+c_hash(['src/engine/shared/protocol.h', 'src/game/tuning.h', 'src/game/gamecore.cpp', os.path.join(generated_dir, 'protocol.h')], 'nethash.cpp')
 
 print('Done.')
