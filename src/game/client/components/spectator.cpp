@@ -181,7 +181,8 @@ bool CSpectator::OnInput(IInput::CEvent InputEvent)
 	}
 
 	if(InputEvent.m_Key == KEY_MOUSE_1 && InputEvent.m_Flags&IInput::FLAG_RELEASE
-	   && (m_SpecMode == FREE_VIEW || m_SpecMode == OVERVIEW))
+	   && (m_SpecMode == FREE_VIEW || m_SpecMode == OVERVIEW)
+	   && m_ClosestCharID != -1)
 	{
 		m_MouseScreenPos.x = 0;
 		m_SpectatorID = m_ClosestCharID;
@@ -526,6 +527,22 @@ void CSpectator::OnRender()
 
 	if(m_SpecMode == FOLLOW)
 	{
+		MainView.HSplitTop(Spacing, 0, &MainView);
+		MainView.HSplitTop(20.f, &LineRect, &MainView);
+		LineRect.VMargin(Spacing, &LineRect);
+
+		// flag buttons
+		CUIRect ButtonFlagRed, ButtonFlagBlue;
+		LineRect.VSplitMid(&ButtonFlagRed, &ButtonFlagBlue);
+		ButtonFlagRed.w -= Spacing * 0.5f;
+		ButtonFlagBlue.w -= Spacing * 0.5f;
+		ButtonFlagBlue.x += Spacing * 0.5f;
+
+		static int s_ButFlagRedID, s_ButFlagBlueID;
+		DoButtonSelect(&s_ButFlagRedID, "Flag red", ButtonFlagRed, false);
+		DoButtonSelect(&s_ButFlagBlueID, "Flag blue", ButtonFlagBlue, false);
+
+		// player list
 		CUIRect FollowListRect;
 		MainView.HSplitTop(Spacing, 0, &FollowListRect);
 		FollowListRect.VMargin(Spacing, &FollowListRect);
@@ -579,45 +596,11 @@ void CSpectator::OnRender()
 		UI()->ClipDisable();
 	}
 
-	// spectator bottom window
-	CUIRect BottomView;
-
-	// press space
-	if(m_SpecMode == FREE_VIEW && m_ClosestCharID == -1)
-	{
-		Screen.HSplitBottom(20.f + Spacing * 2.f, 0, &BottomView);
-		BottomView.x = BottomView.w * 0.5f - BottomView.w * 0.15f;
-		BottomView.w *= 0.3f;
-
-		RenderTools()->DrawUIRect(&BottomView, vec4(0.0f, 0.0f, 0.0f, 0.5f), CUI::CORNER_T, 10.0f);
-		BottomView.Margin(Spacing, &BottomView);
-
-		BottomView.y += 2.0f;
-		UI()->DoLabel(&BottomView, Localize("Free-view (press space)"),
-					  BottomView.h*s_TextScale*0.7f, CUI::ALIGN_CENTER);
-	}
-
 	// targeted player UI
 	if((m_SpecMode == FREE_VIEW || m_SpecMode == OVERVIEW) && m_ClosestCharID != -1)
 	{
 		vec4 RingColor(1, 1, 1, 0.5); // TODO: based on target team ?
 		DrawTargetHighlightWorldSpace(m_TargetPos, RingColor);
-#if 0
-		Screen.HSplitBottom(35.f + Spacing * 2.f, 0, &BottomView);
-		BottomView.x = BottomView.w * 0.5f - BottomView.w * 0.15f;
-		BottomView.w *= 0.3f;
-
-		RenderTools()->DrawUIRect(&BottomView, vec4(0.0f, 0.0f, 0.0f, 0.5f), CUI::CORNER_T, 10.0f);
-		BottomView.Margin(Spacing, &BottomView);
-
-		CTeeRenderInfo TeeInfo = m_pClient->m_aClients[m_ClosestCharID].m_RenderInfo;
-		TeeInfo.m_Size = 35.f;
-		RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeInfo, EMOTE_NORMAL,
-								 vec2(1.0f, 0.0f), vec2(BottomView.x + 17.5f, BottomView.y + 17.5f));
-		BottomView.x += 35.f;
-		UI()->DoLabel(&BottomView, m_pClient->m_aClients[m_ClosestCharID].m_aName,
-					  BottomView.h*s_TextScale*0.7f, CUI::ALIGN_LEFT);
-#endif
 	}
 
 	// draw cursor
@@ -631,183 +614,6 @@ void CSpectator::OnRender()
 		Graphics()->QuadsEnd();
 	}
 }
-
-#if 0
-void CSpectator::OnRender()
-{
-	if(!m_Active)
-	{
-		if(m_WasActive)
-		{
-			if(m_SelectedSpecMode != NO_SELECTION)
-				Spectate(m_SelectedSpecMode, m_SelectedSpectatorID);
-			m_WasActive = false;
-		}
-		return;
-	}
-
-	if(!m_pClient->m_Snap.m_SpecInfo.m_Active)
-	{
-		m_Active = false;
-		m_WasActive = false;
-		return;
-	}
-
-	m_WasActive = true;
-	m_SelectedSpecMode = NO_SELECTION;
-	m_SelectedSpectatorID = -1;
-
-	// draw background
-	float Width = 400*3.0f*Graphics()->ScreenAspect();
-	float Height = 400*3.0f;
-
-	Graphics()->MapScreen(0, 0, Width, Height);
-
-	CUIRect Rect = {Width/2.0f-300.0f, Height/2.0f-300.0f, 600.0f, 600.0f};
-	Graphics()->BlendNormal();
-	RenderTools()->DrawRoundRect(&Rect, vec4(0.0f, 0.0f, 0.0f, 0.3f), 20.0f);
-
-	// clamp mouse position to selector area
-	m_SelectorMouse.x = clamp(m_SelectorMouse.x, -280.0f, 280.0f);
-	m_SelectorMouse.y = clamp(m_SelectorMouse.y, -280.0f, 280.0f);
-
-	// draw selections
-	float FontSize = 20.0f;
-	float StartY = -190.0f;
-	float LineHeight = 60.0f;
-	bool Selected = false;
-
-	if(m_pClient->m_aClients[m_pClient->m_LocalClientID].m_Team == TEAM_SPECTATORS)
-	{
-		if(m_pClient->m_Snap.m_SpecInfo.m_SpecMode == SPEC_FREEVIEW)
-		{
-			Rect.x = Width/2.0f-280.0f;
-			Rect.y = Height/2.0f-280.0f;
-			Rect.w = 270.0f;
-			Rect.h = 60.0f;
-			RenderTools()->DrawRoundRect(&Rect, vec4(1.0f, 1.0f, 1.0f, 0.25f), 20.0f);
-		}
-
-		if(m_SelectorMouse.x >= -280.0f && m_SelectorMouse.x <= -10.0f &&
-			m_SelectorMouse.y >= -280.0f && m_SelectorMouse.y <= -220.0f)
-		{
-			m_SelectedSpecMode = SPEC_FREEVIEW;
-			Selected = true;
-		}
-		TextRender()->TextColor(1.0f, 1.0f, 1.0f, Selected?1.0f:0.5f);
-		TextRender()->Text(0, Width/2.0f-240.0f, Height/2.0f-265.0f, FontSize, Localize("Free-View"), -1);
-	}
-
-	//
-	float x = 20.0f, y = -270;
-	if (m_pClient->m_GameInfo.m_GameFlags&GAMEFLAG_FLAGS)
-	{
-		for(int Flag = SPEC_FLAGRED; Flag <= SPEC_FLAGBLUE; ++Flag)
-		{
-			if(m_pClient->m_Snap.m_SpecInfo.m_SpecMode == Flag)
-			{
-				Rect.x = Width/2.0f+x-10.0f;
-				Rect.y = Height/2.0f+y-10.0f;
-				Rect.w = 120.0f;
-				Rect.h = 60.0f;
-				RenderTools()->DrawRoundRect(&Rect, vec4(1.0f, 1.0f, 1.0f, 0.25f), 20.0f);
-			}
-
-			Selected = false;
-			if(m_SelectorMouse.x >= x-10.0f && m_SelectorMouse.x <= x+110.0f &&
-				m_SelectorMouse.y >= y-10.0f && m_SelectorMouse.y <= y+50.0f)
-			{
-				m_SelectedSpecMode = Flag;
-				Selected = true;
-			}
-
-			Graphics()->BlendNormal();
-			Graphics()->TextureSet(g_pData->m_aImages[IMAGE_GAME].m_Id);
-			Graphics()->QuadsBegin();
-
-			RenderTools()->SelectSprite(Flag == SPEC_FLAGRED ? SPRITE_FLAG_RED : SPRITE_FLAG_BLUE);
-
-			float Size = LineHeight/1.5f + (Selected ? 12.0f : 8.0f);
-			float FlagWidth = Width/2.0f + x + 40.0f + (Selected ? -3.0f : -2.0f);
-			float FlagHeight = Height/2.0f + y + (Selected ? -6.0f : -4.0f);
-
-			IGraphics::CQuadItem QuadItem(FlagWidth, FlagHeight, Size/2.0f, Size);
-			Graphics()->QuadsDrawTL(&QuadItem, 1);
-			Graphics()->QuadsEnd();
-
-			x+=140.0f;
-		}
-	}
-
-	x = -270.0f, y = StartY;
-	for(int i = 0, Count = 0; i < MAX_CLIENTS; ++i)
-	{
-		if(!m_pClient->m_Snap.m_paPlayerInfos[i] || m_pClient->m_aClients[i].m_Team == TEAM_SPECTATORS ||
-			(m_pClient->m_aClients[m_pClient->m_LocalClientID].m_Team != TEAM_SPECTATORS && (m_pClient->m_Snap.m_paPlayerInfos[i]->m_PlayerFlags&PLAYERFLAG_DEAD ||
-			m_pClient->m_aClients[m_pClient->m_LocalClientID].m_Team != m_pClient->m_aClients[i].m_Team || i == m_pClient->m_LocalClientID)))
-			continue;
-
-		if(++Count%9 == 0)
-		{
-			x += 290.0f;
-			y = StartY;
-		}
-
-		if(m_pClient->m_Snap.m_SpecInfo.m_SpecMode == SPEC_PLAYER && m_pClient->m_Snap.m_SpecInfo.m_SpectatorID == i)
-		{
-			Rect.x = Width/2.0f+x-10.0f;
-			Rect.y = Height/2.0f+y-10.0f;
-			Rect.w = 270.0f;
-			Rect.h = 60.0f;
-			RenderTools()->DrawRoundRect(&Rect, vec4(1.0f, 1.0f, 1.0f, 0.25f), 20.0f);
-		}
-
-		Selected = false;
-		if(m_SelectorMouse.x >= x-10.0f && m_SelectorMouse.x <= x+260.0f &&
-			m_SelectorMouse.y >= y-10.0f && m_SelectorMouse.y <= y+50.0f)
-		{
-			m_SelectedSpecMode = SPEC_PLAYER;
-			m_SelectedSpectatorID = i;
-			Selected = true;
-		}
-		TextRender()->TextColor(1.0f, 1.0f, 1.0f, Selected?1.0f:0.5f);
-		char aBuf[64];
-		str_format(aBuf, sizeof(aBuf), "%2d: %s", i, g_Config.m_ClShowsocial ? m_pClient->m_aClients[i].m_aName : "");
-		TextRender()->Text(0, Width/2.0f+x+50.0f, Height/2.0f+y+5.0f, FontSize, aBuf, 220.0f);
-
-		// flag
-		if(m_pClient->m_GameInfo.m_GameFlags&GAMEFLAG_FLAGS &&
-			m_pClient->m_Snap.m_pGameDataFlag && (m_pClient->m_Snap.m_pGameDataFlag->m_FlagCarrierRed == i ||
-			m_pClient->m_Snap.m_pGameDataFlag->m_FlagCarrierBlue == i))
-		{
-			Graphics()->BlendNormal();
-			Graphics()->TextureSet(g_pData->m_aImages[IMAGE_GAME].m_Id);
-			Graphics()->QuadsBegin();
-
-			RenderTools()->SelectSprite(m_pClient->m_aClients[i].m_Team==TEAM_RED ? SPRITE_FLAG_BLUE : SPRITE_FLAG_RED, SPRITE_FLAG_FLIP_X);
-
-			float Size = LineHeight;
-			IGraphics::CQuadItem QuadItem(Width/2.0f+x-LineHeight/5.0f, Height/2.0f+y-LineHeight/3.0f, Size/2.0f, Size);
-			Graphics()->QuadsDrawTL(&QuadItem, 1);
-			Graphics()->QuadsEnd();
-		}
-
-		CTeeRenderInfo TeeInfo = m_pClient->m_aClients[i].m_RenderInfo;
-		RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeInfo, EMOTE_NORMAL, vec2(1.0f, 0.0f), vec2(Width/2.0f+x+20.0f, Height/2.0f+y+20.0f));
-
-		y += LineHeight;
-	}
-	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
-
-	// draw cursor
-	Graphics()->TextureSet(g_pData->m_aImages[IMAGE_CURSOR].m_Id);
-	Graphics()->QuadsBegin();
-	Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
-	IGraphics::CQuadItem QuadItem(m_SelectorMouse.x+Width/2.0f, m_SelectorMouse.y+Height/2.0f, 48.0f, 48.0f);
-	Graphics()->QuadsDrawTL(&QuadItem, 1);
-	Graphics()->QuadsEnd();
-}
-#endif
 
 void CSpectator::OnReset()
 {
