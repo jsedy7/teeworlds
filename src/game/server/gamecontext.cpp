@@ -538,6 +538,23 @@ void CGameContext::OnTick()
 
 
 #ifdef CONF_DEBUG
+	const char* Sentences[] = {
+		"I love Teeworlds!",
+		"My cat is on fire",
+		"Oops I didn't mean to",
+		"I am a lonely bot...",
+		"Is this real?",
+		"A horse is just a weird cow",
+
+		"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis in nisi nunc."
+		" Sed tincidunt diam quis magna eleifend, quis tristique orci sodales."
+		" Cras feugiat lacinia nisi quis mattis. Nunc viverra hendrerit viverra."
+		" Sed blandit lorem at dolor malesuada sodales ut quis sem. Donec ut commodo orci."
+		"beep beep BOOP B00P"
+	};
+	const int SentencesCount = sizeof(Sentences)/sizeof(Sentences[0]);
+
+
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		if(m_apPlayers[i] && m_apPlayers[i]->IsDummy())
@@ -545,6 +562,39 @@ void CGameContext::OnTick()
 			CNetObj_PlayerInput Input = {0};
 			Input.m_Direction = (i&1)?-1:1;
 			m_apPlayers[i]->OnPredictedInput(&Input);
+
+			static int64 LastTime = time_get();
+			int64 Now = time_get();
+			if((Now - LastTime) / (double)time_freq() > 0.25f + frandom() * 0.2f)
+			{
+				LastTime = Now;
+
+				char aGarbage[256];
+				str_format(aGarbage, sizeof(aGarbage), "%s", Sentences[random_int() % (SentencesCount)]);
+
+				if(random_int() % 7 == 0)
+				{
+					char aGarbage2[256];
+					mem_copy(aGarbage2, aGarbage, sizeof(aGarbage2));
+					str_format(aGarbage, sizeof(aGarbage), "LordSk %s", aGarbage2);
+				}
+
+				int Chat = random_int() & 1 ? CHAT_ALL: CHAT_TEAM;
+				if(random_int() % 15 == 0)
+				{
+					Chat = CHAT_WHISPER;
+				}
+				int TargetId = Chat == CHAT_WHISPER ? 0 : -1;
+				int CID = i;
+				if(random_int() % 20 == 0)
+				{
+					CID = -1;
+					TargetId = -1;
+					Chat = CHAT_ALL;
+				}
+
+				SendChat(CID, Chat, TargetId, aGarbage);
+			}
 		}
 	}
 #endif
@@ -613,6 +663,52 @@ void CGameContext::OnClientEnter(int ClientID)
 	}
 
 
+	const char* s_aDummyClans[5] = {
+		"Wægmunding",
+		"Ylfing",
+		"Scylfing",
+		"Skjöldung",
+		"Völsung"
+	};
+
+	static const char* s_aDummyNames[MAX_CLIENTS] = {
+		"Millicent",
+		"Alys",
+		"Ayleth",
+		"Anastas",
+		"Alianor",
+		"Cedany",
+		"Ellyn",
+		"Helewys",
+		"Malkyn",
+		"Peronell",
+		"Sybbyl",
+		"Ysmay",
+		"Thea",
+		"Jacquelyn",
+		"Amelia",
+		"Gloriana"
+	};
+
+	static int s_aDummyCountryCodes[] = {
+		20,
+		784,
+		4,
+		28,
+		660,
+		8,
+		51,
+		24,
+		32,
+		16,
+		40,
+		36,
+		533,
+		248,
+		31,
+		70
+	};
+
 	for(int i = 0; i < MAX_CLIENTS; ++i)
 	{
 		if(i == ClientID || !m_apPlayers[i] || (!Server()->ClientIngame(i) && !m_apPlayers[i]->IsDummy()))
@@ -627,10 +723,20 @@ void CGameContext::OnClientEnter(int ClientID)
 		ClientInfoMsg.m_ClientID = i;
 		ClientInfoMsg.m_Local = 0;
 		ClientInfoMsg.m_Team = m_apPlayers[i]->GetTeam();
-		ClientInfoMsg.m_pName = Server()->ClientName(i);
-		ClientInfoMsg.m_pClan = Server()->ClientClan(i);
-		ClientInfoMsg.m_Country = Server()->ClientCountry(i);
-		ClientInfoMsg.m_Silent = false;
+
+		if(m_apPlayers[i]->IsDummy())
+		{
+			ClientInfoMsg.m_pName = s_aDummyNames[i];
+			ClientInfoMsg.m_pClan = s_aDummyClans[i % 5];
+			ClientInfoMsg.m_Country = s_aDummyCountryCodes[random_int() % sizeof(s_aDummyCountryCodes)/sizeof(int)];
+		}
+		else
+		{
+			ClientInfoMsg.m_pName = Server()->ClientName(i);
+			ClientInfoMsg.m_pClan = Server()->ClientClan(i);
+			ClientInfoMsg.m_Country = Server()->ClientCountry(i);
+		}
+
 		for(int p = 0; p < 6; p++)
 		{
 			ClientInfoMsg.m_apSkinPartNames[p] = m_apPlayers[i]->m_TeeInfos.m_aaSkinPartNames[p];
