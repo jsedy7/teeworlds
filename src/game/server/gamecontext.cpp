@@ -723,6 +723,7 @@ void CGameContext::OnClientEnter(int ClientID)
 		ClientInfoMsg.m_ClientID = i;
 		ClientInfoMsg.m_Local = 0;
 		ClientInfoMsg.m_Team = m_apPlayers[i]->GetTeam();
+		ClientInfoMsg.m_Silent = false;
 
 		if(m_apPlayers[i]->IsDummy())
 		{
