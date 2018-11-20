@@ -774,7 +774,6 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 	u32 zombCID = ZombCID(zid);
 
 	// send drop first
-	// this will pop a chat message
 	CNetMsg_Sv_ClientDrop Msg;
 	Msg.m_ClientID = zombCID;
 	Msg.m_pReason = "";
