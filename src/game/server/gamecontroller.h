@@ -47,23 +47,24 @@ class IGameController
 
 		IGS_GAME_PAUSED,		// game paused (infinite or tick timer)
 		IGS_GAME_RUNNING,		// game running (infinite)
-
+		
 		IGS_END_MATCH,			// match is over (tick timer)
 		IGS_END_ROUND,			// round is over (tick timer)
-	};
+ 	};
 	EGameState m_GameState;
 	int m_GameStateTimer;
 
 	virtual void DoWincheckMatch();
 	virtual void DoWincheckRound() {};
-	virtual bool HasEnoughPlayers() const { return (IsTeamplay() && m_aTeamSize[TEAM_RED] > 0 && m_aTeamSize[TEAM_BLUE] > 0) || (!IsTeamplay() && m_aTeamSize[TEAM_RED] > 1); }
+	bool HasEnoughPlayers() const { return (IsTeamplay() && m_aTeamSize[TEAM_RED] > 0 && m_aTeamSize[TEAM_BLUE] > 0) || (!IsTeamplay() && m_aTeamSize[TEAM_RED] > 1); }
 	void ResetGame();
 	void SetGameState(EGameState GameState, int Timer=0);
+	void StartMatch();
 	void StartRound();
 
 	// map
 	char m_aMapWish[128];
-
+	
 	void CycleMap();
 
 	// spawn
@@ -83,7 +84,7 @@ class IGameController
 	};
 	vec2 m_aaSpawnPoints[3][64];
 	int m_aNumSpawnPoints[3];
-
+	
 	float EvaluateSpawnPos(CSpawnEval *pEval, vec2 Pos) const;
 	void EvaluateSpawnType(CSpawnEval *pEval, int Type) const;
 
@@ -101,7 +102,6 @@ protected:
 	int m_SuddenDeath;
 	int m_aTeamscore[NUM_TEAMS];
 
-	void StartMatch();
 	void EndMatch() { SetGameState(IGS_END_MATCH, TIMER_END); }
 	void EndRound() { SetGameState(IGS_END_ROUND, TIMER_END/2); }
 
@@ -159,7 +159,7 @@ public:
 	*/
 	virtual bool OnEntity(int Index, vec2 Pos);
 
-	virtual void OnPlayerConnect(class CPlayer *pPlayer);
+	void OnPlayerConnect(class CPlayer *pPlayer);
 	void OnPlayerDisconnect(class CPlayer *pPlayer);
 	void OnPlayerInfoChange(class CPlayer *pPlayer);
 	void OnPlayerReadyChange(class CPlayer *pPlayer);
@@ -188,29 +188,29 @@ public:
 
 	// info
 	void CheckGameInfo();
-	virtual bool IsFriendlyFire(int ClientID1, int ClientID2) const;
+	bool IsFriendlyFire(int ClientID1, int ClientID2) const;
 	bool IsGamePaused() const { return m_GameState == IGS_GAME_PAUSED || m_GameState == IGS_START_COUNTDOWN; }
 	bool IsGameRunning() const { return m_GameState == IGS_GAME_RUNNING; }
 	bool IsPlayerReadyMode() const;
 	bool IsTeamChangeAllowed() const;
 	bool IsTeamplay() const { return m_GameFlags&GAMEFLAG_TEAMS; }
-
+	
 	const char *GetGameType() const { return m_pGameType; }
-
+	
 	// map
 	void ChangeMap(const char *pToMap);
 
 	//spawn
-	virtual bool CanSpawn(int Team, vec2 *pPos) const;
+	bool CanSpawn(int Team, vec2 *pPos) const;
 	bool GetStartRespawnState() const;
 
 	// team
 	bool CanJoinTeam(int Team, int NotThisID) const;
-	virtual bool CanChangeTeam(CPlayer *pPplayer, int JoinTeam) const;
+	bool CanChangeTeam(CPlayer *pPplayer, int JoinTeam) const;
 
 	void DoTeamChange(class CPlayer *pPlayer, int Team, bool DoChatMsg=true);
 	void ForceTeamBalance() { if(!(m_GameFlags&GAMEFLAG_SURVIVAL)) DoTeamBalance(); }
-
+	
 	int GetRealPlayerNum() const { return m_aTeamSize[TEAM_RED]+m_aTeamSize[TEAM_BLUE]; }
 	int GetStartTeam();
 };

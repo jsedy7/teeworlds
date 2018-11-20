@@ -1542,7 +1542,7 @@ void CGameControllerZOMB::StartZombGame(u32 startingWave)
 	m_WaveWaitClock = -1;
 	AnnounceWave(m_CurrentWave);
 	ChatMessage(">> 10s to setup.");
-	StartMatch();
+	DoWarmup(0);
 	m_ZombGameState = ZSTATE_WAVE_GAME;
 	m_CanPlayersRespawn = true;
 
@@ -2291,7 +2291,7 @@ void CGameControllerZOMB::StartZombSurv(i32 seed)
 	m_SurvivalStartTick = m_Tick;
 	ChatMessage(">> Survive!");
 	ChatMessage(">> 10s to setup.");
-	StartMatch();
+	DoWarmup(0);
 	m_ZombGameState = ZSTATE_SURV_GAME;
 	m_CanPlayersRespawn = true;
 
