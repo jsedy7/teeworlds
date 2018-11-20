@@ -7,7 +7,7 @@
 
 #define MAX_SURVIVORS 4
 #define MAX_ZOMBS (MAX_CLIENTS - MAX_SURVIVORS)
-#define MAX_MAP_SIZE 1024 * 1024
+#define MAX_MAP_SIZE (1024 * 1024)
 #define MAX_WAVES 128
 #define MAX_SPAWN_QUEUE 256
 #define MAX_LASERS 64
@@ -21,7 +21,7 @@ typedef double f64;
 
 class CGameControllerZOMB : public IGameController
 {
-    friend class CPlayer;
+	friend class CPlayer;
 	i32 m_Tick;
 	u32 m_Seed;
 
@@ -36,7 +36,7 @@ class CGameControllerZOMB : public IGameController
 
 	bool m_ZombAlive[MAX_ZOMBS]; // bad design, but whatever
 	i32 m_ZombHealth[MAX_ZOMBS];
-    u8 m_ZombType[MAX_ZOMBS];
+	u8 m_ZombType[MAX_ZOMBS];
 	u8 m_ZombBuff[MAX_ZOMBS];
 
 	i32 m_ZombSurvTarget[MAX_ZOMBS];
@@ -64,8 +64,8 @@ class CGameControllerZOMB : public IGameController
 
 	char m_MapName[128];
 	u8 m_Map[MAX_MAP_SIZE];
-    i32 m_MapWidth;
-    i32 m_MapHeight;
+	i32 m_MapWidth;
+	i32 m_MapHeight;
 
 	vec2 m_ZombSpawnPoint[64];
 	vec2 m_SurvSpawnPoint[64];
@@ -104,8 +104,8 @@ class CGameControllerZOMB : public IGameController
 	i32 m_RestartClock;
 
 	SpawnCmd m_SurvQueue[MAX_SPAWN_QUEUE];
-    i32 m_SurvQueueCount;
-    i32 m_SurvivalStartTick;
+	i32 m_SurvQueueCount;
+	i32 m_SurvivalStartTick;
 
 	// lasers
 	struct Laser {
@@ -131,7 +131,7 @@ class CGameControllerZOMB : public IGameController
 	Projectile m_ProjectileList[MAX_PROJECTILES];
 	u32 m_ProjectileCount;
 	u32 m_ProjectileID;
-    i32 m_SurvWaveInterval;
+	i32 m_SurvWaveInterval;
 
 #ifdef CONF_DEBUG
 	ivec2 m_DbgPath[256];
@@ -154,7 +154,7 @@ class CGameControllerZOMB : public IGameController
 
 	inline bool InMapBounds(const ivec2& pos);
 	inline bool IsBlockedOrOob(const ivec2& pos);
-    inline bool IsBlocked(const ivec2& pos);
+	inline bool IsBlocked(const ivec2& pos);
 	bool JumpStraight(const ivec2& start, const ivec2& dir, const ivec2& goal,
 					  i32* out_pJumps);
 	bool JumpDiagonal(const ivec2& start, const ivec2& dir, const ivec2& goal,
@@ -176,8 +176,8 @@ class CGameControllerZOMB : public IGameController
 
 	static void ConZombStart(IConsole::IResult *pResult, void *pUserData);
 	void StartZombGame(u32 startingWave = 0);
-    void WaveGameWon();
-    void SurvGameWon();
+	void WaveGameWon();
+	void SurvGameWon();
 	void GameLost();
 	void GameCleanUp();
 	void ChatMessage(const char* msg);
@@ -196,8 +196,8 @@ class CGameControllerZOMB : public IGameController
 	void CreateLaser(vec2 from, vec2 to);
 	void CreateProjectile(vec2 pos, vec2 dir, i32 type, i32 dmg, i32 owner, i32 lifespan);
 	void TickProjectiles();
-    void CreateZombExplosion(vec2 pos, f32 inner, f32 outer, f32 force, i32 dmg, i32 ownerCID);
-    void CreatePlayerExplosion(vec2 Pos, i32 Dmg, i32 OwnerCID, i32 Weapon);
+	void CreateZombExplosion(vec2 pos, f32 inner, f32 outer, f32 force, i32 dmg, i32 ownerCID);
+	void CreatePlayerExplosion(vec2 Pos, i32 Dmg, i32 OwnerCID, i32 Weapon);
 
 	void ChangeEyes(i32 zid, i32 type, f32 time);
 
@@ -205,7 +205,7 @@ class CGameControllerZOMB : public IGameController
 	void StartZombSurv(i32 seed = -1);
 	void TickSurvivalGame();
 
-    i32 IntersectCharacterCore(vec2 Pos0, vec2 Pos1, float Radius, vec2& NewPos, CCharacterCore *pNotThis);
+	i32 IntersectCharacterCore(vec2 Pos0, vec2 Pos1, float Radius, vec2& NewPos, CCharacterCore *pNotThis);
 
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer);
@@ -219,13 +219,13 @@ public:
 	int OnCharacterDeath(class CCharacter *pVictim, class CPlayer *pKiller, int Weapon);
 	bool CanChangeTeam(CPlayer *pPlayer, int JoinTeam) const;
 
-    void ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, i32 From, i32 Weapon);
-    void PlayerFireShotgun(i32 CID, vec2 Pos, vec2 Direction);
-    i32 PlayerTryHitHammer(i32 CID, vec2 pos, vec2 direction);
-    bool PlayerTryHitLaser(i32 CID, vec2 start, vec2 end, vec2& at);
-    bool PlayerProjectileTick(i32 ownerCID, vec2 prevPos, vec2 curPos, i32 weapon, vec2 dir, bool doDestroy);
+	void ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, i32 From, i32 Weapon);
+	void PlayerFireShotgun(i32 CID, vec2 Pos, vec2 Direction);
+	i32 PlayerTryHitHammer(i32 CID, vec2 pos, vec2 direction);
+	bool PlayerTryHitLaser(i32 CID, vec2 start, vec2 end, vec2& at);
+	bool PlayerProjectileTick(i32 ownerCID, vec2 prevPos, vec2 curPos, i32 weapon, vec2 dir, bool doDestroy);
 
-    void PlayerActivateDeadSpectate(class CPlayer* player);
+	void PlayerActivateDeadSpectate(class CPlayer* player);
 };
 
 // == "ZOMB"
