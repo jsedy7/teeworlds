@@ -778,6 +778,7 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 	CNetMsg_Sv_ClientDrop Msg;
 	Msg.m_ClientID = zombCID;
 	Msg.m_pReason = "";
+	Msg.m_Silent = 1;
 	Server()->SendPackMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_NORECORD, CID);
 
 	// then update
@@ -787,6 +788,7 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 	nci.m_Team = 0;
 	nci.m_pClan = "";
 	nci.m_Country = 0;
+	nci.m_Silent = 1;
 	nci.m_apSkinPartNames[SKINPART_DECORATION] = "standard";
 	nci.m_aUseCustomColors[SKINPART_DECORATION] = 0;
 	nci.m_aSkinPartColors[SKINPART_DECORATION] = 0;
@@ -877,6 +879,7 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 	nci.m_aUseCustomColors[SKINPART_FEET] = 1;
 	nci.m_aSkinPartColors[SKINPART_FEET] = handFeetColor;
 
+	//dbg_zomb_msg("zombInfo (zombCID=%d CID=%d)", zombCID, CID);
 	Server()->SendPackMsg(&nci, MSGFLAG_VITAL|MSGFLAG_NORECORD, CID);
 }
 
@@ -2582,7 +2585,7 @@ void CGameControllerZOMB::Tick()
 }
 
 
-inline bool networkClipped(vec2 viewPos, vec2 checkPos)
+inline bool NetworkClipped(vec2 viewPos, vec2 checkPos)
 {
 	f32 dx = viewPos.x-checkPos.x;
 	f32 dy = viewPos.y-checkPos.y;
@@ -2624,7 +2627,7 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 		pPlayerInfo->m_Latency = zombCID;
 		pPlayerInfo->m_Score = zombCID;
 
-		if(networkClipped(viewPos, m_ZombCharCore[i].m_Pos)) {
+		if(NetworkClipped(viewPos, m_ZombCharCore[i].m_Pos)) {
 			continue;
 		}
 
@@ -2684,7 +2687,7 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 
 	// lasers
 	for(u32 i = 0; i < m_LaserCount; ++i) {
-		if(networkClipped(viewPos, m_LaserList[i].from)) {
+		if(NetworkClipped(viewPos, m_LaserList[i].from)) {
 			continue;
 		}
 
@@ -2709,7 +2712,7 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 							   m_ProjectileList[i].speed,
 							   ct);
 
-		if(networkClipped(viewPos, projPos)) {
+		if(NetworkClipped(viewPos, projPos)) {
 			continue;
 		}
 
