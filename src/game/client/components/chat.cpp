@@ -363,11 +363,11 @@ void CChat::OnMessage(int MsgType, void *pRawMsg)
 	if(MsgType == NETMSGTYPE_SV_CHAT)
 	{
 		CNetMsg_Sv_Chat *pMsg = (CNetMsg_Sv_Chat *)pRawMsg;
-		AddLine(pMsg->m_ClientID, pMsg->m_Mode, pMsg->m_pMessage);
+		AddLine(pMsg->m_ClientID, pMsg->m_Mode, pMsg->m_pMessage, pMsg->m_TargetID);
 	}
 }
 
-void CChat::AddLine(int ClientID, int Mode, const char *pLine)
+void CChat::AddLine(int ClientID, int Mode, const char *pLine, int TargetID)
 {
 	if(*pLine == 0 || (ClientID != -1 && (!g_Config.m_ClShowsocial || m_pClient->m_aClients[ClientID].m_aName[0] == '\0' || // unknown client
 		m_pClient->m_aClients[ClientID].m_ChatIgnore ||
@@ -423,6 +423,7 @@ void CChat::AddLine(int ClientID, int Mode, const char *pLine)
 		m_aLines[m_CurrentLine].m_Size[0].y = -1.0f;
 		m_aLines[m_CurrentLine].m_Size[1].y = -1.0f;
 		m_aLines[m_CurrentLine].m_ClientID = ClientID;
+		m_aLines[m_CurrentLine].m_TargetID = TargetID;
 		m_aLines[m_CurrentLine].m_Mode = Mode;
 		m_aLines[m_CurrentLine].m_NameColor = -2;
 
@@ -816,6 +817,7 @@ void CChat::OnRender()
 		}
 
 		char aBuf[48];
+		if(Line.m_Mode == CHAT_WHISPER)
 		{
 			const float LineBaseY = TextRender()->TextGetLineBaseY(&Cursor);
 
