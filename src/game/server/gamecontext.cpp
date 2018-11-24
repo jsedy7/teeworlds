@@ -555,45 +555,51 @@ void CGameContext::OnTick()
 	const int SentencesCount = sizeof(Sentences)/sizeof(Sentences[0]);
 
 
-	for(int i = 0; i < MAX_CLIENTS; i++)
+	if(g_Config.m_SvBotSpamChat > 0)
 	{
-		if(m_apPlayers[i] && m_apPlayers[i]->IsDummy())
+		const double IntervalFlat = g_Config.m_SvBotSpamChat/1000.0 * 0.5;
+		const double IntervalRand = IntervalFlat;
+
+		for(int i = 0; i < MAX_CLIENTS; i++)
 		{
-			CNetObj_PlayerInput Input = {0};
-			Input.m_Direction = (i&1)?-1:1;
-			m_apPlayers[i]->OnPredictedInput(&Input);
-
-			static int64 LastTime = time_get();
-			int64 Now = time_get();
-			if((Now - LastTime) / (double)time_freq() > 0.25f + frandom() * 0.2f)
+			if(m_apPlayers[i] && m_apPlayers[i]->IsDummy())
 			{
-				LastTime = Now;
+				CNetObj_PlayerInput Input = {0};
+				Input.m_Direction = (i&1)?-1:1;
+				m_apPlayers[i]->OnPredictedInput(&Input);
 
-				char aGarbage[256];
-				str_format(aGarbage, sizeof(aGarbage), "%s", Sentences[random_int() % (SentencesCount)]);
-
-				if(random_int() % 7 == 0)
+				static int64 LastTime = time_get();
+				int64 Now = time_get();
+				if((Now - LastTime) / (double)time_freq() > IntervalFlat + frandom() * IntervalRand)
 				{
-					char aGarbage2[256];
-					mem_copy(aGarbage2, aGarbage, sizeof(aGarbage2));
-					str_format(aGarbage, sizeof(aGarbage), "LordSk %s", aGarbage2);
-				}
+					LastTime = Now;
 
-				int Chat = random_int() & 1 ? CHAT_ALL: CHAT_TEAM;
-				if(random_int() % 15 == 0)
-				{
-					Chat = CHAT_WHISPER;
-				}
-				int TargetId = Chat == CHAT_WHISPER ? 0 : -1;
-				int CID = i;
-				if(random_int() % 20 == 0)
-				{
-					CID = -1;
-					TargetId = -1;
-					Chat = CHAT_ALL;
-				}
+					char aGarbage[256];
+					str_format(aGarbage, sizeof(aGarbage), "%s", Sentences[random_int() % (SentencesCount)]);
 
-				SendChat(CID, Chat, TargetId, aGarbage);
+					if(random_int() % 7 == 0)
+					{
+						char aGarbage2[256];
+						mem_copy(aGarbage2, aGarbage, sizeof(aGarbage2));
+						str_format(aGarbage, sizeof(aGarbage), "LordSk %s", aGarbage2);
+					}
+
+					int Chat = random_int() & 1 ? CHAT_ALL: CHAT_TEAM;
+					if(random_int() % 15 == 0)
+					{
+						Chat = CHAT_WHISPER;
+					}
+					int TargetId = Chat == CHAT_WHISPER ? 0 : -1;
+					int CID = i;
+					if(random_int() % 20 == 0)
+					{
+						CID = -1;
+						TargetId = -1;
+						Chat = CHAT_ALL;
+					}
+
+					SendChat(CID, Chat, TargetId, aGarbage);
+				}
 			}
 		}
 	}
