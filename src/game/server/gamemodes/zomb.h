@@ -166,6 +166,7 @@ class CGameControllerZOMB : public IGameController
 	void HandleMovement(u32 zid, const vec2& targetPos, bool targetLOS);
 	void HandleHook(u32 zid, f32 targetDist, bool targetLOS);
 	void HandleBoomer(u32 zid, f32 targetDist, bool targetLOS);
+	void HandleTank(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
 	void HandleBull(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
 	void HandleMudge(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
 	void HandleHunter(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS);
@@ -220,6 +221,7 @@ public:
 	bool CanChangeTeam(CPlayer *pPlayer, int JoinTeam) const;
 
 	void ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, i32 From, i32 Weapon);
+	void ZombStopHooking(i32 zid);
 	void PlayerFireShotgun(i32 CID, vec2 Pos, vec2 Direction);
 	i32 PlayerTryHitHammer(i32 CID, vec2 pos, vec2 direction);
 	bool PlayerTryHitLaser(i32 CID, vec2 start, vec2 end, vec2& at);

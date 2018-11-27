@@ -58,6 +58,7 @@ inline T z_abs(T var) {
 #define BULL_KNOCKBACK_FORCE 30.f
 
 #define MUDGE_PULL_STR 1.3f
+#define TANK_PULL_STR 1.0f
 
 #define HUNTER_CHARGE_CD (SecondsToTick(1.5f))
 #define HUNTER_CHARGE_SPEED 2700.f
@@ -122,7 +123,7 @@ static const u32 g_ZombMaxHealth[] = {
 
 static const f32 g_ZombAttackSpeed[] = {
 	1.5f, // ZTYPE_BASIC
-	1.f, // ZTYPE_TANK
+	1.5f, // ZTYPE_TANK
 	0.0001f, // ZTYPE_BOOMER
 	1.0f, // ZTYPE_BULL
 	2.0f, // ZTYPE_MUDGE
@@ -134,7 +135,7 @@ static const f32 g_ZombAttackSpeed[] = {
 
 static const i32 g_ZombAttackDmg[] = {
 	1, // ZTYPE_BASIC
-	6, // ZTYPE_TANK
+	4, // ZTYPE_TANK
 	10, // ZTYPE_BOOMER
 	3, // ZTYPE_BULL
 	1, // ZTYPE_MUDGE
@@ -158,10 +159,10 @@ static const f32 g_ZombKnockbackMultiplier[] = {
 
 static const f32 g_ZombHookRange[] = {
 	200.f, // ZTYPE_BASIC
-	300.f, // ZTYPE_TANK
+	350.f, // ZTYPE_TANK
 	300.f, // ZTYPE_BOOMER
 	300.f, // ZTYPE_BULL
-	0.f,   // ZTYPE_MUDGE (special case)
+	1000.f,// ZTYPE_MUDGE
 	300.f, // ZTYPE_HUNTER
 	300.f, // ZTYPE_DOMINANT
 	300.f, // ZTYPE_BERSERKER
@@ -185,7 +186,7 @@ static const i32 g_ZombHookCD[] = {
 	SecondsToTick(2.f), // ZTYPE_TANK
 	SecondsToTick(0.5f), // ZTYPE_BOOMER
 	SecondsToTick(3.f), // ZTYPE_BULL
-	SecondsToTick(3.f), // ZTYPE_MUDGE
+	SecondsToTick(5.f), // ZTYPE_MUDGE
 	SecondsToTick(2.f), // ZTYPE_HUNTER
 	SecondsToTick(999.f), // ZTYPE_DOMINANT
 	SecondsToTick(1.5f), // ZTYPE_BERSERKER
@@ -580,8 +581,8 @@ vec2 CGameControllerZOMB::PathFind(vec2 start, vec2 end)
 	nodeListCount = 0;
 
 #ifdef CONF_DEBUG
-	m_DbgPathLen = 0;
-	m_DbgLinesCount = 0;
+	//m_DbgPathLen = 0;
+	//m_DbgLinesCount = 0;
 	u32 maxIterations = g_Config.m_DbgPathFindIterations;
 #endif
 
@@ -890,8 +891,11 @@ void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos, bool ta
 	vec2& dest = m_ZombDestination[zid];
 	if(m_ZombPathFindClock[zid] <= 0) {
 		dest = PathFind(pos, targetPos);
+		m_ZombDestination[zid] = dest;
 		m_ZombPathFindClock[zid] = 2;
 	}
+
+	//DebugLine(ivec2(pos.x/32, pos.y/32), ivec2(dest.x/32, dest.y/32));
 
 	input.m_Direction = -1;
 	if(pos.x < dest.x) {
@@ -923,8 +927,9 @@ void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos, bool ta
 
 	// jump
 	input.m_Jump = 0;
+	f32 xDist = z_abs(dest.x - pos.x);
 	f32 yDist = z_abs(dest.y - pos.y);
-	if(m_ZombJumpClock[zid] <= 0 && dest.y < pos.y) {
+	if(m_ZombJumpClock[zid] <= 0 && dest.y < pos.y && xDist < 300.0f) {
 		if(yDist > 10.f) {
 			if(grounded) {
 				input.m_Jump = ZOMBIE_GROUNDJUMP;
@@ -1029,6 +1034,30 @@ void CGameControllerZOMB::HandleBoomer(u32 zid, f32 targetDist, bool targetLOS)
 		// send some love
 		GameServer()->SendEmoticon(zombCID, 2);
 		ChangeEyes(zid, EMOTE_HAPPY, 3.f);
+	}
+}
+
+void CGameControllerZOMB::HandleTank(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS)
+{
+	if(m_ZombCharCore[zid].m_HookState == HOOK_GRABBED && targetDist > 80.0f)
+	{
+		float GrabProgress = m_ZombHookGrabClock[zid]/(float)g_ZombGrabLimit[ZTYPE_TANK];
+		float s = fabs(sinf(GrabProgress * pi * 1.0f));
+
+		if(s >= 0.6f) {
+			m_ZombDestination[zid] = m_ZombCharCore[zid].m_Pos - (targetPos - m_ZombCharCore[zid].m_Pos);
+			m_ZombPathFindClock[zid] = 2;
+			ChangeEyes(zid, EMOTE_ANGRY, 0.5f);
+
+			vec2 pullDir = normalize(m_ZombCharCore[zid].m_Pos - targetPos);
+			CCharacterCore* pTargetCore = GameServer()->m_World.m_Core.m_apCharacters[m_ZombSurvTarget[zid]];
+			if(pTargetCore) {
+				pTargetCore->m_Vel += pullDir * TANK_PULL_STR;
+			}
+		}
+		else {
+			ChangeEyes(zid, EMOTE_NORMAL, 1.f);
+		}
 	}
 }
 
@@ -1140,7 +1169,7 @@ void CGameControllerZOMB::HandleBull(u32 zid, const vec2& targetPos, f32 targetD
 
 void CGameControllerZOMB::HandleMudge(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS)
 {
-	if(targetLOS && targetDist < 1000.f && m_ZombCharCore[zid].m_HookState != HOOK_GRABBED) {
+	if(targetLOS && m_ZombHookClock[zid] <= 0 && targetDist < g_ZombHookRange[ZTYPE_MUDGE] && m_ZombCharCore[zid].m_HookState != HOOK_GRABBED) {
 		m_ZombCharCore[zid].m_HookState = HOOK_GRABBED;
 		m_ZombCharCore[zid].m_HookedPlayer = m_ZombSurvTarget[zid];
 		GameServer()->CreateSound(targetPos, SOUND_HOOK_ATTACH_PLAYER);
@@ -1272,7 +1301,7 @@ void CGameControllerZOMB::HandleWartule(u32 zid, const vec2& targetPos, f32 targ
 
 		if(targetDist < 350.f) {
 			// flee! :s (for 1 s)
-			m_ZombDestination[zid].x = -targetPos.x;
+			m_ZombDestination[zid].x = m_ZombCharCore[zid].m_Pos.x - (targetPos.x - m_ZombCharCore[zid].m_Pos.x);
 			m_ZombPathFindClock[zid] = SecondsToTick(1.f);
 			ChangeEyes(zid, EMOTE_PAIN, 1.f);
 		}
@@ -1429,6 +1458,10 @@ void CGameControllerZOMB::TickZombies()
 		switch(m_ZombType[i]) {
 			case ZTYPE_BOOMER:
 				HandleBoomer(i, targetDist, targetLOS);
+				break;
+
+			case ZTYPE_TANK:
+				HandleTank(i, targetPos, targetDist, targetLOS);
 				break;
 
 			case ZTYPE_BULL:
@@ -1620,17 +1653,16 @@ void CGameControllerZOMB::ChatMessage(const char* msg)
 	CNetMsg_Sv_Chat chatMsg;
 	chatMsg.m_Mode = CHAT_ALL;
 	chatMsg.m_ClientID = -1;
+	chatMsg.m_TargetID = -1;
 	chatMsg.m_pMessage = msg;
 	Server()->SendPackMsg(&chatMsg, MSGFLAG_VITAL, -1);
 }
 
 void CGameControllerZOMB::AnnounceWave(u32 waveID)
 {
-	CNetMsg_Sv_Chat chatMsg;
-	chatMsg.m_Mode = CHAT_ALL;
-	chatMsg.m_ClientID = -1;
+	CNetMsg_Sv_Broadcast chatMsg;
 	char msgBuff[256];
-	str_format(msgBuff, sizeof(msgBuff), ">> WAVE %d (%d zombies)", waveID + 1,
+	str_format(msgBuff, sizeof(msgBuff), "WAVE ^980%d ^999(%d zombies)", waveID + 1,
 			   m_WaveSpawnCount[waveID]);
 	chatMsg.m_pMessage = msgBuff;
 	Server()->SendPackMsg(&chatMsg, MSGFLAG_VITAL, -1);
@@ -2451,7 +2483,7 @@ void CGameControllerZOMB::DebugPathAddPoint(ivec2 p)
 
 void CGameControllerZOMB::DebugLine(ivec2 s, ivec2 e)
 {
-	if(m_DbgLinesCount >= 256) return;
+	if(m_DbgLinesCount >= 256) m_DbgLinesCount = 0;
 	u32 id = m_DbgLinesCount++;
 	m_DbgLines[id].start = s;
 	m_DbgLines[id].end = e;
@@ -2547,7 +2579,7 @@ void CGameControllerZOMB::Tick()
 				StartZombGame(0);
 			}
 			else if(m_ZombLastGameState == ZSTATE_SURV_GAME) {
-				StartZombSurv(123456);
+				StartZombSurv(-1);
 			}
 		}
 	}
@@ -2911,6 +2943,10 @@ void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, i32 From, i3
 		return;
 	}
 
+	// teammates can make the zombie stop hooking
+	if(From >= 0 && From != m_ZombSurvTarget[zid])
+		ZombStopHooking(zid);
+
 	// do damage Hit sound
 	if(From >= 0 && GameServer()->m_apPlayers[From]) {
 		int Mask = CmaskOne(From);
@@ -2954,6 +2990,16 @@ void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, i32 From, i3
 	ChangeEyes(zid, EMOTE_PAIN, 1.f);
 }
 
+void CGameControllerZOMB::ZombStopHooking(i32 zid)
+{
+	if(m_ZombCharCore[zid].m_HookState >= HOOK_FLYING)
+	{
+		m_ZombCharCore[zid].m_HookState = HOOK_RETRACT_START;
+		m_ZombInput[zid].m_Hook = 0;
+		m_ZombHookClock[zid] = g_ZombHookCD[m_ZombType[zid]];
+	}
+}
+
 void CGameControllerZOMB::PlayerFireShotgun(i32 CID, vec2 Pos, vec2 Direction)
 {
 	const vec2 ProjStartPos = Pos + Direction *28.f*0.75f;
@@ -2988,8 +3034,6 @@ i32 CGameControllerZOMB::PlayerTryHitHammer(i32 CID, vec2 pos, vec2 direction)
 
 		if(distance(zombPos, hitAreaCenter) < hitAreaRadius) {
 			GameServer()->CreateHammerHit(zombPos);
-			m_ZombInput[i].m_Hook = 0;
-			m_ZombHookClock[i] = SecondsToTick(5.0f);
 
 			vec2 dir;
 			if(length(zombPos - pos) > 0.0f) {
