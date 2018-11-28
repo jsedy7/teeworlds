@@ -62,6 +62,9 @@ class CGameControllerZOMB : public IGameController
 	i32 m_ZombEyes[MAX_ZOMBS];
 	i32 m_ZombEyesClock[MAX_ZOMBS];
 
+	i32 m_ZombInvisClock[MAX_ZOMBS];
+	bool m_ZombInvisible[MAX_ZOMBS];
+
 	char m_MapName[128];
 	u8 m_Map[MAX_MAP_SIZE];
 	i32 m_MapWidth;
@@ -79,6 +82,7 @@ class CGameControllerZOMB : public IGameController
 	struct SpawnCmd {
 		u8 type;
 		u8 isElite;
+		u8 isEnraged;
 	};
 
 	SpawnCmd m_WaveData[MAX_WAVES][MAX_SPAWN_QUEUE];
