@@ -182,6 +182,7 @@ class CGameControllerZOMB : public IGameController
 	void GameLost();
 	void GameCleanUp();
 	void ChatMessage(const char* msg);
+	void BroadcastMessage(const char* msg);
 	void AnnounceWave(u32 waveID);
 	void TickWaveGame();
 

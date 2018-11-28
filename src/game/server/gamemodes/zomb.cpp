@@ -57,7 +57,7 @@ inline T z_abs(T var) {
 #define BULL_CHARGE_SPEED 1850.f
 #define BULL_KNOCKBACK_FORCE 30.f
 
-#define MUDGE_PULL_STR 1.3f
+#define MUDGE_PULL_STR 1.1f
 #define TANK_PULL_STR 1.0f
 
 #define HUNTER_CHARGE_CD (SecondsToTick(1.5f))
@@ -164,7 +164,7 @@ static const f32 g_ZombHookRange[] = {
 	350.f, // ZTYPE_TANK
 	300.f, // ZTYPE_BOOMER
 	300.f, // ZTYPE_BULL
-	1000.f,// ZTYPE_MUDGE
+	800.f, // ZTYPE_MUDGE
 	300.f, // ZTYPE_HUNTER
 	300.f, // ZTYPE_DOMINANT
 	300.f, // ZTYPE_BERSERKER
@@ -1599,8 +1599,10 @@ void CGameControllerZOMB::GameLost()
 		i32 min = t / 60;
 		i32 sec = t % 60;
 		char msgBuff[256];
-		str_format(msgBuff, sizeof(msgBuff), ">> You survived %d min %d sec", min, sec);
+		str_format(msgBuff, sizeof(msgBuff), ">> You survived %d min %d sec, good job!", min, sec);
 		ChatMessage(msgBuff);
+		str_format(msgBuff, sizeof(msgBuff), "You survived ^090%d min %d sec^999, good job!", min, sec);
+		BroadcastMessage(msgBuff);
 	}
 
 	EndMatch();
@@ -1648,6 +1650,13 @@ void CGameControllerZOMB::ChatMessage(const char* msg)
 	chatMsg.m_TargetID = -1;
 	chatMsg.m_pMessage = msg;
 	Server()->SendPackMsg(&chatMsg, MSGFLAG_VITAL, -1);
+}
+
+void CGameControllerZOMB::BroadcastMessage(const char* msg)
+{
+	CNetMsg_Sv_Broadcast Broadcast;
+	Broadcast.m_pMessage = msg;
+	Server()->SendPackMsg(&Broadcast, MSGFLAG_VITAL, -1);
 }
 
 void CGameControllerZOMB::AnnounceWave(u32 waveID)
@@ -2491,7 +2500,9 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	m_Seed = 1337;
 	m_GameFlags = 0;
 
+	m_GameInfo.m_ScoreLimit = 0;
 	g_Config.m_SvWarmup = 0;
+	g_Config.m_SvScorelimit = 0;
 
 	// get map info
 	memcpy(m_MapName, g_Config.m_SvMap, sizeof(g_Config.m_SvMap));
