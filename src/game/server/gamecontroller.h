@@ -56,7 +56,7 @@ class IGameController
 
 	virtual void DoWincheckMatch();
 	virtual void DoWincheckRound() {};
-	bool HasEnoughPlayers() const { return (IsTeamplay() && m_aTeamSize[TEAM_RED] > 0 && m_aTeamSize[TEAM_BLUE] > 0) || (!IsTeamplay() && m_aTeamSize[TEAM_RED] > 1); }
+	virtual bool HasEnoughPlayers() const { return (IsTeamplay() && m_aTeamSize[TEAM_RED] > 0 && m_aTeamSize[TEAM_BLUE] > 0) || (!IsTeamplay() && m_aTeamSize[TEAM_RED] > 1); }
 	void ResetGame();
 	void SetGameState(EGameState GameState, int Timer=0);
 	void StartMatch();
@@ -159,7 +159,7 @@ public:
 	*/
 	virtual bool OnEntity(int Index, vec2 Pos);
 
-	void OnPlayerConnect(class CPlayer *pPlayer);
+	virtual void OnPlayerConnect(class CPlayer *pPlayer);
 	void OnPlayerDisconnect(class CPlayer *pPlayer);
 	void OnPlayerInfoChange(class CPlayer *pPlayer);
 	void OnPlayerReadyChange(class CPlayer *pPlayer);

@@ -47,7 +47,7 @@ inline T z_abs(T var) {
 #define SPAWN_INTERVAL_SURV (SecondsToTick(5.f))
 #define WAVE_WAIT_TIME (SecondsToTick(10))
 
-#define DEFAULT_ENRAGE_TIME 30
+#define DEFAULT_ENRAGE_TIME 180
 #define SURVIVAL_ENRAGE_TIME 30
 
 #define BOOMER_EXPLOSION_INNER_RADIUS 150.f
@@ -71,6 +71,8 @@ inline T z_abs(T var) {
 #define HEALING_INTERVAL (SecondsToTick(0.5f))
 #define HEALING_AMOUNT 1
 #define ELITE_DMG_MULTIPLIER 1.5f
+
+#define AURA_RADIUS 600.0f
 
 #define SURVIVAL_MAX_TIME (SecondsToTick(240))
 
@@ -1294,20 +1296,19 @@ void CGameControllerZOMB::HandleBerserker(u32 zid)
 void CGameControllerZOMB::HandleWartule(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS)
 {
 	m_ZombInput[zid].m_Hook = 0; // wartules don't hook
+	m_ZombActiveWeapon[zid] = WEAPON_GRENADE;
+
+	if(targetDist < 350.f && targetLOS) {
+		// flee! :s (for 1 s)
+		m_ZombDestination[zid].x = m_ZombCharCore[zid].m_Pos.x - (targetPos.x - m_ZombCharCore[zid].m_Pos.x);
+		m_ZombPathFindClock[zid] = SecondsToTick(1.f);
+		ChangeEyes(zid, EMOTE_PAIN, 1.f);
+	}
 
 	// throw grenades at people
 	if(targetDist > 80.f && targetLOS) {
-		m_ZombActiveWeapon[zid] = WEAPON_GRENADE;
-
-		if(targetDist < 350.f) {
-			// flee! :s (for 1 s)
-			m_ZombDestination[zid].x = m_ZombCharCore[zid].m_Pos.x - (targetPos.x - m_ZombCharCore[zid].m_Pos.x);
-			m_ZombPathFindClock[zid] = SecondsToTick(1.f);
-			ChangeEyes(zid, EMOTE_PAIN, 1.f);
-		}
-
 		if(m_ZombAttackClock[zid] <= 0 &&
-		   (m_ZombPathFindClock[zid] > SecondsToTick(0.25f) || targetDist < 400.f)) { // hacky
+		   (m_ZombPathFindClock[zid] > SecondsToTick(0.25f) || targetDist < 400.f)) { // when feeing and when close enough
 			i32 dmg = WARTULE_GRENADE_DMG;
 			if(m_ZombBuff[zid]&BUFF_ELITE) {
 				dmg *= ELITE_DMG_MULTIPLIER;
@@ -1329,23 +1330,29 @@ void CGameControllerZOMB::HandleWartule(u32 zid, const vec2& targetPos, f32 targ
 		m_ZombInput[zid].m_TargetY = m_ZombLastShotDir[zid].y * 10.f;
 	}
 	else {
-		m_ZombActiveWeapon[zid] = WEAPON_HAMMER;
 		m_ZombLastShotDir[zid] = targetPos - m_ZombCharCore[zid].m_Pos;
 	}
 }
 
 void CGameControllerZOMB::TickZombies()
 {
-	// aura givers
-	bool domninantAura = false;
-	bool wartuleAura = false;
-	for(u32 i = 0; i < MAX_ZOMBS && (!domninantAura || !wartuleAura); ++i) {
-		if(m_ZombAlive[i]) {
-			if(m_ZombType[i] == ZTYPE_DOMINANT) {
-				domninantAura = true;
-			}
-			if(m_ZombType[i] == ZTYPE_WARTULE) {
-				wartuleAura = true;
+	// apply auras (could be optimized)
+	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
+		// remove auras
+		m_ZombBuff[i] &= ~BUFF_HEALING;
+		m_ZombBuff[i] &= ~BUFF_ARMORED;
+
+		for(u32 CheckID = 0; CheckID < MAX_ZOMBS; ++CheckID) {
+			if(i == CheckID) continue;
+
+			if(m_ZombAlive[CheckID] &&
+			   distance(m_ZombCharCore[i].m_Pos, m_ZombCharCore[CheckID].m_Pos) < AURA_RADIUS) {
+				if(m_ZombType[CheckID] == ZTYPE_DOMINANT) {
+					m_ZombBuff[i] |= BUFF_ARMORED;
+				}
+				else if(m_ZombType[CheckID] == ZTYPE_WARTULE) {
+					m_ZombBuff[i] |= BUFF_HEALING;
+				}
 			}
 		}
 	}
@@ -1362,21 +1369,6 @@ void CGameControllerZOMB::TickZombies()
 		--m_ZombChargeClock[i];
 		--m_ZombHealClock[i];
 		--m_ZombEyesClock[i];
-
-		// auras
-		if(domninantAura && m_ZombType[i] != ZTYPE_DOMINANT) {
-			m_ZombBuff[i] |= BUFF_ARMORED;
-		}
-		else {
-			m_ZombBuff[i] &= ~BUFF_ARMORED;
-		}
-
-		if(wartuleAura && m_ZombType[i] != ZTYPE_WARTULE) {
-			m_ZombBuff[i] |= BUFF_HEALING;
-		}
-		else {
-			m_ZombBuff[i] &= ~BUFF_HEALING;
-		}
 
 		// enrage
 		if(m_ZombEnrageClock[i] <= 0 && !(m_ZombBuff[i]&BUFF_ENRAGED)) {
@@ -2497,6 +2489,9 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	m_ZombSpawnPointCount = 0;
 	m_SurvSpawnPointCount = 0;
 	m_Seed = 1337;
+	m_GameFlags = 0;
+
+	g_Config.m_SvWarmup = 0;
 
 	// get map info
 	memcpy(m_MapName, g_Config.m_SvMap, sizeof(g_Config.m_SvMap));
@@ -2826,8 +2821,10 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 
 void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 {
+	if(m_ZombGameState != ZSTATE_NONE) {
+		PlayerActivateDeadSpectate(pPlayer);
+	}
 	IGameController::OnPlayerConnect(pPlayer);
-	PlayerActivateDeadSpectate(pPlayer);
 
 	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
 		SendZombieInfos(i, pPlayer->GetCID());
@@ -2943,6 +2940,16 @@ void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, i32 From, i3
 		return;
 	}
 
+	if(m_ZombBuff[zid]&BUFF_ARMORED) {
+		Dmg *= (1.f - ARMOR_DMG_REDUCTION);
+		if(Dmg < 1) {
+			if(randf01(&m_Seed) < ARMOR_DMG_REDUCTION) {
+				return;
+			}
+			Dmg = 1;
+		}
+	}
+
 	// teammates can make the zombie stop hooking
 	if(From >= 0 && From != m_ZombSurvTarget[zid])
 		ZombStopHooking(zid);
@@ -2956,16 +2963,6 @@ void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, i32 From, i3
 				Mask |= CmaskOne(i);
 		}
 		GameServer()->CreateSound(GameServer()->m_apPlayers[From]->m_ViewPos, SOUND_HIT, Mask);
-	}
-
-	if(m_ZombBuff[zid]&BUFF_ARMORED) {
-		Dmg *= (1.f - ARMOR_DMG_REDUCTION);
-		if(Dmg < 1) {
-			if(randf01(&m_Seed) < ARMOR_DMG_REDUCTION) {
-				return;
-			}
-			Dmg = 1;
-		}
 	}
 
 	// make sure damage indicators don't group together
@@ -3125,7 +3122,6 @@ bool CGameControllerZOMB::PlayerProjectileTick(i32 ownerCID, vec2 prevPos, vec2 
 void CGameControllerZOMB::PlayerActivateDeadSpectate(CPlayer* player)
 {
 	player->m_RespawnDisabled = true;
-	player->m_DeadSpecMode = true;
 
 	for(i32 i = 0; i < MAX_SURVIVORS; i++) {
 		CCharacter* chara = GameServer()->GetPlayerChar(i);
