@@ -8,10 +8,6 @@
 #define MAX_SURVIVORS 4
 #define MAX_ZOMBS (MAX_CLIENTS - MAX_SURVIVORS)
 #define MAX_MAP_SIZE (1024 * 1024)
-#define MAX_WAVES 128
-#define MAX_SPAWN_QUEUE 256
-#define MAX_LASERS 64
-#define MAX_PROJECTILES 256
 
 typedef uint8_t u8;
 typedef int32_t i32;
@@ -21,6 +17,15 @@ typedef double f64;
 
 class CGameControllerZOMB : public IGameController
 {
+	enum {
+		MAX_WAVES = 128,
+		MAX_SPAWN_QUEUE = 256,
+		MAX_LASERS = 64,
+		MAX_PROJECTILES = 256,
+		MAX_TEE_SPAWN_POINTS = 32,
+		MAX_FLAG_SPAWN_POINTS = 16,
+	};
+
 	friend class CPlayer;
 	i32 m_Tick;
 	u32 m_Seed;
@@ -70,8 +75,8 @@ class CGameControllerZOMB : public IGameController
 	i32 m_MapWidth;
 	i32 m_MapHeight;
 
-	vec2 m_ZombSpawnPoint[64];
-	vec2 m_SurvSpawnPoint[64];
+	vec2 m_ZombSpawnPoint[MAX_TEE_SPAWN_POINTS];
+	vec2 m_SurvSpawnPoint[MAX_TEE_SPAWN_POINTS];
 	u32 m_ZombSpawnPointCount;
 	u32 m_SurvSpawnPointCount;
 
@@ -96,8 +101,9 @@ class CGameControllerZOMB : public IGameController
 
 	// revive ctf
 	u32 m_BlueFlagSpawnCount;
-	vec2 m_BlueFlagSpawn[32];
-	vec2 m_RedFlagSpawn;
+	u32 m_RedFlagSpawnCount;
+	vec2 m_BlueFlagSpawn[MAX_FLAG_SPAWN_POINTS];
+	vec2 m_RedFlagSpawn[MAX_FLAG_SPAWN_POINTS];
 	vec2 m_RedFlagPos;
 	vec2 m_RedFlagVel;
 	vec2 m_BlueFlagPos;

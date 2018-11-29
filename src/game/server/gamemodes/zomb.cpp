@@ -1203,7 +1203,7 @@ void CGameControllerZOMB::HandleHunter(u32 zid, const vec2& targetPos, f32 targe
 	i32 zombCID = ZombCID(zid);
 
 	// CHARRRGE
-	if(m_ZombChargeClock[zid] <= 0 && targetDist > 100.f && targetDist < 600.f && targetLOS) {
+	if(m_ZombChargeClock[zid] <= 0 && targetDist < 500.f && targetLOS) {
 		m_ZombChargeClock[zid] = HUNTER_CHARGE_CD;
 		f32 chargeDist = targetDist * 1.5f; // overcharge a bit
 		m_ZombChargingClock[zid] = SecondsToTick(chargeDist/HUNTER_CHARGE_SPEED);
@@ -1741,7 +1741,7 @@ void CGameControllerZOMB::TickWaveGame()
 
 void CGameControllerZOMB::ActivateReviveCtf()
 {
-	m_RedFlagPos = m_RedFlagSpawn;
+	m_RedFlagPos = m_RedFlagSpawn[m_Tick%m_RedFlagSpawnCount];
 	m_BlueFlagPos = m_BlueFlagSpawn[m_Tick%m_BlueFlagSpawnCount];
 	m_RedFlagCarrier = -1;
 	m_RedFlagVel = vec2(0, 0);
@@ -2577,6 +2577,7 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	m_ZombGameState = ZSTATE_NONE;
 	m_RestartClock = -1;
 
+	m_RedFlagSpawnCount = 0;
 	m_BlueFlagSpawnCount = 0;
 	m_IsReviveCtfActive = false;
 	m_CanPlayersRespawn = true;
@@ -2902,18 +2903,21 @@ bool CGameControllerZOMB::OnEntity(int Index, vec2 Pos)
 	bool r = IGameController::OnEntity(Index, Pos);
 
 	if(Index == ENTITY_SPAWN_BLUE || Index == ENTITY_SPAWN) {
-		m_ZombSpawnPoint[m_ZombSpawnPointCount++] = Pos;
+		if(m_ZombSpawnPointCount < MAX_TEE_SPAWN_POINTS)
+			m_ZombSpawnPoint[m_ZombSpawnPointCount++] = Pos;
 	}
 	if(Index == ENTITY_SPAWN_RED || Index == ENTITY_SPAWN) {
-		m_SurvSpawnPoint[m_SurvSpawnPointCount++] = Pos;
+		if(m_SurvSpawnPointCount < MAX_TEE_SPAWN_POINTS)
+			m_SurvSpawnPoint[m_SurvSpawnPointCount++] = Pos;
 	}
 
 	if(Index == ENTITY_FLAGSTAND_RED) {
-		m_RedFlagSpawn = Pos;
+		if(m_RedFlagSpawnCount < MAX_FLAG_SPAWN_POINTS)
+			m_RedFlagSpawn[m_RedFlagSpawnCount++] = Pos;
 	}
-
-	if(Index == ENTITY_FLAGSTAND_BLUE) {
-		m_BlueFlagSpawn[m_BlueFlagSpawnCount++] = Pos;
+	else if(Index == ENTITY_FLAGSTAND_BLUE) {
+		if(m_RedFlagSpawnCount < MAX_FLAG_SPAWN_POINTS)
+			m_BlueFlagSpawn[m_BlueFlagSpawnCount++] = Pos;
 	}
 
 	return r;
