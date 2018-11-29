@@ -830,7 +830,14 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 	nci.m_aUseCustomColors[SKINPART_BODY] = 0;
 	nci.m_aSkinPartColors[SKINPART_BODY] = 0;
 
-	nci.m_pName = g_ZombName[m_ZombType[zid]];
+	static char s_aName[64];
+	if(m_ZombBuff[zid]&BUFF_ELITE) {
+		str_format(s_aName, sizeof(s_aName), "Elite %s", g_ZombName[m_ZombType[zid]]);
+		nci.m_pName = s_aName;
+	}
+	else {
+		nci.m_pName = g_ZombName[m_ZombType[zid]];
+	}
 
 	switch(m_ZombType[zid]) {
 		case ZTYPE_BASIC:
@@ -949,7 +956,12 @@ void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos, bool ta
 
 	vec2& dest = m_ZombDestination[zid];
 	if(m_ZombPathFindClock[zid] <= 0) {
-		dest = PathFind(pos, targetPos);
+		if(targetLOS) {
+			dest = targetPos;
+		}
+		else {
+			dest = PathFind(pos, targetPos);
+		}
 		m_ZombDestination[zid] = dest;
 		m_ZombPathFindClock[zid] = 2;
 	}
@@ -984,12 +996,26 @@ void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos, bool ta
 		m_ZombAirJumps[zid] = 2;
 	}
 
+	const bool destLOS = (GameServer()->Collision()->IntersectLine(pos, dest, 0, 0) == 0);
+
 	// jump
 	input.m_Jump = 0;
 	f32 xDist = z_abs(dest.x - pos.x);
 	f32 yDist = z_abs(dest.y - pos.y);
-	if(m_ZombJumpClock[zid] <= 0 && dest.y < pos.y && xDist < 200.0f) {
-		if(yDist > 10.f) {
+
+	// don't excessively jump when target does
+	if(destLOS) {
+		if(yDist < 20.f || xDist > 150.0f) {
+			m_ZombJumpClock[zid] = 1;
+		}
+	}
+
+	if(m_ZombJumpClock[zid] <= 0 && dest.y < pos.y) {
+		if(yDist > 300.f) {
+			input.m_Jump = ZOMBIE_BIGJUMP;
+			m_ZombJumpClock[zid] = SecondsToTick(1.0f);
+		}
+		else if(yDist > 10.f) {
 			if(grounded) {
 				input.m_Jump = ZOMBIE_GROUNDJUMP;
 				m_ZombJumpClock[zid] = SecondsToTick(0.5f);
@@ -1000,15 +1026,6 @@ void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos, bool ta
 				--m_ZombAirJumps[zid];
 			}
 		}
-		if(yDist > 300.f) {
-			input.m_Jump = ZOMBIE_BIGJUMP;
-			m_ZombJumpClock[zid] = SecondsToTick(1.0f);
-		}
-	}
-
-	// don't excessively jump when target does
-	if(dest == targetPos && targetLOS && yDist < 20.f) {
-		input.m_Jump = 0;
 	}
 }
 
@@ -1786,7 +1803,9 @@ void CGameControllerZOMB::TickWaveGame()
 				WaveGameWon();
 			}
 			else {
-				ChatMessage(">> Wave complete.");
+				char aBuff[128];
+				str_format(aBuff, sizeof(aBuff), ">> Wave %d complete.", m_CurrentWave);
+				ChatMessage(aBuff);
 				ChatMessage(">> 10s until next wave.");
 				AnnounceWave(m_CurrentWave + 1);
 			}
@@ -2667,6 +2686,8 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 
 void CGameControllerZOMB::Tick()
 {
+	m_DbgLinesCount = 0;
+
 	m_Tick = Server()->Tick();
 	IGameController::Tick();
 
@@ -3177,9 +3198,11 @@ i32 CGameControllerZOMB::PlayerTryHitHammer(i32 CID, vec2 pos, vec2 direction)
 				dir = vec2(0.f, -1.f);
 			}
 
+			i32 zid = ZombCID(i);
 			ZombTakeDmg(ZombCID(i), dir * g_WeaponForceOnZomb[WEAPON_HAMMER],
 						g_WeaponDmgOnZomb[WEAPON_HAMMER],
 						CID, WEAPON_HAMMER);
+			ZombStopHooking(zid);
 			hits++;
 		}
 	}
