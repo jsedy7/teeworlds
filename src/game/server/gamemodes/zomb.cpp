@@ -82,7 +82,8 @@ enum {
 	SKINPART_DECORATION,
 	SKINPART_HANDS,
 	SKINPART_FEET,
-	SKINPART_EYES
+	SKINPART_EYES,
+	SKINPART_COUNT
 };
 
 enum {
@@ -97,6 +98,11 @@ enum {
 	ZTYPE_WARTULE,
 
 	ZTYPE_MAX,
+};
+
+enum {
+	SURV_STATUS_OK=0,
+	SURV_STATUS_LOW_HEALTH
 };
 
 static const char* g_ZombName[] = {
@@ -884,6 +890,55 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 	nci.m_aSkinPartColors[SKINPART_FEET] = handFeetColor;
 
 	//dbg_zomb_msg("zombInfo (zombCID=%d CID=%d)", zombCID, CID);
+	Server()->SendPackMsg(&nci, MSGFLAG_VITAL|MSGFLAG_NORECORD, CID);
+}
+
+void CGameControllerZOMB::SendSurvivorStatus(i32 SurvCID, i32 CID, i32 Status)
+{
+	CPlayer** apPlayers = GameServer()->m_apPlayers;
+	if(SurvCID == CID || !apPlayers[CID]) return;
+
+	// send drop first
+	CNetMsg_Sv_ClientDrop Msg;
+	Msg.m_ClientID = SurvCID;
+	Msg.m_pReason = "";
+	Msg.m_Silent = 1;
+	Server()->SendPackMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_NORECORD, CID);
+
+	// then update
+	CNetMsg_Sv_ClientInfo nci;
+	nci.m_ClientID = SurvCID;
+	nci.m_Local = 0;
+	nci.m_Team = 0;
+	nci.m_pName = Server()->ClientName(SurvCID);
+	nci.m_pClan = Server()->ClientClan(SurvCID);
+	nci.m_Country = Server()->ClientCountry(SurvCID);
+	nci.m_Silent = 1;
+
+	for(i32 i = 0; i < SKINPART_COUNT; i++)
+	{
+		nci.m_apSkinPartNames[i] = apPlayers[SurvCID]->m_TeeInfos.m_aaSkinPartNames[i];
+	}
+
+	if(Status == SURV_STATUS_LOW_HEALTH)
+	{
+		const i32 red = PackColor(0, 255, 64);
+		for(i32 i = 0; i < SKINPART_COUNT; i++)
+		{
+			nci.m_aUseCustomColors[i] = 1;
+			nci.m_aSkinPartColors[i] = red;
+		}
+	}
+	else
+	{
+		for(i32 i = 0; i < SKINPART_COUNT; i++)
+		{
+			nci.m_aUseCustomColors[i] = apPlayers[SurvCID]->m_TeeInfos.m_aUseCustomColors[i];
+			nci.m_aSkinPartColors[i] = apPlayers[SurvCID]->m_TeeInfos.m_aSkinPartColors[i];
+		}
+	}
+
+	dbg_zomb_msg("sending survivorInfo (SurvCID=%d CID=%d Status=%d)", SurvCID, CID, Status);
 	Server()->SendPackMsg(&nci, MSGFLAG_VITAL|MSGFLAG_NORECORD, CID);
 }
 
@@ -2655,6 +2710,32 @@ void CGameControllerZOMB::Tick()
 
 	if(m_IsReviveCtfActive && m_ZombGameState != ZSTATE_NONE) {
 		TickReviveCtf();
+	}
+
+	static i32 aLastSurvDanger[MAX_SURVIVORS] = {0};
+	for(i32 i = 0; i < MAX_SURVIVORS; i++)
+	{
+		const CCharacter* pChar = GameServer()->GetPlayerChar(i);
+		if(pChar && pChar->IsAlive())
+		{
+			const f32 HealthDanger = (pChar->m_Health * 3 + pChar->m_Armor) / 4.0f;
+			if(aLastSurvDanger[i] == 0 && HealthDanger < 5)
+			{
+				aLastSurvDanger[i] = 1;
+				for(i32 s = 0; s < MAX_SURVIVORS; s++)
+				{
+					SendSurvivorStatus(i, s, SURV_STATUS_LOW_HEALTH);
+				}
+			}
+			else if(aLastSurvDanger[i] == 1 && HealthDanger >= 5)
+			{
+				aLastSurvDanger[i] = 0;
+				for(i32 s = 0; s < MAX_SURVIVORS; s++)
+				{
+					SendSurvivorStatus(i, s, SURV_STATUS_OK);
+				}
+			}
+		}
 	}
 }
 

@@ -172,6 +172,7 @@ class CGameControllerZOMB : public IGameController
 	vec2 PathFind(vec2 start, vec2 end);
 
 	void SendZombieInfos(i32 zid, i32 CID);
+	void SendSurvivorStatus(i32 SurvCID, i32 CID, i32 Status);
 
 	void HandleMovement(u32 zid, const vec2& targetPos, bool targetLOS);
 	void HandleHook(u32 zid, f32 targetDist, bool targetLOS);
