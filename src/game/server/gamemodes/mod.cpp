@@ -6,6 +6,8 @@
 #include <game/server/player.h>
 #include <game/server/entities/character.h>
 
+#define PLAYER_COUNT 10
+
 void CGameControllerMOD::SendDummyInfo(int DummyCID, int ToCID)
 {
 	enum
@@ -47,7 +49,7 @@ void CGameControllerMOD::SendDummyInfo(int DummyCID, int ToCID)
 	nci.m_apSkinPartNames[SKINPART_FEET] = "standard";
 	nci.m_aUseCustomColors[SKINPART_FEET] = 0;
 
-	dbg_msg("dummy", "(DummyCID=%d CID=%d)", DummyCID, ToCID);
+	//dbg_msg("dummy", "(DummyCID=%d CID=%d)", DummyCID, ToCID);
 	Server()->SendPackMsg(&nci, MSGFLAG_VITAL|MSGFLAG_NORECORD, ToCID);
 }
 
@@ -65,12 +67,9 @@ void CGameControllerMOD::OnPlayerConnect(CPlayer* pPlayer)
 	IGameController::OnPlayerConnect(pPlayer);
 	dbg_msg("dummy", "OnPlayerConnect(CID=%d)", pPlayer->GetCID());
 
-	if(pPlayer->GetCID() == 0)
+	for(int i = PLAYER_COUNT; i < MAX_CLIENTS; i++)
 	{
-		for(int i = 1; i < MAX_CLIENTS; i++)
-		{
-			SendDummyInfo(i, 0);
-		}
+		SendDummyInfo(i, pPlayer->GetCID());
 	}
 }
 
@@ -85,13 +84,13 @@ void CGameControllerMOD::Snap(int SnapCID)
 {
 	CGameControllerDM::Snap(SnapCID);
 
-	if(SnapCID == 0)
+	if(SnapCID < PLAYER_COUNT)
 	{
 		vec2 Pos = vec2(100, 100);
-		if(GameServer()->m_apPlayers[0]->GetCharacter())
-			Pos = GameServer()->m_apPlayers[0]->GetCharacter()->GetPos();
+		if(GameServer()->m_apPlayers[SnapCID]->GetCharacter())
+			Pos = GameServer()->m_apPlayers[SnapCID]->GetCharacter()->GetPos();
 
-		for(int i = 1; i < MAX_CLIENTS; i++)
+		for(int i = PLAYER_COUNT; i < MAX_CLIENTS; i++)
 		{
 			CNetObj_PlayerInfo *pPlayerInfo = (CNetObj_PlayerInfo *)Server()->SnapNewItem(NETOBJTYPE_PLAYERINFO, i, sizeof(CNetObj_PlayerInfo));
 			if(!pPlayerInfo)
