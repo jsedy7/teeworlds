@@ -677,7 +677,7 @@ void CGameContext::OnClientEnter(int ClientID)
 		"Völsung"
 	};
 
-	static const char* s_aDummyNames[MAX_CLIENTS] = {
+	static const char* s_aDummyNames[] = {
 		"Millicent",
 		"Alys",
 		"Ayleth",
@@ -733,7 +733,7 @@ void CGameContext::OnClientEnter(int ClientID)
 
 		if(m_apPlayers[i]->IsDummy())
 		{
-			ClientInfoMsg.m_pName = s_aDummyNames[i];
+			ClientInfoMsg.m_pName = s_aDummyNames[i % (sizeof(s_aDummyNames)/sizeof(s_aDummyNames[0]))];
 			ClientInfoMsg.m_pClan = s_aDummyClans[i % 5];
 			ClientInfoMsg.m_Country = s_aDummyCountryCodes[random_int() % sizeof(s_aDummyCountryCodes)/sizeof(int)];
 		}
