@@ -544,10 +544,15 @@ void CGameContext::OnTick()
 		{
 			CNetObj_PlayerInput Input = {0};
 			Input.m_Direction = (i&1)?-1:1;
+			Input.m_Fire = Server()->Tick()&1;
+			m_apPlayers[i]->OnDirectInput(&Input);
 			m_apPlayers[i]->OnPredictedInput(&Input);
 		}
 	}
 #endif
+
+	if(m_InstagibModifier.IsActivated())
+		m_InstagibModifier.OnTick();
 }
 
 // Server hooks
@@ -1428,6 +1433,8 @@ void CGameContext::OnInit()
 	m_Layers.Init(Kernel());
 	m_Collision.Init(&m_Layers);
 
+	m_InstagibModifier.ScanGametypeForActivation(this, g_Config.m_SvGametype);
+
 	// select gametype
 	if(str_comp_nocase(g_Config.m_SvGametype, "mod") == 0)
 		m_pController = new CGameControllerMOD(this);
@@ -1441,6 +1448,8 @@ void CGameContext::OnInit()
 		m_pController = new CGameControllerTDM(this);
 	else
 		m_pController = new CGameControllerDM(this);
+
+	m_InstagibModifier.OnInit(g_Config.m_SvGametype);
 
 	// create all entities from the game layer
 	CMapItemLayerTilemap *pTileMap = m_Layers.GameLayer();
@@ -1531,7 +1540,16 @@ bool CGameContext::IsClientPlayer(int ClientID) const
 	return m_apPlayers[ClientID] && m_apPlayers[ClientID]->GetTeam() == TEAM_SPECTATORS ? false : true;
 }
 
-const char *CGameContext::GameType() const { return m_pController && m_pController->GetGameType() ? m_pController->GetGameType() : ""; }
+const char *CGameContext::GameType() const
+{
+	if(m_pController)
+	{
+		if(m_InstagibModifier.IsActivated()) return m_InstagibModifier.m_GameType;
+		if(m_pController->GetGameType()) return m_pController->GetGameType();
+	}
+
+	return "";
+}
 const char *CGameContext::Version() const { return GAME_VERSION; }
 const char *CGameContext::NetVersion() const { return GAME_NETVERSION; }
 
