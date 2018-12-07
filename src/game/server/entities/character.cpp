@@ -80,6 +80,9 @@ bool CCharacter::Spawn(CPlayer *pPlayer, vec2 Pos)
 
 	GameServer()->m_pController->OnCharacterSpawn(this);
 
+	if(GameServer()->m_InstagibModifier.IsActivated())
+		GameServer()->m_InstagibModifier.OnCharacterSpawn(this);
+
 	return true;
 }
 
@@ -124,7 +127,7 @@ void CCharacter::HandleNinja()
 		// time's up, return
 		m_aWeapons[WEAPON_NINJA].m_Got = false;
 		m_ActiveWeapon = m_LastWeapon;
-		
+
 		// reset velocity
 		if(m_Ninja.m_CurrentMoveTime > 0)
 			m_Core.m_Vel = m_Ninja.m_ActivationDir*m_Ninja.m_OldVelAmount;
@@ -200,6 +203,12 @@ void CCharacter::HandleNinja()
 
 void CCharacter::DoWeaponSwitch()
 {
+	if(GameServer()->m_InstagibModifier.IsActivated())
+	{
+		GameServer()->m_InstagibModifier.CharacterDoWeaponSwitch(this);
+		return;
+	}
+
 	// make sure we can switch
 	if(m_ReloadTimer != 0 || m_QueuedWeapon == -1 || m_aWeapons[WEAPON_NINJA].m_Got)
 		return;
@@ -367,14 +376,19 @@ void CCharacter::FireWeapon()
 
 		case WEAPON_GRENADE:
 		{
-			new CProjectile(GameWorld(), WEAPON_GRENADE,
-				m_pPlayer->GetCID(),
-				ProjStartPos,
-				Direction,
-				(int)(Server()->TickSpeed()*GameServer()->Tuning()->m_GrenadeLifetime),
-				g_pData->m_Weapons.m_Grenade.m_pBase->m_Damage, true, 0, SOUND_GRENADE_EXPLODE, WEAPON_GRENADE);
+			if(GameServer()->m_InstagibModifier.IsActivated())
+				GameServer()->m_InstagibModifier.OnCharacterFireGrenade(this);
+			else
+			{
+				new CProjectile(GameWorld(), WEAPON_GRENADE,
+					m_pPlayer->GetCID(),
+					ProjStartPos,
+					Direction,
+					(int)(Server()->TickSpeed()*GameServer()->Tuning()->m_GrenadeLifetime),
+					g_pData->m_Weapons.m_Grenade.m_pBase->m_Damage, true, 0, SOUND_GRENADE_EXPLODE, WEAPON_GRENADE);
 
-			GameServer()->CreateSound(m_Pos, SOUND_GRENADE_FIRE);
+				GameServer()->CreateSound(m_Pos, SOUND_GRENADE_FIRE);
+			}
 		} break;
 
 		case WEAPON_LASER:
@@ -589,7 +603,7 @@ void CCharacter::TickDefered()
 			StartVelX.u, StartVelY.u);
 		GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "game", aBuf);
 	}
-	
+
 	m_TriggeredEvents |= m_Core.m_TriggeredEvents;
 
 	if(m_pPlayer->GetTeam() == TEAM_SPECTATORS)
@@ -684,6 +698,9 @@ bool CCharacter::TakeDamage(vec2 Force, vec2 Source, int Dmg, int From, int Weap
 
 	if(GameServer()->m_pController->IsFriendlyFire(m_pPlayer->GetCID(), From))
 		return false;
+
+	if(GameServer()->m_InstagibModifier.IsActivated())
+		return GameServer()->m_InstagibModifier.OnCharacterTakeDamage(this, Weapon, Force, From);
 
 	// m_pPlayer only inflicts half damage on self
 	if(From == m_pPlayer->GetCID())
@@ -819,6 +836,9 @@ void CCharacter::Snap(int SnappingClient)
 		if(250 - ((Server()->Tick() - m_LastAction)%(250)) < 5)
 			pCharacter->m_Emote = EMOTE_BLINK;
 	}
+
+	if(GameServer()->m_InstagibModifier.IsActivated())
+		GameServer()->m_InstagibModifier.OnCharacterSnap(this, pCharacter);
 }
 
 void CCharacter::PostSnap()

@@ -315,6 +315,9 @@ bool IGameController::OnEntity(int Index, vec2 Pos)
 			Type = PICKUP_NINJA;
 	}
 
+	if(GameServer()->m_InstagibModifier.IsActivated())
+		return false;
+
 	if(Type != -1)
 	{
 		new CPickup(&GameServer()->m_World, Type, Pos);
@@ -473,7 +476,7 @@ void IGameController::ResetGame()
 {
 	// reset the game
 	GameServer()->m_World.m_ResetRequested = true;
-	
+
 	SetGameState(IGS_GAME_RUNNING);
 	m_GameStartTick = Server()->Tick();
 	m_SuddenDeath = 0;
@@ -497,8 +500,8 @@ void IGameController::SetGameState(EGameState GameState, int Timer)
 			{
 				// run warmup till there're enough players
 				m_GameState = GameState;
- 				m_GameStateTimer = TIMER_INFINITE;
-		
+				m_GameStateTimer = TIMER_INFINITE;
+
 				// enable respawning in survival when activating warmup
 				if(m_GameFlags&GAMEFLAG_SURVIVAL)
 				{
@@ -537,7 +540,7 @@ void IGameController::SetGameState(EGameState GameState, int Timer)
 					m_GameState = GameState;
 					m_GameStateTimer = Timer*Server()->TickSpeed();
 				}
-		
+
 				// enable respawning in survival when activating warmup
 				if(m_GameFlags&GAMEFLAG_SURVIVAL)
 				{
@@ -761,7 +764,7 @@ void IGameController::Tick()
 		{
 			// timer still running
 			switch(m_GameState)
- 			{
+			{
 			case IGS_WARMUP_USER:
 				// check if player ready mode was disabled and it waits that all players are ready -> end warmup
 				if(!g_Config.m_SvPlayerReadyMode && m_GameStateTimer == TIMER_INFINITE)
@@ -780,7 +783,7 @@ void IGameController::Tick()
 			case IGS_END_ROUND:
 				// not effected
 				break;
- 			}
+			}
 		}
 	}
 
