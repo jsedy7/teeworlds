@@ -393,6 +393,8 @@ void CCharacter::FireWeapon()
 
 		case WEAPON_LASER:
 		{
+			if(GameServer()->m_InstagibModifier.IsActivated())
+				GameServer()->m_InstagibModifier.OnCharacterFireLaser(this);
 			new CLaser(GameWorld(), m_Pos, Direction, GameServer()->Tuning()->m_LaserReach, m_pPlayer->GetCID());
 			GameServer()->CreateSound(m_Pos, SOUND_LASER_FIRE);
 		} break;
