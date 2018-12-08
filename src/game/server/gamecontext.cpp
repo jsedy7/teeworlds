@@ -544,7 +544,8 @@ void CGameContext::OnTick()
 		{
 			CNetObj_PlayerInput Input = {0};
 			Input.m_Direction = (i&1)?-1:1;
-			Input.m_Fire = Server()->Tick()&1;
+			//Input.m_Fire = Server()->Tick()&1;
+			Input.m_NextWeapon = Server()->Tick()&1 ? (1&INPUT_STATE_MASK): 0;
 			m_apPlayers[i]->OnDirectInput(&Input);
 			m_apPlayers[i]->OnPredictedInput(&Input);
 		}
