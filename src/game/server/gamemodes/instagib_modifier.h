@@ -20,7 +20,6 @@ struct CInstagibModifier
 	void OnInit(char *pGameType);
 	void OnTick();
 	void OnCharacterSpawn(CCharacter* pChar);
-	void OnCharacterFireGrenade(CCharacter* pChar);
 	void OnCharacterFireLaser(CCharacter* pChar);
 	bool OnCharacterTakeDamage(CCharacter* pChar, int Weapon, vec2 Force, int FromCID);
 	void CharacterDoWeaponSwitch(CCharacter* pChar);

@@ -376,19 +376,14 @@ void CCharacter::FireWeapon()
 
 		case WEAPON_GRENADE:
 		{
-			if(GameServer()->m_InstagibModifier.IsActivated())
-				GameServer()->m_InstagibModifier.OnCharacterFireGrenade(this);
-			else
-			{
-				new CProjectile(GameWorld(), WEAPON_GRENADE,
-					m_pPlayer->GetCID(),
-					ProjStartPos,
-					Direction,
-					(int)(Server()->TickSpeed()*GameServer()->Tuning()->m_GrenadeLifetime),
-					g_pData->m_Weapons.m_Grenade.m_pBase->m_Damage, true, 0, SOUND_GRENADE_EXPLODE, WEAPON_GRENADE);
+			new CProjectile(GameWorld(), WEAPON_GRENADE,
+				m_pPlayer->GetCID(),
+				ProjStartPos,
+				Direction,
+				(int)(Server()->TickSpeed()*GameServer()->Tuning()->m_GrenadeLifetime),
+				g_pData->m_Weapons.m_Grenade.m_pBase->m_Damage, true, 0, SOUND_GRENADE_EXPLODE, WEAPON_GRENADE);
 
-				GameServer()->CreateSound(m_Pos, SOUND_GRENADE_FIRE);
-			}
+			GameServer()->CreateSound(m_Pos, SOUND_GRENADE_FIRE);
 		} break;
 
 		case WEAPON_LASER:

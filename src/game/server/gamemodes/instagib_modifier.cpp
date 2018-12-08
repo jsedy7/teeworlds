@@ -59,10 +59,6 @@ void CInstagibModifier::OnCharacterSpawn(CCharacter* pChar)
 	pChar->m_QueuedWeapon = -1;
 }
 
-void CInstagibModifier::OnCharacterFireGrenade(CCharacter* pChar)
-{
-}
-
 void CInstagibModifier::OnCharacterFireLaser(CCharacter* pChar)
 {
 	const int CID = pChar->GetPlayer()->GetCID();
