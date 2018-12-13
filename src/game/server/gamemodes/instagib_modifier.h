@@ -10,12 +10,21 @@ struct CNetObj_Character;
 
 struct CInstagibModifier
 {
-	CGameContext* m_pGameServer = nullptr;
-	bool m_Activated = false;
-	bool m_ConfigLaserJump = true;
-	bool m_ConfigShield = true;
+	CGameContext* m_pGameServer;
+	bool m_Activated;
+	bool m_ConfigLaserJump;
+	bool m_ConfigShield;
 	char m_GameType[64];
-	int m_ShieldCD[MAX_CLIENTS] = {0};
+	int m_ShieldCD[MAX_CLIENTS];
+
+	CInstagibModifier()
+	{
+		m_pGameServer = 0;
+		m_Activated = false;
+		m_ConfigLaserJump = true;
+		m_ConfigShield = true;
+		mem_zero(m_ShieldCD, sizeof(m_ShieldCD));
+	}
 
 	void ScanGametypeForActivation(CGameContext* pGameServer, char* pGameTypeStr);
 	bool IsActivated() const { return m_Activated; }
