@@ -203,8 +203,8 @@ bool CInstagibModifier::LaserDoBounce(CLaser* pLaser)
 
 	if(pHitChar)
 	{
-		const bool SameTeam = m_pGameServer->m_apPlayers[pLaser->m_Owner] && m_pGameServer->m_apPlayers[pLaser->m_Owner]->GetTeam() ==
-			pHitChar->GetPlayer()->GetTeam();
+		const bool SameTeam = m_pGameServer->m_apPlayers[pLaser->m_Owner] &&
+			m_pGameServer->m_apPlayers[pLaser->m_Owner]->GetTeam() == pHitChar->GetPlayer()->GetTeam();
 
 		const int HitCID = pHitChar->GetPlayer()->GetCID();
 		if(!SameTeam && m_ShieldCD[HitCID] >= (SHIELD_COOLDOWN-SHIELD_DURATION))
@@ -215,20 +215,13 @@ bool CInstagibModifier::LaserDoBounce(CLaser* pLaser)
 
 			if(dot(TargetDir, LaserDir) < -0.5f)
 			{
-				const float LaserDist = distance(At, From);
+				const float LaserDist = distance(From, At);
 				To = At - LaserDir * 75;
 
 				// intersected
 				pLaser->m_From = pLaser->m_Pos;
 				pLaser->m_Pos = To;
-				pLaser->m_Dir = -pLaser->m_Dir;
-
-				pLaser->m_Energy -= distance(pLaser->m_From, pLaser->m_Pos) +
-									m_pGameServer->Tuning()->m_LaserBounceCost;
-				pLaser->m_Bounces++;
-
-				if(pLaser->m_Bounces > m_pGameServer->Tuning()->m_LaserBounceNum)
-					pLaser->m_Energy = -1;
+				pLaser->m_Energy = -1;
 
 				m_pGameServer->CreateSound(pLaser->m_Pos, SOUND_LASER_BOUNCE);
 
@@ -246,7 +239,7 @@ bool CInstagibModifier::LaserDoBounce(CLaser* pLaser)
 
 				m_pGameServer->CreateSound(pHitChar->m_Pos, SOUND_PLAYER_PAIN_LONG);
 				pHitChar->m_EmoteType = EMOTE_PAIN;
-				pHitChar->m_EmoteStop = m_pGameServer->Server()->Tick() + 500 *
+				pHitChar->m_EmoteStop = m_pGameServer->Server()->Tick() + 750 *
 										m_pGameServer->Server()->TickSpeed() / 1000;
 				return true;
 			}
