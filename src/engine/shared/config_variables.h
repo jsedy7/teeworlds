@@ -98,4 +98,7 @@ MACRO_CONFIG_INT(DbgHitch, dbg_hitch, 0, 0, 0, CFGFLAG_SERVER, "Hitch warnings")
 MACRO_CONFIG_STR(DbgStressServer, dbg_stress_server, 32, "localhost", CFGFLAG_CLIENT, "Server to stress")
 MACRO_CONFIG_INT(DbgResizable, dbg_resizable, 0, 0, 0, CFGFLAG_CLIENT, "Enables window resizing")
 
+MACRO_CONFIG_INT(InstaShield, insta_shield, 1, 0, 1, CFGFLAG_SAVE|CFGFLAG_SERVER, "Instagib: Enable shield")
+MACRO_CONFIG_INT(InstaLaserJump, insta_laser_jump, 1, 0, 1, CFGFLAG_SAVE|CFGFLAG_SERVER, "Instagib: Enable laser jump")
+
 #endif
