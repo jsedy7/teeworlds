@@ -12,6 +12,8 @@ struct CInstagibModifier
 {
 	CGameContext* m_pGameServer = nullptr;
 	bool m_Activated = false;
+	bool m_ConfigLaserJump = true;
+	bool m_ConfigShield = true;
 	char m_GameType[64];
 	int m_ShieldCD[MAX_CLIENTS] = {0};
 

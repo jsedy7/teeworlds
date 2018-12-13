@@ -38,6 +38,9 @@ void CInstagibModifier::OnInit(char *pGameType)
 
 void CInstagibModifier::OnTick()
 {
+	m_ConfigLaserJump = g_Config.m_InstaLaserJump;
+	m_ConfigShield = g_Config.m_InstaShield;
+
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		if(m_ShieldCD[i] > 0)
@@ -61,6 +64,9 @@ void CInstagibModifier::OnCharacterSpawn(CCharacter* pChar)
 
 void CInstagibModifier::OnCharacterFireLaser(CCharacter* pChar)
 {
+	if(!m_ConfigLaserJump)
+		return;
+
 	const int CID = pChar->GetPlayer()->GetCID();
 	const vec2 Pos = pChar->m_Pos;
 	const vec2 TargetDir = normalize(vec2(pChar->m_LatestInput.m_TargetX, pChar->m_LatestInput.m_TargetY));
@@ -109,6 +115,9 @@ int CountInput(int Prev, int Cur)
 
 void CInstagibModifier::CharacterDoWeaponSwitch(CCharacter* pChar)
 {
+	if(!m_ConfigShield)
+		return;
+
 	const int CID = pChar->GetPlayer()->GetCID();
 	const vec2 Pos = pChar->m_Pos;
 	int ShieldInputCount = CountInput(pChar->m_LatestPrevInput.m_NextWeapon, pChar->m_LatestInput.m_NextWeapon);
@@ -133,6 +142,9 @@ void CInstagibModifier::CharacterDoWeaponSwitch(CCharacter* pChar)
 
 void CInstagibModifier::OnCharacterSnap(CCharacter* pChar, CNetObj_Character* pNetChar)
 {
+	if(!m_ConfigShield)
+		return;
+
 	const vec2 Pos = pChar->m_Pos;
 	const int CID = pChar->GetPlayer()->GetCID();
 	pNetChar->m_Armor = 10 - ((float)m_ShieldCD[CID]/SHIELD_COOLDOWN * 10);
@@ -194,6 +206,9 @@ void CInstagibModifier::OnCharacterSnap(CCharacter* pChar, CNetObj_Character* pN
 
 bool CInstagibModifier::LaserDoBounce(CLaser* pLaser)
 {
+	if(!m_ConfigShield)
+		return false;
+
 	vec2 From = pLaser->m_Pos;
 	vec2 To = pLaser->m_Pos + pLaser->m_Dir * pLaser->m_Energy;
 	CCharacter* pOwnerChar = m_pGameServer->GetPlayerChar(pLaser->m_Owner);
