@@ -96,7 +96,7 @@ bool CInstagibModifier::OnCharacterTakeDamage(CCharacter* pChar, int Weapon, vec
 	return true;
 }
 
-int CountInput(int Prev, int Cur)
+static int CountInput(int Prev, int Cur)
 {
 	int Presses = 0;
 	Prev &= INPUT_STATE_MASK;
@@ -230,7 +230,6 @@ bool CInstagibModifier::LaserDoBounce(CLaser* pLaser)
 
 			if(dot(TargetDir, LaserDir) < -0.5f)
 			{
-				const float LaserDist = distance(From, At);
 				To = At - LaserDir * 75;
 
 				// intersected
