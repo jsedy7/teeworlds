@@ -385,7 +385,7 @@ void CGameControllerZOMB::SwingHammer(i32 zid, u32 dmg, f32 knockback)
 
 		vec2 kbForce = vec2(0.f, -1.f) + normalize(kbDir + vec2(0.f, -1.1f)) * knockback;
 
-		pTarget->TakeDamage(kbForce, dmg, ZombCID(zid), WEAPON_HAMMER);
+		pTarget->TakeDamage(kbForce, kbDir, dmg, ZombCID(zid), WEAPON_HAMMER);
 	}
 
 	m_ZombAttackTick[zid] = m_Tick;
@@ -1200,7 +1200,7 @@ void CGameControllerZOMB::HandleBull(u32 zid, const vec2& targetPos, f32 targetD
 				n.y -= 0.5f;
 
 				GameServer()->CreateHammerHit(apEnts[s]->GetPos());
-				apEnts[s]->TakeDamage(n * BULL_KNOCKBACK_FORCE, dmg, zombCID, WEAPON_HAMMER);
+				apEnts[s]->TakeDamage(n * BULL_KNOCKBACK_FORCE, n, dmg, zombCID, WEAPON_HAMMER);
 				CCharacterCore* pCore = GameServer()->m_World.m_Core.m_apCharacters[cid];
 				if(pCore) {
 					pCore->m_HookState = HOOK_RETRACTED;
@@ -1315,7 +1315,8 @@ void CGameControllerZOMB::HandleHunter(u32 zid, const vec2& targetPos, f32 targe
 				m_ZombChargeHit[zid][cid] = true;
 
 				GameServer()->CreateHammerHit(apEnts[s]->GetPos());
-				apEnts[s]->TakeDamage(vec2(0, 0), HUNTER_CHARGE_DMG, zombCID, WEAPON_NINJA);
+				apEnts[s]->TakeDamage(vec2(0, 0), m_ZombChargeVel[zid], HUNTER_CHARGE_DMG, zombCID,
+									  WEAPON_NINJA);
 			}
 
 			// it hit something, reset attack time so it doesn't attack when
@@ -1354,8 +1355,8 @@ void CGameControllerZOMB::HandleDominant(u32 zid, const vec2& targetPos, f32 tar
 				dmg *= ELITE_DMG_MULTIPLIER;
 			}
 
-			GameServer()->GetPlayerChar(m_ZombSurvTarget[zid])->TakeDamage(vec2(0,0), dmg,
-													ZombCID(zid), WEAPON_LASER);
+			GameServer()->GetPlayerChar(m_ZombSurvTarget[zid])->TakeDamage(vec2(0,0), vec2(0,1),
+				dmg, ZombCID(zid), WEAPON_LASER);
 
 			m_ZombAttackClock[zid] = SecondsToTick(1.f / g_ZombAttackSpeed[m_ZombType[zid]]);
 		}
@@ -1804,7 +1805,7 @@ void CGameControllerZOMB::TickWaveGame()
 			}
 			else {
 				char aBuff[128];
-				str_format(aBuff, sizeof(aBuff), ">> Wave %d complete.", m_CurrentWave);
+				str_format(aBuff, sizeof(aBuff), ">> Wave %d complete.", m_CurrentWave + 1);
 				ChatMessage(aBuff);
 				ChatMessage(">> 10s until next wave.");
 				AnnounceWave(m_CurrentWave + 1);
@@ -2351,7 +2352,7 @@ void CGameControllerZOMB::CreateZombExplosion(vec2 pos, f32 inner, f32 outer, f3
 			factor = max(0.2f, l / radiusDiff);
 		}
 
-		apEnts[s]->TakeDamage(n * force * factor, (i32)(dmg * factor),
+		apEnts[s]->TakeDamage(n * force * factor, n, (i32)(dmg * factor),
 				ownerCID, WEAPON_GRENADE);
 
 		u32 cid = apEnts[s]->GetPlayer()->GetCID();
@@ -2613,6 +2614,7 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	m_GameInfo.m_ScoreLimit = 0;
 	g_Config.m_SvWarmup = 0;
 	g_Config.m_SvScorelimit = 0;
+	g_Config.m_SvPlayerSlots = MAX_SURVIVORS;
 
 	// get map info
 	memcpy(m_MapName, g_Config.m_SvMap, sizeof(g_Config.m_SvMap));
@@ -2632,8 +2634,6 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	// init zombies
 	mem_zero(m_ZombAlive, sizeof(m_ZombAlive));
 	mem_zero(m_ZombAttackTick, sizeof(m_ZombAttackTick));
-	mem_zero(m_ZombDmgTick, sizeof(m_ZombDmgTick));
-	mem_zero(m_ZombDmgAngle, sizeof(m_ZombDmgAngle));
 	mem_zero(m_ZombPathFindClock, sizeof(m_ZombPathFindClock));
 
 	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
@@ -2979,6 +2979,17 @@ void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
 		SendZombieInfos(i, pPlayer->GetCID());
 	}
+
+	CNetMsg_Sv_Chat chatMsg;
+	chatMsg.m_Mode = CHAT_ALL;
+	chatMsg.m_ClientID = -1;
+	chatMsg.m_TargetID = -1;
+	chatMsg.m_pMessage = "Download the skins here: http://bit.ly/tw_zomb_skins";
+	Server()->SendPackMsg(&chatMsg, MSGFLAG_VITAL, pPlayer->GetCID());
+
+	CNetMsg_Sv_Broadcast Broadcast;
+	Broadcast.m_pMessage = "Download the skins here: http://bit.ly/tw_zomb_skins";
+	Server()->SendPackMsg(&Broadcast, MSGFLAG_VITAL, pPlayer->GetCID());
 }
 
 bool CGameControllerZOMB::IsFriendlyFire(int ClientID1, int ClientID2) const
@@ -3118,16 +3129,7 @@ void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, i32 From, i3
 		GameServer()->CreateSound(GameServer()->m_apPlayers[From]->m_ViewPos, SOUND_HIT, Mask);
 	}
 
-	// make sure damage indicators don't group together
-	++m_ZombDmgAngle[zid];
-	if(Server()->Tick() < m_ZombDmgTick[zid]+25) {
-		GameServer()->CreateDamageInd(m_ZombCharCore[zid].m_Pos, m_ZombDmgAngle[zid]*0.25f, Dmg);
-	}
-	else {
-		m_ZombDmgAngle[zid] = 0;
-		GameServer()->CreateDamageInd(m_ZombCharCore[zid].m_Pos, 0, Dmg);
-	}
-	m_ZombDmgTick[zid] = Server()->Tick();
+	GameServer()->CreateDamage(m_ZombCharCore[zid].m_Pos, ZombCID(zid), vec2(0,1), Dmg, 0, false);
 
 	m_ZombHealth[zid] -= Dmg;
 	if(m_ZombHealth[zid] <= 0) {

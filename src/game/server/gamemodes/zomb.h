@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #define MAX_SURVIVORS 4
-#define MAX_ZOMBS (MAX_CLIENTS - MAX_SURVIVORS)
+#define MAX_ZOMBS (16 - MAX_SURVIVORS)
 #define MAX_MAP_SIZE (1024 * 1024)
 
 typedef uint8_t u8;
@@ -34,10 +34,6 @@ class CGameControllerZOMB : public IGameController
 	CNetObj_PlayerInput m_ZombInput[MAX_ZOMBS];
 	i32 m_ZombActiveWeapon[MAX_ZOMBS];
 	i32 m_ZombAttackTick[MAX_ZOMBS];
-
-	// prevents superposition of damage stars
-	i32 m_ZombDmgTick[MAX_ZOMBS];
-	i32 m_ZombDmgAngle[MAX_ZOMBS];
 
 	bool m_ZombAlive[MAX_ZOMBS]; // bad design, but whatever
 	i32 m_ZombHealth[MAX_ZOMBS];
