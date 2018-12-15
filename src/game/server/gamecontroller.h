@@ -213,6 +213,8 @@ public:
 
 	int GetRealPlayerNum() const { return m_aTeamSize[TEAM_RED]+m_aTeamSize[TEAM_BLUE]; }
 	int GetStartTeam();
+
+	friend class CInstagibModifier;
 };
 
 #endif
