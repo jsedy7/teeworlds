@@ -1450,7 +1450,7 @@ void CGameContext::OnInit()
 	else
 		m_pController = new CGameControllerDM(this);
 
-	m_InstagibModifier.OnInit(g_Config.m_SvGametype);
+	m_InstagibModifier.OnInit(m_pController);
 
 	// create all entities from the game layer
 	CMapItemLayerTilemap *pTileMap = m_Layers.GameLayer();

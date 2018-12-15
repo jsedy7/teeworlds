@@ -5,6 +5,7 @@
 
 class CCharacter;
 class CGameContext;
+class IGameController;
 class CLaser;
 struct CNetObj_Character;
 
@@ -28,7 +29,7 @@ struct CInstagibModifier
 
 	void ScanGametypeForActivation(CGameContext* pGameServer, char* pGameTypeStr);
 	bool IsActivated() const { return m_Activated; }
-	void OnInit(char *pGameType);
+	void OnInit(IGameController* pGameController);
 	void OnTick();
 	void OnCharacterSpawn(CCharacter* pChar);
 	void OnCharacterFireLaser(CCharacter* pChar);

@@ -6,6 +6,7 @@
 #include <game/server/entities/laser.h>
 #include <game/server/player.h>
 #include <game/server/gamecontext.h>
+#include <game/server/gamecontroller.h>
 
 #define SHIELD_COOLDOWN (int)(5 * SERVER_TICK_SPEED)
 #define SHIELD_DURATION (int)(0.5 * SERVER_TICK_SPEED)
@@ -18,22 +19,26 @@ void CInstagibModifier::ScanGametypeForActivation(CGameContext* pGameServer, cha
 	{
 		m_Activated = true;
 		char aTmpStr[32];
+		// remove the i
 		str_copy(m_GameType, pGameTypeStr, 32);
 		str_copy(aTmpStr, pGameTypeStr+1, 31);
 		str_copy(pGameTypeStr, aTmpStr, 32);
-
-		// uppercase except i
-		for(int i = 1; i < 32; i++)
-		{
-			if(m_GameType[i])
-				m_GameType[i] = str_uppercase(m_GameType[i]);
-		}
 	}
 }
 
-void CInstagibModifier::OnInit(char *pGameType)
+void CInstagibModifier::OnInit(IGameController* pGameController)
 {
-	str_copy(pGameType, m_GameType, 32);
+	str_copy(g_Config.m_SvGametype, m_GameType, 32); // copy back ictf
+
+	int Len = str_length(m_GameType);
+	m_GameType[Len] = ')';
+	m_GameType[Len+1] = 0;
+	Len++;
+
+	for(int i = 1; i < Len; i++)
+		m_GameType[i] = str_uppercase(m_GameType[i]);
+
+	pGameController->m_pGameType = m_GameType;
 }
 
 void CInstagibModifier::OnTick()
