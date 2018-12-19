@@ -830,6 +830,11 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 	nci.m_aUseCustomColors[SKINPART_BODY] = 0;
 	nci.m_aSkinPartColors[SKINPART_BODY] = 0;
 
+	if(m_ZombBuff[zid]&BUFF_ENRAGED) {
+		nci.m_aUseCustomColors[SKINPART_BODY] = 1;
+		nci.m_aSkinPartColors[SKINPART_BODY] = red;
+	}
+
 	static char s_aName[64];
 	if(m_ZombBuff[zid]&BUFF_ELITE) {
 		str_format(s_aName, sizeof(s_aName), "Elite %s", g_ZombName[m_ZombType[zid]]);
