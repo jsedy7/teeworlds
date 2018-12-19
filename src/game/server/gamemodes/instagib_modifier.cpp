@@ -45,6 +45,8 @@ void CInstagibModifier::OnTick()
 {
 	m_ConfigLaserJump = g_Config.m_InstaLaserJump;
 	m_ConfigShield = g_Config.m_InstaShield;
+	m_ConfigShieldShoot = g_Config.m_InstaShieldShoot;
+	m_ConfigShieldLock = g_Config.m_InstaShieldLock;
 
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
@@ -138,8 +140,14 @@ void CInstagibModifier::CharacterDoWeaponSwitch(CCharacter* pChar)
 		m_pGameServer->CreateSound(Pos, SOUND_PICKUP_ARMOR);
 		m_pGameServer->CreateSound(Pos, SOUND_PICKUP_ARMOR);
 
-		pChar->m_ReloadTimer = SHIELD_DURATION;
-		pChar->SetWeapon(WEAPON_SHOTGUN);
+		if(!m_ConfigShieldShoot)
+		{
+			pChar->m_ReloadTimer = SHIELD_DURATION;
+			pChar->SetWeapon(WEAPON_SHOTGUN);
+		}
+
+		const vec2 TargetDir = normalize(vec2(pChar->m_LatestInput.m_TargetX, pChar->m_LatestInput.m_TargetY));
+		m_ShieldLockedDir[CID] = TargetDir;
 	}
 	if(m_ShieldCD[CID] < (SHIELD_COOLDOWN-SHIELD_DURATION))
 		pChar->SetWeapon(WEAPON_LASER);
@@ -156,8 +164,9 @@ void CInstagibModifier::OnCharacterSnap(CCharacter* pChar, CNetObj_Character* pN
 
 	if(m_ShieldCD[CID] >= (SHIELD_COOLDOWN-SHIELD_DURATION))
 	{
-		const vec2 TargetDir = normalize(vec2(pChar->m_LatestInput.m_TargetX,
-											  pChar->m_LatestInput.m_TargetY));
+		vec2 TargetDir = normalize(vec2(pChar->m_LatestInput.m_TargetX,  pChar->m_LatestInput.m_TargetY));
+		if(m_ConfigShieldLock)
+			TargetDir = m_ShieldLockedDir[CID];
 
 		const float ShieldMidAngleCoverage = pi/4;
 		const int ShieldCountPerPi = 10;
@@ -229,8 +238,10 @@ bool CInstagibModifier::LaserDoBounce(CLaser* pLaser)
 		const int HitCID = pHitChar->GetPlayer()->GetCID();
 		if(!SameTeam && m_ShieldCD[HitCID] >= (SHIELD_COOLDOWN-SHIELD_DURATION))
 		{
-			const vec2 TargetDir = normalize(vec2(pHitChar->m_LatestInput.m_TargetX,
-												  pHitChar->m_LatestInput.m_TargetY));
+			vec2 TargetDir = normalize(vec2(pHitChar->m_LatestInput.m_TargetX, pHitChar->m_LatestInput.m_TargetY));
+			if(m_ConfigShieldLock)
+				TargetDir = m_ShieldLockedDir[HitCID];
+
 			const vec2 LaserDir = normalize(To-From);
 
 			if(dot(TargetDir, LaserDir) < -0.5f)

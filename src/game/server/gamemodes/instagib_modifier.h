@@ -15,8 +15,11 @@ struct CInstagibModifier
 	bool m_Activated;
 	bool m_ConfigLaserJump;
 	bool m_ConfigShield;
+	bool m_ConfigShieldShoot;
+	bool m_ConfigShieldLock;
 	char m_GameType[64];
 	int m_ShieldCD[MAX_CLIENTS];
+	vec2 m_ShieldLockedDir[MAX_CLIENTS];
 
 	CInstagibModifier()
 	{
