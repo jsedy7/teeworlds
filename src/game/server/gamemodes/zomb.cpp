@@ -1734,21 +1734,21 @@ void CGameControllerZOMB::GameCleanUp()
 	m_ProjectileCount = 0;
 }
 
-void CGameControllerZOMB::ChatMessage(const char* msg)
+void CGameControllerZOMB::ChatMessage(const char* msg, int CID)
 {
 	CNetMsg_Sv_Chat chatMsg;
 	chatMsg.m_Mode = CHAT_ALL;
 	chatMsg.m_ClientID = -1;
 	chatMsg.m_TargetID = -1;
 	chatMsg.m_pMessage = msg;
-	Server()->SendPackMsg(&chatMsg, MSGFLAG_VITAL, -1);
+	Server()->SendPackMsg(&chatMsg, MSGFLAG_VITAL, CID);
 }
 
-void CGameControllerZOMB::BroadcastMessage(const char* msg)
+void CGameControllerZOMB::BroadcastMessage(const char* msg, int CID)
 {
 	CNetMsg_Sv_Broadcast Broadcast;
 	Broadcast.m_pMessage = msg;
-	Server()->SendPackMsg(&Broadcast, MSGFLAG_VITAL, -1);
+	Server()->SendPackMsg(&Broadcast, MSGFLAG_VITAL, CID);
 }
 
 void CGameControllerZOMB::AnnounceWave(u32 waveID)
@@ -3000,16 +3000,10 @@ void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 		SendZombieInfos(i, pPlayer->GetCID());
 	}
 
-	CNetMsg_Sv_Chat chatMsg;
-	chatMsg.m_Mode = CHAT_ALL;
-	chatMsg.m_ClientID = -1;
-	chatMsg.m_TargetID = -1;
-	chatMsg.m_pMessage = "Download the skins here: http://bit.ly/tw_zomb_skins";
-	Server()->SendPackMsg(&chatMsg, MSGFLAG_VITAL, pPlayer->GetCID());
-
-	CNetMsg_Sv_Broadcast Broadcast;
-	Broadcast.m_pMessage = "Download the skins here: http://bit.ly/tw_zomb_skins";
-	Server()->SendPackMsg(&Broadcast, MSGFLAG_VITAL, pPlayer->GetCID());
+	const char* pWelcomeChatMessage = "Call a vote to start the game! Download the zombie skins here: bit.ly/zomb_skins";
+	const char* pWelcomeBcMessage = "Call a vote to start the game!\\nDownload the zombie skins here: bit.ly/zomb_skins";
+	ChatMessage(pWelcomeChatMessage, pPlayer->GetCID());
+	BroadcastMessage(pWelcomeBcMessage, pPlayer->GetCID());
 }
 
 bool CGameControllerZOMB::IsFriendlyFire(int ClientID1, int ClientID2) const

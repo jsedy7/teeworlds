@@ -188,8 +188,8 @@ class CGameControllerZOMB : public IGameController
 	void SurvGameWon();
 	void GameLost();
 	void GameCleanUp();
-	void ChatMessage(const char* msg);
-	void BroadcastMessage(const char* msg);
+	void ChatMessage(const char* msg, int CID = -1);
+	void BroadcastMessage(const char* msg, int CID = -1);
 	void AnnounceWave(u32 waveID);
 	void TickWaveGame();
 
