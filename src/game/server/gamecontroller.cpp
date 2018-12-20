@@ -596,7 +596,7 @@ void IGameController::SetGameState(EGameState GameState, int Timer)
 			else
 			{
 				// start a countdown to end pause
-				SetGameState(IGS_START_COUNTDOWN);
+				SetGameState(IGS_GAME_RUNNING);
 			}
 		}
 		break;
@@ -626,7 +626,7 @@ void IGameController::StartMatch()
 
 	// start countdown if there're enough players, otherwise do warmup till there're
 	if(HasEnoughPlayers())
-		SetGameState(IGS_START_COUNTDOWN);
+		SetGameState(IGS_GAME_RUNNING);
 	else
 		SetGameState(IGS_WARMUP_GAME, TIMER_INFINITE);
 
@@ -644,7 +644,7 @@ void IGameController::StartRound()
 
 	// start countdown if there're enough players, otherwise abort to warmup
 	if(HasEnoughPlayers())
-		SetGameState(IGS_START_COUNTDOWN);
+		SetGameState(IGS_GAME_RUNNING);
 	else
 		SetGameState(IGS_WARMUP_GAME, TIMER_INFINITE);
 }

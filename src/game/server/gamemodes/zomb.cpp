@@ -2734,6 +2734,21 @@ void CGameControllerZOMB::Tick()
 
 	TickZombies();
 
+	if(m_ZombGameState != ZSTATE_NONE)
+	{
+		bool everyoneDisconnected = true;
+		for(u32 i = 0; i < MAX_SURVIVORS && everyoneDisconnected; ++i) {
+			if(GameServer()->m_apPlayers[i]) {
+				everyoneDisconnected = false;
+			}
+		}
+
+		if(everyoneDisconnected) {
+			GameLost();
+			return;
+		}
+	}
+
 	if(m_IsReviveCtfActive && m_ZombGameState != ZSTATE_NONE) {
 		TickReviveCtf();
 	}
