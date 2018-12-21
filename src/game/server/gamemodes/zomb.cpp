@@ -3001,7 +3001,7 @@ void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 	}
 
 	const char* pWelcomeChatMessage = "Call a vote to start the game! Download the zombie skins here: bit.ly/zomb_skins";
-	const char* pWelcomeBcMessage = "Call a vote to start the game!\\nDownload the zombie skins here: bit.ly/zomb_skins";
+	const char* pWelcomeBcMessage = "Call a vote to start the game!\\nDownload the zombie skins here: ^039bit.ly/zomb_skins";
 	ChatMessage(pWelcomeChatMessage, pPlayer->GetCID());
 	BroadcastMessage(pWelcomeBcMessage, pPlayer->GetCID());
 }
