@@ -1682,7 +1682,7 @@ void CGameControllerZOMB::WaveGameWon()
 	GameCleanUp();
 }
 
-void CGameControllerZOMB::GameLost()
+void CGameControllerZOMB::GameLost(bool AllowRestart)
 {
 	ChatMessage(">> You LOST.");
 
@@ -1703,7 +1703,7 @@ void CGameControllerZOMB::GameLost()
 
 	GameCleanUp();
 
-	if(g_Config.m_SvZombAutoRestart > 0) {
+	if(AllowRestart && g_Config.m_SvZombAutoRestart > 0) {
 		m_RestartClock = SecondsToTick(g_Config.m_SvZombAutoRestart);
 		char restartMsg[128];
 		str_format(restartMsg, sizeof(restartMsg), "Game restarting in %ds...", g_Config.m_SvZombAutoRestart);
@@ -2744,7 +2744,7 @@ void CGameControllerZOMB::Tick()
 		}
 
 		if(everyoneDisconnected) {
-			GameLost();
+			GameLost(false);
 			return;
 		}
 	}

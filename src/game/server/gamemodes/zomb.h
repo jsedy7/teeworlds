@@ -186,7 +186,7 @@ class CGameControllerZOMB : public IGameController
 	void StartZombGame(u32 startingWave = 0);
 	void WaveGameWon();
 	void SurvGameWon();
-	void GameLost();
+	void GameLost(bool AllowRestart = true);
 	void GameCleanUp();
 	void ChatMessage(const char* msg, int CID = -1);
 	void BroadcastMessage(const char* msg, int CID = -1);
