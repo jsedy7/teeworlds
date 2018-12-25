@@ -147,6 +147,7 @@ void CCharacterCore::Tick(bool UseInput)
 		}
 	}
 
+	// dashing
 	if(m_DashTick > 0 && m_pWorld)
 	{
 		m_DashTick++;
