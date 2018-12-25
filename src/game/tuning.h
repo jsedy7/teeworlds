@@ -44,4 +44,8 @@ MACRO_TUNING_PARAM(LaserBounceCost, laser_bounce_cost, 0)
 
 MACRO_TUNING_PARAM(PlayerCollision, player_collision, 1)
 MACRO_TUNING_PARAM(PlayerHooking, player_hooking, 1)
+
+MACRO_TUNING_PARAM(DashCd, dash_cd, 1000)
+MACRO_TUNING_PARAM(DashSpeed, dash_speed, 100.0f)
+MACRO_TUNING_PARAM(DashDuration, dash_duration, 200)
 #endif

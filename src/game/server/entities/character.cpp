@@ -63,6 +63,9 @@ bool CCharacter::Spawn(CPlayer *pPlayer, vec2 Pos)
 	m_LastWeapon = WEAPON_HAMMER;
 	m_QueuedWeapon = -1;
 
+	m_DashCd = 0;
+	m_DashTick = 0;
+
 	m_pPlayer = pPlayer;
 	m_Pos = Pos;
 
@@ -478,6 +481,19 @@ void CCharacter::SetEmote(int Emote, int Tick)
 	m_EmoteStop = Tick;
 }
 
+void CCharacter::StartDashing()
+{
+	if(m_DashCd > 0)
+		return;
+
+	m_DashCd =  GameServer()->Tuning()->m_DashCd / 1000.f * Server()->TickSpeed();
+	m_DashTick = Server()->Tick();
+	GameServer()->CreateSound(m_Core.m_Pos, SOUND_NINJA_FIRE, -1);
+	m_DashDir = normalize(vec2(m_LatestInput.m_TargetX, m_LatestInput.m_TargetY));
+	m_DashSpeed = length(m_Core.m_Vel) + GameServer()->Tuning()->m_DashSpeed;
+	m_DashPrevVel = m_Core.m_Vel;
+}
+
 void CCharacter::OnPredictedInput(CNetObj_PlayerInput *pNewInput)
 {
 	// check for changes
@@ -508,6 +524,11 @@ void CCharacter::OnDirectInput(CNetObj_PlayerInput *pNewInput)
 		FireWeapon();
 	}
 
+	if(m_LatestInput.m_Dash)
+	{
+		StartDashing();
+	}
+
 	mem_copy(&m_LatestPrevInput, &m_LatestInput, sizeof(m_LatestInput));
 }
 
@@ -525,6 +546,24 @@ void CCharacter::ResetInput()
 
 void CCharacter::Tick()
 {
+	if(m_DashCd > 0)
+		m_DashCd--;
+
+	// dashing
+	if(m_DashTick > 0)
+	{
+		if(Server()->Tick() - m_DashTick < (GameServer()->Tuning()->m_DashDuration / 1000.0 * SERVER_TICK_SPEED))
+		{
+			m_Core.m_Vel = m_DashDir * m_DashSpeed;
+		}
+		else
+		{
+			if(length(m_Core.m_Vel) > 0)
+				m_Core.m_Vel = normalize(m_Core.m_Vel) * length(m_DashPrevVel);
+			m_DashTick = 0;
+		}
+	}
+
 	m_Core.m_Input = m_Input;
 	m_Core.Tick(true);
 
@@ -800,6 +839,7 @@ void CCharacter::Snap(int SnappingClient)
 
 	pCharacter->m_Weapon = m_ActiveWeapon;
 	pCharacter->m_AttackTick = m_AttackTick;
+	pCharacter->m_DashTick = m_DashTick;
 
 	pCharacter->m_Direction = m_Input.m_Direction;
 

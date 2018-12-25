@@ -58,6 +58,8 @@ public:
 	bool IsAlive() const { return m_Alive; }
 	class CPlayer *GetPlayer() { return m_pPlayer; }
 
+	void StartDashing();
+
 private:
 	// player controlling this character
 	class CPlayer *m_pPlayer;
@@ -103,6 +105,12 @@ private:
 	int m_Armor;
 
 	int m_TriggeredEvents;
+
+	int m_DashCd;
+	int m_DashTick;
+	vec2 m_DashDir;
+	vec2 m_DashPrevVel;
+	float m_DashSpeed;
 
 	// ninja
 	struct

@@ -77,6 +77,7 @@ Objects = [
 		NetBool("m_Jump"),
 		NetIntAny("m_Fire"),
 		NetBool("m_Hook"),
+		NetBool("m_Dash"),
 
 		NetFlag("m_PlayerFlags", PlayerFlags),
 
@@ -164,6 +165,7 @@ Objects = [
 		NetIntRange("m_Weapon", 0, 'NUM_WEAPONS-1'),
 		NetEnum("m_Emote", Emotes),
 		NetTick("m_AttackTick"),
+		NetTick("m_DashTick"),
 		NetFlag("m_TriggeredEvents", CoreEventFlags),
 	]),
 

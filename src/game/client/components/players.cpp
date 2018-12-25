@@ -270,6 +270,51 @@ void CPlayers::RenderPlayer(
 		);
 	}
 
+	// dash
+	if((Client()->GameTick()-Player.m_DashTick) <= (SERVER_TICK_SPEED * (m_pClient->m_Tuning.m_DashDuration / 1000.0)))
+	{
+		Graphics()->TextureSet(g_pData->m_aImages[IMAGE_GAME].m_Id);
+		Graphics()->QuadsBegin();
+		Graphics()->SetColor(0, 1, 0, 1);
+
+		const int iw = WEAPON_NINJA;
+		vec2 p = Position;
+		p.y += g_pData->m_Weapons.m_aId[iw].m_Offsety;
+
+		int IteX = random_int() % g_pData->m_Weapons.m_aId[iw].m_NumSpriteMuzzles;
+		static int s_LastIteX = IteX;
+		if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
+		{
+			const IDemoPlayer::CInfo *pInfo = DemoPlayer()->BaseInfo();
+			if(pInfo->m_Paused)
+				IteX = s_LastIteX;
+			else
+				s_LastIteX = IteX;
+		}
+		else
+		{
+			if(m_pClient->m_Snap.m_pGameData && m_pClient->m_Snap.m_pGameData->m_GameStateFlags&GAMESTATEFLAG_PAUSED)
+				IteX = s_LastIteX;
+			else
+				s_LastIteX = IteX;
+		}
+		if(g_pData->m_Weapons.m_aId[iw].m_aSpriteMuzzles[IteX])
+		{
+			vec2 Dir = vec2(pPlayerChar->m_X,pPlayerChar->m_Y) - vec2(pPrevChar->m_X, pPrevChar->m_Y);
+			Dir = normalize(Dir);
+			float HadokenAngle = angle(Dir);
+			Graphics()->QuadsSetRotation(HadokenAngle );
+			//float offsety = -data->weapons[iw].muzzleoffsety;
+			RenderTools()->SelectSprite(g_pData->m_Weapons.m_aId[iw].m_aSpriteMuzzles[IteX], 0);
+			vec2 DirY(-Dir.y,Dir.x);
+			p = Position;
+			float OffsetX = g_pData->m_Weapons.m_aId[iw].m_Muzzleoffsetx;
+			p -= Dir * OffsetX;
+			RenderTools()->DrawSprite(p.x, p.y, 160.0f);
+		}
+		Graphics()->QuadsEnd();
+	}
+
 	// draw gun
 	{
 		Graphics()->TextureSet(g_pData->m_aImages[IMAGE_GAME].m_Id);
