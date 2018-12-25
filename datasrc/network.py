@@ -151,6 +151,11 @@ Objects = [
 		NetIntRange("m_HookedPlayer", 0, 'MAX_CLIENTS-1'),
 		NetIntRange("m_HookState", -1, 5),
 		NetTick("m_HookTick"),
+        NetTick("m_DashTick"),
+        NetIntAny("m_DashDirX"),
+		NetIntAny("m_DashDirY"),
+		NetIntAny("m_DashSpeed"),
+		NetIntAny("m_DashBeforeSpeed"),
 
 		NetIntAny("m_HookX"),
 		NetIntAny("m_HookY"),
@@ -165,7 +170,6 @@ Objects = [
 		NetIntRange("m_Weapon", 0, 'NUM_WEAPONS-1'),
 		NetEnum("m_Emote", Emotes),
 		NetTick("m_AttackTick"),
-		NetTick("m_DashTick"),
 		NetFlag("m_TriggeredEvents", CoreEventFlags),
 	]),
 

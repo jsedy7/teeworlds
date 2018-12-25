@@ -164,6 +164,11 @@ public:
 
 	int m_TriggeredEvents;
 
+	int m_DashTick;
+	vec2 m_DashDir;
+	float m_DashSpeed;
+	float m_DashBeforeSpeed;
+
 	void Init(CWorldCore *pWorld, CCollision *pCollision);
 	void Reset();
 	void Tick(bool UseInput);

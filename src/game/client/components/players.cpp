@@ -271,7 +271,8 @@ void CPlayers::RenderPlayer(
 	}
 
 	// dash
-	if((Client()->GameTick()-Player.m_DashTick) <= (SERVER_TICK_SPEED * (m_pClient->m_Tuning.m_DashDuration / 1000.0)))
+	if(Player.m_DashTick > 0 &&
+	   Player.m_DashTick <= (SERVER_TICK_SPEED * (m_pClient->m_Tuning.m_DashDuration / 1000.0)))
 	{
 		Graphics()->TextureSet(g_pData->m_aImages[IMAGE_GAME].m_Id);
 		Graphics()->QuadsBegin();

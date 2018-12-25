@@ -72,6 +72,10 @@ void CCharacterCore::Reset()
 	m_HookedPlayer = -1;
 	m_Jumped = 0;
 	m_TriggeredEvents = 0;
+	m_DashTick = 0;
+	m_DashDir = vec2(0, 1);
+	m_DashSpeed = 0;
+	m_DashBeforeSpeed = 0;
 }
 
 void CCharacterCore::Tick(bool UseInput)
@@ -140,6 +144,21 @@ void CCharacterCore::Tick(bool UseInput)
 			m_HookedPlayer = -1;
 			m_HookState = HOOK_IDLE;
 			m_HookPos = m_Pos;
+		}
+	}
+
+	if(m_DashTick > 0 && m_pWorld)
+	{
+		m_DashTick++;
+		if((m_DashTick-1) < (m_pWorld->m_Tuning.m_DashDuration / 1000.0 * SERVER_TICK_SPEED))
+		{
+			m_Vel = m_DashDir * m_DashSpeed;
+		}
+		else
+		{
+			if(length(m_Vel) > 0)
+				m_Vel = normalize(m_Vel) * m_DashBeforeSpeed;
+			m_DashTick = 0;
 		}
 	}
 
@@ -408,6 +427,11 @@ void CCharacterCore::Write(CNetObj_CharacterCore *pObjCore)
 	pObjCore->m_Jumped = m_Jumped;
 	pObjCore->m_Direction = m_Direction;
 	pObjCore->m_Angle = m_Angle;
+	pObjCore->m_DashTick = m_DashTick;
+	pObjCore->m_DashDirX = round_to_int(m_DashDir.x*256.0f);
+	pObjCore->m_DashDirY = round_to_int(m_DashDir.y*256.0f);
+	pObjCore->m_DashSpeed = round_to_int(m_DashSpeed*256.0f);
+	pObjCore->m_DashBeforeSpeed = round_to_int(m_DashBeforeSpeed*256.0f);
 }
 
 void CCharacterCore::Read(const CNetObj_CharacterCore *pObjCore)
@@ -426,6 +450,11 @@ void CCharacterCore::Read(const CNetObj_CharacterCore *pObjCore)
 	m_Jumped = pObjCore->m_Jumped;
 	m_Direction = pObjCore->m_Direction;
 	m_Angle = pObjCore->m_Angle;
+	m_DashTick = pObjCore->m_DashTick;
+	m_DashDir.x = pObjCore->m_DashDirX/256.f;
+	m_DashDir.y = pObjCore->m_DashDirY/256.f;
+	m_DashSpeed = pObjCore->m_DashSpeed/256.f;
+	m_DashBeforeSpeed = pObjCore->m_DashBeforeSpeed/256.f;
 }
 
 void CCharacterCore::Quantize()

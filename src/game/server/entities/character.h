@@ -107,10 +107,6 @@ private:
 	int m_TriggeredEvents;
 
 	int m_DashCd;
-	int m_DashTick;
-	vec2 m_DashDir;
-	vec2 m_DashPrevVel;
-	float m_DashSpeed;
 
 	// ninja
 	struct
