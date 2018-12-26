@@ -1717,7 +1717,7 @@ void CGameControllerZOMB::GameLost(bool AllowRestart)
 	GameCleanUp();
 
 	if(AllowRestart && g_Config.m_SvZombAutoRestart > 0) {
-		m_RestartClock = SecondsToTick(g_Config.m_SvZombAutoRestart);
+		m_RestartClock = SecondsToTick(clamp(g_Config.m_SvZombAutoRestart, 15, 600));
 		char restartMsg[128];
 		str_format(restartMsg, sizeof(restartMsg), "Game restarting in %ds...", g_Config.m_SvZombAutoRestart);
 		ChatMessage(restartMsg);
@@ -2779,6 +2779,7 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 									  this, "Start a ZOMB survival game");
 
 	m_ZombGameState = ZSTATE_NONE;
+	m_ZombLastGameState = ZSTATE_WAVE_GAME;
 	m_RestartClock = -1;
 
 	m_RedFlagSpawnCount = 0;
@@ -2825,6 +2826,12 @@ void CGameControllerZOMB::Tick()
 
 	if(m_RestartClock > 0) {
 		--m_RestartClock;
+		if(m_RestartClock < SecondsToTick(5))
+		{
+			char aBuff[64];
+			str_format(aBuff, sizeof(aBuff), "Auto-restarting in %ds", m_RestartClock/SERVER_TICK_SPEED);
+			BroadcastMessage(aBuff);
+		}
 		if(m_RestartClock == 0) {
 			if(m_ZombLastGameState == ZSTATE_WAVE_GAME) {
 				StartZombGame(0);
@@ -2874,6 +2881,7 @@ void CGameControllerZOMB::Tick()
 		}
 
 		if(everyoneDisconnected) {
+			m_RestartClock = -1;
 			GameLost(false);
 			return;
 		}
@@ -3125,6 +3133,10 @@ void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 		PlayerActivateDeadSpectate(pPlayer);
 		m_SurvivorNeedFillUp[pPlayer->GetCID()] = true;
 	}
+	else {
+		m_RestartClock = SecondsToTick(15);
+	}
+
 	IGameController::OnPlayerConnect(pPlayer);
 
 	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
