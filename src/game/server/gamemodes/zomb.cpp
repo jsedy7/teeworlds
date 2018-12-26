@@ -1687,14 +1687,26 @@ void CGameControllerZOMB::GameLost(bool AllowRestart)
 {
 	ChatMessage(">> You LOST.");
 
+	if(m_ZombGameState == ZSTATE_WAVE_GAME) {
+		char msgBuff[256];
+		str_format(msgBuff, sizeof(msgBuff), ">> You survived until wave %d, good job! (%s %x)",
+				   m_CurrentWave+1, m_MapName, m_MapCrc);
+		ChatMessage(msgBuff);
+		str_format(msgBuff, sizeof(msgBuff), "You survived until ^090wave %d^999, good job!",
+				   m_CurrentWave+1);
+		BroadcastMessage(msgBuff);
+	}
+
 	if(m_ZombGameState == ZSTATE_SURV_GAME) {
 		i32 t = (m_Tick - m_GameStartTick)/SERVER_TICK_SPEED;
 		i32 min = t / 60;
 		i32 sec = t % 60;
 		char msgBuff[256];
-		str_format(msgBuff, sizeof(msgBuff), ">> You survived %d min %d sec, good job!", min, sec);
+		str_format(msgBuff, sizeof(msgBuff), ">> You survived %d min %d sec, good job! (%s %x)",
+				   min, sec, m_MapName, m_MapCrc);
 		ChatMessage(msgBuff);
-		str_format(msgBuff, sizeof(msgBuff), "You survived ^090%d min %d sec^999, good job!", min, sec);
+		str_format(msgBuff, sizeof(msgBuff), "You survived ^090%d min %d sec^999, good job!",
+				   min, sec);
 		BroadcastMessage(msgBuff);
 	}
 
@@ -2106,7 +2118,7 @@ bool CGameControllerZOMB::LoadWaveFile(const char* path)
 		return true;
 	}
 
-	std_zomb_msg("Error: could not open %s", path);
+	std_zomb_msg("Error: could not open '%s'", path);
 
 	return false;
 }
@@ -2546,6 +2558,7 @@ void CGameControllerZOMB::StartZombSurv(i32 seed)
 	m_SpawnClock = SecondsToTick(10); // 10s to setup
 	m_SurvivalStartTick = m_Tick;
 	ChatMessage(">> Survive!");
+	BroadcastMessage("^900Survive!");
 	ChatMessage(">> 10s to setup.");
 	DoWarmup(0);
 	m_ZombGameState = ZSTATE_SURV_GAME;
@@ -2732,12 +2745,16 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	// get map info
 	memcpy(m_MapName, g_Config.m_SvMap, sizeof(g_Config.m_SvMap));
 	mem_zero(m_Map, MAX_MAP_SIZE);
+	m_MapCrc = reinterpret_cast<IEngineMap*>(GameServer()->Layers()->Map())->Crc();
 	CMapItemLayerTilemap* pGameLayer = GameServer()->Layers()->GameLayer();
 	m_MapWidth = pGameLayer->m_Width;
 	m_MapHeight = pGameLayer->m_Height;
 	CTile* pTiles = (CTile*)(GameServer()->Layers()->Map()->GetData(pGameLayer->m_Data));
 	u32 count = m_MapWidth * m_MapHeight;
-	for(u32 i = 0; i < count; ++i) {
+	if(count > MAX_MAP_SIZE)
+		std_zomb_msg("WARNING: map too big");
+
+	for(u32 i = 0; i < count && i < MAX_MAP_SIZE; ++i) {
 		if(pTiles[i].m_Index == TILE_SOLID ||
 		   pTiles[i].m_Index == TILE_NOHOOK) {
 			m_Map[i] = 1;
@@ -2769,7 +2786,7 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	m_IsReviveCtfActive = false;
 	m_CanPlayersRespawn = true;
 
-	if(LoadWaveFile(g_Config.m_SvZombWaveFile)) {
+	if(g_Config.m_SvZombWaveFile[0] && LoadWaveFile(g_Config.m_SvZombWaveFile)) {
 		std_zomb_msg("'%s' wave file loaded (%d waves).",
 					 g_Config.m_SvZombWaveFile, m_WaveCount);
 	}

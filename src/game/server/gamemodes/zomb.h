@@ -70,6 +70,7 @@ class CGameControllerZOMB : public IGameController
 	u8 m_Map[MAX_MAP_SIZE];
 	i32 m_MapWidth;
 	i32 m_MapHeight;
+	u32 m_MapCrc;
 
 	vec2 m_ZombSpawnPoint[MAX_TEE_SPAWN_POINTS];
 	vec2 m_SurvSpawnPoint[MAX_TEE_SPAWN_POINTS];
