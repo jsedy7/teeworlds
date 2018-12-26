@@ -5,6 +5,7 @@
 #include <engine/shared/config.h>
 #include <engine/shared/memheap.h>
 #include <engine/map.h>
+#include <engine/storage.h>
 
 #include <generated/server_data.h>
 #include <game/collision.h>
@@ -1430,6 +1431,7 @@ void CGameContext::OnInit()
 	m_Collision.Init(&m_Layers);
 
 	// select gametype
+#if 0
 	if(str_comp_nocase(g_Config.m_SvGametype, "mod") == 0)
 		m_pController = new CGameControllerMOD(this);
 	else if(str_comp_nocase(g_Config.m_SvGametype, "ctf") == 0)
@@ -1441,9 +1443,11 @@ void CGameContext::OnInit()
 	else if(str_comp_nocase(g_Config.m_SvGametype, "tdm") == 0)
 		m_pController = new CGameControllerTDM(this);
     else if(str_comp_nocase(g_Config.m_SvGametype, "zomb") == 0)
-        m_pController = new CGameControllerZOMB(this);
+		m_pController = new CGameControllerZOMB(this, Kernel()->RequestInterface<IStorage>());
 	else
 		m_pController = new CGameControllerDM(this);
+#endif
+	m_pController = new CGameControllerZOMB(this, Kernel()->RequestInterface<IStorage>());
 
 	// create all entities from the game layer
 	CMapItemLayerTilemap *pTileMap = m_Layers.GameLayer();

@@ -8,6 +8,7 @@
 #include <engine/console.h>
 #include <engine/shared/config.h>
 #include <engine/shared/protocol.h>
+#include <engine/storage.h>
 #include <game/server/entity.h>
 #include <game/server/player.h>
 #include <game/server/entities/character.h>
@@ -2097,15 +2098,14 @@ static bool ParseEnrageDecl(Cursor* pCursor, u32* out_pTime)
 
 bool CGameControllerZOMB::LoadWaveFile(const char* path)
 {
-	FILE* pWaveFile = fopen(path, "r");
-	if(pWaveFile) {
-		fseek(pWaveFile, 0, SEEK_END);
-		u32 fileSize = ftell(pWaveFile);
-		fseek(pWaveFile, 0, SEEK_SET);
+	IOHANDLE WaveFile = m_pStorage->OpenFile(path, IOFLAG_READ, IStorage::TYPE_ALL);
+	if(WaveFile)
+	{
+		u32 fileSize = io_length(WaveFile);
 		char* fileContents = (char*)mem_alloc(fileSize+1, 1);
-		fileSize = fread(fileContents, sizeof(char), fileSize, pWaveFile);
+		io_read(WaveFile, fileContents, fileSize);
+		io_close(WaveFile);
 		fileContents[fileSize] = 0;
-		fclose(pWaveFile);
 
 		if(!ParseWaveFile(fileContents)) {
 			mem_free(fileContents);
@@ -2730,9 +2730,10 @@ void CGameControllerZOMB::DebugLine(ivec2 s, ivec2 e)
 }
 #endif
 
-CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
+CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer, IStorage* pStorage)
 : IGameController(pGameServer)
 {
+	m_pStorage = pStorage;
 	m_pGameType = "ZOMB";
 	m_ZombSpawnPointCount = 0;
 	m_SurvSpawnPointCount = 0;
@@ -2752,11 +2753,13 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	m_MapWidth = pGameLayer->m_Width;
 	m_MapHeight = pGameLayer->m_Height;
 	CTile* pTiles = (CTile*)(GameServer()->Layers()->Map()->GetData(pGameLayer->m_Data));
-	u32 count = m_MapWidth * m_MapHeight;
-	if(count > MAX_MAP_SIZE)
-		std_zomb_msg("WARNING: map too big");
+	int count = m_MapWidth * m_MapHeight;
+	dbg_assert(count <= MAX_MAP_SIZE, "map too big");
+	if(count > MAX_MAP_SIZE) {
+		std_zomb_msg("WARNING: map too big (%d > %d)", count, MAX_MAP_SIZE);
+	}
 
-	for(u32 i = 0; i < count && i < MAX_MAP_SIZE; ++i) {
+	for(int i = 0; i < count && i < MAX_MAP_SIZE; ++i) {
 		if(pTiles[i].m_Index == TILE_SOLID ||
 		   pTiles[i].m_Index == TILE_NOHOOK) {
 			m_Map[i] = 1;

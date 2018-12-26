@@ -15,6 +15,8 @@ typedef uint32_t u32;
 typedef float f32;
 typedef double f64;
 
+class IStorage;
+
 class CGameControllerZOMB : public IGameController
 {
 	enum {
@@ -27,6 +29,7 @@ class CGameControllerZOMB : public IGameController
 	};
 
 	friend class CPlayer;
+	IStorage* m_pStorage;
 	i32 m_Tick;
 	u32 m_Seed;
 
@@ -223,7 +226,7 @@ class CGameControllerZOMB : public IGameController
 	void TickSurvivors();
 
 public:
-	CGameControllerZOMB(class CGameContext *pGameServer);
+	CGameControllerZOMB(class CGameContext *pGameServer, class IStorage* pStorage);
 	void Tick();
 	void Snap(i32 SnappingClientID);
 	void OnPlayerConnect(CPlayer *pPlayer);
