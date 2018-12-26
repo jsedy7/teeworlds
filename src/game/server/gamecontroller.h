@@ -164,7 +164,7 @@ public:
 	void OnPlayerInfoChange(class CPlayer *pPlayer);
 	void OnPlayerReadyChange(class CPlayer *pPlayer);
 
-	void OnReset();
+	virtual void OnReset();
 
 	// game
 	enum

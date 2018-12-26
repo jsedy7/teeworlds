@@ -79,6 +79,8 @@ class CGameControllerZOMB : public IGameController
 	u32 m_ZombGameState;
 	u32 m_ZombLastGameState;
 
+	u8 m_SurvivorNeedFillUp[MAX_SURVIVORS];
+
 	// waves
 	struct SpawnCmd {
 		u8 type;
@@ -191,6 +193,7 @@ class CGameControllerZOMB : public IGameController
 	void ChatMessage(const char* msg, int CID = -1);
 	void BroadcastMessage(const char* msg, int CID = -1);
 	void AnnounceWave(u32 waveID);
+	void AnnounceWaveCountdown(u32 waveID, f32 SecondCountdown);
 	void TickWaveGame();
 
 	void ActivateReviveCtf();
@@ -216,6 +219,8 @@ class CGameControllerZOMB : public IGameController
 
 	i32 IntersectCharacterCore(vec2 Pos0, vec2 Pos1, float Radius, vec2& NewPos, CCharacterCore *pNotThis);
 
+	void TickSurvivors();
+
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer);
 	void Tick();
@@ -227,6 +232,7 @@ public:
 	bool CanSpawn(int Team, vec2 *pPos) const;
 	int OnCharacterDeath(class CCharacter *pVictim, class CPlayer *pKiller, int Weapon);
 	bool CanChangeTeam(CPlayer *pPlayer, int JoinTeam) const;
+	void OnReset();
 
 	void ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, i32 From, i32 Weapon);
 	void ZombStopHooking(i32 zid);

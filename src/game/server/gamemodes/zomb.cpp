@@ -34,10 +34,7 @@ static char msgBuff__[256];
 	str_format(msgBuff__, sizeof(msgBuff__), ##__VA_ARGS__);\
 	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "zomb", msgBuff__);
 
-template<typename T>
-inline T z_abs(T var) {
-	return var < T(0) ? -var : var;
-}
+#define MULTILINE(a) #a
 
 #define ZombCID(id) (id + MAX_SURVIVORS)
 #define NO_TARGET -1
@@ -701,7 +698,7 @@ vec2 CGameControllerZOMB::PathFind(vec2 start, vec2 end)
 				if(JumpStraight(succPos, succDir, mEnd, &jumps)) {
 					ivec2 jumpPos = succPos + succDir * jumps;
 					f32 g = pCurrent->g + jumps;
-					f32 h = z_abs(mEnd.x - jumpPos.x) + z_abs(mEnd.y - jumpPos.y);
+					f32 h = fabs(mEnd.x - jumpPos.x) + fabs(mEnd.y - jumpPos.y);
 
 					if(jumpPos == mEnd) {
 						addToList(closedList, addNode(Node(jumpPos, 0, 0, pCurrent)));
@@ -730,7 +727,7 @@ vec2 CGameControllerZOMB::PathFind(vec2 start, vec2 end)
 				if(JumpDiagonal(succPos, succDir, mEnd, &jumps)) {
 					ivec2 jumpPos = succPos + succDir * jumps;
 					f32 g = pCurrent->g + jumps * 2.f;
-					f32 h = z_abs(mEnd.x - jumpPos.x) + z_abs(mEnd.y - jumpPos.y);
+					f32 h = fabs(mEnd.x - jumpPos.x) + fabs(mEnd.y - jumpPos.y);
 
 					if(jumpPos == mEnd) {
 						addToList(closedList, addNode(Node(jumpPos, 0, 0, pCurrent)));
@@ -991,8 +988,8 @@ void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos, bool ta
 
 		// on top of another character
 		if(pos.y < pCore->m_Pos.y &&
-		   z_abs(pos.x - pCore->m_Pos.x) < phyzSize &&
-		   z_abs(pos.y - pCore->m_Pos.y) < (phyzSize*1.5f)) {
+		   fabs(pos.x - pCore->m_Pos.x) < phyzSize &&
+		   fabs(pos.y - pCore->m_Pos.y) < (phyzSize*1.5f)) {
 			grounded = true;
 			break;
 		}
@@ -1006,8 +1003,8 @@ void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos, bool ta
 
 	// jump
 	input.m_Jump = 0;
-	f32 xDist = z_abs(dest.x - pos.x);
-	f32 yDist = z_abs(dest.y - pos.y);
+	f32 xDist = fabs(dest.x - pos.x);
+	f32 yDist = fabs(dest.y - pos.y);
 
 	// don't excessively jump when target does
 	if(destLOS) {
@@ -1610,7 +1607,7 @@ void CGameControllerZOMB::TickZombies()
 		m_ZombCharCore[i].m_TriggeredEvents |= jumpTriggers;
 
 		// smooth out small movement
-		f32 xDist = z_abs(m_ZombDestination[i].x - m_ZombCharCore[i].m_Pos.x);
+		f32 xDist = fabs(m_ZombDestination[i].x - m_ZombCharCore[i].m_Pos.x);
 		if(xDist < 5.f) {
 			m_ZombCharCore[i].m_Vel.x = (m_ZombDestination[i].x - m_ZombCharCore[i].m_Pos.x);
 		}
@@ -1656,11 +1653,11 @@ void CGameControllerZOMB::ConZombStart(IConsole::IResult* pResult, void* pUserDa
 
 void CGameControllerZOMB::StartZombGame(u32 startingWave)
 {
-	m_CurrentWave = startingWave;
+	m_CurrentWave = startingWave-1; // will be increased to one after wait time
 	m_SpawnCmdID = 0;
-	m_SpawnClock = SecondsToTick(10); // 10s to setup
-	m_WaveWaitClock = -1;
-	AnnounceWave(m_CurrentWave);
+	m_SpawnClock = 0;
+	m_WaveWaitClock = WAVE_WAIT_TIME;
+	AnnounceWave(startingWave);
 	ChatMessage(">> 10s to setup.");
 	DoWarmup(0);
 	m_ZombGameState = ZSTATE_WAVE_GAME;
@@ -1674,6 +1671,9 @@ void CGameControllerZOMB::StartZombGame(u32 startingWave)
 
 	m_Seed = time(NULL);
 	m_RestartClock = -1;
+
+	for(int i = 0; i < MAX_SURVIVORS; i++)
+		m_SurvivorNeedFillUp[i] = true;
 }
 
 void CGameControllerZOMB::WaveGameWon()
@@ -1731,6 +1731,14 @@ void CGameControllerZOMB::GameCleanUp()
 		}
 	}
 
+	for(u32 i = 0; i < MAX_SURVIVORS; ++i) {
+		if(GameServer()->m_apPlayers[i]) {
+			GameServer()->m_apPlayers[i]->m_RespawnDisabled = false;
+			GameServer()->m_apPlayers[i]->m_DeadSpecMode = false;
+			GameServer()->m_apPlayers[i]->m_Score = 0;
+		}
+	}
+
 	m_LaserCount = 0;
 	m_ProjectileCount = 0;
 }
@@ -1762,14 +1770,30 @@ void CGameControllerZOMB::AnnounceWave(u32 waveID)
 	Server()->SendPackMsg(&chatMsg, MSGFLAG_VITAL, -1);
 }
 
+void CGameControllerZOMB::AnnounceWaveCountdown(u32 waveID, f32 SecondCountdown)
+{
+	CNetMsg_Sv_Broadcast chatMsg;
+	char msgBuff[256];
+	str_format(msgBuff, sizeof(msgBuff), "%.1f\nWAVE ^980%d ^999(%d zombies)", SecondCountdown, waveID + 1,
+			   m_WaveSpawnCount[waveID]);
+	chatMsg.m_pMessage = msgBuff;
+	Server()->SendPackMsg(&chatMsg, MSGFLAG_VITAL, -1);
+}
+
 void CGameControllerZOMB::TickWaveGame()
 {
 	// wait in between waves
 	if(m_WaveWaitClock > 0) {
 		--m_WaveWaitClock;
+		if(m_WaveWaitClock < (WAVE_WAIT_TIME/2+1))
+			AnnounceWaveCountdown(m_CurrentWave + 1, m_WaveWaitClock/(f32)SERVER_TICK_SPEED);
+
+		// wave start
 		if(m_WaveWaitClock == 0) {
 			++m_CurrentWave;
+			AnnounceWave(m_CurrentWave);
 			m_SpawnClock = SPAWN_INTERVAL;
+			m_WaveWaitClock = -1;
 		}
 	}
 	else if(m_SpawnClock > 0) {
@@ -1792,7 +1816,7 @@ void CGameControllerZOMB::TickWaveGame()
 	}
 
 	// end of the wave
-	if(m_SpawnCmdID == m_WaveSpawnCount[m_CurrentWave]) {
+	if(m_WaveWaitClock == -1 && m_SpawnCmdID == m_WaveSpawnCount[m_CurrentWave]) {
 		bool areZombsDead = true;
 		for(u32 i = 0; i < MAX_ZOMBS; ++i) {
 			if(m_ZombAlive[i]) {
@@ -1810,6 +1834,9 @@ void CGameControllerZOMB::TickWaveGame()
 				WaveGameWon();
 			}
 			else {
+				for(int i = 0; i < MAX_SURVIVORS; i++)
+					m_SurvivorNeedFillUp[i] = true;
+
 				char aBuff[128];
 				str_format(aBuff, sizeof(aBuff), ">> Wave %d complete.", m_CurrentWave + 1);
 				ChatMessage(aBuff);
@@ -2208,14 +2235,91 @@ bool CGameControllerZOMB::ParseWaveFile(const char* pBuff)
 
 void CGameControllerZOMB::LoadDefaultWaves()
 {
-	static const char* defaultWavesFile = {
-		"{"
-		"	tank: 5;"
-		"	tank_elite: 5;"
-		"}"
-	};
+	static const char* defaultWavesFile = MULTILINE(
+	{
+		zombie: 10;
+		wartule: 1;
+		zombie: 5;
+	}
 
-	ParseWaveFile(defaultWavesFile);
+	{
+		zombie: 5;
+		boomer: 1;
+		mudge: 1;
+		zombie: 5;
+	}
+
+	{
+		zombie: 4;
+		bull: 1;
+		hunter: 1;
+		zombie: 6;
+	}
+
+	{
+		zombie: 10;
+		tank: 1;
+	}
+
+	{
+		zombie: 5;
+		boomer: 2;
+		bull: 1;
+		zombie: 5;
+		mudge: 1;
+		zombie: 5;
+	}
+
+	{
+		hunter: 2;
+		zombie: 10;
+		berserker: 1;
+		zombie: 10;
+	}
+
+	{
+		bull: 3;
+		zombie: 12;
+		mudge: 1;
+		wartule: 1;
+		zombie: 12;
+	}
+
+	{
+		zombie: 10;
+		dominant: 1;
+		hunter: 3;
+		boomer_elite: 1;
+		zombie: 30;
+	}
+
+	{
+		zombie_elite: 2;
+		boomer: 1;
+		wartule: 1;
+		bull: 2;
+		zombie: 20;
+	}
+
+	{
+		tank: 1;
+		zombie_elite: 10;
+		berserker: 1;
+		zombie: 5;
+		dominant: 1;
+		zombie: 15;
+	}
+
+	{
+		zombie_elite: 5;
+		bull_elite: 1;
+		boomer_elite: 1;
+		wartule_enraged: 1;
+		zombie: 20;
+	});
+
+	bool Result = ParseWaveFile(defaultWavesFile);
+	dbg_assert(Result, "Error parsing default waves");
 }
 
 void CGameControllerZOMB::ConLoadWaveFile(IConsole::IResult* pResult, void* pUserData)
@@ -2461,6 +2565,9 @@ void CGameControllerZOMB::StartZombSurv(i32 seed)
 	}
 
 	m_RestartClock = -1;
+
+	for(int i = 0; i < MAX_SURVIVORS; i++)
+		m_SurvivorNeedFillUp[i] = true;
 }
 
 void CGameControllerZOMB::TickSurvivalGame()
@@ -2688,6 +2795,8 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer)
 	for(i32 i = 0; i < ZTYPE_MAX; i++) {
 		g_ZombSpawnChanceTotal += g_ZombSpawnChance[i];
 	}
+
+	mem_zero(m_SurvivorNeedFillUp, sizeof(m_SurvivorNeedFillUp));
 }
 
 void CGameControllerZOMB::Tick()
@@ -2706,6 +2815,7 @@ void CGameControllerZOMB::Tick()
 			else if(m_ZombLastGameState == ZSTATE_SURV_GAME) {
 				StartZombSurv(-1);
 			}
+			return;
 		}
 	}
 
@@ -2723,6 +2833,8 @@ void CGameControllerZOMB::Tick()
 			--i;
 		}
 	}
+
+	TickSurvivors();
 
 	TickProjectiles();
 
@@ -2994,6 +3106,7 @@ void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 {
 	if(m_ZombGameState != ZSTATE_NONE) {
 		PlayerActivateDeadSpectate(pPlayer);
+		m_SurvivorNeedFillUp[pPlayer->GetCID()] = true;
 	}
 	IGameController::OnPlayerConnect(pPlayer);
 
@@ -3108,6 +3221,13 @@ bool CGameControllerZOMB::CanChangeTeam(CPlayer* pPlayer, int JoinTeam) const
 		return false;
 	}
 	return true;
+}
+
+void CGameControllerZOMB::OnReset()
+{
+	IGameController::OnReset();
+	for(int i = 0; i < MAX_SURVIVORS; i++)
+		m_SurvivorNeedFillUp[i] = true;
 }
 
 void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, i32 From, i32 Weapon)
@@ -3251,6 +3371,23 @@ i32 CGameControllerZOMB::IntersectCharacterCore(vec2 Pos0, vec2 Pos1, float Radi
    }
 
    return closest;
+}
+
+void CGameControllerZOMB::TickSurvivors()
+{
+	for(int i = 0; i < MAX_SURVIVORS; i++)
+	{
+		CCharacter* pChar = GameServer()->GetPlayerChar(i);
+		if(m_SurvivorNeedFillUp[i] && pChar)
+		{
+			pChar->GiveWeapon(WEAPON_SHOTGUN, 10);
+			pChar->GiveWeapon(WEAPON_GRENADE, 10);
+			pChar->GiveWeapon(WEAPON_LASER, 10);
+			pChar->IncreaseHealth(10);
+			pChar->IncreaseArmor(10);
+			m_SurvivorNeedFillUp[i] = false;
+		}
+	}
 }
 
 bool CGameControllerZOMB::PlayerTryHitLaser(i32 CID, vec2 start, vec2 end, vec2& at)
