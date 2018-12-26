@@ -205,7 +205,7 @@ class CGameControllerZOMB : public IGameController
 	bool LoadWaveFile(const char* path);
 	bool ParseWaveFile(const char* pBuff);
 	void LoadDefaultWaves();
-	static void ConLoadWaveFile(IConsole::IResult *pResult, void *pUserData);
+	static void ConZombLoadWaveFile(IConsole::IResult *pResult, void *pUserData);
 
 	void CreateLaser(vec2 from, vec2 to);
 	void CreateProjectile(vec2 pos, vec2 dir, i32 type, i32 dmg, i32 owner, i32 lifespan);

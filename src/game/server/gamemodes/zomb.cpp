@@ -124,7 +124,7 @@ static const u32 g_ZombMaxHealth[] = {
 	8, // ZTYPE_MUDGE
 	7, // ZTYPE_HUNTER
 	15, // ZTYPE_DOMINANT
-	17, // ZTYPE_BERSERKER
+	15, // ZTYPE_BERSERKER
 	15 // ZTYPE_WARTULE
 };
 
@@ -136,7 +136,7 @@ static const f32 g_ZombAttackSpeed[] = {
 	2.0f, // ZTYPE_MUDGE
 	2.0f, // ZTYPE_HUNTER
 	0.6f, // ZTYPE_DOMINANT
-	4.0f, // ZTYPE_BERSERKER
+	3.0f, // ZTYPE_BERSERKER
 	2.0f // ZTYPE_WARTULE
 };
 
