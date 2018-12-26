@@ -45,7 +45,6 @@ static char msgBuff__[256];
 #define WAVE_WAIT_TIME (SecondsToTick(10))
 
 #define DEFAULT_ENRAGE_TIME 180
-#define SURVIVAL_ENRAGE_TIME 30
 
 #define BOOMER_EXPLOSION_INNER_RADIUS 150.f
 #define BOOMER_EXPLOSION_OUTER_RADIUS 300.f
@@ -72,6 +71,8 @@ static char msgBuff__[256];
 #define AURA_RADIUS 600.0f
 
 #define SURVIVAL_MAX_TIME (SecondsToTick(240))
+#define SURVIVAL_START_WAVE_INTERVAL (SecondsToTick(7))
+#define SURVIVAL_ENRAGE_TIME 60
 
 enum {
 	SKINPART_BODY = 0,
@@ -272,7 +273,7 @@ inline i32 randi(u32* seed, i32 vmin, i32 vmax)
 
 void CGameControllerZOMB::SpawnZombie(i32 zid, u8 type, u8 isElite, u32 enrageTime)
 {
-	bool isEnraged = (enrageTime == 0 || type == ZTYPE_BERSERKER);
+	const bool isEnraged = (enrageTime == 0 || type == ZTYPE_BERSERKER);
 	// do we need to update clients
 	bool needSendInfos = false;
 	if(m_ZombType[zid] != type ||
@@ -1846,9 +1847,6 @@ void CGameControllerZOMB::TickWaveGame()
 				WaveGameWon();
 			}
 			else {
-				for(int i = 0; i < MAX_SURVIVORS; i++)
-					m_SurvivorNeedFillUp[i] = true;
-
 				char aBuff[128];
 				str_format(aBuff, sizeof(aBuff), ">> Wave %d complete.", m_CurrentWave + 1);
 				ChatMessage(aBuff);
@@ -2553,7 +2551,7 @@ void CGameControllerZOMB::ConZombStartSurv(IConsole::IResult* pResult, void* pUs
 
 void CGameControllerZOMB::StartZombSurv(i32 seed)
 {
-	m_SurvWaveInterval = g_Config.m_SvZombSurvInterval;
+	m_SurvWaveInterval = SURVIVAL_START_WAVE_INTERVAL;
 	m_SurvQueueCount = 0;
 	m_SpawnClock = SecondsToTick(10); // 10s to setup
 	m_SurvivalStartTick = m_Tick;
@@ -2587,9 +2585,10 @@ void CGameControllerZOMB::TickSurvivalGame()
 {
 	constexpr i32 POCKET_COUNT = MAX_ZOMBS / 3;
 
+	const f32 progress = min(1.0f, (m_Tick - m_SurvivalStartTick)/(f32)SURVIVAL_MAX_TIME);
+	dbg_assert(progress >= 0.0f && progress <= 1.0f, "");
+
 	if(m_SurvQueueCount == 0) {
-		const f32 progress = min(1.0f, (m_Tick - m_SurvivalStartTick)/(f32)SURVIVAL_MAX_TIME);
-		dbg_assert(progress >= 0.0f && progress <= 1.0f, "");
 		const i32 specialMaxCount = max(1, (i32)(progress * POCKET_COUNT));
 		i32 specialsToSpawn = 0;
 
@@ -2615,16 +2614,18 @@ void CGameControllerZOMB::TickSurvivalGame()
 				}
 				dbg_assert(ztype != ZTYPE_BASIC, "Should not happen");
 				u8 elite = randf01(&m_Seed) < max(0.05f, max(progress-0.5f, 0.0f) * 2.0f);
+				u8 enraged = randf01(&m_Seed) < max(0.05f, progress * 0.2f); // 5% -> 20%
 
-				std_zomb_msg("#%d type=%d elite=%d", s, ztype, elite);
-				m_SurvQueue[m_SurvQueueCount++] = SpawnCmd{ztype, elite, 0};
+				std_zomb_msg("#%d type=%d elite=%d enraged=%d", s, ztype, elite, enraged);
+				m_SurvQueue[m_SurvQueueCount++] = SpawnCmd{ztype, elite, enraged};
 			}
 		}
 
 		const i32 basicToSpawn = POCKET_COUNT - specialsToSpawn;
 		for(i32 s = 0; s < basicToSpawn; s++) {
 			u8 elite = randf01(&m_Seed) < max(0.025f, max(progress-0.5f, 0.0f) * 2.0f);
-			m_SurvQueue[m_SurvQueueCount++] = SpawnCmd{ZTYPE_BASIC, elite, 0};
+			u8 enraged = randf01(&m_Seed) < max(0.1f, progress * 0.4f); // 10% -> 40%
+			m_SurvQueue[m_SurvQueueCount++] = SpawnCmd{ZTYPE_BASIC, elite, enraged};
 		}
 
 		std_zomb_msg("progress=%g basic=%d", progress, basicToSpawn);
@@ -2648,13 +2649,14 @@ void CGameControllerZOMB::TickSurvivalGame()
 			if(m_ZombAlive[i]) continue;
 			u8 type = m_SurvQueue[0].type;
 			bool isElite = m_SurvQueue[0].isElite;
-			SpawnZombie(i, type, isElite, SURVIVAL_ENRAGE_TIME);
+			bool isEnraged = m_SurvQueue[0].isEnraged;
+			SpawnZombie(i, type, isElite, isEnraged? 0:SURVIVAL_ENRAGE_TIME);
 			memmove(m_SurvQueue, m_SurvQueue+1, m_SurvQueueCount * sizeof(SpawnCmd));
 			--m_SurvQueueCount;
 			--spots;
 		}
 
-		m_SpawnClock = SecondsToTick(m_SurvWaveInterval);
+		m_SpawnClock = mix(m_SurvWaveInterval, 0, progress * progress);
 	}
 }
 
@@ -3131,9 +3133,8 @@ void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 {
 	if(m_ZombGameState != ZSTATE_NONE) {
 		PlayerActivateDeadSpectate(pPlayer);
-		m_SurvivorNeedFillUp[pPlayer->GetCID()] = true;
 	}
-	else {
+	else if(m_RestartClock < 0) {
 		m_RestartClock = SecondsToTick(15);
 	}
 

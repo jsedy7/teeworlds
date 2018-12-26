@@ -105,7 +105,6 @@ MACRO_CONFIG_INT(DbgPathFindIterations, sv_pf_iterations, 2500, 1, 10000, CFGFLA
 #endif
 
 MACRO_CONFIG_INT(SvZombAutoRestart, sv_zomb_auto_restart, 0, 0, 600, CFGFLAG_SERVER, "Zomb auto restart")
-MACRO_CONFIG_INT(SvZombSurvInterval, sv_zomb_surv_interval, 7, 0, 600, CFGFLAG_SERVER, "Zomb survival in-between wave interval")
 MACRO_CONFIG_STR(SvZombWaveFile, sv_zomb_wave_file, 256, "", CFGFLAG_SAVE|CFGFLAG_SERVER, "Zomb wave file path")
 
 #endif
