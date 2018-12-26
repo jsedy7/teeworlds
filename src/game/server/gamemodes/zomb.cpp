@@ -336,7 +336,8 @@ void CGameControllerZOMB::KillZombie(i32 zid, i32 killerCID)
 	m_ZombAlive[zid] = false;
 	GameServer()->m_World.m_Core.m_apCharacters[ZombCID(zid)] = 0;
 	GameServer()->CreateSound(m_ZombCharCore[zid].m_Pos, SOUND_PLAYER_DIE);
-	GameServer()->CreateSound(m_ZombCharCore[zid].m_Pos, SOUND_PLAYER_PAIN_LONG);
+	GameServer()->CreateSound(m_ZombCharCore[zid].m_Pos,
+		m_ZombType[zid] == ZTYPE_BASIC ? SOUND_PLAYER_PAIN_SHORT : SOUND_PLAYER_PAIN_LONG);
 	GameServer()->CreateDeath(m_ZombCharCore[zid].m_Pos, ZombCID(zid));
 	// TODO: send a kill message?
 
