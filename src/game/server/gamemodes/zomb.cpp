@@ -1673,9 +1673,6 @@ void CGameControllerZOMB::StartZombGame(u32 startingWave)
 
 	m_Seed = time(NULL);
 	m_RestartClock = -1;
-
-	for(int i = 0; i < MAX_SURVIVORS; i++)
-		m_SurvivorNeedFillUp[i] = true;
 }
 
 void CGameControllerZOMB::WaveGameWon()
@@ -1691,10 +1688,10 @@ void CGameControllerZOMB::GameLost(bool AllowRestart)
 
 	if(m_ZombGameState == ZSTATE_WAVE_GAME) {
 		char msgBuff[256];
-		str_format(msgBuff, sizeof(msgBuff), ">> You survived until wave %d, good job! (%s %x)",
-				   m_CurrentWave+1, m_MapName, m_MapCrc);
+		str_format(msgBuff, sizeof(msgBuff), ">> You survived until Wave %d, good job!",
+				   m_CurrentWave+1);
 		ChatMessage(msgBuff);
-		str_format(msgBuff, sizeof(msgBuff), "You survived until ^090wave %d^999, good job!",
+		str_format(msgBuff, sizeof(msgBuff), "You survived until ^090Wave %d^999, good job!",
 				   m_CurrentWave+1);
 		BroadcastMessage(msgBuff);
 	}
@@ -1704,8 +1701,8 @@ void CGameControllerZOMB::GameLost(bool AllowRestart)
 		i32 min = t / 60;
 		i32 sec = t % 60;
 		char msgBuff[256];
-		str_format(msgBuff, sizeof(msgBuff), ">> You survived %d min %d sec, good job! (%s %x)",
-				   min, sec, m_MapName, m_MapCrc);
+		str_format(msgBuff, sizeof(msgBuff), ">> You survived %d min %d sec, good job!",
+				   min, sec);
 		ChatMessage(msgBuff);
 		str_format(msgBuff, sizeof(msgBuff), "You survived ^090%d min %d sec^999, good job!",
 				   min, sec);
@@ -1719,7 +1716,7 @@ void CGameControllerZOMB::GameLost(bool AllowRestart)
 	GameCleanUp();
 
 	if(AllowRestart && g_Config.m_SvZombAutoRestart > 0) {
-		m_RestartClock = SecondsToTick(clamp(g_Config.m_SvZombAutoRestart, 15, 600));
+		m_RestartClock = SecondsToTick(clamp(g_Config.m_SvZombAutoRestart, 10, 600));
 		char restartMsg[128];
 		str_format(restartMsg, sizeof(restartMsg), "Game restarting in %ds...", g_Config.m_SvZombAutoRestart);
 		ChatMessage(restartMsg);
@@ -2332,7 +2329,7 @@ void CGameControllerZOMB::LoadDefaultWaves()
 	dbg_assert(Result, "Error parsing default waves");
 }
 
-void CGameControllerZOMB::ConLoadWaveFile(IConsole::IResult* pResult, void* pUserData)
+void CGameControllerZOMB::ConZombLoadWaveFile(IConsole::IResult* pResult, void* pUserData)
 {
 	CGameControllerZOMB *pThis = (CGameControllerZOMB *)pUserData;
 
@@ -2546,7 +2543,7 @@ void CGameControllerZOMB::ChangeEyes(i32 zid, i32 type, f32 time)
 void CGameControllerZOMB::ConZombStartSurv(IConsole::IResult* pResult, void* pUserData)
 {
 	CGameControllerZOMB *pThis = (CGameControllerZOMB *)pUserData;
-	pThis->StartZombSurv(time(NULL));
+	pThis->StartZombSurv(pResult->NumArguments() > 0 ? pResult->GetInteger(0) : -1);
 }
 
 void CGameControllerZOMB::StartZombSurv(i32 seed)
@@ -2576,9 +2573,6 @@ void CGameControllerZOMB::StartZombSurv(i32 seed)
 	}
 
 	m_RestartClock = -1;
-
-	for(int i = 0; i < MAX_SURVIVORS; i++)
-		m_SurvivorNeedFillUp[i] = true;
 }
 
 void CGameControllerZOMB::TickSurvivalGame()
@@ -2778,7 +2772,7 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer, IStorage* pS
 
 	GameServer()->Console()->Register("zomb_start", "?i", CFGFLAG_SERVER, ConZombStart,
 									  this, "Start a ZOMB game");
-	GameServer()->Console()->Register("zomb_load", "s", CFGFLAG_SERVER, ConLoadWaveFile,
+	GameServer()->Console()->Register("zomb_load", "s", CFGFLAG_SERVER, ConZombLoadWaveFile,
 									  this, "Load a ZOMB wave file");
 	GameServer()->Console()->Register("zomb_surv", "?i", CFGFLAG_SERVER, ConZombStartSurv,
 									  this, "Start a ZOMB survival game");
@@ -2818,8 +2812,6 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer, IStorage* pS
 	for(i32 i = 0; i < ZTYPE_MAX; i++) {
 		g_ZombSpawnChanceTotal += g_ZombSpawnChance[i];
 	}
-
-	mem_zero(m_SurvivorNeedFillUp, sizeof(m_SurvivorNeedFillUp));
 }
 
 void CGameControllerZOMB::Tick()
@@ -2862,8 +2854,6 @@ void CGameControllerZOMB::Tick()
 			--i;
 		}
 	}
-
-	TickSurvivors();
 
 	TickProjectiles();
 
@@ -3137,8 +3127,8 @@ void CGameControllerZOMB::OnPlayerConnect(CPlayer* pPlayer)
 	if(m_ZombGameState != ZSTATE_NONE) {
 		PlayerActivateDeadSpectate(pPlayer);
 	}
-	else if(m_RestartClock < 0) {
-		m_RestartClock = SecondsToTick(15);
+	else if(m_RestartClock < 0 && g_Config.m_SvZombAutoStart > 0) {
+		m_RestartClock = SecondsToTick(clamp(g_Config.m_SvZombAutoStart, 10, 600));
 	}
 
 	IGameController::OnPlayerConnect(pPlayer);
@@ -3259,8 +3249,6 @@ bool CGameControllerZOMB::CanChangeTeam(CPlayer* pPlayer, int JoinTeam) const
 void CGameControllerZOMB::OnReset()
 {
 	IGameController::OnReset();
-	for(int i = 0; i < MAX_SURVIVORS; i++)
-		m_SurvivorNeedFillUp[i] = true;
 }
 
 void CGameControllerZOMB::ZombTakeDmg(i32 CID, vec2 Force, i32 Dmg, i32 From, i32 Weapon)
@@ -3404,23 +3392,6 @@ i32 CGameControllerZOMB::IntersectCharacterCore(vec2 Pos0, vec2 Pos1, float Radi
    }
 
    return closest;
-}
-
-void CGameControllerZOMB::TickSurvivors()
-{
-	for(int i = 0; i < MAX_SURVIVORS; i++)
-	{
-		CCharacter* pChar = GameServer()->GetPlayerChar(i);
-		if(m_SurvivorNeedFillUp[i] && pChar)
-		{
-			pChar->GiveWeapon(WEAPON_SHOTGUN, 10);
-			pChar->GiveWeapon(WEAPON_GRENADE, 10);
-			pChar->GiveWeapon(WEAPON_LASER, 10);
-			pChar->IncreaseHealth(10);
-			pChar->IncreaseArmor(10);
-			m_SurvivorNeedFillUp[i] = false;
-		}
-	}
 }
 
 bool CGameControllerZOMB::PlayerTryHitLaser(i32 CID, vec2 start, vec2 end, vec2& at)

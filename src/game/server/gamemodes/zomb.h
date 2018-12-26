@@ -83,8 +83,6 @@ class CGameControllerZOMB : public IGameController
 	u32 m_ZombGameState;
 	u32 m_ZombLastGameState;
 
-	u8 m_SurvivorNeedFillUp[MAX_SURVIVORS];
-
 	// waves
 	struct SpawnCmd {
 		u8 type;
@@ -222,8 +220,6 @@ class CGameControllerZOMB : public IGameController
 	void TickSurvivalGame();
 
 	i32 IntersectCharacterCore(vec2 Pos0, vec2 Pos1, float Radius, vec2& NewPos, CCharacterCore *pNotThis);
-
-	void TickSurvivors();
 
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer, class IStorage* pStorage);
