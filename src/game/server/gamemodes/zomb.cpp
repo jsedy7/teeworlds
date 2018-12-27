@@ -1,7 +1,6 @@
 // LordSk
 #include "zomb.h"
 #include <stdio.h>
-#include <io.h>
 #include <time.h>
 #include <string.h>
 #include <engine/server.h>
@@ -2816,7 +2815,9 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer, IStorage* pS
 
 void CGameControllerZOMB::Tick()
 {
+#ifdef CONF_DEBUG
 	m_DbgLinesCount = 0;
+#endif
 
 	m_Tick = Server()->Tick();
 	IGameController::Tick();
