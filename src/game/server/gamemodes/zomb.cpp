@@ -71,7 +71,7 @@ static char msgBuff__[256];
 
 #define AURA_RADIUS 600.0f
 
-#define SURVIVAL_MAX_TIME (SecondsToTick(240))
+#define SURVIVAL_MAX_TIME (SecondsToTick(300))
 #define SURVIVAL_START_WAVE_INTERVAL (SecondsToTick(7))
 #define SURVIVAL_ENRAGE_TIME 60
 
