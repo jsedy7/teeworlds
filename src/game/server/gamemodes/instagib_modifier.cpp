@@ -28,6 +28,9 @@ void CInstagibModifier::ScanGametypeForActivation(CGameContext* pGameServer, cha
 
 void CInstagibModifier::OnInit(IGameController* pGameController)
 {
+	if(!m_Activated)
+		return;
+
 	str_copy(g_Config.m_SvGametype, m_GameType, 32); // copy back ictf
 
 	int Len = str_length(m_GameType);
@@ -223,10 +226,9 @@ bool CInstagibModifier::LaserDoBounce(CLaser* pLaser)
 
 	if(pHitChar)
 	{
-		const bool SameTeam = m_pGameServer->m_apPlayers[pLaser->m_Owner] &&
-			m_pGameServer->m_apPlayers[pLaser->m_Owner]->GetTeam() == pHitChar->GetPlayer()->GetTeam();
-
 		const int HitCID = pHitChar->GetPlayer()->GetCID();
+		const bool SameTeam = m_pGameServer->m_pController->IsFriendlyFire(pLaser->m_Owner, HitCID);
+
 		if(!SameTeam && m_ShieldCD[HitCID] >= (SHIELD_COOLDOWN-SHIELD_DURATION))
 		{
 			const vec2 TargetDir = normalize(vec2(pHitChar->m_LatestInput.m_TargetX,
