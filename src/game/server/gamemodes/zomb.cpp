@@ -396,7 +396,7 @@ struct Node
 	f32 g, f;
 	Node* pParent;
 
-	Node() = default;
+	Node() {};
 	Node(ivec2 pos_, f32 g_, f32 h_, Node* pParent_):
 		pos(pos_),
 		g(g_),
@@ -595,7 +595,7 @@ vec2 CGameControllerZOMB::PathFind(vec2 start, vec2 end)
 	u32 maxIterations = g_Config.m_DbgPathFindIterations;
 #endif
 
-	Node* pFirst = addNode(Node(mStart, 0, 0, nullptr));
+	Node* pFirst = addNode(Node(mStart, 0, 0, NULL));
 	addToList(openList, pFirst);
 
 	u32 iterations = 0;
@@ -2185,8 +2185,8 @@ bool CGameControllerZOMB::ParseWaveFile(const char* pBuff)
 						if(ParseZombDecl(&cursor, &count, &isElite, &isEnraged)) {
 							// add to wave
 							for(u32 c = 0; c < count; ++c) {
-								waveData[waveId][waveSpawnCount[waveId]++] =
-										SpawnCmd{(u8)zombType, isElite, isEnraged};
+								SpawnCmd Cmd = {(u8)zombType, isElite, isEnraged};
+								waveData[waveId][waveSpawnCount[waveId]++] = Cmd;
 							}
 						}
 						else {
@@ -2576,7 +2576,7 @@ void CGameControllerZOMB::StartZombSurv(i32 seed)
 
 void CGameControllerZOMB::TickSurvivalGame()
 {
-	constexpr i32 POCKET_COUNT = MAX_ZOMBS / 3;
+	const i32 POCKET_COUNT = MAX_ZOMBS / 3;
 
 	const f32 progress = min(1.0f, (m_Tick - m_SurvivalStartTick)/(f32)SURVIVAL_MAX_TIME);
 	dbg_assert(progress >= 0.0f && progress <= 1.0f, "");
@@ -2610,7 +2610,8 @@ void CGameControllerZOMB::TickSurvivalGame()
 				u8 enraged = randf01(&m_Seed) < max(0.05f, progress * 0.2f); // 5% -> 20%
 
 				std_zomb_msg("#%d type=%d elite=%d enraged=%d", s, ztype, elite, enraged);
-				m_SurvQueue[m_SurvQueueCount++] = SpawnCmd{ztype, elite, enraged};
+				SpawnCmd Cmd = {ztype, elite, enraged};
+				m_SurvQueue[m_SurvQueueCount++] = Cmd;
 			}
 		}
 
@@ -2618,7 +2619,8 @@ void CGameControllerZOMB::TickSurvivalGame()
 		for(i32 s = 0; s < basicToSpawn; s++) {
 			u8 elite = randf01(&m_Seed) < max(0.025f, max(progress-0.5f, 0.0f) * 2.0f);
 			u8 enraged = randf01(&m_Seed) < max(0.1f, progress * 0.4f); // 10% -> 40%
-			m_SurvQueue[m_SurvQueueCount++] = SpawnCmd{ZTYPE_BASIC, elite, enraged};
+			SpawnCmd Cmd = {ZTYPE_BASIC, elite, enraged};
+			m_SurvQueue[m_SurvQueueCount++] = Cmd;
 		}
 
 		std_zomb_msg("progress=%g basic=%d", progress, basicToSpawn);
