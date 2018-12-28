@@ -20,8 +20,8 @@ class IStorage;
 class CGameControllerZOMB : public IGameController
 {
 	enum {
-		MAX_WAVES = 128,
-		MAX_SPAWN_QUEUE = 256,
+		MAX_WAVES = 64,
+		MAX_SPAWN_QUEUE = 1024,
 		MAX_LASERS = 64,
 		MAX_PROJECTILES = 256,
 		MAX_TEE_SPAWN_POINTS = 32,

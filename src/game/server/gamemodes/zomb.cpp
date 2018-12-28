@@ -1646,7 +1646,7 @@ void CGameControllerZOMB::ConZombStart(IConsole::IResult* pResult, void* pUserDa
 
 	i32 startingWave = 0;
 	if(pResult->NumArguments()) {
-		startingWave = clamp(pResult->GetInteger(0), 0, MAX_WAVES-1);
+		startingWave = clamp(pResult->GetInteger(0), 0, (int)(pThis->m_WaveCount)-1);
 	}
 
 	pThis->StartZombGame(startingWave);
@@ -2155,7 +2155,7 @@ bool CGameControllerZOMB::ParseWaveFile(const char* pBuff)
 		switch(token.type) {
 			case TK_OPEN_BRACE: {
 				//dbg_zomb_msg("{");
-				if(!insideWave) {
+				if(!insideWave && waveCount < MAX_WAVES) {
 					waveId = waveCount++;
 					waveEnrageTime[waveId] = DEFAULT_ENRAGE_TIME;
 					waveSpawnCount[waveId] = 0;
@@ -2200,6 +2200,12 @@ bool CGameControllerZOMB::ParseWaveFile(const char* pBuff)
 						bool isElite = false;
 						bool isEnraged = false;
 						if(ParseZombDecl(&cursor, &count, &isElite, &isEnraged)) {
+							if(waveSpawnCount[waveId]+count > MAX_SPAWN_QUEUE)
+							{
+								std_zomb_msg("Error: wave parsing error: near %.*s (line: %d), %d exceeds max number of zombies (%d)",
+											 token.length, token.at, cursor.line, waveSpawnCount[waveId]+count, MAX_SPAWN_QUEUE);
+							}
+
 							// add to wave
 							for(u32 c = 0; c < count; ++c) {
 								SpawnCmd Cmd = {(u8)zombType, isElite, isEnraged};
