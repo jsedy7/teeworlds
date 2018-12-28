@@ -255,7 +255,7 @@ public:
 */
 
 inline bool CharIsSurvivor(i32 CID) {
-	return (CID < MAX_SURVIVORS);
+	return (CID >= 0 && CID < MAX_SURVIVORS);
 }
 
 inline bool CharIsZombie(i32 CID) {

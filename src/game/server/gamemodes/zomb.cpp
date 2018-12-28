@@ -1856,6 +1856,23 @@ void CGameControllerZOMB::TickWaveGame()
 
 void CGameControllerZOMB::ActivateReviveCtf()
 {
+	if(m_RedFlagSpawnCount < 1 || m_BlueFlagSpawnCount < 1)
+	{
+		std_zomb_msg("WARNING: put red & blue flags in your map for revive ctf to be activated!");
+
+		bool everyoneDead = true;
+		for(u32 i = 0; i < MAX_SURVIVORS && everyoneDead; ++i) {
+			if(GameServer()->GetPlayerChar(i)) {
+				everyoneDead = false;
+			}
+		}
+
+		if(everyoneDead) {
+			GameLost();
+		}
+		return;
+	}
+
 	m_RedFlagPos = m_RedFlagSpawn[m_Tick%m_RedFlagSpawnCount];
 	m_BlueFlagPos = m_BlueFlagSpawn[m_Tick%m_BlueFlagSpawnCount];
 	m_RedFlagCarrier = -1;
