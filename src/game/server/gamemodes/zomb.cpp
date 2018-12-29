@@ -71,7 +71,7 @@ static char msgBuff__[256];
 #define AURA_RADIUS 600.0f
 
 #define SURVIVAL_MAX_TIME (SecondsToTick(300))
-#define SURVIVAL_START_WAVE_INTERVAL (SecondsToTick(7))
+#define SURVIVAL_START_WAVE_INTERVAL (SecondsToTick(4))
 #define SURVIVAL_ENRAGE_TIME 60
 
 enum {
@@ -804,7 +804,7 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 
 	// hands and feets color
 	i32 brown = PackColor(28, 77, 13);
-	i32 red = PackColor(0, 255, 0);
+	i32 red = PackColor(0, 255, 40);
 	i32 yellow = PackColor(37, 255, 70);
 	i32 handFeetColor = brown;
 
@@ -829,7 +829,7 @@ void CGameControllerZOMB::SendZombieInfos(i32 zid, i32 CID)
 	nci.m_aUseCustomColors[SKINPART_BODY] = 0;
 	nci.m_aSkinPartColors[SKINPART_BODY] = 0;
 
-	if(m_ZombBuff[zid]&BUFF_ENRAGED) {
+	if(m_ZombBuff[zid]&BUFF_ENRAGED && m_ZombType[zid] != ZTYPE_BERSERKER) {
 		nci.m_aUseCustomColors[SKINPART_BODY] = 1;
 		nci.m_aSkinPartColors[SKINPART_BODY] = red;
 	}
@@ -1908,9 +1908,12 @@ void CGameControllerZOMB::ReviveSurvivors()
 				pPlayer->m_pCharacter = 0;
 			}
 
-			pPlayer->m_RespawnDisabled = false;
-			pPlayer->m_DeadSpecMode = false;
-			pPlayer->TryRespawn();
+			if(!pPlayer->m_pCharacter)
+			{
+				pPlayer->m_RespawnDisabled = false;
+				pPlayer->m_DeadSpecMode = false;
+				pPlayer->TryRespawn();
+			}
 		}
 	}
 
