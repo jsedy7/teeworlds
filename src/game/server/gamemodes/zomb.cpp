@@ -1679,7 +1679,8 @@ void CGameControllerZOMB::StartZombGame(u32 startingWave)
 
 void CGameControllerZOMB::WaveGameWon()
 {
-	ChatMessage(">> Game won, good job.");
+	ChatMessage(">> You won, good job!");
+	BroadcastMessage("^090You won, good job!");
 	EndMatch();
 	GameCleanUp();
 }
