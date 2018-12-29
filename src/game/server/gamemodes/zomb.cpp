@@ -1346,10 +1346,10 @@ void CGameControllerZOMB::HandleHunter(u32 zid, const vec2& targetPos, f32 targe
 void CGameControllerZOMB::HandleDominant(u32 zid, const vec2& targetPos, f32 targetDist, bool targetLOS)
 {
 	m_ZombInput[zid].m_Hook = 0; // dominants don't hook
+	m_ZombActiveWeapon[zid] = WEAPON_LASER;
 
 	// pew pew
 	if(targetDist > 56.f && targetLOS && targetDist < 400.f) {
-		m_ZombActiveWeapon[zid] = WEAPON_LASER;
 		if(m_ZombAttackClock[zid] <= 0) {
 			GameServer()->CreateSound(m_ZombCharCore[zid].m_Pos, SOUND_LASER_FIRE);
 			CreateLaser(m_ZombCharCore[zid].m_Pos, targetPos);
@@ -1364,9 +1364,6 @@ void CGameControllerZOMB::HandleDominant(u32 zid, const vec2& targetPos, f32 tar
 
 			m_ZombAttackClock[zid] = SecondsToTick(1.f / g_ZombAttackSpeed[m_ZombType[zid]]);
 		}
-	}
-	else {
-		m_ZombActiveWeapon[zid] = WEAPON_HAMMER;
 	}
 }
 
@@ -1654,6 +1651,12 @@ void CGameControllerZOMB::ConZombStart(IConsole::IResult* pResult, void* pUserDa
 
 void CGameControllerZOMB::StartZombGame(u32 startingWave)
 {
+	for(u32 i = 0; i < MAX_SURVIVORS; ++i) {
+		if(GameServer()->m_apPlayers[i]) {
+			GameServer()->m_apPlayers[i]->m_Score = 0;
+		}
+	}
+
 	m_CurrentWave = startingWave-1; // will be increased to one after wait time
 	m_SpawnCmdID = 0;
 	m_SpawnClock = 0;
@@ -1737,15 +1740,6 @@ void CGameControllerZOMB::GameCleanUp()
 		if(GameServer()->m_apPlayers[i]) {
 			GameServer()->m_apPlayers[i]->m_RespawnDisabled = false;
 			GameServer()->m_apPlayers[i]->m_DeadSpecMode = false;
-			GameServer()->m_apPlayers[i]->m_Score = 0;
-		}
-	}
-
-	for(u32 i = 0; i < MAX_SURVIVORS; ++i) {
-		if(GameServer()->m_apPlayers[i]) {
-			GameServer()->m_apPlayers[i]->m_RespawnDisabled = false;
-			GameServer()->m_apPlayers[i]->m_DeadSpecMode = false;
-			GameServer()->m_apPlayers[i]->m_Score = 0;
 		}
 	}
 
@@ -2570,6 +2564,12 @@ void CGameControllerZOMB::ConZombStartSurv(IConsole::IResult* pResult, void* pUs
 
 void CGameControllerZOMB::StartZombSurv(i32 seed)
 {
+	for(u32 i = 0; i < MAX_SURVIVORS; ++i) {
+		if(GameServer()->m_apPlayers[i]) {
+			GameServer()->m_apPlayers[i]->m_Score = 0;
+		}
+	}
+
 	m_SurvWaveInterval = SURVIVAL_START_WAVE_INTERVAL;
 	m_SurvQueueCount = 0;
 	m_SpawnClock = SecondsToTick(10); // 10s to setup
@@ -2979,8 +2979,8 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 		}
 
 		pPlayerInfo->m_PlayerFlags = PLAYERFLAG_READY;
-		pPlayerInfo->m_Latency = zombCID;
-		pPlayerInfo->m_Score = zombCID;
+		pPlayerInfo->m_Latency = -zombCID;
+		pPlayerInfo->m_Score = -zombCID;
 
 		if(NetworkClipped(viewPos, m_ZombCharCore[i].m_Pos)) {
 			continue;
