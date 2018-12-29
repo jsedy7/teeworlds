@@ -221,6 +221,8 @@ class CGameControllerZOMB : public IGameController
 
 	i32 IntersectCharacterCore(vec2 Pos0, vec2 Pos1, float Radius, vec2& NewPos, CCharacterCore *pNotThis);
 
+	bool IsEverySurvivorDead() const;
+
 public:
 	CGameControllerZOMB(class CGameContext *pGameServer, class IStorage* pStorage);
 	void Tick();

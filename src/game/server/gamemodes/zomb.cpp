@@ -1855,14 +1855,7 @@ void CGameControllerZOMB::ActivateReviveCtf()
 	{
 		std_zomb_msg("WARNING: put red & blue flags in your map for revive ctf to be activated!");
 
-		bool everyoneDead = true;
-		for(u32 i = 0; i < MAX_SURVIVORS && everyoneDead; ++i) {
-			if(GameServer()->GetPlayerChar(i)) {
-				everyoneDead = false;
-			}
-		}
-
-		if(everyoneDead) {
+		if(IsEverySurvivorDead()) {
 			GameLost();
 		}
 		return;
@@ -1907,10 +1900,17 @@ void CGameControllerZOMB::ReviveSurvivors()
 	m_CanPlayersRespawn = true;
 
 	for(u32 i = 0; i < MAX_SURVIVORS; ++i) {
-		if(GameServer()->m_apPlayers[i] && !GameServer()->GetPlayerChar(i)) {
-			GameServer()->m_apPlayers[i]->m_RespawnDisabled = false;
-			GameServer()->m_apPlayers[i]->m_DeadSpecMode = false;
-			GameServer()->m_apPlayers[i]->TryRespawn();
+		CPlayer* pPlayer = GameServer()->m_apPlayers[i];
+		if(pPlayer) {
+			CCharacter* pChar = pPlayer->m_pCharacter;
+			if(pChar && !pChar->IsAlive()) { // yes this can happen somehow...
+				delete pPlayer->m_pCharacter;
+				pPlayer->m_pCharacter = 0;
+			}
+
+			pPlayer->m_RespawnDisabled = false;
+			pPlayer->m_DeadSpecMode = false;
+			pPlayer->TryRespawn();
 		}
 	}
 
@@ -2681,14 +2681,7 @@ void CGameControllerZOMB::TickSurvivalGame()
 
 void CGameControllerZOMB::TickReviveCtf()
 {
-	bool everyoneDead = true;
-	for(u32 i = 0; i < MAX_SURVIVORS && everyoneDead; ++i) {
-		if(GameServer()->GetPlayerChar(i)) {
-			everyoneDead = false;
-		}
-	}
-
-	if(everyoneDead) {
+	if(IsEverySurvivorDead()) {
 		GameLost();
 		return;
 	}
@@ -3419,6 +3412,22 @@ i32 CGameControllerZOMB::IntersectCharacterCore(vec2 Pos0, vec2 Pos1, float Radi
    }
 
    return closest;
+}
+
+bool CGameControllerZOMB::IsEverySurvivorDead() const
+{
+	bool everyoneDead = true;
+	for(u32 i = 0; i < MAX_SURVIVORS && everyoneDead; ++i) {
+		CPlayer* pPlayer = GameServer()->m_apPlayers[i];
+		if(pPlayer) {
+			CCharacter* pChar = pPlayer->m_pCharacter;
+			if(pChar) {
+				everyoneDead = false;
+			}
+		}
+	}
+
+	return everyoneDead;
 }
 
 bool CGameControllerZOMB::PlayerTryHitLaser(i32 CID, vec2 start, vec2 end, vec2& at)
