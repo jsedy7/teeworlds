@@ -107,5 +107,6 @@ MACRO_CONFIG_INT(DbgPathFindIterations, sv_pf_iterations, 2500, 1, 10000, CFGFLA
 MACRO_CONFIG_INT(SvZombAutoStart, sv_zomb_auto_start, 0, 0, 600, CFGFLAG_SERVER, "Zomb auto start on player join")
 MACRO_CONFIG_INT(SvZombAutoRestart, sv_zomb_auto_restart, 0, 0, 600, CFGFLAG_SERVER, "Zomb auto restart")
 MACRO_CONFIG_STR(SvZombWaveFile, sv_zomb_wave_file, 256, "", CFGFLAG_SAVE|CFGFLAG_SERVER, "Zomb wave file path")
+MACRO_CONFIG_INT(SvZombSurvivalDifficulty, sv_zomb_survival_difficulty, 1, 0, 2, CFGFLAG_SAVE|CFGFLAG_SERVER, "Zomb survival difficulty (0=easy 1=normal 2=hard)")
 
 #endif

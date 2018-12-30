@@ -70,9 +70,19 @@ static char msgBuff__[256];
 
 #define AURA_RADIUS 600.0f
 
-#define SURVIVAL_MAX_TIME (SecondsToTick(300))
-#define SURVIVAL_START_WAVE_INTERVAL (SecondsToTick(4))
+#define SURVIVAL_MAX_TIME_EASY (SecondsToTick(600))
+#define SURVIVAL_MAX_TIME_NORMAL (SecondsToTick(300))
+#define SURVIVAL_MAX_TIME_HARD (SecondsToTick(150))
+#define SURVIVAL_START_WAVE_INTERVAL_EASY (SecondsToTick(8))
+#define SURVIVAL_START_WAVE_INTERVAL_NORMAL (SecondsToTick(4))
+#define SURVIVAL_START_WAVE_INTERVAL_HARD (SecondsToTick(2))
 #define SURVIVAL_ENRAGE_TIME 60
+
+static const char* g_SurvDiffString[] = {
+	"Easy",
+	"Normal",
+	"Hard"
+};
 
 enum {
 	SKINPART_BODY = 0,
@@ -1704,11 +1714,18 @@ void CGameControllerZOMB::GameLost(bool AllowRestart)
 		i32 min = t / 60;
 		i32 sec = t % 60;
 		char msgBuff[256];
-		str_format(msgBuff, sizeof(msgBuff), ">> You survived %d min %d sec, good job!",
-				   min, sec);
+		str_format(msgBuff, sizeof(msgBuff), ">> You survived %d min %d sec, good job! [%s difficulty]",
+				   min, sec, g_SurvDiffString[m_SurvDifficulty]);
 		ChatMessage(msgBuff);
-		str_format(msgBuff, sizeof(msgBuff), "You survived ^090%d min %d sec^999, good job!",
-				   min, sec);
+
+		const char* aSurvDiffColor[] = {
+			"090",
+			"990",
+			"900"
+		};
+		str_format(msgBuff, sizeof(msgBuff), "You survived ^090%d min %d sec^999, good job! ^%s[%s difficulty]",
+				   min, sec, aSurvDiffColor[m_SurvDifficulty],
+				   g_SurvDiffString[m_SurvDifficulty]);
 		BroadcastMessage(msgBuff);
 	}
 
@@ -2574,12 +2591,35 @@ void CGameControllerZOMB::StartZombSurv(i32 seed)
 		}
 	}
 
-	m_SurvWaveInterval = SURVIVAL_START_WAVE_INTERVAL;
+	m_SurvDifficulty = g_Config.m_SvZombSurvivalDifficulty;
+	switch(m_SurvDifficulty)
+	{
+		case 2:
+			m_SurvWaveInterval = SURVIVAL_START_WAVE_INTERVAL_HARD;
+			m_SurvMaxTime = SURVIVAL_MAX_TIME_HARD;
+			break;
+
+		case 1:
+			m_SurvWaveInterval = SURVIVAL_START_WAVE_INTERVAL_NORMAL;
+			m_SurvMaxTime = SURVIVAL_MAX_TIME_NORMAL;
+			break;
+
+		case 0:
+		default:
+			m_SurvWaveInterval = SURVIVAL_START_WAVE_INTERVAL_EASY;
+			m_SurvMaxTime = SURVIVAL_MAX_TIME_EASY;
+			break;
+	}
+
 	m_SurvQueueCount = 0;
 	m_SpawnClock = SecondsToTick(10); // 10s to setup
 	m_SurvivalStartTick = m_Tick;
-	ChatMessage(">> Survive!");
-	BroadcastMessage("^900Survive!");
+
+	char aMsg[128];
+	str_format(aMsg, sizeof(aMsg), ">> Survive! (%s)", g_SurvDiffString[m_SurvDifficulty]);
+	ChatMessage(aMsg);
+	str_format(aMsg, sizeof(aMsg), "^900Survive! (%s)", g_SurvDiffString[m_SurvDifficulty]);
+	BroadcastMessage(aMsg);
 	ChatMessage(">> 10s to setup.");
 	DoWarmup(0);
 	m_ZombGameState = ZSTATE_SURV_GAME;
@@ -2605,8 +2645,8 @@ void CGameControllerZOMB::TickSurvivalGame()
 {
 	const i32 POCKET_COUNT = MAX_ZOMBS / 3;
 
-	const f32 progress = min(1.0f, (m_Tick - m_SurvivalStartTick)/(f32)SURVIVAL_MAX_TIME);
-	dbg_assert(progress >= 0.0f && progress <= 1.0f, "");
+	const f64 progress = min(1.0, (m_Tick - m_SurvivalStartTick)/(f64)m_SurvMaxTime);
+	dbg_assert(progress >= 0.0 && progress <= 1.0, "");
 
 	if(m_SurvQueueCount == 0) {
 		const i32 specialMaxCount = max(1, (i32)(progress * POCKET_COUNT));
@@ -2633,8 +2673,8 @@ void CGameControllerZOMB::TickSurvivalGame()
 					}
 				}
 				dbg_assert(ztype != ZTYPE_BASIC, "Should not happen");
-				u8 elite = randf01(&m_Seed) < max(0.05f, max(progress-0.5f, 0.0f) * 2.0f);
-				u8 enraged = randf01(&m_Seed) < max(0.05f, progress * 0.2f); // 5% -> 20%
+				u8 elite = randf01(&m_Seed) < max(0.05, max(progress-0.5, 0.0) * 2.0);
+				u8 enraged = randf01(&m_Seed) < max(0.05, progress * 0.2); // 5% -> 20%
 
 				std_zomb_msg("#%d type=%d elite=%d enraged=%d", s, ztype, elite, enraged);
 				SpawnCmd Cmd = {ztype, elite, enraged};
@@ -2644,8 +2684,8 @@ void CGameControllerZOMB::TickSurvivalGame()
 
 		const i32 basicToSpawn = POCKET_COUNT - specialsToSpawn;
 		for(i32 s = 0; s < basicToSpawn; s++) {
-			u8 elite = randf01(&m_Seed) < max(0.025f, max(progress-0.5f, 0.0f) * 2.0f);
-			u8 enraged = randf01(&m_Seed) < max(0.1f, progress * 0.4f); // 10% -> 40%
+			u8 elite = randf01(&m_Seed) < max(0.025, max(progress-0.5, 0.0) * 2.0);
+			u8 enraged = randf01(&m_Seed) < max(0.1, progress * 0.4); // 10% -> 40%
 			SpawnCmd Cmd = {ZTYPE_BASIC, elite, enraged};
 			m_SurvQueue[m_SurvQueueCount++] = Cmd;
 		}
