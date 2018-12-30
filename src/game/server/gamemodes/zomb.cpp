@@ -2883,6 +2883,16 @@ void CGameControllerZOMB::Tick()
 	m_Tick = Server()->Tick();
 	IGameController::Tick();
 
+	// move all valid players to the correct team
+	for(u32 i = 0; i < MAX_SURVIVORS; ++i) {
+		CPlayer* pPlayer = GameServer()->m_apPlayers[i];
+		if(pPlayer && pPlayer->GetTeam() != TEAM_RED) {
+			DoTeamChange(pPlayer, TEAM_RED, false);
+			if(m_ZombGameState != ZSTATE_NONE)
+				pPlayer->m_RespawnDisabled = true;
+		}
+	}
+
 	if(m_RestartClock > 0) {
 		--m_RestartClock;
 		if(m_RestartClock < SecondsToTick(5))
@@ -3305,19 +3315,17 @@ bool CGameControllerZOMB::CanSpawn(int Team, vec2* pPos) const
 
 int CGameControllerZOMB::OnCharacterDeath(CCharacter* pVictim, CPlayer* pKiller, int Weapon)
 {
-	if(Weapon != WEAPON_GAME) {
-		if(m_ZombGameState != ZSTATE_NONE) {
-			PlayerActivateDeadSpectate(pVictim->GetPlayer());
-		}
+	if(m_ZombGameState != ZSTATE_NONE) {
+		PlayerActivateDeadSpectate(pVictim->GetPlayer());
+	}
 
-		if(!m_IsReviveCtfActive && m_ZombGameState != ZSTATE_NONE) {
-			ActivateReviveCtf();
-		}
+	if(!m_IsReviveCtfActive && m_ZombGameState != ZSTATE_NONE) {
+		ActivateReviveCtf();
+	}
 
-		if(m_RedFlagCarrier == pVictim->GetPlayer()->GetCID()) {
-			m_RedFlagCarrier = -1;
-			GameServer()->SendGameMsg(GAMEMSG_CTF_DROP, -1);
-		}
+	if(m_RedFlagCarrier == pVictim->GetPlayer()->GetCID()) {
+		m_RedFlagCarrier = -1;
+		GameServer()->SendGameMsg(GAMEMSG_CTF_DROP, -1);
 	}
 
 	return IGameController::OnCharacterDeath(pVictim, pKiller, Weapon);
