@@ -184,7 +184,7 @@ static const f32 g_ZombHookRange[] = {
 static const i32 g_ZombGrabLimit[] = {
 	SecondsToTick(0.2f), // ZTYPE_BASIC
 	SecondsToTick(2.5f), // ZTYPE_TANK
-	SecondsToTick(2.f), // ZTYPE_BOOMER
+	SecondsToTick(1.0f), // ZTYPE_BOOMER
 	SecondsToTick(1.f), // ZTYPE_BULL
 	SecondsToTick(30.f), // ZTYPE_MUDGE
 	SecondsToTick(0.5f), // ZTYPE_HUNTER
@@ -1117,9 +1117,6 @@ void CGameControllerZOMB::HandleBoomer(u32 zid, f32 targetDist, bool targetLOS)
 	if(m_ZombExplodeClock[zid] < 0 && targetDist < BOOMER_EXPLOSION_INNER_RADIUS && targetLOS) {
 		m_ZombExplodeClock[zid] = SecondsToTick(0.35f);
 		m_ZombInput[zid].m_Hook = 0; // stop hooking to give the survivor a chance to escape
-		if(m_ZombBuff[zid]&BUFF_ENRAGED) { // ...except if enraged
-			m_ZombInput[zid].m_Hook = 1;
-		}
 		m_ZombHookClock[zid] = SecondsToTick(1.f);
 		// send some love
 		GameServer()->SendEmoticon(zombCID, 2);
@@ -3487,12 +3484,8 @@ bool CGameControllerZOMB::IsEverySurvivorDead() const
 {
 	bool everyoneDead = true;
 	for(u32 i = 0; i < MAX_SURVIVORS && everyoneDead; ++i) {
-		CPlayer* pPlayer = GameServer()->m_apPlayers[i];
-		if(pPlayer) {
-			CCharacter* pChar = pPlayer->m_pCharacter;
-			if(pChar) {
-				everyoneDead = false;
-			}
+		if(GameServer()->GetPlayerChar(i)) {
+			everyoneDead = false;
 		}
 	}
 
