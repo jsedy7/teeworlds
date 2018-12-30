@@ -15,19 +15,15 @@
 #include <generated/server_data.h>
 #include <game/server/entities/projectile.h>
 
-/**
- * TODO:
- * - survival: make zombs mutate?
- * - survival: seed
- * - Higher spawn map
- * - reduce normal zombie hook range
- */
-
 static char msgBuff__[256];
+#ifdef CONF_DEBUG
 #define dbg_zomb_msg(...)\
 	memset(msgBuff__, 0, sizeof(msgBuff__));\
 	str_format(msgBuff__, sizeof(msgBuff__), ##__VA_ARGS__);\
-	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "zomb", msgBuff__);
+	GameServer()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "zomb", msgBuff__);
+#else
+#define dbg_zomb_msg(...)
+#endif
 
 #define std_zomb_msg(...)\
 	memset(msgBuff__, 0, sizeof(msgBuff__));\
@@ -188,7 +184,7 @@ static const f32 g_ZombHookRange[] = {
 static const i32 g_ZombGrabLimit[] = {
 	SecondsToTick(0.2f), // ZTYPE_BASIC
 	SecondsToTick(2.5f), // ZTYPE_TANK
-	SecondsToTick(1.f), // ZTYPE_BOOMER
+	SecondsToTick(2.f), // ZTYPE_BOOMER
 	SecondsToTick(1.f), // ZTYPE_BULL
 	SecondsToTick(30.f), // ZTYPE_MUDGE
 	SecondsToTick(0.5f), // ZTYPE_HUNTER
@@ -1029,7 +1025,7 @@ void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos, bool ta
 			input.m_Jump = ZOMBIE_BIGJUMP;
 			m_ZombJumpClock[zid] = SecondsToTick(1.0f);
 		}
-		else if(yDist > 10.f) {
+		else if(yDist > 0.f) {
 			if(grounded) {
 				input.m_Jump = ZOMBIE_GROUNDJUMP;
 				m_ZombJumpClock[zid] = SecondsToTick(0.5f);
@@ -1099,8 +1095,6 @@ void CGameControllerZOMB::HandleBoomer(u32 zid, f32 targetDist, bool targetLOS)
 
 	if(m_ZombExplodeClock[zid] > 0)
 		--m_ZombExplodeClock[zid];
-	if(m_ZombBuff[zid]&BUFF_ENRAGED && m_ZombExplodeClock[zid] > 0) // decrease fuse time twice as fast when enraged
-		--m_ZombExplodeClock[zid];
 
 	// BOOM
 	if(m_ZombExplodeClock[zid] == 0) {
@@ -1123,6 +1117,9 @@ void CGameControllerZOMB::HandleBoomer(u32 zid, f32 targetDist, bool targetLOS)
 	if(m_ZombExplodeClock[zid] < 0 && targetDist < BOOMER_EXPLOSION_INNER_RADIUS && targetLOS) {
 		m_ZombExplodeClock[zid] = SecondsToTick(0.35f);
 		m_ZombInput[zid].m_Hook = 0; // stop hooking to give the survivor a chance to escape
+		if(m_ZombBuff[zid]&BUFF_ENRAGED) { // ...except if enraged
+			m_ZombInput[zid].m_Hook = 1;
+		}
 		m_ZombHookClock[zid] = SecondsToTick(1.f);
 		// send some love
 		GameServer()->SendEmoticon(zombCID, 2);
@@ -1588,6 +1585,17 @@ void CGameControllerZOMB::TickZombies()
 	// core actual move
 	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
 		if(!m_ZombAlive[i]) continue;
+
+		// smooth out small movement
+		f32 xDist = fabs(m_ZombDestination[i].x - (m_ZombCharCore[i].m_Pos.x + m_ZombCharCore[i].m_Vel.x));
+		if(xDist < 4.f) {
+			m_ZombInput[i].m_Direction = 0;
+		}
+		f32 yDelta = m_ZombDestination[i].y - (m_ZombCharCore[i].m_Pos.y + m_ZombCharCore[i].m_Vel.y);
+		if(yDelta > 0 && yDelta < 4.f) {
+			m_ZombInput[i].m_Jump = 0;
+		}
+
 		m_ZombCharCore[i].m_Input = m_ZombInput[i];
 
 		// handle jump
@@ -1597,11 +1605,11 @@ void CGameControllerZOMB::TickZombies()
 			f32 jumpStr = 14.f;
 			if(m_ZombCharCore[i].m_Input.m_Jump == ZOMBIE_BIGJUMP) {
 				jumpStr = 22.f;
-				jumpTriggers |= COREEVENTFLAG_AIR_JUMP;
+				//jumpTriggers |= COREEVENTFLAG_AIR_JUMP;
 				m_ZombCharCore[i].m_Jumped |= 3;
 			}
 			else if(m_ZombCharCore[i].m_Input.m_Jump == ZOMBIE_AIRJUMP) {
-				jumpTriggers |= COREEVENTFLAG_AIR_JUMP;
+				//jumpTriggers |= COREEVENTFLAG_AIR_JUMP;
 				m_ZombCharCore[i].m_Jumped |= 3;
 			}
 			else {
@@ -1611,16 +1619,6 @@ void CGameControllerZOMB::TickZombies()
 
 			m_ZombCharCore[i].m_Vel.y = -jumpStr;
 			m_ZombCharCore[i].m_Input.m_Jump = 0;
-		}
-
-		m_ZombCharCore[i].Tick(true);
-
-		m_ZombCharCore[i].m_TriggeredEvents |= jumpTriggers;
-
-		// smooth out small movement
-		f32 xDist = fabs(m_ZombDestination[i].x - m_ZombCharCore[i].m_Pos.x);
-		if(xDist < 5.f) {
-			m_ZombCharCore[i].m_Vel.x = (m_ZombDestination[i].x - m_ZombCharCore[i].m_Pos.x);
 		}
 
 		if(m_ZombChargingClock[i] > 0) {
@@ -1641,6 +1639,8 @@ void CGameControllerZOMB::TickZombies()
 											   0.f);
 		}
 
+		m_ZombCharCore[i].Tick(true);
+		m_ZombCharCore[i].m_TriggeredEvents |= jumpTriggers;
 		m_ZombCharCore[i].Move();
 
 		// predict charge
@@ -2658,7 +2658,7 @@ void CGameControllerZOMB::TickSurvivalGame()
 		if(specialMaxCount > 0) {
 			specialsToSpawn = randi(&m_Seed, specialMaxCount/2, specialMaxCount);
 
-			std_zomb_msg("specialMaxCount=%d specialsToSpawn=%d", specialMaxCount, specialsToSpawn);
+			dbg_zomb_msg("specialMaxCount=%d specialsToSpawn=%d", specialMaxCount, specialsToSpawn);
 
 			for(i32 s = 0; s < specialsToSpawn; s++) {
 				f32 n = randf01(&m_Seed);
@@ -2679,7 +2679,7 @@ void CGameControllerZOMB::TickSurvivalGame()
 				u8 elite = randf01(&m_Seed) < max(0.05, max(progress-0.5, 0.0) * 2.0);
 				u8 enraged = randf01(&m_Seed) < max(0.05, progress * 0.2); // 5% -> 20%
 
-				std_zomb_msg("#%d type=%d elite=%d enraged=%d", s, ztype, elite, enraged);
+				dbg_zomb_msg("#%d type=%d elite=%d enraged=%d", s, ztype, elite, enraged);
 				SpawnCmd Cmd = {ztype, elite, enraged};
 				m_SurvQueue[m_SurvQueueCount++] = Cmd;
 			}
@@ -2693,7 +2693,7 @@ void CGameControllerZOMB::TickSurvivalGame()
 			m_SurvQueue[m_SurvQueueCount++] = Cmd;
 		}
 
-		std_zomb_msg("progress=%g basic=%d", progress, basicToSpawn);
+		dbg_zomb_msg("progress=%g basic=%d", progress, basicToSpawn);
 	}
 
 	if(m_SpawnClock > 0) {
@@ -2707,7 +2707,7 @@ void CGameControllerZOMB::TickSurvivalGame()
 	}
 
 	if(m_SpawnClock == 0 && spots >= POCKET_COUNT) {
-		std_zomb_msg("spawning spots=%d", spots);
+		dbg_zomb_msg("spawning spots=%d", spots);
 		spots = min(POCKET_COUNT, spots);
 
 		for(i32 i = 0; i < MAX_ZOMBS && spots > 0; ++i) {
@@ -2805,7 +2805,7 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer, IStorage* pS
 
 	// get map info
 	memcpy(m_MapName, g_Config.m_SvMap, sizeof(g_Config.m_SvMap));
-	mem_zero(m_Map, MAX_MAP_SIZE);
+	mem_zero(m_Map, sizeof(m_Map));
 	m_MapCrc = reinterpret_cast<IEngineMap*>(GameServer()->Layers()->Map())->Crc();
 	CMapItemLayerTilemap* pGameLayer = GameServer()->Layers()->GameLayer();
 	m_MapWidth = pGameLayer->m_Width;
@@ -2818,8 +2818,8 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer, IStorage* pS
 	}
 
 	for(int i = 0; i < count && i < MAX_MAP_SIZE; ++i) {
-		if(pTiles[i].m_Index == TILE_SOLID ||
-		   pTiles[i].m_Index == TILE_NOHOOK) {
+		const int Index = pTiles[i].m_Index;
+		if(Index <= 128 && Index&CCollision::COLFLAG_SOLID) {
 			m_Map[i] = 1;
 		}
 	}
@@ -3185,6 +3185,29 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 		pObj->m_FromY = m_DbgLines[i].end.y * 32 + 16;
 		pObj->m_StartTick = tick;
 	}
+
+#if 0
+	for(i32 y = 0; y < m_MapHeight; y++)
+	{
+		for(i32 x = 0; x < m_MapWidth; x++)
+		{
+			const int id = y * m_MapWidth + x;
+			const vec2 Pos(x*32, y*32);
+			if(!m_Map[id] || NetworkClipped(viewPos, Pos))
+				continue;
+
+			CNetObj_Pickup *pPickup = (CNetObj_Pickup *)Server()->SnapNewItem(NETOBJTYPE_PICKUP,
+											1024+id, sizeof(CNetObj_Pickup));
+			if(!pPickup)
+				return;
+
+			pPickup->m_X = Pos.x;
+			pPickup->m_Y = Pos.y;
+			pPickup->m_Type = PICKUP_ARMOR;
+		}
+	}
+#endif
+
 #endif
 }
 
