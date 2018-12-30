@@ -1097,7 +1097,10 @@ void CGameControllerZOMB::HandleBoomer(u32 zid, f32 targetDist, bool targetLOS)
 	i32 zombCID = ZombCID(zid);
 	const vec2& pos = m_ZombCharCore[zid].m_Pos;
 
-	--m_ZombExplodeClock[zid];
+	if(m_ZombExplodeClock[zid] > 0)
+		--m_ZombExplodeClock[zid];
+	if(m_ZombBuff[zid]&BUFF_ENRAGED && m_ZombExplodeClock[zid] > 0) // decrease fuse time twice as fast when enraged
+		--m_ZombExplodeClock[zid];
 
 	// BOOM
 	if(m_ZombExplodeClock[zid] == 0) {
@@ -1119,7 +1122,7 @@ void CGameControllerZOMB::HandleBoomer(u32 zid, f32 targetDist, bool targetLOS)
 	// start the fuse
 	if(m_ZombExplodeClock[zid] < 0 && targetDist < BOOMER_EXPLOSION_INNER_RADIUS && targetLOS) {
 		m_ZombExplodeClock[zid] = SecondsToTick(0.35f);
-		m_ZombInput[zid].m_Hook = 0; // stop hooking to let the survivor a chance to escape
+		m_ZombInput[zid].m_Hook = 0; // stop hooking to give the survivor a chance to escape
 		m_ZombHookClock[zid] = SecondsToTick(1.f);
 		// send some love
 		GameServer()->SendEmoticon(zombCID, 2);
