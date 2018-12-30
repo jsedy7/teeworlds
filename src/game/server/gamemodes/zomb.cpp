@@ -1592,6 +1592,23 @@ void CGameControllerZOMB::TickZombies()
 		if(yDelta > 0 && yDelta < 4.f) {
 			m_ZombInput[i].m_Jump = 0;
 		}
+		if(m_ZombChargingClock[i] > 0) {
+			--m_ZombChargingClock[i];
+
+			// reset input except from firing
+			i32 doFire = m_ZombInput[i].m_Fire;
+			m_ZombInput[i] = CNetObj_PlayerInput();
+			m_ZombInput[i].m_Fire = doFire;
+
+			// don't move naturally
+			m_ZombCharCore[i].m_Vel = vec2(0, 0);
+
+			vec2 chargeVel = m_ZombChargeVel[i];
+			GameServer()->Collision()->MoveBox(&m_ZombCharCore[i].m_Pos,
+											   &chargeVel,
+											   vec2(28.f, 28.f),
+											   0.f);
+		}
 
 		m_ZombCharCore[i].m_Input = m_ZombInput[i];
 
@@ -1616,24 +1633,6 @@ void CGameControllerZOMB::TickZombies()
 
 			m_ZombCharCore[i].m_Vel.y = -jumpStr;
 			m_ZombCharCore[i].m_Input.m_Jump = 0;
-		}
-
-		if(m_ZombChargingClock[i] > 0) {
-			--m_ZombChargingClock[i];
-
-			// reset input except from firing
-			i32 doFire = m_ZombInput[i].m_Fire;
-			m_ZombInput[i] = CNetObj_PlayerInput();
-			m_ZombInput[i].m_Fire = doFire;
-
-			// don't move naturally
-			m_ZombCharCore[i].m_Vel = vec2(0, 0);
-
-			vec2 chargeVel = m_ZombChargeVel[i];
-			GameServer()->Collision()->MoveBox(&m_ZombCharCore[i].m_Pos,
-											   &chargeVel,
-											   vec2(28.f, 28.f),
-											   0.f);
 		}
 
 		m_ZombCharCore[i].Tick(true);
