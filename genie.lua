@@ -57,6 +57,8 @@ solution "Teeworlds"
 	includedirs {
 		"src",
 		"src/engine/external/zlib/",
+		"src/engine/external/pnglite/",
+		"src/engine/external/wavpack/",
         BUILD_DIR.."/src"
 	}
 	
