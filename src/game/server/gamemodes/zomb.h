@@ -144,8 +144,8 @@ class CGameControllerZOMB : public IGameController
 	};
 
 	Projectile m_ProjectileList[MAX_PROJECTILES];
-	u32 m_ProjectileCount;
-	u32 m_ProjectileID;
+	i32 m_ProjectileCount;
+	i32 m_ProjectileID;
 
 #ifdef CONF_DEBUG
 	ivec2 m_DbgPath[256];

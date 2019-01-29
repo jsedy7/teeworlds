@@ -1452,6 +1452,19 @@ void CGameControllerZOMB::TickZombies()
 		}
 	}
 
+	static i32 ZombStuckTicks[MAX_ZOMBS] = {0};
+	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
+		if(!m_ZombAlive[i]) {
+			ZombStuckTicks[i] = 0;
+			continue;
+		}
+
+		if(length(m_ZombCharCore[i].m_Vel) < 0.001f)
+			ZombStuckTicks[i]++;
+		else
+			ZombStuckTicks[i] = 0;
+	}
+
 	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
 		if(!m_ZombAlive[i]) continue;
 
@@ -1524,6 +1537,9 @@ void CGameControllerZOMB::TickZombies()
 
 		HandleMovement(i, targetPos, targetLOS);
 
+		if(ZombStuckTicks[i] > 10)
+			m_ZombInput[i].m_Jump = ZOMBIE_GROUNDJUMP;
+
 		m_ZombInput[i].m_TargetX = targetPos.x - pos.x;
 		m_ZombInput[i].m_TargetY = targetPos.y - pos.y;
 
@@ -1583,6 +1599,7 @@ void CGameControllerZOMB::TickZombies()
 	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
 		if(!m_ZombAlive[i]) continue;
 
+#if 0
 		// smooth out small movement
 		f32 xDist = fabs(m_ZombDestination[i].x - (m_ZombCharCore[i].m_Pos.x + m_ZombCharCore[i].m_Vel.x));
 		if(xDist < 4.f) {
@@ -1592,6 +1609,8 @@ void CGameControllerZOMB::TickZombies()
 		if(yDelta > 0 && yDelta < 4.f) {
 			m_ZombInput[i].m_Jump = 0;
 		}
+#endif
+
 		if(m_ZombChargingClock[i] > 0) {
 			--m_ZombChargingClock[i];
 
@@ -1642,6 +1661,37 @@ void CGameControllerZOMB::TickZombies()
 		// predict charge
 		if(m_ZombChargingClock[i] > 0) {
 			m_ZombCharCore[i].m_Vel = m_ZombChargeVel[i];
+		}
+	}
+
+	// check if character cores overlap
+	const bool PlayerCollision = GameServer()->m_World.m_Core.m_Tuning.m_PlayerCollision;
+	CCharacterCore** apCharacters = GameServer()->m_World.m_Core.m_apCharacters;
+	u32 Seed = m_Tick;
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		CCharacterCore *pCharCore = apCharacters[i];
+		if(!pCharCore)
+			continue;
+
+		for(int j = 0; j < MAX_CLIENTS; j++)
+		{
+
+			CCharacterCore *pCharCore2 = apCharacters[j];
+			if(!pCharCore2 || pCharCore == pCharCore2)
+				continue;
+
+			// handle player <-> player collision
+			float Distance = distance(pCharCore->m_Pos, pCharCore2->m_Pos);
+			vec2 Dir = normalize(pCharCore->m_Pos - pCharCore2->m_Pos);
+
+			if(PlayerCollision && Distance < 0.0001f)
+			{
+				float a = randf01(&Seed) * 2 * pi;
+				vec2 Dir(cosf(a), sinf(a));
+				pCharCore->m_Vel += Dir*10;
+				pCharCore2->m_Vel -= Dir*10;
+			}
 		}
 	}
 }
@@ -2420,10 +2470,7 @@ void CGameControllerZOMB::CreateProjectile(vec2 pos, vec2 dir, i32 type, i32 dmg
 
 void CGameControllerZOMB::TickProjectiles()
 {
-	u32 toDelete[256];
-	u32 toDeleteCount = 0;
-
-	for(u32 i = 0; i < m_ProjectileCount; ++i) {
+	for(i32 i = 0; i < m_ProjectileCount; ++i) {
 		f32 pt = (m_Tick - m_ProjectileList[i].startTick - 1)/(f32)SERVER_TICK_SPEED;
 		f32 ct = (m_Tick - m_ProjectileList[i].startTick)/(f32)SERVER_TICK_SPEED;
 		vec2 prevPos = CalcPos(m_ProjectileList[i].startPos, m_ProjectileList[i].dir,
@@ -2437,7 +2484,12 @@ void CGameControllerZOMB::TickProjectiles()
 								m_ProjectileList[i].ownerCID);
 			}
 
-			toDelete[toDeleteCount++] = i;
+			// delete
+			if(m_ProjectileCount > 1) {
+				m_ProjectileList[i] = m_ProjectileList[m_ProjectileCount - 1];
+				i--;
+			}
+			--m_ProjectileCount;
 			continue;
 		}
 
@@ -2448,7 +2500,13 @@ void CGameControllerZOMB::TickProjectiles()
 		i32 ry = round_to_int(curPos.y) / 32;
 		if(rx < -200 || rx >= (i32)m_MapWidth+200 ||
 		   ry < -200 || ry >= (i32)m_MapHeight+200) {
-			toDelete[toDeleteCount++] = i;
+
+			// delete
+			if(m_ProjectileCount > 1) {
+				m_ProjectileList[i] = m_ProjectileList[m_ProjectileCount - 1];
+				i--;
+			}
+			--m_ProjectileCount;
 			continue;
 		}
 
@@ -2456,7 +2514,12 @@ void CGameControllerZOMB::TickProjectiles()
 		if(collided && m_ProjectileList[i].type == WEAPON_GRENADE) {
 			CreateZombExplosion(curPos, 48.f, 135.f, 12.f, m_ProjectileList[i].dmg,
 							m_ProjectileList[i].ownerCID);
-			toDelete[toDeleteCount++] = i;
+			// delete
+			if(m_ProjectileCount > 1) {
+				m_ProjectileList[i] = m_ProjectileList[m_ProjectileCount - 1];
+				i--;
+			}
+			--m_ProjectileCount;
 			continue;
 		}
 
@@ -2468,16 +2531,14 @@ void CGameControllerZOMB::TickProjectiles()
 								m_ProjectileList[i].ownerCID);
 
 			}
-			toDelete[toDeleteCount++] = i;
+			// delete
+			if(m_ProjectileCount > 1) {
+				m_ProjectileList[i] = m_ProjectileList[m_ProjectileCount - 1];
+				i--;
+			}
+			--m_ProjectileCount;
 			continue;
 		}
-	}
-
-	for(u32 i = 0; i < toDeleteCount; ++i) {
-		if(m_ProjectileCount > 1) {
-			m_ProjectileList[toDelete[i]] = m_ProjectileList[m_ProjectileCount - 1];
-		}
-		--m_ProjectileCount;
 	}
 }
 
