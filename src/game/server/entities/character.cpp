@@ -163,6 +163,12 @@ void CCharacter::HandleNinja()
 			vec2 Center = OldPos + Dir * 0.5f;
 			int Num = GameServer()->m_World.FindEntities(Center, Radius, (CEntity**)aEnts, MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
 
+			// zomb
+			if(IsControllerZomb(GameServer())) {
+				((CGameControllerZOMB*)GameServer()->m_pController)->
+						PlayerNinjaHit(GetPlayer()->GetCID(), Center, Radius);
+			}
+
 			for (int i = 0; i < Num; ++i)
 			{
 				if (aEnts[i] == this)
@@ -406,6 +412,12 @@ void CCharacter::FireWeapon()
 			m_Ninja.m_OldVelAmount = length(m_Core.m_Vel);
 
 			GameServer()->CreateSound(m_Pos, SOUND_NINJA_FIRE);
+
+			// zomb
+			if(IsControllerZomb(GameServer())) {
+				((CGameControllerZOMB*)GameServer()->m_pController)->
+						PlayerNinjaStartDashing(GetPlayer()->GetCID());
+			}
 		} break;
 
 	}

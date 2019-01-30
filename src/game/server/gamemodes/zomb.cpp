@@ -1524,6 +1524,11 @@ void CGameControllerZOMB::TickZombies()
 			}
 		}
 
+		// don't "hit" ninja dashing players
+		if(survTargetID != NO_TARGET && IsPlayerNinjaDashing(survTargetID)) {
+			survTargetID = NO_TARGET;
+		}
+
 		m_ZombSurvTarget[i] = survTargetID;
 
 		if(m_ZombSurvTarget[i] == NO_TARGET) {
@@ -2439,7 +2444,7 @@ void CGameControllerZOMB::CreateLaser(vec2 from, vec2 to)
 
 void CGameControllerZOMB::CreateProjectile(vec2 pos, vec2 dir, i32 type, i32 dmg, i32 owner, i32 lifespan)
 {
-	u32 id = m_ProjectileCount++;
+	i32 id = m_ProjectileCount++;
 	m_ProjectileList[id].id = m_ProjectileID++;
 	m_ProjectileList[id].startPos = pos;
 	m_ProjectileList[id].startTick = m_Tick;
@@ -2540,6 +2545,10 @@ void CGameControllerZOMB::TickProjectiles()
 			continue;
 		}
 	}
+
+	// TODO: this can happen somehow, fix it someday
+	if(m_ProjectileCount < 0)
+		m_ProjectileCount = 0;
 }
 
 void CGameControllerZOMB::CreateZombExplosion(vec2 pos, f32 inner, f32 outer, f32 force, i32 dmg, i32 ownerCID)
@@ -3166,7 +3175,7 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 	}
 
 	// projectiles
-	for(u32 i = 0; i < m_ProjectileCount; ++i) {
+	for(i32 i = 0; i < m_ProjectileCount; ++i) {
 		f32 ct = (m_Tick - m_ProjectileList[i].startTick) / (f32)SERVER_TICK_SPEED;
 		vec2 projPos = CalcPos(m_ProjectileList[i].startPos,
 							   m_ProjectileList[i].dir,
@@ -3601,6 +3610,33 @@ bool CGameControllerZOMB::PlayerProjectileTick(i32 ownerCID, vec2 prevPos, vec2 
 		return true;
 	}
 	return false;
+}
+
+void CGameControllerZOMB::PlayerNinjaStartDashing(i32 SurvCID)
+{
+	dbg_assert(SurvCID >= 0 && SurvCID < MAX_SURVIVORS, "SurvCID is invalid");
+	mem_zero(m_ZombGotHitByNinja[SurvCID], sizeof(m_ZombGotHitByNinja[SurvCID]));
+}
+
+void CGameControllerZOMB::PlayerNinjaHit(i32 SurvCID, vec2 Center, float Radius)
+{
+	dbg_assert(SurvCID >= 0 && SurvCID < MAX_SURVIVORS, "SurvCID is invalid");
+	for(i32 i = 0; i < MAX_ZOMBS; i++)
+	{
+		if(!m_ZombAlive[i] || m_ZombGotHitByNinja[SurvCID][i]) continue;
+
+		if(distance(Center, m_ZombCharCore[i].m_Pos) < Radius) {
+			m_ZombGotHitByNinja[SurvCID][i] = 1;
+			GameServer()->CreateSound(m_ZombCharCore[i].m_Pos, SOUND_NINJA_HIT);
+			ZombTakeDmg(ZombCID(i), vec2(0,0), g_WeaponDmgOnZomb[WEAPON_NINJA], SurvCID, WEAPON_NINJA);
+		}
+	}
+}
+
+bool CGameControllerZOMB::IsPlayerNinjaDashing(i32 SurvCID) const
+{
+	CCharacter* pChar = GameServer()->GetPlayerChar(SurvCID);
+	return pChar && pChar->m_ActiveWeapon == WEAPON_NINJA && pChar->m_Ninja.m_CurrentMoveTime > 0;
 }
 
 void CGameControllerZOMB::PlayerActivateDeadSpectate(CPlayer* player)

@@ -70,6 +70,7 @@ class CGameControllerZOMB : public IGameController
 
 	i32 m_ZombInvisClock[MAX_ZOMBS];
 	bool m_ZombInvisible[MAX_ZOMBS];
+	u8 m_ZombGotHitByNinja[MAX_SURVIVORS][MAX_ZOMBS];
 
 	char m_MapName[128];
 	u8 m_Map[MAX_MAP_SIZE];
@@ -246,6 +247,9 @@ public:
 	i32 PlayerTryHitHammer(i32 CID, vec2 pos, vec2 direction);
 	bool PlayerTryHitLaser(i32 CID, vec2 start, vec2 end, vec2& at);
 	bool PlayerProjectileTick(i32 ownerCID, vec2 prevPos, vec2 curPos, i32 weapon, vec2 dir, bool doDestroy);
+	void PlayerNinjaStartDashing(i32 SurvCID);
+	void PlayerNinjaHit(i32 SurvCID, vec2 Center, float Radius);
+	bool IsPlayerNinjaDashing(i32 SurvCID) const;
 
 	void PlayerActivateDeadSpectate(class CPlayer* player);
 };
