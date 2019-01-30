@@ -150,14 +150,14 @@ class CGameControllerZOMB : public IGameController
 
 #ifdef CONF_DEBUG
 	ivec2 m_DbgPath[256];
-	u32 m_DbgPathLen;
+	i32 m_DbgPathLen;
 
 	struct DbgLine {
 		ivec2 start, end;
 	};
 
 	DbgLine m_DbgLines[256];
-	u32 m_DbgLinesCount;
+	i32 m_DbgLinesCount;
 
 	void DebugPathAddPoint(ivec2 p);
 	void DebugLine(ivec2 s, ivec2 e);

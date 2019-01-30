@@ -616,7 +616,7 @@ vec2 CGameControllerZOMB::PathFind(vec2 start, vec2 end)
 
 		// neighbours
 		ivec2 nbDir[8];
-		u32 nbCount = 0;
+		i32 nbCount = 0;
 		const ivec2& cp = pCurrent->pos;
 
 		// first node (TODO: move this out of the loop)
@@ -696,7 +696,7 @@ vec2 CGameControllerZOMB::PathFind(vec2 start, vec2 end)
 		}
 
 		// jump
-		for(u32 n = 0; n < nbCount; ++n) {
+		for(i32 n = 0; n < nbCount; ++n) {
 			const ivec2& succDir = nbDir[n];
 			ivec2 succPos = pCurrent->pos + succDir;
 
@@ -769,9 +769,11 @@ vec2 CGameControllerZOMB::PathFind(vec2 start, vec2 end)
 #endif
 	}
 
+	//m_DbgLinesCount = 0;
 	Node* pCur = closedList[closedListCount-1];
 	ivec2 next = pCur->pos;
 	while(pCur && pCur->pParent) {
+		//DebugLine(next, pCur->pos);
 		next = pCur->pos;
 		pCur = pCur->pParent;
 	}
@@ -1003,7 +1005,7 @@ void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos, bool ta
 	}
 
 	if(grounded) {
-		m_ZombAirJumps[zid] = 2;
+		m_ZombAirJumps[zid] = 1;
 	}
 
 	const bool destLOS = (GameServer()->Collision()->IntersectLine(pos, dest, 0, 0) == 0);
@@ -1015,7 +1017,7 @@ void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos, bool ta
 
 	// don't excessively jump when target does
 	if(destLOS) {
-		if(yDist < 20.f || xDist > 150.0f) {
+		if((yDist < 20.f && xDist > 40.f) || xDist > 150.0f) {
 			m_ZombJumpClock[zid] = 1;
 		}
 	}
@@ -1023,7 +1025,7 @@ void CGameControllerZOMB::HandleMovement(u32 zid, const vec2& targetPos, bool ta
 	if(m_ZombJumpClock[zid] <= 0 && dest.y < pos.y) {
 		if(yDist > 300.f) {
 			input.m_Jump = ZOMBIE_BIGJUMP;
-			m_ZombJumpClock[zid] = SecondsToTick(1.0f);
+			m_ZombJumpClock[zid] = SecondsToTick(0.9f);
 		}
 		else if(yDist > 0.f) {
 			if(grounded) {
@@ -1431,6 +1433,13 @@ void CGameControllerZOMB::HandleWartule(u32 zid, const vec2& targetPos, f32 targ
 
 void CGameControllerZOMB::TickZombies()
 {
+	/*m_DbgLinesCount = 0;
+	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
+		ivec2 Start(m_ZombCharCore[i].m_Pos.x/32, m_ZombCharCore[i].m_Pos.y/32);
+		ivec2 End(m_ZombDestination[i].x/32, m_ZombDestination[i].y/32);
+		DebugLine(Start, End);
+	}*/
+
 	// apply auras (could be optimized)
 	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
 		// remove auras
@@ -1542,8 +1551,9 @@ void CGameControllerZOMB::TickZombies()
 
 		HandleMovement(i, targetPos, targetLOS);
 
-		if(ZombStuckTicks[i] > 10)
+		if(ZombStuckTicks[i] > 15) {
 			m_ZombInput[i].m_Jump = ZOMBIE_GROUNDJUMP;
+		}
 
 		m_ZombInput[i].m_TargetX = targetPos.x - pos.x;
 		m_ZombInput[i].m_TargetY = targetPos.y - pos.y;
@@ -1604,17 +1614,17 @@ void CGameControllerZOMB::TickZombies()
 	for(u32 i = 0; i < MAX_ZOMBS; ++i) {
 		if(!m_ZombAlive[i]) continue;
 
-#if 0
 		// smooth out small movement
-		f32 xDist = fabs(m_ZombDestination[i].x - (m_ZombCharCore[i].m_Pos.x + m_ZombCharCore[i].m_Vel.x));
-		if(xDist < 4.f) {
+		int SmoothTrigger = 0;
+		const i32 PosTx = (i32)(m_ZombCharCore[i].m_Pos.x / 32);
+		const i32 PosTy = (i32)(m_ZombCharCore[i].m_Pos.y / 32);
+		const i32 DestTx = (i32)(m_ZombDestination[i].x / 32);
+		const i32 DestTy = (i32)(m_ZombDestination[i].y / 32);
+		if((m_Tick%SERVER_TICK_SPEED != 0) && abs(DestTy - PosTy) > 1 && PosTx == DestTx &&
+		   fabs(m_ZombCharCore[i].m_Pos.x - m_ZombDestination[i].x) < 4) {
 			m_ZombInput[i].m_Direction = 0;
+			//SmoothTrigger = COREEVENTFLAG_AIR_JUMP; // TODO: remove
 		}
-		f32 yDelta = m_ZombDestination[i].y - (m_ZombCharCore[i].m_Pos.y + m_ZombCharCore[i].m_Vel.y);
-		if(yDelta > 0 && yDelta < 4.f) {
-			m_ZombInput[i].m_Jump = 0;
-		}
-#endif
 
 		if(m_ZombChargingClock[i] > 0) {
 			--m_ZombChargingClock[i];
@@ -1660,7 +1670,7 @@ void CGameControllerZOMB::TickZombies()
 		}
 
 		m_ZombCharCore[i].Tick(true);
-		m_ZombCharCore[i].m_TriggeredEvents |= jumpTriggers;
+		m_ZombCharCore[i].m_TriggeredEvents |= jumpTriggers|SmoothTrigger;
 		m_ZombCharCore[i].Move();
 
 		// predict charge
@@ -2946,10 +2956,6 @@ CGameControllerZOMB::CGameControllerZOMB(CGameContext *pGameServer, IStorage* pS
 
 void CGameControllerZOMB::Tick()
 {
-#ifdef CONF_DEBUG
-	m_DbgLinesCount = 0;
-#endif
-
 	m_Tick = Server()->Tick();
 	IGameController::Tick();
 
@@ -3232,10 +3238,10 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 
 #ifdef CONF_DEBUG
 	i32 tick = Server()->Tick();
-	u32 laserID = 0;
+	i32 laserID = 16000;
 
 	// debug path
-	for(u32 i = 1; i < m_DbgPathLen; ++i) {
+	for(i32 i = 1; i < m_DbgPathLen; ++i) {
 		CNetObj_Laser *pObj = (CNetObj_Laser*)Server()->SnapNewItem(NETOBJTYPE_LASER,
 									 laserID++, sizeof(CNetObj_Laser));
 		if(!pObj)
@@ -3249,7 +3255,7 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 	}
 
 	// debug lines
-	for(u32 i = 1; i < m_DbgLinesCount; ++i) {
+	for(i32 i = 0; i < m_DbgLinesCount; ++i) {
 		CNetObj_Laser *pObj = (CNetObj_Laser*)Server()->SnapNewItem(NETOBJTYPE_LASER,
 									 laserID++, sizeof(CNetObj_Laser));
 		if(!pObj)
