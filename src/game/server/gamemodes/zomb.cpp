@@ -3126,7 +3126,7 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 		// buffs
 		if(m_ZombBuff[i]&BUFF_HEALING) {
 			CNetObj_Pickup *pPickup = (CNetObj_Pickup *)Server()->SnapNewItem(NETOBJTYPE_PICKUP,
-											256+zombCID, sizeof(CNetObj_Pickup));
+											16256+zombCID, sizeof(CNetObj_Pickup));
 			if(!pPickup)
 				return;
 
@@ -3137,7 +3137,7 @@ void CGameControllerZOMB::Snap(i32 SnappingClientID)
 
 		if(m_ZombBuff[i]&BUFF_ARMORED) {
 			CNetObj_Pickup *pPickup = (CNetObj_Pickup *)Server()->SnapNewItem(NETOBJTYPE_PICKUP,
-											512+zombCID, sizeof(CNetObj_Pickup));
+											16512+zombCID, sizeof(CNetObj_Pickup));
 			if(!pPickup)
 				return;
 
