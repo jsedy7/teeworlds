@@ -365,14 +365,24 @@ void CGameClient::OnInit()
 	pFileData[FileSize] = 0;
 	io_close(ModFile);
 
-	duk_eval_string(Duk(), pFileData);
-	dbg_msg("duk", "main.js loaded (%d)", FileSize);
-	dbg_msg("duk", "%g", duk_get_number(Duk(), -1));
-
-	mem_free(pFileData);
-
+	// function binding
 	duk_push_c_function(Duk(), NativePrint, 1 /*nargs*/);
 	duk_put_global_string(Duk(), "print");
+
+	// eval script
+	duk_push_string(Duk(), pFileData);
+	if(duk_peval(Duk()) != 0)
+	{
+		/* Use duk_safe_to_string() to convert error into string.  This API
+		 * call is guaranteed not to throw an error during the coercion.
+		 */
+		dbg_msg("duk", "Script error: %s", duk_safe_to_string(Duk(), -1));
+		dbg_break();
+	}
+	duk_pop(Duk());
+
+	dbg_msg("duk", "main.js loaded (%d)", FileSize);
+	mem_free(pFileData);
 }
 
 void CGameClient::OnUpdate()
