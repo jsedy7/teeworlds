@@ -50,6 +50,7 @@
 #include "components/sounds.h"
 #include "components/spectator.h"
 #include "components/voting.h"
+#include "components/duktape_comp.h"
 
 // instanciate all systems
 static CKillMessages gs_KillMessages;
@@ -75,6 +76,7 @@ static CEmoticon gs_Emoticon;
 static CDamageInd gsDamageInd;
 static CVoting gs_Voting;
 static CSpectator gs_Spectator;
+static CDuktape gs_Duktape;
 
 static CPlayers gs_Players;
 static CNamePlates gs_NamePlates;
@@ -199,6 +201,7 @@ void CGameClient::OnConsoleInit()
 	m_pItems = &::gs_Items;
 	m_pMapLayersBackGround = &::gs_MapLayersBackGround;
 	m_pMapLayersForeGround = &::gs_MapLayersForeGround;
+	m_pDuktapeComp = &::gs_Duktape;
 
 	// make a list of all the systems, make sure to add them in the corrent render order
 	m_All.Add(m_pSkins);
@@ -235,6 +238,7 @@ void CGameClient::OnConsoleInit()
 	m_All.Add(m_pMenus);
 	m_All.Add(&m_pMenus->m_Binder);
 	m_All.Add(m_pGameConsole);
+	m_All.Add(m_pDuktapeComp); // order does not matter here
 
 	// build the input stack
 	m_Input.Add(&m_pMenus->m_Binder); // this will take over all input when we want to bind a key
@@ -247,6 +251,7 @@ void CGameClient::OnConsoleInit()
 	m_Input.Add(&gs_Emoticon);
 	m_Input.Add(m_pControls);
 	m_Input.Add(m_pBinds);
+	m_Input.Add(m_pDuktapeComp);
 
 	// add the some console commands
 	Console()->Register("team", "i", CFGFLAG_CLIENT, ConTeam, this, "Switch team");
@@ -285,13 +290,6 @@ void CGameClient::OnConsoleInit()
 
 	//
 	m_SuppressEvents = false;
-}
-
-// TODO: move
-static duk_ret_t NativePrint(duk_context *ctx)
-{
-	dbg_msg("duk", "%s", duk_to_string(ctx, 0));
-	return 0;  /* no return value (= undefined) */
 }
 
 void CGameClient::OnInit()
@@ -350,39 +348,6 @@ void CGameClient::OnInit()
 	m_ServerMode = SERVERMODE_PURE;
 
 	m_IsXmasDay = time_isxmasday();
-
-	// load ducktape, eval main.js
-	m_pDukContext = duk_create_heap_default();
-
-	char aModPath[256];
-	str_format(aModPath, sizeof(aModPath), "mods/duck/main.js");
-	IOHANDLE ModFile = Storage()->OpenFile(aModPath, IOFLAG_READ, IStorage::TYPE_ALL);
-	dbg_assert(ModFile != 0, "Could not load duck/main.js");
-
-	int FileSize = (int)io_length(ModFile);
-	char *pFileData = (char *)mem_alloc(FileSize + 1, 1);
-	io_read(ModFile, pFileData, FileSize);
-	pFileData[FileSize] = 0;
-	io_close(ModFile);
-
-	// function binding
-	duk_push_c_function(Duk(), NativePrint, 1 /*nargs*/);
-	duk_put_global_string(Duk(), "print");
-
-	// eval script
-	duk_push_string(Duk(), pFileData);
-	if(duk_peval(Duk()) != 0)
-	{
-		/* Use duk_safe_to_string() to convert error into string.  This API
-		 * call is guaranteed not to throw an error during the coercion.
-		 */
-		dbg_msg("duk", "Script error: %s", duk_safe_to_string(Duk(), -1));
-		dbg_break();
-	}
-	duk_pop(Duk());
-
-	dbg_msg("duk", "main.js loaded (%d)", FileSize);
-	mem_free(pFileData);
 }
 
 void CGameClient::OnUpdate()
@@ -412,9 +377,6 @@ void CGameClient::OnUpdate()
 				break;
 		}
 	}
-
-	// TODO: remove
-	duk_eval_string(Duk(), "OnUpdate();");
 }
 
 int CGameClient::OnSnapInput(int *pData)
@@ -945,8 +907,6 @@ void CGameClient::OnShutdown()
 {
 	for(int i = 0; i < m_All.m_Num; i++)
 		m_All.m_paComponents[i]->OnShutdown();
-
-	duk_destroy_heap(m_pDukContext);
 }
 void CGameClient::OnEnterGame() {}
 
