@@ -287,6 +287,13 @@ void CGameClient::OnConsoleInit()
 	m_SuppressEvents = false;
 }
 
+// TODO: move
+static duk_ret_t NativePrint(duk_context *ctx)
+{
+	dbg_msg("duk", "%s", duk_to_string(ctx, 0));
+	return 0;  /* no return value (= undefined) */
+}
+
 void CGameClient::OnInit()
 {
 	m_pGraphics = Kernel()->RequestInterface<IGraphics>();
@@ -343,6 +350,29 @@ void CGameClient::OnInit()
 	m_ServerMode = SERVERMODE_PURE;
 
 	m_IsXmasDay = time_isxmasday();
+
+	// load ducktape, eval main.js
+	m_pDukContext = duk_create_heap_default();
+
+	char aModPath[256];
+	str_format(aModPath, sizeof(aModPath), "mods/duck/main.js");
+	IOHANDLE ModFile = Storage()->OpenFile(aModPath, IOFLAG_READ, IStorage::TYPE_ALL);
+	dbg_assert(ModFile != 0, "Could not load duck/main.js");
+
+	int FileSize = (int)io_length(ModFile);
+	char *pFileData = (char *)mem_alloc(FileSize + 1, 1);
+	io_read(ModFile, pFileData, FileSize);
+	pFileData[FileSize] = 0;
+	io_close(ModFile);
+
+	duk_eval_string(Duk(), pFileData);
+	dbg_msg("duk", "main.js loaded (%d)", FileSize);
+	dbg_msg("duk", "%g", duk_get_number(Duk(), -1));
+
+	mem_free(pFileData);
+
+	duk_push_c_function(Duk(), NativePrint, 1 /*nargs*/);
+	duk_put_global_string(Duk(), "print");
 }
 
 void CGameClient::OnUpdate()
@@ -372,6 +402,9 @@ void CGameClient::OnUpdate()
 				break;
 		}
 	}
+
+	// TODO: remove
+	duk_eval_string(Duk(), "OnUpdate();");
 }
 
 int CGameClient::OnSnapInput(int *pData)
@@ -902,6 +935,8 @@ void CGameClient::OnShutdown()
 {
 	for(int i = 0; i < m_All.m_Num; i++)
 		m_All.m_paComponents[i]->OnShutdown();
+
+	duk_destroy_heap(m_pDukContext);
 }
 void CGameClient::OnEnterGame() {}
 

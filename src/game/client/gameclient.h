@@ -10,8 +10,13 @@
 #include <game/gamecore.h>
 #include "render.h"
 
+#include <engine/client/duktape.h>
+
 class CGameClient : public IGameClient
 {
+	duk_context* m_pDukContext;
+	inline duk_context* Duk() { return m_pDukContext; }
+
 	class CStack
 	{
 	public:
