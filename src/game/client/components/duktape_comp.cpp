@@ -58,7 +58,8 @@ void CDuktape::OnRender()
 	// TODO: remove
 	duk_get_global_string(Duk(), "OnUpdate");
 	/* push arguments here */
-	int NumArgs = 0;
+	duk_push_int(Duk(), random_int());
+	int NumArgs = 1;
 	duk_call(Duk(), NumArgs);
 	duk_pop(Duk());
 
