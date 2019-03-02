@@ -2,7 +2,8 @@
 
 print('Ducktape version = ' + Duktape.version);
 
-function OnUpdate()
+function OnUpdate(someInt)
 {
-    print("Hello from the dark side!");
+    //print("Hello from the dark side! " + someInt);
+    RenderQuad(10.0, 10.0, 100.0, 50.0);
 }
