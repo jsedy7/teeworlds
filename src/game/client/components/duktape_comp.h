@@ -4,14 +4,24 @@
 #include <game/client/component.h>
 #include <engine/graphics.h>
 
+struct DrawSpace
+{
+	enum Enum {
+		GAME=0,
+		_COUNT
+	};
+};
+
 class CDuktape : public CComponent
 {
 	duk_context* m_pDukContext;
 	inline duk_context* Duk() { return m_pDukContext; }
 
-	array<IGraphics::CQuadItem> m_aQuadList;
+	int m_CurrentDrawSpace;
+	array<IGraphics::CQuadItem> m_aQuadList[DrawSpace::_COUNT];
 
 	static duk_ret_t NativeRenderQuad(duk_context *ctx);
+	static duk_ret_t NativeSetDrawSpace(duk_context *ctx);
 
 public:
 	CDuktape();
@@ -20,4 +30,6 @@ public:
 	virtual void OnShutdown();
 	virtual void OnRender();
 	virtual void OnMessage(int Msg, void *pRawMsg);
+
+	void RenderDrawSpaceGame();
 };

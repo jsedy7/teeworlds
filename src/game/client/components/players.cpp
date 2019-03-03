@@ -18,6 +18,8 @@
 #include <game/client/components/sounds.h>
 #include <game/client/components/controls.h>
 
+#include <game/client/components/duktape_comp.h>
+
 #include "players.h"
 
 inline float NormalizeAngular(float f)
@@ -559,4 +561,7 @@ void CPlayers::OnRender()
 			}
 		}
 	}
+
+	// TODO: Move? Make a component for each draw space?
+	m_pClient->m_pDuktapeComp->RenderDrawSpaceGame();
 }

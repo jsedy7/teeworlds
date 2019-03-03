@@ -40,13 +40,26 @@ static duk_ret_t NativePrint(duk_context *ctx)
 duk_ret_t CDuktape::NativeRenderQuad(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 4, "Wrong argument count");
 	double x = duk_to_number(ctx, 0);
 	double y = duk_to_number(ctx, 1);
 	double Width = duk_to_number(ctx, 2);
 	double Height = duk_to_number(ctx, 3);
 
 	IGraphics::CQuadItem Quad(x, y, Width, Height);
-	This()->m_aQuadList.add(Quad);
+	This()->m_aQuadList[This()->m_CurrentDrawSpace].add(Quad);
+
+	return 0;
+}
+
+duk_ret_t CDuktape::NativeSetDrawSpace(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	int ds = duk_to_int(ctx, 0);
+	dbg_assert(ds >= 0 && ds < DrawSpace::_COUNT, "Draw space undefined");
+	This()->m_CurrentDrawSpace = ds;
 
 	return 0;
 }
@@ -77,7 +90,10 @@ void CDuktape::OnInit()
 	duk_put_global_string(Duk(), "print");
 
 	duk_push_c_function(Duk(), NativeRenderQuad, 4 /*nargs*/);
-	duk_put_global_string(Duk(), "RenderQuad");
+	duk_put_global_string(Duk(), "TwRenderQuad");
+
+	duk_push_c_function(Duk(), NativeSetDrawSpace, 1);
+	duk_put_global_string(Duk(), "TwSetDrawSpace");
 
 	// eval script
 	duk_push_string(Duk(), pFileData);
@@ -93,6 +109,8 @@ void CDuktape::OnInit()
 
 	dbg_msg("duk", "main.js loaded (%d)", FileSize);
 	mem_free(pFileData);
+
+	m_CurrentDrawSpace = DrawSpace::GAME;
 }
 
 void CDuktape::OnShutdown()
@@ -117,16 +135,6 @@ void CDuktape::OnRender()
 		printf("%s\n", duk_safe_to_string(Duk(), -1));
 	}
 	*/
-
-	Graphics()->TextureClear();
-	Graphics()->QuadsBegin();
-
-	Graphics()->SetColor(1, 0, 0, 1);
-	Graphics()->QuadsDrawTL(m_aQuadList.base_ptr(), m_aQuadList.size());
-
-	Graphics()->QuadsEnd();
-
-	m_aQuadList.clear();
 }
 
 void CDuktape::OnMessage(int Msg, void* pRawMsg)
@@ -155,18 +163,53 @@ void CDuktape::OnMessage(int Msg, void* pRawMsg)
 					case DukNetObjID::TEST: {
 						CNetObj_Test Test;
 						UnpackStrAsNetObj(ObjStr, ObjStrLen, &Test, sizeof(Test));
-						dbg_msg("duk", "CNetObj_Test = { ClientID=%d, Value1=%g }", Test.ClientID,
-							Test.Value1, ObjSize);
+						/*dbg_msg("duk", "CNetObj_Test = { ClientID=%d, Value1=%g }", Test.ClientID,
+							Test.Value1, ObjSize);*/
 					} break;
 
 					case DukNetObjID::RECT: {
 						CNetObj_Rect Rect;
 						UnpackStrAsNetObj(ObjStr, ObjStrLen, &Rect, sizeof(Rect));
-						dbg_msg("duk", "CNetObj_Rect = { x=%g, y=%g, w=%g, h=%g }", Rect.x,
-							Rect.y, Rect.w, Rect.h);
+						/*dbg_msg("duk", "CNetObj_Rect = { x=%g, y=%g, w=%g, h=%g }", Rect.x,
+							Rect.y, Rect.w, Rect.h);*/
+
+						duk_get_global_string(Duk(), "OnMessage");
+
+						int ObjID = duk_push_object(Duk());
+						duk_push_int(Duk(), DukNetObjID::RECT);
+						duk_put_prop_string(Duk(), ObjID, "netID");
+						duk_push_number(Duk(), Rect.x);
+						duk_put_prop_string(Duk(), ObjID, "x");
+						duk_push_number(Duk(), Rect.y);
+						duk_put_prop_string(Duk(), ObjID, "y");
+						duk_push_number(Duk(), Rect.w);
+						duk_put_prop_string(Duk(), ObjID, "w");
+						duk_push_number(Duk(), Rect.h);
+						duk_put_prop_string(Duk(), ObjID, "h");
+
+						int NumArgs = 1;
+						if(duk_pcall(Duk(), NumArgs) != 0)
+						{
+							dbg_msg("duk", "OnMessage(): Script error: %s", duk_safe_to_string(Duk(), -1));
+							dbg_break();
+						}
+						duk_pop(Duk());
 					} break;
 				}
 			}
 		}
 	}
+}
+
+void CDuktape::RenderDrawSpaceGame()
+{
+	Graphics()->TextureClear();
+	Graphics()->QuadsBegin();
+
+	Graphics()->SetColor(1, 0, 0, 1);
+	Graphics()->QuadsDrawTL(m_aQuadList[DrawSpace::GAME].base_ptr(), m_aQuadList[DrawSpace::GAME].size());
+
+	Graphics()->QuadsEnd();
+
+	m_aQuadList[DrawSpace::GAME].clear();
 }
