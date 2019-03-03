@@ -19,4 +19,5 @@ public:
 	virtual void OnInit();
 	virtual void OnShutdown();
 	virtual void OnRender();
+	virtual void OnMessage(int Msg, void *pRawMsg);
 };

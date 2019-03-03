@@ -1,5 +1,10 @@
 #include "duktape_comp.h"
 #include <engine/storage.h>
+#include <generated/protocol.h>
+#include <stdint.h>
+
+typedef uint8_t u8;
+typedef uint32_t u32;
 
 // TODO: rename?
 static CDuktape* s_This = 0;
@@ -101,4 +106,68 @@ void CDuktape::OnRender()
 	Graphics()->QuadsEnd();
 
 	m_aQuadList.clear();
+}
+
+struct CNetObj_Test
+{
+	uint16_t ClientID;
+	float Value1;
+};
+
+inline u8 HexCharToValue(char c)
+{
+	if(c >= '0' && c <= '9')
+		return c - '0';
+	if(c >= 'A' && c <= 'F')
+		return c - 'A' + 10;
+	return 0;
+}
+
+void UnpackStrAsNetObj(const char* Str, int StrSize, void* pOutNetObj, int NetObjSize)
+{
+	dbg_assert(StrSize == NetObjSize*2, "String size does not corespond to NetObj size");
+
+	for(int i = 0; i < NetObjSize; i++)
+	{
+		const u8 v1 = HexCharToValue(Str[i*2]);
+		const u8 v2 = HexCharToValue(Str[i*2+1]);
+		const u8 Byte = v1 * 0x10 + v2;
+		((u8*)pOutNetObj)[i] = Byte;
+	}
+}
+
+void CDuktape::OnMessage(int Msg, void* pRawMsg)
+{
+	if(Msg == NETMSGTYPE_SV_BROADCAST)
+	{
+		const char* pMsg = ((CNetMsg_Sv_Broadcast *)pRawMsg)->m_pMessage;
+		dbg_msg("duk", "broadcast msg: {%s}", pMsg);
+
+		const int MsgLen = str_length(pMsg);
+		if(MsgLen > 4)
+		{
+			u32 Head = *(u32*)pMsg;
+			dbg_msg("duk", "Head=%x", Head);
+
+			if((Head & 0xFFFFFF) == 0x4B5544) // DUK header
+			{
+				const int ObjStrLen = MsgLen - 4;
+				const char* ObjStr = pMsg + 4;
+				const int ObjID = ((Head & 0xFF000000) >> 24) - 0x21;
+				const int ObjSize = (ObjStrLen)/2;
+				dbg_msg("duk", "DUK packed netobj, id=0x%x size=%d", ObjID, ObjSize);
+
+				switch(ObjID)
+				{
+					case 0: {
+						CNetObj_Test Test;
+						UnpackStrAsNetObj(ObjStr, ObjStrLen, &Test, sizeof(CNetObj_Test));
+						dbg_msg("duk", "CNetObj_Test = { ClientID=%d, Value1=%g }", Test.ClientID,
+							Test.Value1, ObjSize);
+					} break;
+
+				}
+			}
+		}
+	}
 }
