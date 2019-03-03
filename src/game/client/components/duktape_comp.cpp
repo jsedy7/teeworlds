@@ -112,6 +112,13 @@ void CDuktape::OnInit()
 	duk_push_c_function(Duk(), NativeSetDrawSpace, 1);
 	duk_put_global_string(Duk(), "TwSetDrawSpace");
 
+	// Teeworlds global object
+	duk_eval_string(Duk(),
+		"var Teeworlds = {"
+		"	DRAW_SPACE_GAME: 0,"
+		"	aClients: [],"
+		"};");
+
 	// eval script
 	duk_push_string(Duk(), pFileData);
 	if(duk_peval(Duk()) != 0)
@@ -137,21 +144,22 @@ void CDuktape::OnShutdown()
 
 void CDuktape::OnRender()
 {
-	// TODO: remove
+	// Update Teeworlds global object
+	char aEvalBuff[256];
+	str_format(aEvalBuff, sizeof(aEvalBuff), "Teeworlds.intraTick = %g;", Client()->IntraGameTick());
+	duk_eval_string(Duk(), aEvalBuff);
+
+	// Call OnUpdate()
 	duk_get_global_string(Duk(), "OnUpdate");
 	/* push arguments here */
 	duk_push_number(Duk(), Client()->LocalTime());
 	int NumArgs = 1;
-	duk_call(Duk(), NumArgs);
-	duk_pop(Duk());
-
-	/*
-	if(duk_pcall(ctx, 1) != 0) {
-		printf("Error: %s\n", duk_safe_to_string(Duk(), -1));
-	} else {
-		printf("%s\n", duk_safe_to_string(Duk(), -1));
+	if(duk_pcall(Duk(), NumArgs) != 0)
+	{
+		dbg_msg("duk", "OnUpdate(): Script error: %s", duk_safe_to_string(Duk(), -1));
+		dbg_break();
 	}
-	*/
+	duk_pop(Duk());
 }
 
 void CDuktape::OnMessage(int Msg, void* pRawMsg)
