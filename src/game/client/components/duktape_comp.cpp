@@ -64,6 +64,23 @@ duk_ret_t CDuktape::NativeSetDrawSpace(duk_context *ctx)
 	return 0;
 }
 
+void CDuktape::PushObject()
+{
+	m_CurrentPushedObjID = duk_push_object(Duk());
+}
+
+void CDuktape::ObjectSetMemberInt(const char* MemberName, int Value)
+{
+	duk_push_int(Duk(), Value);
+	duk_put_prop_string(Duk(), m_CurrentPushedObjID, MemberName);
+}
+
+void CDuktape::ObjectSetMemberFloat(const char* MemberName, float Value)
+{
+	duk_push_number(Duk(), Value);
+	duk_put_prop_string(Duk(), m_CurrentPushedObjID, MemberName);
+}
+
 CDuktape::CDuktape()
 {
 	s_This = this;
@@ -175,17 +192,12 @@ void CDuktape::OnMessage(int Msg, void* pRawMsg)
 
 						duk_get_global_string(Duk(), "OnMessage");
 
-						int ObjID = duk_push_object(Duk());
-						duk_push_int(Duk(), DukNetObjID::RECT);
-						duk_put_prop_string(Duk(), ObjID, "netID");
-						duk_push_number(Duk(), Rect.x);
-						duk_put_prop_string(Duk(), ObjID, "x");
-						duk_push_number(Duk(), Rect.y);
-						duk_put_prop_string(Duk(), ObjID, "y");
-						duk_push_number(Duk(), Rect.w);
-						duk_put_prop_string(Duk(), ObjID, "w");
-						duk_push_number(Duk(), Rect.h);
-						duk_put_prop_string(Duk(), ObjID, "h");
+						PushObject();
+						ObjectSetMemberInt("netID", DukNetObjID::RECT);
+						ObjectSetMemberFloat("x", Rect.x);
+						ObjectSetMemberFloat("y", Rect.y);
+						ObjectSetMemberFloat("w", Rect.w);
+						ObjectSetMemberFloat("h", Rect.h);
 
 						int NumArgs = 1;
 						if(duk_pcall(Duk(), NumArgs) != 0)
@@ -196,6 +208,9 @@ void CDuktape::OnMessage(int Msg, void* pRawMsg)
 						duk_pop(Duk());
 					} break;
 				}
+
+				static const char* s_NullStr = "";
+				((CNetMsg_Sv_Broadcast *)pRawMsg)->m_pMessage = s_NullStr;
 			}
 		}
 	}

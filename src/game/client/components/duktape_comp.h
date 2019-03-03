@@ -23,6 +23,13 @@ class CDuktape : public CComponent
 	static duk_ret_t NativeRenderQuad(duk_context *ctx);
 	static duk_ret_t NativeSetDrawSpace(duk_context *ctx);
 
+	int m_CurrentPushedObjID;
+
+	// TODO: not great if we want to do nested objects
+	void PushObject();
+	void ObjectSetMemberInt(const char* MemberName, int Value);
+	void ObjectSetMemberFloat(const char* MemberName, float Value);
+
 public:
 	CDuktape();
 
