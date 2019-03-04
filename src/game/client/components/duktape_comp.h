@@ -22,6 +22,7 @@ class CDuktape : public CComponent
 
 	static duk_ret_t NativeRenderQuad(duk_context *ctx);
 	static duk_ret_t NativeSetDrawSpace(duk_context *ctx);
+	static duk_ret_t NativeMapSetTileCollisionFlags(duk_context *ctx);
 
 	int m_CurrentPushedObjID;
 

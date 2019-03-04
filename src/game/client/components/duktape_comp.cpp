@@ -64,6 +64,21 @@ duk_ret_t CDuktape::NativeSetDrawSpace(duk_context *ctx)
 	return 0;
 }
 
+duk_ret_t CDuktape::NativeMapSetTileCollisionFlags(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 3, "Wrong argument count");
+
+	// TODO: bound check
+	int Tx = duk_to_int(ctx, 0);
+	int Ty = duk_to_int(ctx, 1);
+	int Flags = duk_to_int(ctx, 2);
+
+	This()->Collision()->SetTileCollisionFlags(Tx, Ty, Flags);
+
+	return 0;
+}
+
 void CDuktape::PushObject()
 {
 	m_CurrentPushedObjID = duk_push_object(Duk());
@@ -112,6 +127,9 @@ void CDuktape::OnInit()
 	duk_push_c_function(Duk(), NativeSetDrawSpace, 1);
 	duk_put_global_string(Duk(), "TwSetDrawSpace");
 
+	duk_push_c_function(Duk(), NativeMapSetTileCollisionFlags, 3);
+	duk_put_global_string(Duk(), "TwMapSetTileCollisionFlags");
+
 	// Teeworlds global object
 	duk_eval_string(Duk(),
 		"var Teeworlds = {"
@@ -147,6 +165,8 @@ void CDuktape::OnRender()
 	// Update Teeworlds global object
 	char aEvalBuff[256];
 	str_format(aEvalBuff, sizeof(aEvalBuff), "Teeworlds.intraTick = %g;", Client()->IntraGameTick());
+	duk_eval_string(Duk(), aEvalBuff);
+	str_format(aEvalBuff, sizeof(aEvalBuff), "Teeworlds.mapSize = { x: %d, y: %d };", Collision()->GetWidth(), Collision()->GetHeight());
 	duk_eval_string(Duk(), aEvalBuff);
 
 	// Call OnUpdate()
@@ -206,6 +226,31 @@ void CDuktape::OnMessage(int Msg, void* pRawMsg)
 						ObjectSetMemberFloat("y", Rect.y);
 						ObjectSetMemberFloat("w", Rect.w);
 						ObjectSetMemberFloat("h", Rect.h);
+
+						int NumArgs = 1;
+						if(duk_pcall(Duk(), NumArgs) != 0)
+						{
+							dbg_msg("duk", "OnMessage(): Script error: %s", duk_safe_to_string(Duk(), -1));
+							dbg_break();
+						}
+						duk_pop(Duk());
+					} break;
+
+					case DukNetObjID::MAP_RECT_SET_SOLID: {
+						CNetObj_MapRectSetSolid Flip;
+						UnpackStrAsNetObj(ObjStr, ObjStrLen, &Flip, sizeof(Flip));
+						/*dbg_msg("duk", "CNetObj_Rect = { x=%g, y=%g, w=%g, h=%g }", Rect.x,
+							Rect.y, Rect.w, Rect.h);*/
+
+						duk_get_global_string(Duk(), "OnMessage");
+
+						PushObject();
+						ObjectSetMemberInt("netID", DukNetObjID::MAP_RECT_SET_SOLID);
+						ObjectSetMemberInt("solid", Flip.solid); // TODO: boolean
+						ObjectSetMemberInt("x", Flip.x);
+						ObjectSetMemberInt("y", Flip.y);
+						ObjectSetMemberInt("w", Flip.w);
+						ObjectSetMemberInt("h", Flip.h);
 
 						int NumArgs = 1;
 						if(duk_pcall(Duk(), NumArgs) != 0)

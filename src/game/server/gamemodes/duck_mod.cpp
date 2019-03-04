@@ -80,5 +80,42 @@ void CGameControllerDUCK::Tick()
 		Rect.h = 50.0f;
 
 		SendDukNetObj(Rect);
+
+		static bool s_SetSolid = false;
+		if(CooldownTick >= SERVER_TICK_SPEED * 5)
+		{
+			CooldownTick = 0;
+			s_SetSolid ^= 1;
+
+			CNetObj_MapRectSetSolid Flip;
+			Flip.solid = s_SetSolid;
+			Flip.x = 8;
+			Flip.y = 8;
+			Flip.w = 10;
+			Flip.h = 1;
+
+			SendDukNetObj(Flip);
+
+			if(Flip.solid)
+			{
+				for(int y = 0; y < Flip.h; y++)
+				{
+					for(int x = 0; x < Flip.w; x++)
+					{
+						GameServer()->Collision()->SetTileCollisionFlags(Flip.x + x, Flip.y + y, 1);
+					}
+				}
+			}
+			else
+			{
+				for(int y = 0; y < Flip.h; y++)
+				{
+					for(int x = 0; x < Flip.w; x++)
+					{
+						GameServer()->Collision()->SetTileCollisionFlags(Flip.x + x, Flip.y + y, 0);
+					}
+				}
+			}
+		}
 	}
 }
