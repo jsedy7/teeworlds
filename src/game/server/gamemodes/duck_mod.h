@@ -14,8 +14,8 @@ class CGameControllerDUCK : public IGameController
 		vec2 m_ButtonSize;
 		vec2 m_LinePos;
 		vec2 m_LineSize;
-		bool m_IsLineActive;
-		bool m_IsLineActiveDefault;
+		bool m_IsButtonActive;
+		bool m_LineFlip;
 	};
 
 	enum { BUTTON_PAIR_COUNT = 1 };

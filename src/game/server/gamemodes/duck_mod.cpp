@@ -33,6 +33,12 @@ static void PackNetObjAsStr(u8 NetObjID, const void* pNetObj, int NetObjSize, ch
 	pOutStr[c] = 0; // null terminate
 }
 
+inline bool IsInsideRect(vec2 Pos, vec2 RectPos, vec2 RectSize)
+{
+	return (Pos.x >= RectPos.x && Pos.x < (RectPos.x+RectSize.x) &&
+			Pos.y >= RectPos.y && Pos.y < (RectPos.y+RectSize.y));
+}
+
 template<typename T>
 void CGameControllerDUCK::SendDukNetObj(const T& NetObj, int CID)
 {
@@ -93,8 +99,8 @@ CGameControllerDUCK::CGameControllerDUCK(class CGameContext *pGameServer)
 	Pair1.m_ButtonSize = vec2(2, 1);
 	Pair1.m_LinePos = vec2(23, 44);
 	Pair1.m_LineSize = vec2(40, 1);
-	Pair1.m_IsLineActive = false;
-	Pair1.m_IsLineActiveDefault = false;
+	Pair1.m_IsButtonActive = false;
+	Pair1.m_LineFlip = false;
 	m_aButtonLinePairs[0] = Pair1;
 }
 
@@ -140,6 +146,17 @@ void CGameControllerDUCK::Tick()
 	for(int i = 0; i < BUTTON_PAIR_COUNT; i++)
 	{
 		ButtonLaserLinePair& Pair = m_aButtonLinePairs[i];
+		Pair.m_IsButtonActive = false;
+
+		for(int p = 0; p < MAX_PLAYERS; p++)
+		{
+			CCharacter* pChar = GameServer()->GetPlayerChar(p);
+			if(pChar && IsInsideRect(pChar->GetPos(), Pair.m_ButtonPos * 32, Pair.m_ButtonSize * 32))
+			{
+				Pair.m_IsButtonActive = true;
+				break;
+			}
+		}
 
 		for(int p = 0; p < MAX_PLAYERS; p++)
 		{
@@ -150,7 +167,7 @@ void CGameControllerDUCK::Tick()
 				Rect.y = Pair.m_ButtonPos.y * 32;
 				Rect.w = Pair.m_ButtonSize.x * 32;
 				Rect.h = Pair.m_ButtonSize.y * 32;
-				Rect.color = Pair.m_IsLineActive ? 0x7f00ff00 : 0x7f0000ff;
+				Rect.color = Pair.m_IsButtonActive ? 0x7f00ff00 : 0x7f0000ff;
 				SendDukNetObj(Rect, p);
 			}
 		}

@@ -40,7 +40,8 @@ class CDuktape : public CComponent
 	array<CRenderCmd> m_aRenderCmdList[DrawSpace::_COUNT];
 
 	static duk_ret_t NativeRenderQuad(duk_context *ctx);
-	static duk_ret_t NativeSetColorU32(duk_context *ctx);
+	static duk_ret_t NativeRenderSetColorU32(duk_context *ctx);
+	static duk_ret_t NativeRenderSetColorF4(duk_context *ctx);
 	static duk_ret_t NativeSetDrawSpace(duk_context *ctx);
 	static duk_ret_t NativeMapSetTileCollisionFlags(duk_context *ctx);
 

@@ -55,7 +55,7 @@ duk_ret_t CDuktape::NativeRenderQuad(duk_context *ctx)
 	return 0;
 }
 
-duk_ret_t CDuktape::NativeSetColorU32(duk_context *ctx)
+duk_ret_t CDuktape::NativeRenderSetColorU32(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
@@ -66,6 +66,25 @@ duk_ret_t CDuktape::NativeSetColorU32(duk_context *ctx)
 	Color[1] = ((x >> 8) & 0xFF) / 255.f;
 	Color[2] = ((x >> 16) & 0xFF) / 255.f;
 	Color[3] = ((x >> 24) & 0xFF) / 255.f;
+
+	CRenderCmd Cmd;
+	Cmd.m_Type = CRenderCmd::COLOR;
+	memmove(Cmd.m_Color, Color, sizeof(Color));
+	This()->m_aRenderCmdList[This()->m_CurrentDrawSpace].add(Cmd);
+
+	return 0;
+}
+
+duk_ret_t CDuktape::NativeRenderSetColorF4(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 4, "Wrong argument count");
+
+	float Color[4];
+	Color[0] = duk_to_number(ctx, 0);
+	Color[1] = duk_to_number(ctx, 1);
+	Color[2] = duk_to_number(ctx, 2);
+	Color[3] = duk_to_number(ctx, 3);
 
 	CRenderCmd Cmd;
 	Cmd.m_Type = CRenderCmd::COLOR;
@@ -147,8 +166,11 @@ void CDuktape::OnInit()
 	duk_push_c_function(Duk(), NativeRenderQuad, 4 /*nargs*/);
 	duk_put_global_string(Duk(), "TwRenderQuad");
 
-	duk_push_c_function(Duk(), NativeSetColorU32, 1);
-	duk_put_global_string(Duk(), "TwSetColorU32");
+	duk_push_c_function(Duk(), NativeRenderSetColorU32, 1);
+	duk_put_global_string(Duk(), "TwRenderSetColorU32");
+
+	duk_push_c_function(Duk(), NativeRenderSetColorF4, 4);
+	duk_put_global_string(Duk(), "TwRenderSetColorF4");
 
 	duk_push_c_function(Duk(), NativeSetDrawSpace, 1);
 	duk_put_global_string(Duk(), "TwSetDrawSpace");
