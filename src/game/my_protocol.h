@@ -9,7 +9,7 @@ struct DukNetObjID
 {
 	enum Enum {
 		TEST=0,
-		RECT,
+		DEBUG_RECT,
 		MAP_RECT_SET_SOLID,
 		_COUNT
 	};
@@ -23,14 +23,15 @@ struct CNetObj_Test
 	float Value1;
 };
 
-struct CNetObj_Rect
+struct CNetObj_DebugRect
 {
-	enum { NET_ID = DukNetObjID::RECT };
+	enum { NET_ID = DukNetObjID::DEBUG_RECT };
 
 	float x;
 	float y;
 	float w;
 	float h;
+	u32 color;
 };
 
 struct CNetObj_MapRectSetSolid

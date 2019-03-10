@@ -17,10 +17,30 @@ class CDuktape : public CComponent
 	duk_context* m_pDukContext;
 	inline duk_context* Duk() { return m_pDukContext; }
 
+	struct CRenderCmd
+	{
+		enum TypeEnum
+		{
+			COLOR=0,
+			QUAD
+		};
+
+		int m_Type;
+
+		union
+		{
+			float m_Color[4];
+			IGraphics::CQuadItem m_Quad;
+		};
+
+		CRenderCmd() {}
+	};
+
 	int m_CurrentDrawSpace;
-	array<IGraphics::CQuadItem> m_aQuadList[DrawSpace::_COUNT];
+	array<CRenderCmd> m_aRenderCmdList[DrawSpace::_COUNT];
 
 	static duk_ret_t NativeRenderQuad(duk_context *ctx);
+	static duk_ret_t NativeSetColorU32(duk_context *ctx);
 	static duk_ret_t NativeSetDrawSpace(duk_context *ctx);
 	static duk_ret_t NativeMapSetTileCollisionFlags(duk_context *ctx);
 

@@ -47,7 +47,30 @@ duk_ret_t CDuktape::NativeRenderQuad(duk_context *ctx)
 	double Height = duk_to_number(ctx, 3);
 
 	IGraphics::CQuadItem Quad(x, y, Width, Height);
-	This()->m_aQuadList[This()->m_CurrentDrawSpace].add(Quad);
+	CRenderCmd Cmd;
+	Cmd.m_Type = CRenderCmd::QUAD;
+	Cmd.m_Quad = Quad;
+	This()->m_aRenderCmdList[This()->m_CurrentDrawSpace].add(Cmd);
+
+	return 0;
+}
+
+duk_ret_t CDuktape::NativeSetColorU32(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+	int x = duk_to_int(ctx, 0);
+
+	float Color[4];
+	Color[0] = (x & 0xFF) / 255.f;
+	Color[1] = ((x >> 8) & 0xFF) / 255.f;
+	Color[2] = ((x >> 16) & 0xFF) / 255.f;
+	Color[3] = ((x >> 24) & 0xFF) / 255.f;
+
+	CRenderCmd Cmd;
+	Cmd.m_Type = CRenderCmd::COLOR;
+	memmove(Cmd.m_Color, Color, sizeof(Color));
+	This()->m_aRenderCmdList[This()->m_CurrentDrawSpace].add(Cmd);
 
 	return 0;
 }
@@ -123,6 +146,9 @@ void CDuktape::OnInit()
 
 	duk_push_c_function(Duk(), NativeRenderQuad, 4 /*nargs*/);
 	duk_put_global_string(Duk(), "TwRenderQuad");
+
+	duk_push_c_function(Duk(), NativeSetColorU32, 1);
+	duk_put_global_string(Duk(), "TwSetColorU32");
 
 	duk_push_c_function(Duk(), NativeSetDrawSpace, 1);
 	duk_put_global_string(Duk(), "TwSetDrawSpace");
@@ -212,8 +238,8 @@ void CDuktape::OnMessage(int Msg, void* pRawMsg)
 							Test.Value1, ObjSize);*/
 					} break;
 
-					case DukNetObjID::RECT: {
-						CNetObj_Rect Rect;
+					case DukNetObjID::DEBUG_RECT: {
+						CNetObj_DebugRect Rect;
 						UnpackStrAsNetObj(ObjStr, ObjStrLen, &Rect, sizeof(Rect));
 						/*dbg_msg("duk", "CNetObj_Rect = { x=%g, y=%g, w=%g, h=%g }", Rect.x,
 							Rect.y, Rect.w, Rect.h);*/
@@ -221,11 +247,12 @@ void CDuktape::OnMessage(int Msg, void* pRawMsg)
 						duk_get_global_string(Duk(), "OnMessage");
 
 						PushObject();
-						ObjectSetMemberInt("netID", DukNetObjID::RECT);
+						ObjectSetMemberInt("netID", DukNetObjID::DEBUG_RECT);
 						ObjectSetMemberFloat("x", Rect.x);
 						ObjectSetMemberFloat("y", Rect.y);
 						ObjectSetMemberFloat("w", Rect.w);
 						ObjectSetMemberFloat("h", Rect.h);
+						ObjectSetMemberInt("color", Rect.color);
 
 						int NumArgs = 1;
 						if(duk_pcall(Duk(), NumArgs) != 0)
@@ -274,10 +301,26 @@ void CDuktape::RenderDrawSpaceGame()
 	Graphics()->TextureClear();
 	Graphics()->QuadsBegin();
 
-	Graphics()->SetColor(1, 0, 0, 1);
-	Graphics()->QuadsDrawTL(m_aQuadList[DrawSpace::GAME].base_ptr(), m_aQuadList[DrawSpace::GAME].size());
+	const int CmdCount = m_aRenderCmdList[DrawSpace::GAME].size();
+	const CRenderCmd* aCmds = m_aRenderCmdList[DrawSpace::GAME].base_ptr();
+
+	for(int i = 0; i < CmdCount; i++)
+	{
+		switch(aCmds[i].m_Type)
+		{
+			case CRenderCmd::COLOR: {
+				const float* pColor = aCmds[i].m_Color;
+				Graphics()->SetColor(pColor[0], pColor[1], pColor[2], pColor[3]);
+			} break;
+			case CRenderCmd::QUAD:
+				Graphics()->QuadsDrawTL(&aCmds[i].m_Quad, 1);
+				break;
+			default:
+				dbg_assert(0, "Render command type not handled");
+		}
+	}
 
 	Graphics()->QuadsEnd();
 
-	m_aQuadList[DrawSpace::GAME].clear();
+	m_aRenderCmdList[DrawSpace::GAME].clear();
 }

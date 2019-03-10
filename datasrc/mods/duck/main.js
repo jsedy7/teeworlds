@@ -1,12 +1,12 @@
 // main mod file
 print('Ducktape version = ' + Duktape.version);
 
-var lastRectPrev = {};
 var lastRect = {
     x: 0,
     y: 0,
     w: 0,
     h: 0,
+    color: 0
 };
 
 var solidRect = {
@@ -49,8 +49,8 @@ function OnUpdate(clientLocalTime)
     //print("Hello from the dark side! " + someInt);
     TwSetDrawSpace(Teeworlds.DRAW_SPACE_GAME);
 
-    /*var blend = Teeworlds.intraTick;
-    TwRenderQuad(mix(lastRectPrev.x, lastRect.x, blend), mix(lastRectPrev.y, lastRect.y, blend), lastRect.w, lastRect.h);*/
+    TwSetColorU32(lastRect.color);
+    TwRenderQuad(lastRect.x, lastRect.y, lastRect.w, lastRect.h);
 
     if(solidRect.w > 0.0) {
         TwRenderQuad(solidRect.x, solidRect.y, solidRect.w, solidRect.h);
@@ -59,14 +59,14 @@ function OnUpdate(clientLocalTime)
 
 function OnMessage(netObj)
 {
-    //printObj(netObj);
+    printObj(netObj);
 
     if(netObj.netID == 0x1) {
-        lastRectPrev = clone(lastRect);
         lastRect.x = netObj.x;
         lastRect.y = netObj.y;
         lastRect.w = netObj.w;
         lastRect.h = netObj.h;
+        lastRect.color = netObj.color;
     }
 
     if(netObj.netID == 0x2) {

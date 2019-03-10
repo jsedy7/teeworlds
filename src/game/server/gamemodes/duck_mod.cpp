@@ -34,21 +34,68 @@ static void PackNetObjAsStr(u8 NetObjID, const void* pNetObj, int NetObjSize, ch
 }
 
 template<typename T>
-void CGameControllerDUCK::SendDukNetObj(const T& NetObj)
+void CGameControllerDUCK::SendDukNetObj(const T& NetObj, int CID)
 {
 	char aPackedStr[256];
 	PackNetObjAsStr((int)T::NET_ID, &NetObj, sizeof(NetObj), aPackedStr, sizeof(aPackedStr));
-	GameServer()->SendBroadcast(aPackedStr, 0);
+	CNetMsg_Sv_Broadcast Msg;
+	Msg.m_pMessage = aPackedStr;
+	Server()->SendPackMsg(&Msg, MSGFLAG_VITAL, CID);
+}
+
+void CGameControllerDUCK::FlipSolidRect(float Rx, float Ry, float Rw, float Rh, bool Solid)
+{
+	CNetObj_MapRectSetSolid Flip;
+	Flip.solid = Solid;
+	Flip.x = Rx;
+	Flip.y = Ry;
+	Flip.w = Rw;
+	Flip.h = Rh;
+
+	if(Solid)
+	{
+		for(int y = 0; y < Flip.h; y++)
+		{
+			for(int x = 0; x < Flip.w; x++)
+			{
+				GameServer()->Collision()->SetTileCollisionFlags(Flip.x + x, Flip.y + y, 1);
+			}
+		}
+	}
+	else
+	{
+		for(int y = 0; y < Flip.h; y++)
+		{
+			for(int x = 0; x < Flip.w; x++)
+			{
+				GameServer()->Collision()->SetTileCollisionFlags(Flip.x + x, Flip.y + y, 0);
+			}
+		}
+	}
+
+	for(int i = 0; i < MAX_PLAYERS; i++)
+	{
+		if(GameServer()->m_apPlayers[i])
+		{
+			SendDukNetObj(Flip, i);
+		}
+	}
 }
 
 CGameControllerDUCK::CGameControllerDUCK(class CGameContext *pGameServer)
 : IGameController(pGameServer)
 {
-	// Exchange this to a string that identifies your game mode.
-	// DM, TDM and CTF are reserved for teeworlds original modes.
 	m_pGameType = "DUCK";
-
 	//m_GameFlags = GAMEFLAG_TEAMS; // GAMEFLAG_TEAMS makes it a two-team gamemode
+
+	ButtonLaserLinePair Pair1;
+	Pair1.m_ButtonPos = vec2(2, 43);
+	Pair1.m_ButtonSize = vec2(2, 1);
+	Pair1.m_LinePos = vec2(23, 44);
+	Pair1.m_LineSize = vec2(40, 1);
+	Pair1.m_IsLineActive = false;
+	Pair1.m_IsLineActiveDefault = false;
+	m_aButtonLinePairs[0] = Pair1;
 }
 
 void CGameControllerDUCK::Tick()
@@ -69,7 +116,7 @@ void CGameControllerDUCK::Tick()
 		dbg_msg("duck_mod", "sending ClientID=%d Value1=%g", Test.ClientID, Test.Value1);
 	}*/
 
-	if(GameServer()->GetPlayerChar(0))
+	/*if(GameServer()->GetPlayerChar(0))
 	{
 		CNetObj_Rect Rect;
 		vec2 Pos = GameServer()->GetPlayerChar(0)->GetPos();
@@ -79,42 +126,32 @@ void CGameControllerDUCK::Tick()
 		Rect.w = 100.0f;
 		Rect.h = 50.0f;
 
-		SendDukNetObj(Rect);
+		SendDukNetObj(Rect, 0);
+	}*/
 
-		static bool s_SetSolid = false;
-		if(CooldownTick >= SERVER_TICK_SPEED * 5)
+	static bool s_SetSolid = false;
+	if(CooldownTick >= SERVER_TICK_SPEED * 5)
+	{
+		CooldownTick = 0;
+		s_SetSolid ^= 1;
+		FlipSolidRect(23, 44, 40, 1, s_SetSolid);
+	}
+
+	for(int i = 0; i < BUTTON_PAIR_COUNT; i++)
+	{
+		ButtonLaserLinePair& Pair = m_aButtonLinePairs[i];
+
+		for(int p = 0; p < MAX_PLAYERS; p++)
 		{
-			CooldownTick = 0;
-			s_SetSolid ^= 1;
-
-			CNetObj_MapRectSetSolid Flip;
-			Flip.solid = s_SetSolid;
-			Flip.x = 8;
-			Flip.y = 8;
-			Flip.w = 10;
-			Flip.h = 1;
-
-			SendDukNetObj(Flip);
-
-			if(Flip.solid)
+			if(GameServer()->m_apPlayers[p])
 			{
-				for(int y = 0; y < Flip.h; y++)
-				{
-					for(int x = 0; x < Flip.w; x++)
-					{
-						GameServer()->Collision()->SetTileCollisionFlags(Flip.x + x, Flip.y + y, 1);
-					}
-				}
-			}
-			else
-			{
-				for(int y = 0; y < Flip.h; y++)
-				{
-					for(int x = 0; x < Flip.w; x++)
-					{
-						GameServer()->Collision()->SetTileCollisionFlags(Flip.x + x, Flip.y + y, 0);
-					}
-				}
+				CNetObj_DebugRect Rect;
+				Rect.x = Pair.m_ButtonPos.x * 32;
+				Rect.y = Pair.m_ButtonPos.y * 32;
+				Rect.w = Pair.m_ButtonSize.x * 32;
+				Rect.h = Pair.m_ButtonSize.y * 32;
+				Rect.color = Pair.m_IsLineActive ? 0x7f00ff00 : 0x7f0000ff;
+				SendDukNetObj(Rect, p);
 			}
 		}
 	}
