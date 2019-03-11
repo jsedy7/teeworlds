@@ -270,6 +270,7 @@ void CDuktape::OnMessage(int Msg, void* pRawMsg)
 
 						PushObject();
 						ObjectSetMemberInt("netID", DukNetObjID::DEBUG_RECT);
+						ObjectSetMemberInt("id", Rect.id);
 						ObjectSetMemberFloat("x", Rect.x);
 						ObjectSetMemberFloat("y", Rect.y);
 						ObjectSetMemberFloat("w", Rect.w);

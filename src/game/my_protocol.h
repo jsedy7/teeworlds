@@ -27,6 +27,7 @@ struct CNetObj_DebugRect
 {
 	enum { NET_ID = DukNetObjID::DEBUG_RECT };
 
+	u16 id;
 	float x;
 	float y;
 	float w;

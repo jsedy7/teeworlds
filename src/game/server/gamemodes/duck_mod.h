@@ -18,11 +18,12 @@ class CGameControllerDUCK : public IGameController
 		bool m_LineFlip;
 	};
 
-	enum { BUTTON_PAIR_COUNT = 1 };
+	enum { BUTTON_PAIR_COUNT = 2 };
 	ButtonLaserLinePair m_aButtonLinePairs[BUTTON_PAIR_COUNT];
 
 public:
 	CGameControllerDUCK(class CGameContext *pGameServer);
+
 	virtual void Tick();
-	// add more virtual functions here if you wish
+	void OnPlayerConnect(class CPlayer *pPlayer);
 };

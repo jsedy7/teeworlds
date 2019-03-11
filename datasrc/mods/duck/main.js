@@ -1,18 +1,11 @@
 // main mod file
 print('Ducktape version = ' + Duktape.version);
 
-var lastRect = {
-    x: 0,
-    y: 0,
-    w: 0,
-    h: 0,
-    color: 0
-};
-
 var lastClientlocalTime = 0.0;
 
 var game = {
     laserLines: [],
+    debugRects: []
 };
 
 
@@ -92,8 +85,10 @@ function OnUpdate(clientLocalTime)
     //print("Hello from the dark side! " + someInt);
     TwSetDrawSpace(Teeworlds.DRAW_SPACE_GAME);
 
-    TwRenderSetColorU32(lastRect.color);
-    TwRenderQuad(lastRect.x, lastRect.y, lastRect.w, lastRect.h);
+    game.debugRects.forEach(function(r) {
+        TwRenderSetColorU32(r.color);
+        TwRenderQuad(r.x, r.y, r.w, r.h);
+    });
 
     for(var i = 0; i < game.laserLines.length; i++)
     {
@@ -110,11 +105,14 @@ function OnMessage(netObj)
     //printObj(netObj);
 
     if(netObj.netID == 0x1) {
-        lastRect.x = netObj.x;
-        lastRect.y = netObj.y;
-        lastRect.w = netObj.w;
-        lastRect.h = netObj.h;
-        lastRect.color = netObj.color;
+        var rect = {
+            x: netObj.x,
+            y: netObj.y,
+            w: netObj.w,
+            h: netObj.h,
+            color: netObj.color,
+        };
+        game.debugRects[netObj.id] = rect;
     }
 
     if(netObj.netID == 0x2) {
@@ -133,7 +131,7 @@ function OnMessage(netObj)
             game.laserLines.push(lline);
         }
 
-        printObj(lline);
+        //printObj(lline);
 
         if(netObj.solid == 0) {
             for(var x = 0; x < netObj.w; x++) {
