@@ -55,7 +55,8 @@ function makeLaserLine()
         y: 0,
         w: 0,
         h: 0,
-        solid: 0
+        solid: 0,
+        hookable: 0,
     };
 }
 
@@ -94,8 +95,16 @@ function OnUpdate(clientLocalTime)
     {
         var l = game.laserLines[i];
         if(l.solid == 1) {
-            TwRenderSetColorF4(0.66, 0.0, 1.0, 0.7 + Math.sin(clientLocalTime*3.0) * 0.1);
+            var alpha = 0.7 + Math.sin(clientLocalTime*3.0) * 0.1;
+            if(l.hookable)
+                TwRenderSetColorF4(0.84, 0.34, 1.0, alpha);
+            else
+                TwRenderSetColorF4(1.0, 0.84, 0.34, alpha);
             TwRenderQuad(l.x, l.y, l.w, l.h);
+
+            TwRenderSetColorF4(1.0, 1.0, 1.0, 0.5);
+            TwRenderQuad(l.x, l.y, l.w, 2.0);
+            TwRenderQuad(l.x, l.y + l.h - 2.0, l.w, 2.0);
         }
     }
 }
@@ -122,6 +131,7 @@ function OnMessage(netObj)
         lline.w = netObj.w * 32;
         lline.h = netObj.h * 32;
         lline.solid = netObj.solid;
+        lline.hookable = netObj.hookable;
 
         var lineID = findLaserLineID(lline);
         if(lineID != -1) {
@@ -143,7 +153,7 @@ function OnMessage(netObj)
         else {
             for(var x = 0; x < netObj.w; x++) {
                 for(var y = 0; y < netObj.h; y++) {
-                    TwMapSetTileCollisionFlags(netObj.x + x, netObj.y + y, 1); // solid
+                    TwMapSetTileCollisionFlags(netObj.x + x, netObj.y + y, 1 | (4 * !netObj.hookable)); // solid
                 }
             }
         }

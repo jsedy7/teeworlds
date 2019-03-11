@@ -49,10 +49,11 @@ void CGameControllerDUCK::SendDukNetObj(const T& NetObj, int CID)
 	Server()->SendPackMsg(&Msg, MSGFLAG_VITAL, CID);
 }
 
-void CGameControllerDUCK::FlipSolidRect(float Rx, float Ry, float Rw, float Rh, bool Solid)
+void CGameControllerDUCK::FlipSolidRect(float Rx, float Ry, float Rw, float Rh, bool Solid, bool IsHookable)
 {
 	CNetObj_MapRectSetSolid Flip;
 	Flip.solid = Solid;
+	Flip.hookable = IsHookable;
 	Flip.x = Rx;
 	Flip.y = Ry;
 	Flip.w = Rw;
@@ -64,7 +65,7 @@ void CGameControllerDUCK::FlipSolidRect(float Rx, float Ry, float Rw, float Rh, 
 		{
 			for(int x = 0; x < Flip.w; x++)
 			{
-				GameServer()->Collision()->SetTileCollisionFlags(Flip.x + x, Flip.y + y, 1);
+				GameServer()->Collision()->SetTileCollisionFlags(Flip.x + x, Flip.y + y, CCollision::COLFLAG_SOLID | (CCollision::COLFLAG_NOHOOK * !IsHookable));
 			}
 		}
 	}
@@ -101,6 +102,7 @@ CGameControllerDUCK::CGameControllerDUCK(class CGameContext *pGameServer)
 	Pair.m_LineSize = vec2(40, 1);
 	Pair.m_IsButtonActive = false;
 	Pair.m_LineFlip = false;
+	Pair.m_IsLineHookable = true;
 	m_aButtonLinePairs[0] = Pair;
 
 	Pair.m_ButtonPos = vec2(17, 30);
@@ -108,7 +110,8 @@ CGameControllerDUCK::CGameControllerDUCK(class CGameContext *pGameServer)
 	Pair.m_LinePos = vec2(2, 33);
 	Pair.m_LineSize = vec2(11, 1);
 	Pair.m_IsButtonActive = false;
-	Pair.m_LineFlip = false;
+	Pair.m_LineFlip = true;
+	Pair.m_IsLineHookable = false;
 	m_aButtonLinePairs[1] = Pair;
 }
 
@@ -172,7 +175,7 @@ void CGameControllerDUCK::Tick()
 			if(Pair.m_LineFlip)
 				Solid ^= 1;
 
-			FlipSolidRect(Pair.m_LinePos.x, Pair.m_LinePos.y, Pair.m_LineSize.x, Pair.m_LineSize.y, Solid);
+			FlipSolidRect(Pair.m_LinePos.x, Pair.m_LinePos.y, Pair.m_LineSize.x, Pair.m_LineSize.y, Solid, Pair.m_IsLineHookable);
 		}
 
 		Pair.m_IsButtonActive = NewActive;
@@ -205,6 +208,6 @@ void CGameControllerDUCK::OnPlayerConnect(CPlayer* pPlayer)
 		if(Pair.m_LineFlip)
 			Solid ^= 1;
 
-		FlipSolidRect(Pair.m_LinePos.x, Pair.m_LinePos.y, Pair.m_LineSize.x, Pair.m_LineSize.y, Solid);
+		FlipSolidRect(Pair.m_LinePos.x, Pair.m_LinePos.y, Pair.m_LineSize.x, Pair.m_LineSize.y, Solid, Pair.m_IsLineHookable);
 	}
 }

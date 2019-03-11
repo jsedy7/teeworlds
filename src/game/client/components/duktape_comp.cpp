@@ -297,6 +297,7 @@ void CDuktape::OnMessage(int Msg, void* pRawMsg)
 						PushObject();
 						ObjectSetMemberInt("netID", DukNetObjID::MAP_RECT_SET_SOLID);
 						ObjectSetMemberInt("solid", Flip.solid); // TODO: boolean
+						ObjectSetMemberInt("hookable", Flip.hookable); // TODO: boolean
 						ObjectSetMemberInt("x", Flip.x);
 						ObjectSetMemberInt("y", Flip.y);
 						ObjectSetMemberInt("w", Flip.w);
@@ -333,7 +334,7 @@ void CDuktape::RenderDrawSpaceGame()
 		{
 			case CRenderCmd::COLOR: {
 				const float* pColor = aCmds[i].m_Color;
-				Graphics()->SetColor(pColor[0], pColor[1], pColor[2], pColor[3]);
+				Graphics()->SetColor(pColor[0] * pColor[3], pColor[1] * pColor[3], pColor[2] * pColor[3], pColor[3]);
 			} break;
 			case CRenderCmd::QUAD:
 				Graphics()->QuadsDrawTL(&aCmds[i].m_Quad, 1);

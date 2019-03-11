@@ -6,7 +6,7 @@ class CGameControllerDUCK : public IGameController
 	template<typename T>
 	void SendDukNetObj(const T& NetObj, int CID);
 
-	void FlipSolidRect(float Rx, float Ry, float Rw, float Rh, bool Solid);
+	void FlipSolidRect(float Rx, float Ry, float Rw, float Rh, bool Solid, bool IsHookable);
 
 	struct ButtonLaserLinePair
 	{
@@ -16,6 +16,7 @@ class CGameControllerDUCK : public IGameController
 		vec2 m_LineSize;
 		bool m_IsButtonActive;
 		bool m_LineFlip;
+		bool m_IsLineHookable;
 	};
 
 	enum { BUTTON_PAIR_COUNT = 2 };
