@@ -113,6 +113,24 @@ CGameControllerDUCK::CGameControllerDUCK(class CGameContext *pGameServer)
 	Pair.m_LineFlip = true;
 	Pair.m_IsLineHookable = false;
 	m_aButtonLinePairs[1] = Pair;
+
+	Pair.m_ButtonPos = vec2(64, 10);
+	Pair.m_ButtonSize = vec2(2, 1);
+	Pair.m_LinePos = vec2(87, 14);
+	Pair.m_LineSize = vec2(4, 10);
+	Pair.m_IsButtonActive = false;
+	Pair.m_LineFlip = true;
+	Pair.m_IsLineHookable = true;
+	m_aButtonLinePairs[2] = Pair;
+
+	Pair.m_ButtonPos = vec2(103, 12);
+	Pair.m_ButtonSize = vec2(2, 1);
+	Pair.m_LinePos = vec2(69, 30);
+	Pair.m_LineSize = vec2(37, 2);
+	Pair.m_IsButtonActive = false;
+	Pair.m_LineFlip = true;
+	Pair.m_IsLineHookable = false;
+	m_aButtonLinePairs[3] = Pair;
 }
 
 void CGameControllerDUCK::Tick()

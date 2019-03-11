@@ -19,7 +19,7 @@ class CGameControllerDUCK : public IGameController
 		bool m_IsLineHookable;
 	};
 
-	enum { BUTTON_PAIR_COUNT = 2 };
+	enum { BUTTON_PAIR_COUNT = 4 };
 	ButtonLaserLinePair m_aButtonLinePairs[BUTTON_PAIR_COUNT];
 
 public:
