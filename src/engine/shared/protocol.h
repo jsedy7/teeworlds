@@ -73,6 +73,9 @@ enum
 
 	NETMSG_MAPLIST_ENTRY_ADD,// todo 0.8: move up
 	NETMSG_MAPLIST_ENTRY_REM,
+
+	// DUCK
+	NETMSG_DUCK_NETOBJ
 };
 
 // this should be revised

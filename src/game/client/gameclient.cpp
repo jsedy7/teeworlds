@@ -688,6 +688,12 @@ void CGameClient::OnMessage(int MsgId, CUnpacker *pUnpacker)
 			break;
 		}
 	}
+	else if(MsgId == NETMSG_DUCK_NETOBJ)
+	{
+		m_pDuktapeComp->OnMessage(MsgId, pUnpacker);
+		// TODO: how does demo recording handle this?
+		return;
+	}
 
 	void *pRawMsg = m_NetObjHandler.SecureUnpackMsg(MsgId, pUnpacker);
 	if(!pRawMsg)

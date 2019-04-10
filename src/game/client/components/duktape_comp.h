@@ -55,7 +55,7 @@ class CDuktape : public CComponent
 	void PushObject();
 	void ObjectSetMemberInt(const char* MemberName, int Value);
 	void ObjectSetMemberFloat(const char* MemberName, float Value);
-	void ObjectSetMemberRawBuffer(const char* MemberName, void* pRawBuffer, int RawBufferSize);
+	void ObjectSetMemberRawBuffer(const char* MemberName, const void* pRawBuffer, int RawBufferSize);
 
 public:
 	CDuktape();

@@ -42,11 +42,17 @@ inline bool IsInsideRect(vec2 Pos, vec2 RectPos, vec2 RectSize)
 template<typename T>
 void CGameControllerDUCK::SendDukNetObj(const T& NetObj, int CID)
 {
-	char aPackedStr[256];
+	/*char aPackedStr[256];
 	PackNetObjAsStr((int)T::NET_ID, &NetObj, sizeof(NetObj), aPackedStr, sizeof(aPackedStr));
 	CNetMsg_Sv_Broadcast Msg;
 	Msg.m_pMessage = aPackedStr;
-	Server()->SendPackMsg(&Msg, MSGFLAG_VITAL, CID);
+	Server()->SendPackMsg(&Msg, MSGFLAG_VITAL, CID);*/
+
+	CMsgPacker Msg(NETMSG_DUCK_NETOBJ, false);
+	Msg.AddInt((int)T::NET_ID);
+	Msg.AddInt((int)sizeof(NetObj));
+	Msg.AddRaw(&NetObj, sizeof(NetObj));
+	Server()->SendMsg(&Msg, MSGFLAG_VITAL, CID);
 }
 
 void CGameControllerDUCK::FlipSolidRect(float Rx, float Ry, float Rw, float Rh, bool Solid, bool IsHookable)

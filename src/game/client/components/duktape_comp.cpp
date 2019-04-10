@@ -207,7 +207,7 @@ void CDuktape::ObjectSetMemberFloat(const char* MemberName, float Value)
 	duk_put_prop_string(Duk(), m_CurrentPushedObjID, MemberName);
 }
 
-void CDuktape::ObjectSetMemberRawBuffer(const char* MemberName, void* pRawBuffer, int RawBufferSize)
+void CDuktape::ObjectSetMemberRawBuffer(const char* MemberName, const void* pRawBuffer, int RawBufferSize)
 {
 	duk_push_string(Duk(), MemberName);
 	duk_push_fixed_buffer(Duk(), RawBufferSize);
@@ -375,6 +375,31 @@ void CDuktape::OnMessage(int Msg, void* pRawMsg)
 				((CNetMsg_Sv_Broadcast *)pRawMsg)->m_pMessage = s_NullStr;
 			}
 		}
+	}
+	else if(Msg == NETMSG_DUCK_NETOBJ)
+	{
+		CUnpacker* pUnpacker = (CUnpacker*)pRawMsg;
+		const int ObjID = pUnpacker->GetInt();
+		const int ObjSize = pUnpacker->GetInt();
+		const u8* pObjRawData = (u8*)pUnpacker->GetRaw(ObjSize);
+		dbg_msg("duk", "DUK packed netobj, id=0x%x size=%d", ObjID, ObjSize);
+
+		duk_get_global_string(Duk(), "OnMessage");
+
+		// make netObj
+		PushObject();
+		ObjectSetMemberInt("netID", ObjID);
+		ObjectSetMemberInt("cursor", 0);
+		ObjectSetMemberRawBuffer("raw", pObjRawData, ObjSize);
+
+		// call OnMessage(netObj)
+		int NumArgs = 1;
+		if(duk_pcall(Duk(), NumArgs) != 0)
+		{
+			dbg_msg("duk", "OnMessage(): Script error: %s", duk_safe_to_string(Duk(), -1));
+			dbg_break();
+		}
+		duk_pop(Duk());
 	}
 }
 
