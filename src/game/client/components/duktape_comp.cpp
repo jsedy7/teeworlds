@@ -121,20 +121,71 @@ duk_ret_t CDuktape::NativeMapSetTileCollisionFlags(duk_context *ctx)
 	return 0;
 }
 
-duk_ret_t CDuktape::NativeUnpackInt(duk_context *ctx)
+template<typename IntT>
+duk_ret_t CDuktape::NativeUnpackInteger(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
 
+	// get cursor, raw buffer
 	duk_get_prop_string(ctx, 0, "cursor");
 	int Cursor = (int)duk_to_int(ctx, -1);
-	dbg_msg("duk", "netObj.cursor = %d", Cursor);
 	duk_pop(ctx);
 
-	duk_push_int(ctx, 43);
+	duk_get_prop_string(ctx, 0, "raw");
+	duk_size_t RawBufferSize;
+	const u8* pRawBuffer = (u8*)duk_get_buffer(ctx, -1, &RawBufferSize);
+	duk_pop(ctx);
+
+	/*dbg_msg("duk", "netObj.cursor = %d", Cursor);
+	dbg_msg("duk", "netObj.raw = %llx", pRawBuffer);
+	dbg_msg("duk", "netObj.raw.length = %d", RawBufferSize);*/
+
+	dbg_assert(Cursor + sizeof(IntT) <= RawBufferSize, "unpack: buffer overflow");
+
+	IntT OutInt;
+	mem_copy(&OutInt, pRawBuffer + Cursor, sizeof(IntT));
+	Cursor += sizeof(IntT);
+
+	// set new cursor
+	duk_push_int(ctx, Cursor);
 	duk_put_prop_string(ctx, 0, "cursor");
 
-	return 0;
+	// return int
+	duk_push_int(ctx, (int)OutInt);
+	return 1;
+}
+
+duk_ret_t CDuktape::NativeUnpackFloat(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	// get cursor, raw buffer
+	duk_get_prop_string(ctx, 0, "cursor");
+	int Cursor = (int)duk_to_int(ctx, -1);
+	duk_pop(ctx);
+
+	duk_get_prop_string(ctx, 0, "raw");
+	duk_size_t RawBufferSize;
+	const u8* pRawBuffer = (u8*)duk_get_buffer(ctx, -1, &RawBufferSize);
+	duk_pop(ctx);
+
+	dbg_assert(Cursor + sizeof(float) <= RawBufferSize, "unpack: buffer overflow");
+
+	float OutFloat;
+	mem_copy(&OutFloat, pRawBuffer + Cursor, sizeof(float));
+	Cursor += sizeof(float);
+
+	// set new cursor
+	duk_push_int(ctx, Cursor);
+	duk_put_prop_string(ctx, 0, "cursor");
+
+	dbg_msg("duk", "return %g", OutFloat);
+
+	// return float
+	duk_push_number(ctx, OutFloat);
+	return 1;
 }
 
 void CDuktape::PushObject()
@@ -208,8 +259,14 @@ void CDuktape::OnInit()
 	duk_push_c_function(Duk(), NativeMapSetTileCollisionFlags, 3);
 	duk_put_global_string(Duk(), "TwMapSetTileCollisionFlags");
 
-	duk_push_c_function(Duk(), NativeUnpackInt, 1);
-	duk_put_global_string(Duk(), "TwNativeUnpackInt");
+	duk_push_c_function(Duk(), NativeUnpackInteger<i32>, 1);
+	duk_put_global_string(Duk(), "TwUnpackInt32");
+
+	duk_push_c_function(Duk(), NativeUnpackInteger<u16>, 1);
+	duk_put_global_string(Duk(), "TwUnpackUint16");
+
+	duk_push_c_function(Duk(), NativeUnpackFloat, 1);
+	duk_put_global_string(Duk(), "TwUnpackFloat");
 
 	// Teeworlds global object
 	duk_eval_string(Duk(),
@@ -310,7 +367,7 @@ void CDuktape::OnMessage(int Msg, void* pRawMsg)
 						ObjectSetMemberFloat("h", Rect.h);
 						ObjectSetMemberInt("color", Rect.color);*/
 						ObjectSetMemberInt("netID", ObjID);
-						ObjectSetMemberInt("cursor", -42);
+						ObjectSetMemberInt("cursor", 0);
 						ObjectSetMemberRawBuffer("raw", &Rect, sizeof(Rect));
 
 						int NumArgs = 1;

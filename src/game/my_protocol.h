@@ -4,6 +4,7 @@
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
+typedef int32_t i32;
 
 struct DukNetObjID
 {
@@ -27,7 +28,7 @@ struct CNetObj_DebugRect
 {
 	enum { NET_ID = DukNetObjID::DEBUG_RECT };
 
-	u16 id;
+	int id;
 	float x;
 	float y;
 	float w;

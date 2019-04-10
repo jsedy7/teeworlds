@@ -44,7 +44,10 @@ class CDuktape : public CComponent
 	static duk_ret_t NativeRenderSetColorF4(duk_context *ctx);
 	static duk_ret_t NativeSetDrawSpace(duk_context *ctx);
 	static duk_ret_t NativeMapSetTileCollisionFlags(duk_context *ctx);
-	static duk_ret_t CDuktape::NativeUnpackInt(duk_context *ctx);
+
+	template<typename IntT>
+	static duk_ret_t NativeUnpackInteger(duk_context *ctx);
+	static duk_ret_t NativeUnpackFloat(duk_context *ctx);
 
 	int m_CurrentPushedObjID;
 
