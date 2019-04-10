@@ -1,8 +1,12 @@
 #include "duktape_comp.h"
 #include <engine/storage.h>
 #include <generated/protocol.h>
-#include <game/my_protocol.h>
 #include <stdint.h>
+
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef int32_t i32;
 
 inline u8 HexCharToValue(char c)
 {
@@ -181,8 +185,6 @@ duk_ret_t CDuktape::NativeUnpackFloat(duk_context *ctx)
 	duk_push_int(ctx, Cursor);
 	duk_put_prop_string(ctx, 0, "cursor");
 
-	dbg_msg("duk", "return %g", OutFloat);
-
 	// return float
 	duk_push_number(ctx, OutFloat);
 	return 1;
@@ -262,8 +264,14 @@ void CDuktape::OnInit()
 	duk_push_c_function(Duk(), NativeUnpackInteger<i32>, 1);
 	duk_put_global_string(Duk(), "TwUnpackInt32");
 
+	duk_push_c_function(Duk(), NativeUnpackInteger<u8>, 1);
+	duk_put_global_string(Duk(), "TwUnpackUint8");
+
 	duk_push_c_function(Duk(), NativeUnpackInteger<u16>, 1);
 	duk_put_global_string(Duk(), "TwUnpackUint16");
+
+	duk_push_c_function(Duk(), NativeUnpackInteger<u32>, 1);
+	duk_put_global_string(Duk(), "TwUnpackUint32");
 
 	duk_push_c_function(Duk(), NativeUnpackFloat, 1);
 	duk_put_global_string(Duk(), "TwUnpackFloat");
@@ -341,70 +349,27 @@ void CDuktape::OnMessage(int Msg, void* pRawMsg)
 				const int ObjSize = (ObjStrLen)/2;
 				//dbg_msg("duk", "DUK packed netobj, id=0x%x size=%d", ObjID, ObjSize);
 
-				switch(ObjID)
+				// broadcast string -> raw netobj data
+				static u8 aNetObjRawBuff[1024];
+				dbg_assert(ObjSize < sizeof(aNetObjRawBuff), "net object too large");
+				UnpackStrAsNetObj(ObjStr, ObjStrLen, aNetObjRawBuff, ObjSize);
+
+				duk_get_global_string(Duk(), "OnMessage");
+
+				// make netObj
+				PushObject();
+				ObjectSetMemberInt("netID", ObjID);
+				ObjectSetMemberInt("cursor", 0);
+				ObjectSetMemberRawBuffer("raw", aNetObjRawBuff, ObjSize);
+
+				// call OnMessage(netObj)
+				int NumArgs = 1;
+				if(duk_pcall(Duk(), NumArgs) != 0)
 				{
-					case DukNetObjID::TEST: {
-						CNetObj_Test Test;
-						UnpackStrAsNetObj(ObjStr, ObjStrLen, &Test, sizeof(Test));
-						/*dbg_msg("duk", "CNetObj_Test = { ClientID=%d, Value1=%g }", Test.ClientID,
-							Test.Value1, ObjSize);*/
-					} break;
-
-					case DukNetObjID::DEBUG_RECT: {
-						CNetObj_DebugRect Rect;
-						UnpackStrAsNetObj(ObjStr, ObjStrLen, &Rect, sizeof(Rect));
-						/*dbg_msg("duk", "CNetObj_Rect = { x=%g, y=%g, w=%g, h=%g }", Rect.x,
-							Rect.y, Rect.w, Rect.h);*/
-
-						duk_get_global_string(Duk(), "OnMessage");
-
-						PushObject();
-						/*ObjectSetMemberInt("netID", DukNetObjID::DEBUG_RECT);
-						ObjectSetMemberInt("id", Rect.id);
-						ObjectSetMemberFloat("x", Rect.x);
-						ObjectSetMemberFloat("y", Rect.y);
-						ObjectSetMemberFloat("w", Rect.w);
-						ObjectSetMemberFloat("h", Rect.h);
-						ObjectSetMemberInt("color", Rect.color);*/
-						ObjectSetMemberInt("netID", ObjID);
-						ObjectSetMemberInt("cursor", 0);
-						ObjectSetMemberRawBuffer("raw", &Rect, sizeof(Rect));
-
-						int NumArgs = 1;
-						if(duk_pcall(Duk(), NumArgs) != 0)
-						{
-							dbg_msg("duk", "OnMessage(): Script error: %s", duk_safe_to_string(Duk(), -1));
-							dbg_break();
-						}
-						duk_pop(Duk());
-					} break;
-
-					case DukNetObjID::MAP_RECT_SET_SOLID: {
-						CNetObj_MapRectSetSolid Flip;
-						UnpackStrAsNetObj(ObjStr, ObjStrLen, &Flip, sizeof(Flip));
-						/*dbg_msg("duk", "CNetObj_Rect = { x=%g, y=%g, w=%g, h=%g }", Rect.x,
-							Rect.y, Rect.w, Rect.h);*/
-
-						duk_get_global_string(Duk(), "OnMessage");
-
-						PushObject();
-						ObjectSetMemberInt("netID", DukNetObjID::MAP_RECT_SET_SOLID);
-						ObjectSetMemberInt("solid", Flip.solid); // TODO: boolean
-						ObjectSetMemberInt("hookable", Flip.hookable); // TODO: boolean
-						ObjectSetMemberInt("x", Flip.x);
-						ObjectSetMemberInt("y", Flip.y);
-						ObjectSetMemberInt("w", Flip.w);
-						ObjectSetMemberInt("h", Flip.h);
-
-						int NumArgs = 1;
-						if(duk_pcall(Duk(), NumArgs) != 0)
-						{
-							dbg_msg("duk", "OnMessage(): Script error: %s", duk_safe_to_string(Duk(), -1));
-							dbg_break();
-						}
-						duk_pop(Duk());
-					} break;
+					dbg_msg("duk", "OnMessage(): Script error: %s", duk_safe_to_string(Duk(), -1));
+					dbg_break();
 				}
+				duk_pop(Duk());
 
 				static const char* s_NullStr = "";
 				((CNetMsg_Sv_Broadcast *)pRawMsg)->m_pMessage = s_NullStr;

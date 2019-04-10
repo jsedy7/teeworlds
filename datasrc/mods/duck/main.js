@@ -43,6 +43,16 @@ function printObj(obj)
     print(str);
 }
 
+function printRawBuffer(buff)
+{
+    var str = "[";
+    for(var i = 0; i < buff.length; i +=1) {
+        str += "0x"+ buff[i].toString(16) + ",";
+    }
+    str += "]"
+    print(str);
+}
+
 function mix(a, b, amount)
 {
     return a + (b-a) * amount;
@@ -113,25 +123,33 @@ function OnMessage(netObj)
 {
     //printObj(netObj);
 
-    if(netObj.netID == 0x1) {
+    if(netObj.netID == 0x1) { // DEBUG_RECT
+        var rectId = TwUnpackInt32(netObj);
         var rect = {
-            x: netObj.x,
-            y: netObj.y,
-            w: netObj.w,
-            h: netObj.h,
-            color: netObj.color,
+            x: TwUnpackFloat(netObj),
+            y: TwUnpackFloat(netObj),
+            w: TwUnpackFloat(netObj),
+            h: TwUnpackFloat(netObj),
+            color: TwUnpackUint32(netObj),
         };
-        game.debugRects[netObj.id] = rect;
+        game.debugRects[rectId] = rect;
     }
 
-    if(netObj.netID == 0x2) {
+    if(netObj.netID == 0x2) { // MAP_RECT_SET_SOLID
+        var solid = TwUnpackUint8(netObj);
+        var hookable = TwUnpackUint8(netObj);
+        var tx = TwUnpackUint16(netObj);
+        var ty = TwUnpackUint16(netObj);
+        var tw = TwUnpackUint16(netObj);
+        var th = TwUnpackUint16(netObj);
+
         var lline = makeLaserLine();
-        lline.x = netObj.x * 32;
-        lline.y = netObj.y * 32;
-        lline.w = netObj.w * 32;
-        lline.h = netObj.h * 32;
-        lline.solid = netObj.solid;
-        lline.hookable = netObj.hookable;
+        lline.solid = solid;
+        lline.hookable = hookable;
+        lline.x = tx * 32;
+        lline.y = ty * 32;
+        lline.w = tw * 32;
+        lline.h = th * 32;
 
         var lineID = findLaserLineID(lline);
         if(lineID != -1) {
@@ -143,17 +161,17 @@ function OnMessage(netObj)
 
         //printObj(lline);
 
-        if(netObj.solid == 0) {
-            for(var x = 0; x < netObj.w; x++) {
-                for(var y = 0; y < netObj.h; y++) {
-                    TwMapSetTileCollisionFlags(netObj.x + x, netObj.y + y, 0); // air
+        if(solid == 0) {
+            for(var x = 0; x < tw; x++) {
+                for(var y = 0; y < th; y++) {
+                    TwMapSetTileCollisionFlags(tx + x, ty + y, 0); // air
                 }
             }
         }
         else {
-            for(var x = 0; x < netObj.w; x++) {
-                for(var y = 0; y < netObj.h; y++) {
-                    TwMapSetTileCollisionFlags(netObj.x + x, netObj.y + y, 1 | (4 * !netObj.hookable)); // solid
+            for(var x = 0; x < tw; x++) {
+                for(var y = 0; y < th; y++) {
+                    TwMapSetTileCollisionFlags(tx+ x, ty + y, 1 | (4 * !hookable)); // solid
                 }
             }
         }
