@@ -330,53 +330,7 @@ void CDuktape::OnRender()
 
 void CDuktape::OnMessage(int Msg, void* pRawMsg)
 {
-	if(Msg == NETMSGTYPE_SV_BROADCAST)
-	{
-		const char* pMsg = ((CNetMsg_Sv_Broadcast *)pRawMsg)->m_pMessage;
-		//dbg_msg("duk", "broadcast msg: {%s}", pMsg);
-
-		const int MsgLen = str_length(pMsg);
-		if(MsgLen > 4)
-		{
-			u32 Head = *(u32*)pMsg;
-			//dbg_msg("duk", "Head=%x", Head);
-
-			if((Head & 0xFFFFFF) == 0x4B5544) // DUK header
-			{
-				const int ObjStrLen = MsgLen - 4;
-				const char* ObjStr = pMsg + 4;
-				const int ObjID = ((Head & 0xFF000000) >> 24) - 0x21;
-				const int ObjSize = (ObjStrLen)/2;
-				//dbg_msg("duk", "DUK packed netobj, id=0x%x size=%d", ObjID, ObjSize);
-
-				// broadcast string -> raw netobj data
-				static u8 aNetObjRawBuff[1024];
-				dbg_assert(ObjSize < sizeof(aNetObjRawBuff), "net object too large");
-				UnpackStrAsNetObj(ObjStr, ObjStrLen, aNetObjRawBuff, ObjSize);
-
-				duk_get_global_string(Duk(), "OnMessage");
-
-				// make netObj
-				PushObject();
-				ObjectSetMemberInt("netID", ObjID);
-				ObjectSetMemberInt("cursor", 0);
-				ObjectSetMemberRawBuffer("raw", aNetObjRawBuff, ObjSize);
-
-				// call OnMessage(netObj)
-				int NumArgs = 1;
-				if(duk_pcall(Duk(), NumArgs) != 0)
-				{
-					dbg_msg("duk", "OnMessage(): Script error: %s", duk_safe_to_string(Duk(), -1));
-					dbg_break();
-				}
-				duk_pop(Duk());
-
-				static const char* s_NullStr = "";
-				((CNetMsg_Sv_Broadcast *)pRawMsg)->m_pMessage = s_NullStr;
-			}
-		}
-	}
-	else if(Msg == NETMSG_DUCK_NETOBJ)
+	if(Msg == NETMSG_DUCK_NETOBJ)
 	{
 		CUnpacker* pUnpacker = (CUnpacker*)pRawMsg;
 		const int ObjID = pUnpacker->GetInt();
