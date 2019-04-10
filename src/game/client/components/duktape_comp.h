@@ -44,6 +44,7 @@ class CDuktape : public CComponent
 	static duk_ret_t NativeRenderSetColorF4(duk_context *ctx);
 	static duk_ret_t NativeSetDrawSpace(duk_context *ctx);
 	static duk_ret_t NativeMapSetTileCollisionFlags(duk_context *ctx);
+	static duk_ret_t CDuktape::NativeUnpackInt(duk_context *ctx);
 
 	int m_CurrentPushedObjID;
 
@@ -51,6 +52,7 @@ class CDuktape : public CComponent
 	void PushObject();
 	void ObjectSetMemberInt(const char* MemberName, int Value);
 	void ObjectSetMemberFloat(const char* MemberName, float Value);
+	void ObjectSetMemberRawBuffer(const char* MemberName, void* pRawBuffer, int RawBufferSize);
 
 public:
 	CDuktape();

@@ -121,6 +121,22 @@ duk_ret_t CDuktape::NativeMapSetTileCollisionFlags(duk_context *ctx)
 	return 0;
 }
 
+duk_ret_t CDuktape::NativeUnpackInt(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	duk_get_prop_string(ctx, 0, "cursor");
+	int Cursor = (int)duk_to_int(ctx, -1);
+	dbg_msg("duk", "netObj.cursor = %d", Cursor);
+	duk_pop(ctx);
+
+	duk_push_int(ctx, 43);
+	duk_put_prop_string(ctx, 0, "cursor");
+
+	return 0;
+}
+
 void CDuktape::PushObject()
 {
 	m_CurrentPushedObjID = duk_push_object(Duk());
@@ -136,6 +152,20 @@ void CDuktape::ObjectSetMemberFloat(const char* MemberName, float Value)
 {
 	duk_push_number(Duk(), Value);
 	duk_put_prop_string(Duk(), m_CurrentPushedObjID, MemberName);
+}
+
+void CDuktape::ObjectSetMemberRawBuffer(const char* MemberName, void* pRawBuffer, int RawBufferSize)
+{
+	duk_push_string(Duk(), MemberName);
+	duk_push_fixed_buffer(Duk(), RawBufferSize);
+
+	duk_size_t OutBufferSize;
+	u8* OutBuffer = (u8*)duk_require_buffer_data(Duk(), -1, &OutBufferSize);
+	dbg_assert(OutBufferSize == RawBufferSize, "buffer size differs");
+	mem_copy(OutBuffer, pRawBuffer, RawBufferSize);
+
+	int rc = duk_put_prop(Duk(), m_CurrentPushedObjID);
+	dbg_assert(rc == 1, "could not put raw buffer prop");
 }
 
 CDuktape::CDuktape()
@@ -177,6 +207,9 @@ void CDuktape::OnInit()
 
 	duk_push_c_function(Duk(), NativeMapSetTileCollisionFlags, 3);
 	duk_put_global_string(Duk(), "TwMapSetTileCollisionFlags");
+
+	duk_push_c_function(Duk(), NativeUnpackInt, 1);
+	duk_put_global_string(Duk(), "TwNativeUnpackInt");
 
 	// Teeworlds global object
 	duk_eval_string(Duk(),
@@ -269,13 +302,16 @@ void CDuktape::OnMessage(int Msg, void* pRawMsg)
 						duk_get_global_string(Duk(), "OnMessage");
 
 						PushObject();
-						ObjectSetMemberInt("netID", DukNetObjID::DEBUG_RECT);
+						/*ObjectSetMemberInt("netID", DukNetObjID::DEBUG_RECT);
 						ObjectSetMemberInt("id", Rect.id);
 						ObjectSetMemberFloat("x", Rect.x);
 						ObjectSetMemberFloat("y", Rect.y);
 						ObjectSetMemberFloat("w", Rect.w);
 						ObjectSetMemberFloat("h", Rect.h);
-						ObjectSetMemberInt("color", Rect.color);
+						ObjectSetMemberInt("color", Rect.color);*/
+						ObjectSetMemberInt("netID", ObjID);
+						ObjectSetMemberInt("cursor", -42);
+						ObjectSetMemberRawBuffer("raw", &Rect, sizeof(Rect));
 
 						int NumArgs = 1;
 						if(duk_pcall(Duk(), NumArgs) != 0)
