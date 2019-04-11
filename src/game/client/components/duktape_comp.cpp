@@ -3,33 +3,12 @@
 #include <generated/protocol.h>
 #include <stdint.h>
 
+#include <engine/client/http.h>
+
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
 typedef int32_t i32;
-
-inline u8 HexCharToValue(char c)
-{
-	if(c >= '0' && c <= '9')
-		return c - '0';
-	if(c >= 'A' && c <= 'F')
-		return c - 'A' + 10;
-	return 0;
-}
-
-static void UnpackStrAsNetObj(const char* Str, int StrSize, void* pOutNetObj, int NetObjSize)
-{
-	dbg_assert(StrSize == NetObjSize*2, "String size does not correspond to NetObj size");
-
-	for(int i = 0; i < NetObjSize; i++)
-	{
-		const u8 v1 = HexCharToValue(Str[i*2]);
-		const u8 v2 = HexCharToValue(Str[i*2+1]);
-		const u8 Byte = v1 * 0x10 + v2;
-		((u8*)pOutNetObj)[i] = Byte;
-	}
-}
-
 
 // TODO: rename?
 static CDuktape* s_This = 0;
@@ -299,6 +278,10 @@ void CDuktape::OnInit()
 	mem_free(pFileData);
 
 	m_CurrentDrawSpace = DrawSpace::GAME;
+
+
+	// TODO: remove, testing
+	HttpRequestPage("http://github.com/LordSk/teeworlds/archive/3.2.zip");
 }
 
 void CDuktape::OnShutdown()
