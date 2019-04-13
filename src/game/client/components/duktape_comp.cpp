@@ -4,11 +4,145 @@
 #include <stdint.h>
 
 #include <engine/client/http.h>
+#include <zip.h>
 
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
 typedef int32_t i32;
+
+// TODO: move
+bool UnzipToFolder(const HttpBuffer* pHttpZipData, IStorage* pStorage)
+{
+	char aPath[512];
+	pStorage->GetCompletePath(IStorage::TYPE_SAVE, "mods", aPath, sizeof(aPath));
+	fs_makedir(aPath); // DUCK
+
+	// FIXME: remove this
+	str_append(aPath, "/temp.zip", sizeof(aPath));
+	IOHANDLE File = io_open(aPath, IOFLAG_WRITE);
+	io_write(File, pHttpZipData->m_pData, pHttpZipData->m_Size);
+	io_close(File);
+
+	dbg_msg("unzip", "OPENING %s", aPath);
+
+	int Error = 0;
+	zip *pZipFile = zip_open(aPath, 0, &Error);
+	if(pZipFile == NULL)
+	{
+		char aErrorBuff[512];
+		zip_error_to_str(aErrorBuff, sizeof(aErrorBuff), Error, errno);
+		dbg_msg("unzip", "Error opening '%s' [%s]", aPath, aErrorBuff);
+		return false;
+	}
+
+	const int EntryCount = zip_get_num_entries(pZipFile, 0);
+	for(int i = 0; i < EntryCount; i++)
+	{
+		zip_stat_t EntryStat;
+		if(zip_stat_index(pZipFile, i, 0, &EntryStat) != 0)
+			continue;
+		dbg_msg("unzip", "Name: %s, Size: %llu, mtime: [%u]", EntryStat.name, EntryStat.size, (unsigned int)EntryStat.mtime);
+	}
+
+	zip_close(pZipFile);
+
+#if 0
+	unzFile ZipFile = unzOpen64(aPath);
+	unz_global_info GlobalInfo;
+	int r = unzGetGlobalInfo(ZipFile, &GlobalInfo);
+	if(r != UNZ_OK)
+	{
+		dbg_msg("unzip", "could not read file global info (%d)", r);
+		unzClose(ZipFile);
+		dbg_break();
+		return false;
+	}
+
+	for(int i = 0; i < GlobalInfo.number_entry; i++)
+	{
+		// Get info about current file.
+		unz_file_info file_info;
+		char filename[256];
+		if(unzGetCurrentFileInfo(ZipFile, &file_info, filename, sizeof(filename), NULL, 0, NULL, 0) != UNZ_OK)
+		{
+			dbg_msg("unzip", "could not read file info");
+			unzClose(ZipFile);
+			return false;
+		}
+
+		dbg_msg("unzip", "FILE_ENTRY %s", filename);
+
+		/*// Check if this entry is a directory or file.
+		const size_t filename_length = str_length(filename);
+		if(filename[ filename_length-1 ] == '/')
+		{
+			// Entry is a directory, so create it.
+			printf("dir:%s\n", filename);
+			//mkdir(filename);
+		}
+		else
+		{
+			// Entry is a file, so extract it.
+			printf("file:%s\n", filename);
+			if(unzOpenCurrentFile(ZipFile) != UNZ_OK)
+			{
+				dbg_msg("unzip", "could not open file");
+				unzClose(ZipFile);
+				return false;
+			}
+
+			// Open a file to write out the data.
+			FILE *out = fopen(filename, "wb");
+			if(out == NULL)
+			{
+				dbg_msg("unzip", "could not open destination file");
+				unzCloseCurrentFile(ZipFile);
+				unzClose(ZipFile);
+				return false;
+			}
+
+			int error = UNZ_OK;
+			do
+			{
+			error = unzReadCurrentFile(zipfile, read_buffer, READ_SIZE);
+			if(error < 0)
+			{
+			printf("error %d\n", error);
+			unzCloseCurrentFile(zipfile);
+			unzClose(zipfile);
+			return -1;
+			}
+
+			// Write data to file.
+			if(error > 0)
+			{
+			fwrite(read_buffer, error, 1, out); // You should check return of fwrite...
+			}
+			} while (error > 0);
+
+			fclose(out);
+		}*/
+
+		unzCloseCurrentFile(ZipFile);
+
+		// Go the the next entry listed in the zip file.
+		if((i+1) < GlobalInfo.number_entry)
+		{
+			if(unzGoToNextFile(ZipFile) != UNZ_OK)
+			{
+				dbg_msg("unzip", "cound not read next file");
+				unzClose(ZipFile);
+				return false;
+			}
+		}
+	}
+
+	unzClose(ZipFile);
+#endif
+
+	return true;
+}
 
 // TODO: rename?
 static CDuktape* s_This = 0;
@@ -281,7 +415,11 @@ void CDuktape::OnInit()
 
 
 	// TODO: remove, testing
-	HttpRequestPage("http://github.com/LordSk/teeworlds/archive/3.2.zip");
+	HttpBuffer Buff;
+	HttpRequestPage("https://github.com/LordSk/teeworlds/releases/download/1.1/gametypes.zip", &Buff);
+	bool IsUnzipped = UnzipToFolder(&Buff, Storage());
+	dbg_assert(IsUnzipped, "rip in peace");
+	Buff.Release();
 }
 
 void CDuktape::OnShutdown()

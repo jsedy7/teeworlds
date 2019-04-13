@@ -2,6 +2,15 @@
 #include <base/system.h>
 #include <curl/curl.h>
 
+void HttpBuffer::Release()
+{
+	if(m_pData)
+		mem_free(m_pData);
+	m_pData = 0;
+	m_Cursor = 0;
+	m_Size = 0;
+}
+
 bool ParseHttpUrl(const char* pUrl, char* pHostName, char* pBasePath)
 {
 	dbg_msg("http", "%s", curl_url());
@@ -39,13 +48,38 @@ bool ParseHttpUrl(const char* pUrl, char* pHostName, char* pBasePath)
 	return true;
 }
 
-static size_t CurlWriteCallback(char *ptr, size_t size, size_t nmemb, void *userdata)
+static size_t CurlWriteCallback(char *pChunkBuffer, size_t Size1, size_t ChunkSize, void *pUserData)
 {
-	return nmemb;
+	HttpBuffer& Buffer = *(HttpBuffer*)pUserData;
+
+	// we're out of space, double capacity
+	if(Buffer.m_Cursor + ChunkSize > Buffer.m_Size)
+	{
+		int NewSize = Buffer.m_Size * 2;
+		if(Buffer.m_Cursor + ChunkSize > NewSize)
+			NewSize = (Buffer.m_Cursor + ChunkSize) * 2;
+
+		char* pNewData = (char*)mem_alloc(NewSize, 1);
+		mem_move(pNewData, Buffer.m_pData, Buffer.m_Size);
+		mem_free(Buffer.m_pData);
+		Buffer.m_pData = pNewData;
+		Buffer.m_Size = NewSize;
+	}
+
+	mem_move(Buffer.m_pData + Buffer.m_Cursor, pChunkBuffer, ChunkSize);
+	Buffer.m_Cursor += ChunkSize;
+
+	return ChunkSize;
 }
 
-bool HttpRequestPage(const char* pUrl)
+bool HttpRequestPage(const char* pUrl, HttpBuffer* pHttpBuffer)
 {
+	// init buffer
+	dbg_assert(pHttpBuffer->m_pData == 0, "http buffer is not empty");
+	pHttpBuffer->m_Cursor = 0; // 1Kb
+	pHttpBuffer->m_Size = 1024; // 1Kb
+	pHttpBuffer->m_pData = (char*)mem_alloc(pHttpBuffer->m_Size, 1);
+
 	CURL *pCurl;
 	CURLcode Response;
 
@@ -54,10 +88,10 @@ bool HttpRequestPage(const char* pUrl)
 	pCurl = curl_easy_init();
 	if(pCurl)
 	{
-		curl_easy_setopt(pCurl, CURLOPT_URL, "http://github.com/LordSk/teeworlds/archive/3.2.zip");
+		curl_easy_setopt(pCurl, CURLOPT_URL, pUrl);
 		curl_easy_setopt(pCurl, CURLOPT_FOLLOWLOCATION, 1);
 		curl_easy_setopt(pCurl, CURLOPT_WRITEFUNCTION, CurlWriteCallback);
-		curl_easy_setopt(pCurl, CURLOPT_WRITEDATA, NULL);
+		curl_easy_setopt(pCurl, CURLOPT_WRITEDATA, pHttpBuffer);
 		/* Perform the request, res will get the return code */
 		Response = curl_easy_perform(pCurl);
 		/* Check for errors */
@@ -69,5 +103,5 @@ bool HttpRequestPage(const char* pUrl)
 	}
 
 	curl_global_cleanup();
-	return true;
+	return Response == CURLE_OK;
 }
