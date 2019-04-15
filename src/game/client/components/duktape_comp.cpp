@@ -12,27 +12,44 @@ typedef uint32_t u32;
 typedef int32_t i32;
 
 // TODO: move
-bool UnzipToFolder(const HttpBuffer* pHttpZipData, IStorage* pStorage)
+bool ExtractAndInstallMod(const HttpBuffer* pHttpZipData, IStorage* pStorage)
 {
-	char aPath[512];
-	pStorage->GetCompletePath(IStorage::TYPE_SAVE, "mods", aPath, sizeof(aPath));
-	fs_makedir(aPath); // DUCK
+	char aUserMoodsPath[512];
+	pStorage->GetCompletePath(IStorage::TYPE_SAVE, "mods", aUserMoodsPath, sizeof(aUserMoodsPath));
+	fs_makedir(aUserMoodsPath); // DUCK
+
+	// TODO: reduce hash string length?
+	SHA256_DIGEST Sha256 = sha256(pHttpZipData->m_pData, pHttpZipData->m_Size);
+	char aSha256Str[SHA256_MAXSTRSIZE];
+	sha256_str(Sha256, aSha256Str, sizeof(aSha256Str));
+
+	char aModRootPath[512];
+	str_copy(aModRootPath, aUserMoodsPath, sizeof(aModRootPath));
+	str_append(aModRootPath, "/", sizeof(aModRootPath));
+	str_append(aModRootPath, aSha256Str, sizeof(aModRootPath));
 
 	// FIXME: remove this
-	str_append(aPath, "/temp.zip", sizeof(aPath));
-	IOHANDLE File = io_open(aPath, IOFLAG_WRITE);
+	str_append(aUserMoodsPath, "/temp2.zip", sizeof(aUserMoodsPath));
+	/*IOHANDLE File = io_open(aUserMoodsPath, IOFLAG_WRITE);
 	io_write(File, pHttpZipData->m_pData, pHttpZipData->m_Size);
-	io_close(File);
+	io_close(File);*/
 
-	dbg_msg("unzip", "OPENING %s", aPath);
+	dbg_msg("unzip", "OPENING %s", aUserMoodsPath);
 
 	int Error = 0;
-	zip *pZipFile = zip_open(aPath, 0, &Error);
+	zip *pZipFile = zip_open(aUserMoodsPath, 0, &Error);
 	if(pZipFile == NULL)
 	{
 		char aErrorBuff[512];
 		zip_error_to_str(aErrorBuff, sizeof(aErrorBuff), Error, errno);
-		dbg_msg("unzip", "Error opening '%s' [%s]", aPath, aErrorBuff);
+		dbg_msg("unzip", "Error opening '%s' [%s]", aUserMoodsPath, aErrorBuff);
+		return false;
+	}
+
+	dbg_msg("unzip", "CREATE directory '%s'", aModRootPath);
+	if(fs_makedir(aModRootPath) != 0)
+	{
+		dbg_msg("unzip", "Failed to create directory '%s'", aModRootPath);
 		return false;
 	}
 
@@ -42,6 +59,23 @@ bool UnzipToFolder(const HttpBuffer* pHttpZipData, IStorage* pStorage)
 		zip_stat_t EntryStat;
 		if(zip_stat_index(pZipFile, i, 0, &EntryStat) != 0)
 			continue;
+
+		const int NameLen = str_length(EntryStat.name);
+		if(EntryStat.name[NameLen-1] == '/')
+		{
+			// directory
+			char aSubFolder[512];
+			str_copy(aSubFolder, aModRootPath, sizeof(aSubFolder));
+			str_append(aSubFolder, "/", sizeof(aSubFolder));
+			str_append(aSubFolder, EntryStat.name, sizeof(aSubFolder));
+
+			dbg_msg("unzip", "CREATE SUB directory '%s'", aSubFolder);
+			if(fs_makedir(aSubFolder) != 0)
+			{
+				dbg_msg("unzip", "Failed to create directory '%s'", aSubFolder);
+				return false;
+			}
+		}
 		dbg_msg("unzip", "Name: %s, Size: %llu, mtime: [%u]", EntryStat.name, EntryStat.size, (unsigned int)EntryStat.mtime);
 	}
 
@@ -417,7 +451,7 @@ void CDuktape::OnInit()
 	// TODO: remove, testing
 	HttpBuffer Buff;
 	HttpRequestPage("https://github.com/LordSk/teeworlds/releases/download/1.1/gametypes.zip", &Buff);
-	bool IsUnzipped = UnzipToFolder(&Buff, Storage());
+	bool IsUnzipped = ExtractAndInstallMod(&Buff, Storage());
 	dbg_assert(IsUnzipped, "rip in peace");
 	Buff.Release();
 }
