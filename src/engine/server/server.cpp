@@ -1829,7 +1829,9 @@ bool CServer::LoadDuckModZipFile(const char* pModPath)
 	m_CurrentDuckModSha256 = sha256(pFileBuff, FileLength);
 	mem_free(pFileBuff);
 
-	dbg_msg("duck", "mod loaded path=%s", pModPath);
+	char aSha256Str[SHA256_MAXSTRSIZE];
+	sha256_str(m_CurrentDuckModSha256, aSha256Str, sizeof(aSha256Str));
+	dbg_msg("duck", "mod loaded path=%s sha256=%s", pModPath, aSha256Str);
 	return true;
 }
 

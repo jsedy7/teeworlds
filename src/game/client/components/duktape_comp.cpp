@@ -12,7 +12,7 @@ typedef uint32_t u32;
 typedef int32_t i32;
 
 // TODO: move
-bool ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, IStorage* pStorage, const SHA256_DIGEST* pModSha256)
+bool ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, IStorage* pStorage, const SHA256_DIGEST* pModSha256, char* pOutModRootPath)
 {
 	dbg_msg("unzip", "EXTRACTING AND INSTALLING MOD");
 
@@ -21,21 +21,23 @@ bool ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, IStorage* pSt
 	fs_makedir(aUserModsPath); // Teeworlds/mods (user storage)
 
 	// TODO: reduce folder hash string length?
-	SHA256_DIGEST Sha256 = sha256(pHttpZipData->m_pData, pHttpZipData->m_Size);
+	SHA256_DIGEST Sha256 = sha256(pHttpZipData->m_pData, pHttpZipData->m_Cursor);
+	char aSha256Str[SHA256_MAXSTRSIZE];
+	sha256_str(Sha256, aSha256Str, sizeof(aSha256Str));
+
 	if(Sha256 != *pModSha256)
 	{
-		dbg_msg("duck", "mod url sha256 and server sent mod sha256 mismatch, aborting");
+		dbg_msg("duck", "mod url sha256 and server sent mod sha256 mismatch, received sha256=%s", aSha256Str);
 		// TODO: display error message
 		return false;
 	}
-
-	char aSha256Str[SHA256_MAXSTRSIZE];
-	sha256_str(Sha256, aSha256Str, sizeof(aSha256Str));
 
 	char aModRootPath[512];
 	str_copy(aModRootPath, aUserModsPath, sizeof(aModRootPath));
 	str_append(aModRootPath, "/", sizeof(aModRootPath));
 	str_append(aModRootPath, aSha256Str, sizeof(aModRootPath));
+
+	mem_copy(pOutModRootPath, aModRootPath, sizeof(aModRootPath));
 
 	char aModMainJsPath[512];
 	str_copy(aModMainJsPath, aUserModsPath, sizeof(aModMainJsPath));
@@ -67,7 +69,7 @@ bool ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, IStorage* pSt
 
 	zip_error_t ZipError;
 	zip_error_init(&ZipError);
-	zip_source_t* pZipSrc = zip_source_buffer_create(pHttpZipData->m_pData, pHttpZipData->m_Size, 1, &ZipError);
+	zip_source_t* pZipSrc = zip_source_buffer_create(pHttpZipData->m_pData, pHttpZipData->m_Cursor, 1, &ZipError);
 	if(!pZipSrc)
 	{
 		dbg_msg("unzip", "Error creating zip source [%s]", zip_error_strerror(&ZipError));
@@ -111,6 +113,9 @@ bool ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, IStorage* pSt
 		if(zip_stat_index(pZipArchive, i, 0, &EntryStat) != 0)
 			continue;
 
+		// TODO: remove
+		dbg_msg("unzip", "- Name: %s, Size: %llu, mtime: [%u]", EntryStat.name, EntryStat.size, (unsigned int)EntryStat.mtime);
+
 		const int NameLen = str_length(EntryStat.name);
 		if(EntryStat.name[NameLen-1] != '/')
 		{
@@ -139,8 +144,6 @@ bool ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, IStorage* pSt
 		zip_stat_t EntryStat;
 		if(zip_stat_index(pZipArchive, i, 0, &EntryStat) != 0)
 			continue;
-
-		dbg_msg("unzip", "Name: %s, Size: %llu, mtime: [%u]", EntryStat.name, EntryStat.size, (unsigned int)EntryStat.mtime);
 
 		// TODO: sanitize folder name
 		const int NameLen = str_length(EntryStat.name);
@@ -495,6 +498,40 @@ void CDuktape::ObjectSetMemberRawBuffer(const char* MemberName, const void* pRaw
 	dbg_assert(rc == 1, "could not put raw buffer prop");
 }
 
+struct CFileString
+{
+	char m_aPath[512];
+};
+
+static int ListDirCallback(const char* pName, int IsDir, int Type, void *pUser)
+{
+	array<CFileString>& aFilePathList = *(array<CFileString>*)pUser;
+
+	if(IsDir)
+	{
+		dbg_msg("duck", "ListDirCallback dir='%s'", pName);
+	}
+	else
+	{
+		CFileString FileStr;
+		const int NameLen = str_length(pName);
+		dbg_assert(NameLen+1 < sizeof(FileStr.m_aPath), "filename too long");
+		mem_copy(FileStr.m_aPath, pName, NameLen+1);
+		aFilePathList.add(FileStr);
+
+		dbg_msg("duck", "ListDirCallback file='%s'", pName);
+	}
+
+	return 0;
+}
+
+bool CDuktape::LoadModFilesFromDisk(const char* pModRootPath)
+{
+	array<CFileString> aFilePathList;
+	fs_listdir(pModRootPath, ListDirCallback, 1, &aFilePathList);
+	return true;
+}
+
 CDuktape::CDuktape()
 {
 	s_This = this;
@@ -664,9 +701,15 @@ void CDuktape::LoadDuckMod(const char* pModUrl, const SHA256_DIGEST* pModSha256)
 {
 	HttpBuffer Buff;
 	HttpRequestPage(pModUrl, &Buff);
-	bool IsUnzipped = ExtractAndInstallModZipBuffer(&Buff, Storage(), pModSha256);
-	dbg_assert(IsUnzipped, "rip in peace");
+
+	char aModRootPath[512];
+	bool IsUnzipped = ExtractAndInstallModZipBuffer(&Buff, Storage(), pModSha256, aModRootPath);
+	dbg_assert(IsUnzipped, "Unzipped to disk: rip in peace");
+
 	Buff.Release();
+
+	bool Loaded = LoadModFilesFromDisk(aModRootPath);
+	dbg_assert(Loaded, "Loaded from disk: rip in peace");
 
 	dbg_msg("duck", "mod loaded url='%s'", pModUrl);
 }
