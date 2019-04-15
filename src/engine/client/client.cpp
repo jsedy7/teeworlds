@@ -1477,6 +1477,9 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 			char aModSha256Str[SHA256_MAXSTRSIZE];
 			sha256_str(ModSha256, aModSha256Str, sizeof(aModSha256Str));
 			dbg_msg("duck", "mod data packet, desc='%s' url='%s' 'sha256=%s'", pModDescription, pModUrl, aModSha256Str);
+
+			GameClient()->LoadDuckMod(pModDescription, pModUrl, &ModSha256);
+			SendDuckModReady();
 		}
 	}
 	else
@@ -2492,6 +2495,14 @@ void CClient::ConnectOnStart(const char *pAddress)
 {
 	str_copy(m_aCmdConnect, pAddress, sizeof(m_aCmdConnect));
 }
+
+// DUCK
+void CClient::SendDuckModReady()
+{
+	CMsgPacker Msg(NETMSG_DUCK_MOD_READY, true);
+	SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH);
+}
+
 
 /*
 	Server Time

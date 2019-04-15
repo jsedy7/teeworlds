@@ -6,6 +6,7 @@
 
 #include "message.h"
 #include "graphics.h"
+#include <base/hash.h>
 
 class IClient : public IInterface
 {
@@ -180,8 +181,10 @@ public:
 	virtual const char *Version() const = 0;
 	virtual const char *NetVersion() const = 0;
 	virtual int ClientVersion() const = 0;
-	virtual int DuckVersion() const = 0;
 
+	// DUCK
+	virtual int DuckVersion() const = 0;
+	virtual void LoadDuckMod(const char* pModDesc, const char* pModUrl, const SHA256_DIGEST* pModSha256) = 0;
 };
 
 extern IGameClient *CreateGameClient();

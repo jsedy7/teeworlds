@@ -80,7 +80,9 @@ enum
 
 	// server
 	NETMSG_DUCK_MOD_DATA,
-	NETMSG_DUCK_REQUEST_MOD_DATA,
+
+	// client
+	NETMSG_DUCK_MOD_READY,
 };
 
 // this should be revised

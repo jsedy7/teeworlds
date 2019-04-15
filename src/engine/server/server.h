@@ -290,7 +290,7 @@ public:
 	char m_aCurrentDuckModPath[128];
 
 	void SendDuckMod(int ClientID);
-	bool LoadDuckMod(const char *pModPath);
+	bool LoadDuckModZipFile(const char *pModPath);
 };
 
 #endif

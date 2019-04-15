@@ -322,5 +322,8 @@ public:
 	void ToggleFullscreen();
 	void ToggleWindowBordered();
 	void ToggleWindowVSync();
+
+	// DUCK
+	void SendDuckModReady();
 };
 #endif

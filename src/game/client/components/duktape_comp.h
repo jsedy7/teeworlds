@@ -66,4 +66,6 @@ public:
 	virtual void OnMessage(int Msg, void *pRawMsg);
 
 	void RenderDrawSpaceGame();
+
+	void LoadDuckMod(const char* pModUrl, const SHA256_DIGEST* pModSha256);
 };

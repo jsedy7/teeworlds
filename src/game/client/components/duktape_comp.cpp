@@ -12,7 +12,7 @@ typedef uint32_t u32;
 typedef int32_t i32;
 
 // TODO: move
-bool ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, IStorage* pStorage)
+bool ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, IStorage* pStorage, const SHA256_DIGEST* pModSha256)
 {
 	dbg_msg("unzip", "EXTRACTING AND INSTALLING MOD");
 
@@ -20,8 +20,15 @@ bool ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, IStorage* pSt
 	pStorage->GetCompletePath(IStorage::TYPE_SAVE, "mods", aUserModsPath, sizeof(aUserModsPath));
 	fs_makedir(aUserModsPath); // Teeworlds/mods (user storage)
 
-	// TODO: reduce hash string length?
+	// TODO: reduce folder hash string length?
 	SHA256_DIGEST Sha256 = sha256(pHttpZipData->m_pData, pHttpZipData->m_Size);
+	if(Sha256 != *pModSha256)
+	{
+		dbg_msg("duck", "mod url sha256 and server sent mod sha256 mismatch, aborting");
+		// TODO: display error message
+		return false;
+	}
+
 	char aSha256Str[SHA256_MAXSTRSIZE];
 	sha256_str(Sha256, aSha256Str, sizeof(aSha256Str));
 
@@ -29,6 +36,17 @@ bool ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, IStorage* pSt
 	str_copy(aModRootPath, aUserModsPath, sizeof(aModRootPath));
 	str_append(aModRootPath, "/", sizeof(aModRootPath));
 	str_append(aModRootPath, aSha256Str, sizeof(aModRootPath));
+
+	char aModMainJsPath[512];
+	str_copy(aModMainJsPath, aUserModsPath, sizeof(aModMainJsPath));
+	str_append(aModMainJsPath, "/main.js", sizeof(aModMainJsPath));
+	IOHANDLE ModMainJs = pStorage->OpenFile(aModMainJsPath, IOFLAG_READ, IStorage::TYPE_SAVE);
+	if(ModMainJs)
+	{
+		io_close(ModMainJs);
+		dbg_msg("duck", "mod is already installed on disk");
+		return true;
+	}
 
 
 	// FIXME: remove this
@@ -78,6 +96,44 @@ bool ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, IStorage* pSt
 	}
 
 	const int EntryCount = zip_get_num_entries(pZipArchive, 0);
+
+	// find required files
+	const char* aRequiredFiles[] = {
+		"main.js",
+		"mod_info.json"
+	};
+	const int RequiredFilesCount = sizeof(aRequiredFiles)/sizeof(aRequiredFiles[0]);
+
+	int FoundRequiredFilesCount = 0;
+	for(int i = 0; i < EntryCount && FoundRequiredFilesCount < RequiredFilesCount; i++)
+	{
+		zip_stat_t EntryStat;
+		if(zip_stat_index(pZipArchive, i, 0, &EntryStat) != 0)
+			continue;
+
+		const int NameLen = str_length(EntryStat.name);
+		if(EntryStat.name[NameLen-1] != '/')
+		{
+			for(int r = 0; r < RequiredFilesCount; r++)
+			{
+				 // TODO: can 2 files have the same name?
+				if(str_comp(EntryStat.name, aRequiredFiles[r]) == 0)
+					FoundRequiredFilesCount++;
+			}
+		}
+	}
+
+	if(FoundRequiredFilesCount != RequiredFilesCount)
+	{
+		dbg_msg("duck", "mod is missing a required file, required files are: ");
+		for(int r = 0; r < RequiredFilesCount; r++)
+		{
+			dbg_msg("duck", "    - %s", aRequiredFiles[r]);
+		}
+		return false;
+	}
+
+	// walk zip file tree and extract
 	for(int i = 0; i < EntryCount; i++)
 	{
 		zip_stat_t EntryStat;
@@ -517,14 +573,6 @@ void CDuktape::OnInit()
 	mem_free(pFileData);
 
 	m_CurrentDrawSpace = DrawSpace::GAME;
-
-
-	// TODO: remove, testing
-	HttpBuffer Buff;
-	HttpRequestPage("https://github.com/LordSk/teeworlds/releases/download/1.1/gametypes.zip", &Buff);
-	bool IsUnzipped = ExtractAndInstallModZipBuffer(&Buff, Storage());
-	dbg_assert(IsUnzipped, "rip in peace");
-	Buff.Release();
 }
 
 void CDuktape::OnShutdown()
@@ -610,4 +658,15 @@ void CDuktape::RenderDrawSpaceGame()
 	Graphics()->QuadsEnd();
 
 	m_aRenderCmdList[DrawSpace::GAME].clear();
+}
+
+void CDuktape::LoadDuckMod(const char* pModUrl, const SHA256_DIGEST* pModSha256)
+{
+	HttpBuffer Buff;
+	HttpRequestPage(pModUrl, &Buff);
+	bool IsUnzipped = ExtractAndInstallModZipBuffer(&Buff, Storage(), pModSha256);
+	dbg_assert(IsUnzipped, "rip in peace");
+	Buff.Release();
+
+	dbg_msg("duck", "mod loaded url='%s'", pModUrl);
 }

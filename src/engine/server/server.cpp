@@ -867,11 +867,13 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 				{
 					m_aClients[ClientID].m_DuckVersion = DuckVersion;
 					SendDuckMod(ClientID);
+					// send map after mod
 				}
 				else
+				{
 					m_aClients[ClientID].m_DuckVersion = 0;
-
-				SendMap(ClientID);
+					SendMap(ClientID);
+				}
 			}
 		}
 		else if(Msg == NETMSG_REQUEST_MAP_DATA)
@@ -1082,6 +1084,12 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 		{
 			CMsgPacker Msg(NETMSG_PING_REPLY, true);
 			SendMsg(&Msg, 0, ClientID);
+		}
+		else if(Msg == NETMSG_DUCK_MOD_READY)
+		{
+			// DUCK
+			// TODO: set a variable indicating the client has the mod loaded?
+			SendMap(ClientID);
 		}
 		else
 		{
@@ -1316,7 +1324,7 @@ int CServer::Run()
 
 	// DUCK
 	// load duck mod
-	if(!LoadDuckMod(g_Config.m_SvDuckModPath))
+	if(!LoadDuckModZipFile(g_Config.m_SvDuckModPath))
 	{
 		dbg_msg("server", "failed to load duck mod. mappath='%s'", g_Config.m_SvDuckModPath);
 		return -1;
@@ -1384,7 +1392,7 @@ int CServer::Run()
 				m_MapReload = 1;
 
 				// load duck mod
-				if(!LoadDuckMod(g_Config.m_SvDuckModPath))
+				if(!LoadDuckModZipFile(g_Config.m_SvDuckModPath))
 				{
 					dbg_msg("server", "failed to load duck mod. mappath='%s'", g_Config.m_SvDuckModPath);
 					return -1;
@@ -1802,7 +1810,7 @@ void CServer::SendDuckMod(int ClientID)
 	SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH, ClientID);
 }
 
-bool CServer::LoadDuckMod(const char* pModPath)
+bool CServer::LoadDuckModZipFile(const char* pModPath)
 {
 	IOHANDLE ModFile = Storage()->OpenFile(pModPath, IOFLAG_READ, IStorage::TYPE_ALL);
 	if(!ModFile)
@@ -1821,6 +1829,7 @@ bool CServer::LoadDuckMod(const char* pModPath)
 	m_CurrentDuckModSha256 = sha256(pFileBuff, FileLength);
 	mem_free(pFileBuff);
 
+	dbg_msg("duck", "mod loaded path=%s", pModPath);
 	return true;
 }
 
