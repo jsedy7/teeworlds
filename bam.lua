@@ -3,6 +3,8 @@ CheckVersion("0.5")
 Import("configure.lua")
 Import("other/sdl/sdl.lua")
 Import("other/freetype/freetype.lua")
+Import("other/curl/curl.lua")
+Import("other/libzip/libzip.lua")
 
 --- Setup Config -------
 config = NewConfig()
@@ -13,6 +15,8 @@ config:Add(OptTestCompileC("buildwithoutsseflag", "#include <immintrin.h>\nint m
 config:Add(OptLibrary("zlib", "zlib.h", false))
 config:Add(SDL.OptFind("sdl", true))
 config:Add(FreeType.OptFind("freetype", true))
+config:Add(Curl.OptFind("curl", true))
+config:Add(Zip.OptFind("zip", true))
 config:Finalize("config.lua")
 
 generated_src_dir = "build/src"
@@ -336,8 +340,10 @@ end
 function BuildClient(settings, family, platform)
 	config.sdl:Apply(settings)
 	config.freetype:Apply(settings)
+	config.curl:Apply(settings)
+	config.zip:Apply(settings)
 	
-	local client = Compile(settings, Collect("src/engine/client/*.cpp"))
+	local client = Compile(settings, Collect("src/engine/client/*.cpp", "src/engine/client/*.c"))
 	
 	local game_client = Compile(settings, CollectRecursive("src/game/client/*.cpp"), SharedClientFiles())
 	local game_editor = Compile(settings, Collect("src/game/editor/*.cpp"))
