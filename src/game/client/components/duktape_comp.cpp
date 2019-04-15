@@ -12,13 +12,13 @@ typedef uint32_t u32;
 typedef int32_t i32;
 
 // TODO: move
-bool ExtractAndInstallMod(const HttpBuffer* pHttpZipData, IStorage* pStorage)
+bool ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, IStorage* pStorage)
 {
 	dbg_msg("unzip", "EXTRACTING AND INSTALLING MOD");
 
-	char aUserMoodsPath[512];
-	pStorage->GetCompletePath(IStorage::TYPE_SAVE, "mods", aUserMoodsPath, sizeof(aUserMoodsPath));
-	fs_makedir(aUserMoodsPath); // DUCK
+	char aUserModsPath[512];
+	pStorage->GetCompletePath(IStorage::TYPE_SAVE, "mods", aUserModsPath, sizeof(aUserModsPath));
+	fs_makedir(aUserModsPath); // Teeworlds/mods (user storage)
 
 	// TODO: reduce hash string length?
 	SHA256_DIGEST Sha256 = sha256(pHttpZipData->m_pData, pHttpZipData->m_Size);
@@ -26,19 +26,18 @@ bool ExtractAndInstallMod(const HttpBuffer* pHttpZipData, IStorage* pStorage)
 	sha256_str(Sha256, aSha256Str, sizeof(aSha256Str));
 
 	char aModRootPath[512];
-	str_copy(aModRootPath, aUserMoodsPath, sizeof(aModRootPath));
+	str_copy(aModRootPath, aUserModsPath, sizeof(aModRootPath));
 	str_append(aModRootPath, "/", sizeof(aModRootPath));
 	str_append(aModRootPath, aSha256Str, sizeof(aModRootPath));
 
+
 	// FIXME: remove this
-	str_append(aUserMoodsPath, "/temp.zip", sizeof(aUserMoodsPath));
+	/*
+	str_append(aUserModsPath, "/temp.zip", sizeof(aUserModsPath));
 	IOHANDLE File = io_open(aUserMoodsPath, IOFLAG_WRITE);
 	io_write(File, pHttpZipData->m_pData, pHttpZipData->m_Size);
 	io_close(File);
 
-	dbg_msg("unzip", "OPENING %s", aUserMoodsPath);
-
-	int Error = 0;
 	zip *pZipArchive = zip_open(aUserMoodsPath, 0, &Error);
 	if(pZipArchive == NULL)
 	{
@@ -46,7 +45,30 @@ bool ExtractAndInstallMod(const HttpBuffer* pHttpZipData, IStorage* pStorage)
 		zip_error_to_str(aErrorBuff, sizeof(aErrorBuff), Error, errno);
 		dbg_msg("unzip", "Error opening '%s' [%s]", aUserMoodsPath, aErrorBuff);
 		return false;
+	}*/
+
+	zip_error_t ZipError;
+	zip_error_init(&ZipError);
+	zip_source_t* pZipSrc = zip_source_buffer_create(pHttpZipData->m_pData, pHttpZipData->m_Size, 1, &ZipError);
+	if(!pZipSrc)
+	{
+		dbg_msg("unzip", "Error creating zip source [%s]", zip_error_strerror(&ZipError));
+		zip_error_fini(&ZipError);
+		return false;
 	}
+
+	dbg_msg("unzip", "OPENING zip source %s", aSha256Str);
+
+	int Error = 0;
+	zip *pZipArchive = zip_open_from_source(pZipSrc, 0, &ZipError);
+	if(pZipArchive == NULL)
+	{
+		dbg_msg("unzip", "Error opening source [%s]", zip_error_strerror(&ZipError));
+		zip_source_free(pZipSrc);
+		zip_error_fini(&ZipError);
+		return false;
+	}
+	zip_error_fini(&ZipError);
 
 	dbg_msg("unzip", "CREATE directory '%s'", aModRootPath);
 	if(fs_makedir(aModRootPath) != 0)
@@ -64,6 +86,7 @@ bool ExtractAndInstallMod(const HttpBuffer* pHttpZipData, IStorage* pStorage)
 
 		dbg_msg("unzip", "Name: %s, Size: %llu, mtime: [%u]", EntryStat.name, EntryStat.size, (unsigned int)EntryStat.mtime);
 
+		// TODO: sanitize folder name
 		const int NameLen = str_length(EntryStat.name);
 		if(EntryStat.name[NameLen-1] == '/')
 		{
@@ -82,6 +105,8 @@ bool ExtractAndInstallMod(const HttpBuffer* pHttpZipData, IStorage* pStorage)
 		}
 		else
 		{
+			// TODO: filter by file extension
+			// TODO: verify file type? Might be very expensive to do so.
 			zip_file_t* pFileZip = zip_fopen_index(pZipArchive, i, 0);
 			if(!pFileZip)
 			{
@@ -122,7 +147,10 @@ bool ExtractAndInstallMod(const HttpBuffer* pHttpZipData, IStorage* pStorage)
 		}
 	}
 
-	zip_close(pZipArchive);
+	zip_source_close(pZipSrc);
+	// NOTE: no need to call zip_source_free(pZipSrc), HttpBuffer::Release() already frees up the buffer
+
+	//zip_close(pZipArchive);
 
 #if 0
 	unzFile ZipFile = unzOpen64(aPath);
@@ -494,7 +522,7 @@ void CDuktape::OnInit()
 	// TODO: remove, testing
 	HttpBuffer Buff;
 	HttpRequestPage("https://github.com/LordSk/teeworlds/releases/download/1.1/gametypes.zip", &Buff);
-	bool IsUnzipped = ExtractAndInstallMod(&Buff, Storage());
+	bool IsUnzipped = ExtractAndInstallModZipBuffer(&Buff, Storage());
 	dbg_assert(IsUnzipped, "rip in peace");
 	Buff.Release();
 }
