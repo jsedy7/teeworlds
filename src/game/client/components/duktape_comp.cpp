@@ -498,28 +498,42 @@ void CDuktape::ObjectSetMemberRawBuffer(const char* MemberName, const void* pRaw
 	dbg_assert(rc == 1, "could not put raw buffer prop");
 }
 
-struct CFileString
+struct CPath
 {
-	char m_aPath[512];
+	char m_aBuff[512];
+};
+
+struct CFileSearch
+{
+	CPath m_BaseBath;
+	array<CPath>* m_paFilePathList;
 };
 
 static int ListDirCallback(const char* pName, int IsDir, int Type, void *pUser)
 {
-	array<CFileString>& aFilePathList = *(array<CFileString>*)pUser;
+	CFileSearch FileSearch = *(CFileSearch*)pUser; // copy
 
 	if(IsDir)
 	{
-		dbg_msg("duck", "ListDirCallback dir='%s'", pName);
+		if(pName[0] != '.')
+		{
+			//dbg_msg("duck", "ListDirCallback dir='%s'", pName);
+			str_append(FileSearch.m_BaseBath.m_aBuff, "/", sizeof(FileSearch.m_BaseBath.m_aBuff));
+			str_append(FileSearch.m_BaseBath.m_aBuff, pName, sizeof(FileSearch.m_BaseBath.m_aBuff));
+			//dbg_msg("duck", "recursing... dir='%s'", DirPath.m_aBuff);
+			fs_listdir(FileSearch.m_BaseBath.m_aBuff, ListDirCallback, Type + 1, &FileSearch);
+		}
 	}
 	else
 	{
-		CFileString FileStr;
-		const int NameLen = str_length(pName);
-		dbg_assert(NameLen+1 < sizeof(FileStr.m_aPath), "filename too long");
-		mem_copy(FileStr.m_aPath, pName, NameLen+1);
-		aFilePathList.add(FileStr);
+		CPath FileStr;
+		str_copy(FileStr.m_aBuff, pName, sizeof(FileStr.m_aBuff));
 
-		dbg_msg("duck", "ListDirCallback file='%s'", pName);
+		CPath FilePath = FileSearch.m_BaseBath;
+		str_append(FilePath.m_aBuff, "/", sizeof(FilePath.m_aBuff));
+		str_append(FilePath.m_aBuff, pName, sizeof(FilePath.m_aBuff));
+		FileSearch.m_paFilePathList->add(FilePath);
+		//dbg_msg("duck", "ListDirCallback file='%s'", pName);
 	}
 
 	return 0;
@@ -527,8 +541,21 @@ static int ListDirCallback(const char* pName, int IsDir, int Type, void *pUser)
 
 bool CDuktape::LoadModFilesFromDisk(const char* pModRootPath)
 {
-	array<CFileString> aFilePathList;
-	fs_listdir(pModRootPath, ListDirCallback, 1, &aFilePathList);
+	// get files recursively on disk
+	array<CPath> aFilePathList;
+	CFileSearch FileSearch;
+	str_copy(FileSearch.m_BaseBath.m_aBuff, pModRootPath, sizeof(FileSearch.m_BaseBath.m_aBuff));
+	FileSearch.m_paFilePathList = &aFilePathList;
+
+	fs_listdir(pModRootPath, ListDirCallback, 1, &FileSearch);
+
+	const int FileCount = aFilePathList.size();
+	const CPath* pFilePaths = aFilePathList.base_ptr();
+	for(int i = 0; i < FileCount; i++)
+	{
+		dbg_msg("duck", "file='%s'", pFilePaths[i]);
+	}
+
 	return true;
 }
 
@@ -647,7 +674,7 @@ void CDuktape::OnMessage(int Msg, void* pRawMsg)
 		const int ObjID = pUnpacker->GetInt();
 		const int ObjSize = pUnpacker->GetInt();
 		const u8* pObjRawData = (u8*)pUnpacker->GetRaw(ObjSize);
-		dbg_msg("duk", "DUK packed netobj, id=0x%x size=%d", ObjID, ObjSize);
+		//dbg_msg("duk", "DUK packed netobj, id=0x%x size=%d", ObjID, ObjSize);
 
 		duk_get_global_string(Duk(), "OnMessage");
 
