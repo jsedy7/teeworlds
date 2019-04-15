@@ -135,6 +135,9 @@ public:
 		const IConsole::CCommandInfo *m_pRconCmdToSend;
 		const CMapListEntry *m_pMapListEntryToSend;
 
+		// DUCK
+		int m_DuckVersion;
+
 		void Reset();
 	};
 
@@ -281,6 +284,13 @@ public:
 	virtual void SnapFreeID(int ID);
 	virtual void *SnapNewItem(int Type, int ID, int Size);
 	void SnapSetStaticsize(int ItemType, int Size);
+
+	// DUCK
+	SHA256_DIGEST m_CurrentDuckModSha256;
+	char m_aCurrentDuckModPath[128];
+
+	void SendDuckMod(int ClientID);
+	bool LoadDuckMod(const char *pModPath);
 };
 
 #endif

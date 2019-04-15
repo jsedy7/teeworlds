@@ -341,6 +341,9 @@ void CClient::SendInfo()
 	Msg.AddString(GameClient()->NetVersion(), 128);
 	Msg.AddString(g_Config.m_Password, 128);
 	Msg.AddInt(GameClient()->ClientVersion());
+	// DUCK
+	dbg_assert(GameClient()->DuckVersion() > 0, "Duck version <= 0");
+	Msg.AddInt(GameClient()->DuckVersion());
 	SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH);
 }
 
@@ -1459,6 +1462,21 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 					m_AckGameTick = GameTick;
 				}
 			}
+		}
+		else if((pPacket->m_Flags&NET_CHUNKFLAG_VITAL) != 0 && Msg == NETMSG_DUCK_MOD_DATA)
+		{
+			const char *pModDescription = Unpacker.GetString();
+			const char *pModUrl = Unpacker.GetString();
+			SHA256_DIGEST ModSha256 = *(SHA256_DIGEST*)Unpacker.GetRaw(sizeof(ModSha256));
+			if(Unpacker.Error())
+			{
+				dbg_msg("duck", "Error unpacking mod data packet");
+				return;
+			}
+
+			char aModSha256Str[SHA256_MAXSTRSIZE];
+			sha256_str(ModSha256, aModSha256Str, sizeof(aModSha256Str));
+			dbg_msg("duck", "mod data packet, desc='%s' url='%s' 'sha256=%s'", pModDescription, pModUrl, aModSha256Str);
 		}
 	}
 	else

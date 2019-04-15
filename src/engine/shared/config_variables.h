@@ -102,4 +102,9 @@ MACRO_CONFIG_INT(DbgHitch, dbg_hitch, 0, 0, 0, CFGFLAG_SERVER, "Hitch warnings")
 MACRO_CONFIG_STR(DbgStressServer, dbg_stress_server, 32, "localhost", CFGFLAG_CLIENT, "Server to stress")
 MACRO_CONFIG_INT(DbgResizable, dbg_resizable, 0, 0, 0, CFGFLAG_CLIENT, "Enables window resizing")
 
+// DUCK
+MACRO_CONFIG_STR(SvDuckModPath, sv_duck_mod_path, 128, "", CFGFLAG_SAVE|CFGFLAG_SERVER, "Duck mod zip file path")
+MACRO_CONFIG_STR(SvDuckModUrl, sv_duck_mod_url, 512, "", CFGFLAG_SAVE|CFGFLAG_SERVER, "Duck mod zip file url")
+MACRO_CONFIG_STR(SvDuckModDescription, sv_duck_mod_description, 128, "", CFGFLAG_SAVE|CFGFLAG_SERVER, "Duck mod short description")
+
 #endif

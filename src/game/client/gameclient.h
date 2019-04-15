@@ -291,6 +291,9 @@ public:
 	class CMapLayers *m_pMapLayersBackGround;
 	class CMapLayers *m_pMapLayersForeGround;
 	class CDuktape *m_pDuktapeComp;
+
+	// DUCK
+	virtual int DuckVersion() const;
 };
 
 const char *Localize(const char *pStr, const char *pContext="")

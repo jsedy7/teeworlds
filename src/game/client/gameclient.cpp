@@ -1688,6 +1688,12 @@ void CGameClient::ConchainXmasHatUpdate(IConsole::IResult *pResult, void *pUserD
 	}
 }
 
+// DUCK
+int CGameClient::DuckVersion() const
+{
+	return 0x1;
+}
+
 IGameClient *CreateGameClient()
 {
 	return new CGameClient();

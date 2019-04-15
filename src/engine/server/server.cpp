@@ -859,6 +859,18 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 				m_aClients[ClientID].m_Version = Unpacker.GetInt();
 
 				m_aClients[ClientID].m_State = CClient::STATE_CONNECTING;
+
+				// DUCK
+				// try to get duck version
+				const int DuckVersion = Unpacker.GetInt();
+				if(!Unpacker.Error())
+				{
+					m_aClients[ClientID].m_DuckVersion = DuckVersion;
+					SendDuckMod(ClientID);
+				}
+				else
+					m_aClients[ClientID].m_DuckVersion = 0;
+
 				SendMap(ClientID);
 			}
 		}
@@ -1302,6 +1314,14 @@ int CServer::Run()
 	}
 	m_MapChunksPerRequest = g_Config.m_SvMapDownloadSpeed;
 
+	// DUCK
+	// load duck mod
+	if(!LoadDuckMod(g_Config.m_SvDuckModPath))
+	{
+		dbg_msg("server", "failed to load duck mod. mappath='%s'", g_Config.m_SvDuckModPath);
+		return -1;
+	}
+
 	// start server
 	NETADDR BindAddr;
 	if(g_Config.m_Bindaddr[0] && net_host_lookup(g_Config.m_Bindaddr, &BindAddr, NETTYPE_ALL) == 0)
@@ -1357,6 +1377,19 @@ int CServer::Run()
 		{
 			int64 t = time_get();
 			int NewTicks = 0;
+
+			// DUCK
+			if(str_comp(g_Config.m_SvDuckModPath, m_aCurrentDuckModPath) != 0)
+			{
+				m_MapReload = 1;
+
+				// load duck mod
+				if(!LoadDuckMod(g_Config.m_SvDuckModPath))
+				{
+					dbg_msg("server", "failed to load duck mod. mappath='%s'", g_Config.m_SvDuckModPath);
+					return -1;
+				}
+			}
 
 			// load new map TODO: don't poll this
 			if(str_comp(g_Config.m_SvMap, m_aCurrentMap) != 0 || m_MapReload || m_CurrentGameTick >= 0x6FFFFFFF) //	force reload to make sure the ticks stay within a valid range
@@ -1757,6 +1790,38 @@ void *CServer::SnapNewItem(int Type, int ID, int Size)
 void CServer::SnapSetStaticsize(int ItemType, int Size)
 {
 	m_SnapshotDelta.SetStaticsize(ItemType, Size);
+}
+
+// DUCK
+void CServer::SendDuckMod(int ClientID)
+{
+	CMsgPacker Msg(NETMSG_DUCK_MOD_DATA, true);
+	Msg.AddString(g_Config.m_SvDuckModDescription, 128);
+	Msg.AddString(g_Config.m_SvDuckModUrl, 512);
+	Msg.AddRaw(&m_CurrentDuckModSha256, sizeof(m_CurrentDuckModSha256));
+	SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH, ClientID);
+}
+
+bool CServer::LoadDuckMod(const char* pModPath)
+{
+	IOHANDLE ModFile = Storage()->OpenFile(pModPath, IOFLAG_READ, IStorage::TYPE_ALL);
+	if(!ModFile)
+	{
+		dbg_msg("duck", "could not open mod zip file '%s'", pModPath);
+		return false;
+	}
+
+	str_copy(m_aCurrentDuckModPath, pModPath, sizeof(m_aCurrentDuckModPath));
+
+	const int FileLength = io_length(ModFile);
+	char* pFileBuff = (char*)mem_alloc(FileLength, 1);
+	io_read(ModFile, pFileBuff, FileLength);
+	io_close(ModFile);
+
+	m_CurrentDuckModSha256 = sha256(pFileBuff, FileLength);
+	mem_free(pFileBuff);
+
+	return true;
 }
 
 static CServer *CreateServer() { return new CServer(); }
