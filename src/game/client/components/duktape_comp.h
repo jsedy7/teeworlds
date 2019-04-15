@@ -57,6 +57,7 @@ class CDuktape : public CComponent
 	void ObjectSetMemberFloat(const char* MemberName, float Value);
 	void ObjectSetMemberRawBuffer(const char* MemberName, const void* pRawBuffer, int RawBufferSize);
 
+	bool LoadJsScriptFile(const char* pJsFilePath);
 	bool LoadModFilesFromDisk(const char* pModRootPath);
 
 public:

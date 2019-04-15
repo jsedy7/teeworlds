@@ -314,7 +314,7 @@ inline CDuktape* This() { return s_This; }
 
 static duk_ret_t NativePrint(duk_context *ctx)
 {
-	dbg_msg("duk", "%s", duk_to_string(ctx, 0));
+	dbg_msg("duck", "%s", duk_to_string(ctx, 0));
 	return 0;  /* no return value (= undefined) */
 }
 
@@ -418,9 +418,9 @@ duk_ret_t CDuktape::NativeUnpackInteger(duk_context *ctx)
 	const u8* pRawBuffer = (u8*)duk_get_buffer(ctx, -1, &RawBufferSize);
 	duk_pop(ctx);
 
-	/*dbg_msg("duk", "netObj.cursor = %d", Cursor);
-	dbg_msg("duk", "netObj.raw = %llx", pRawBuffer);
-	dbg_msg("duk", "netObj.raw.length = %d", RawBufferSize);*/
+	/*dbg_msg("duck", "netObj.cursor = %d", Cursor);
+	dbg_msg("duck", "netObj.raw = %llx", pRawBuffer);
+	dbg_msg("duck", "netObj.raw.length = %d", RawBufferSize);*/
 
 	dbg_assert(Cursor + sizeof(IntT) <= RawBufferSize, "unpack: buffer overflow");
 
@@ -498,6 +498,38 @@ void CDuktape::ObjectSetMemberRawBuffer(const char* MemberName, const void* pRaw
 	dbg_assert(rc == 1, "could not put raw buffer prop");
 }
 
+bool CDuktape::LoadJsScriptFile(const char* pJsFilePath)
+{
+	IOHANDLE ScriptFile = io_open(pJsFilePath, IOFLAG_READ);
+	if(!ScriptFile)
+	{
+		dbg_msg("duck", "could not open '%s'", pJsFilePath);
+		return false;
+	}
+
+	int FileSize = (int)io_length(ScriptFile);
+	char *pFileData = (char *)mem_alloc(FileSize + 1, 1);
+	io_read(ScriptFile, pFileData, FileSize);
+	pFileData[FileSize] = 0;
+	io_close(ScriptFile);
+
+	// eval script
+	duk_push_string(Duk(), pFileData);
+	if(duk_peval(Duk()) != 0)
+	{
+		/* Use duk_safe_to_string() to convert error into string.  This API
+		 * call is guaranteed not to throw an error during the coercion.
+		 */
+		dbg_msg("duck", "Script error: %s", duk_safe_to_string(Duk(), -1));
+		return false;
+	}
+	duk_pop(Duk());
+
+	dbg_msg("duck", "'%s' loaded (%d)", pJsFilePath, FileSize);
+	mem_free(pFileData);
+	return true;
+}
+
 struct CPath
 {
 	char m_aBuff[512];
@@ -539,6 +571,14 @@ static int ListDirCallback(const char* pName, int IsDir, int Type, void *pUser)
 	return 0;
 }
 
+// TODO: move?
+inline bool StrEndsWith(const char* pStr, const char* pCmp)
+{
+	const int StrLen = str_length(pStr);
+	const int CmpLen = str_length(pCmp);
+	return str_comp_num(pStr + StrLen - CmpLen, pCmp, CmpLen) == 0;
+}
+
 bool CDuktape::LoadModFilesFromDisk(const char* pModRootPath)
 {
 	// get files recursively on disk
@@ -553,7 +593,13 @@ bool CDuktape::LoadModFilesFromDisk(const char* pModRootPath)
 	const CPath* pFilePaths = aFilePathList.base_ptr();
 	for(int i = 0; i < FileCount; i++)
 	{
-		dbg_msg("duck", "file='%s'", pFilePaths[i]);
+		dbg_msg("duck", "file='%s'", pFilePaths[i].m_aBuff);
+		if(StrEndsWith(pFilePaths[i].m_aBuff, ".js"))
+		{
+			const bool Loaded = LoadJsScriptFile(pFilePaths[i].m_aBuff);
+			dbg_assert(Loaded, "error loading js script");
+			// TODO: show error instead of breaking
+		}
 	}
 
 	return true;
@@ -568,17 +614,6 @@ void CDuktape::OnInit()
 {
 	// load ducktape, eval main.js
 	m_pDukContext = duk_create_heap_default();
-
-	char aModPath[256];
-	str_format(aModPath, sizeof(aModPath), "mods/duck/main.js");
-	IOHANDLE ModFile = Storage()->OpenFile(aModPath, IOFLAG_READ, IStorage::TYPE_ALL);
-	dbg_assert(ModFile != 0, "Could not load duck/main.js");
-
-	int FileSize = (int)io_length(ModFile);
-	char *pFileData = (char *)mem_alloc(FileSize + 1, 1);
-	io_read(ModFile, pFileData, FileSize);
-	pFileData[FileSize] = 0;
-	io_close(ModFile);
 
 	// function binding
 	duk_push_c_function(Duk(), NativePrint, 1 /*nargs*/);
@@ -621,21 +656,6 @@ void CDuktape::OnInit()
 		"	aClients: [],"
 		"};");
 
-	// eval script
-	duk_push_string(Duk(), pFileData);
-	if(duk_peval(Duk()) != 0)
-	{
-		/* Use duk_safe_to_string() to convert error into string.  This API
-		 * call is guaranteed not to throw an error during the coercion.
-		 */
-		dbg_msg("duk", "Script error: %s", duk_safe_to_string(Duk(), -1));
-		dbg_break();
-	}
-	duk_pop(Duk());
-
-	dbg_msg("duk", "main.js loaded (%d)", FileSize);
-	mem_free(pFileData);
-
 	m_CurrentDrawSpace = DrawSpace::GAME;
 }
 
@@ -646,6 +666,9 @@ void CDuktape::OnShutdown()
 
 void CDuktape::OnRender()
 {
+	if(Client()->State() != IClient::STATE_ONLINE)
+		return;
+
 	// Update Teeworlds global object
 	char aEvalBuff[256];
 	str_format(aEvalBuff, sizeof(aEvalBuff), "Teeworlds.intraTick = %g;", Client()->IntraGameTick());
@@ -660,7 +683,7 @@ void CDuktape::OnRender()
 	int NumArgs = 1;
 	if(duk_pcall(Duk(), NumArgs) != 0)
 	{
-		dbg_msg("duk", "OnUpdate(): Script error: %s", duk_safe_to_string(Duk(), -1));
+		dbg_msg("duck", "OnUpdate(): Script error: %s", duk_safe_to_string(Duk(), -1));
 		dbg_break();
 	}
 	duk_pop(Duk());
@@ -674,7 +697,7 @@ void CDuktape::OnMessage(int Msg, void* pRawMsg)
 		const int ObjID = pUnpacker->GetInt();
 		const int ObjSize = pUnpacker->GetInt();
 		const u8* pObjRawData = (u8*)pUnpacker->GetRaw(ObjSize);
-		//dbg_msg("duk", "DUK packed netobj, id=0x%x size=%d", ObjID, ObjSize);
+		//dbg_msg("duck", "DUK packed netobj, id=0x%x size=%d", ObjID, ObjSize);
 
 		duk_get_global_string(Duk(), "OnMessage");
 
@@ -688,7 +711,7 @@ void CDuktape::OnMessage(int Msg, void* pRawMsg)
 		int NumArgs = 1;
 		if(duk_pcall(Duk(), NumArgs) != 0)
 		{
-			dbg_msg("duk", "OnMessage(): Script error: %s", duk_safe_to_string(Duk(), -1));
+			dbg_msg("duck", "OnMessage(): Script error: %s", duk_safe_to_string(Duk(), -1));
 			dbg_break();
 		}
 		duk_pop(Duk());
