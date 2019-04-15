@@ -14,6 +14,8 @@ typedef int32_t i32;
 // TODO: move
 bool ExtractAndInstallMod(const HttpBuffer* pHttpZipData, IStorage* pStorage)
 {
+	dbg_msg("unzip", "EXTRACTING AND INSTALLING MOD");
+
 	char aUserMoodsPath[512];
 	pStorage->GetCompletePath(IStorage::TYPE_SAVE, "mods", aUserMoodsPath, sizeof(aUserMoodsPath));
 	fs_makedir(aUserMoodsPath); // DUCK
@@ -29,16 +31,16 @@ bool ExtractAndInstallMod(const HttpBuffer* pHttpZipData, IStorage* pStorage)
 	str_append(aModRootPath, aSha256Str, sizeof(aModRootPath));
 
 	// FIXME: remove this
-	str_append(aUserMoodsPath, "/temp2.zip", sizeof(aUserMoodsPath));
-	/*IOHANDLE File = io_open(aUserMoodsPath, IOFLAG_WRITE);
+	str_append(aUserMoodsPath, "/temp.zip", sizeof(aUserMoodsPath));
+	IOHANDLE File = io_open(aUserMoodsPath, IOFLAG_WRITE);
 	io_write(File, pHttpZipData->m_pData, pHttpZipData->m_Size);
-	io_close(File);*/
+	io_close(File);
 
 	dbg_msg("unzip", "OPENING %s", aUserMoodsPath);
 
 	int Error = 0;
-	zip *pZipFile = zip_open(aUserMoodsPath, 0, &Error);
-	if(pZipFile == NULL)
+	zip *pZipArchive = zip_open(aUserMoodsPath, 0, &Error);
+	if(pZipArchive == NULL)
 	{
 		char aErrorBuff[512];
 		zip_error_to_str(aErrorBuff, sizeof(aErrorBuff), Error, errno);
@@ -53,17 +55,19 @@ bool ExtractAndInstallMod(const HttpBuffer* pHttpZipData, IStorage* pStorage)
 		return false;
 	}
 
-	const int EntryCount = zip_get_num_entries(pZipFile, 0);
+	const int EntryCount = zip_get_num_entries(pZipArchive, 0);
 	for(int i = 0; i < EntryCount; i++)
 	{
 		zip_stat_t EntryStat;
-		if(zip_stat_index(pZipFile, i, 0, &EntryStat) != 0)
+		if(zip_stat_index(pZipArchive, i, 0, &EntryStat) != 0)
 			continue;
+
+		dbg_msg("unzip", "Name: %s, Size: %llu, mtime: [%u]", EntryStat.name, EntryStat.size, (unsigned int)EntryStat.mtime);
 
 		const int NameLen = str_length(EntryStat.name);
 		if(EntryStat.name[NameLen-1] == '/')
 		{
-			// directory
+			// create sub directory
 			char aSubFolder[512];
 			str_copy(aSubFolder, aModRootPath, sizeof(aSubFolder));
 			str_append(aSubFolder, "/", sizeof(aSubFolder));
@@ -76,10 +80,49 @@ bool ExtractAndInstallMod(const HttpBuffer* pHttpZipData, IStorage* pStorage)
 				return false;
 			}
 		}
-		dbg_msg("unzip", "Name: %s, Size: %llu, mtime: [%u]", EntryStat.name, EntryStat.size, (unsigned int)EntryStat.mtime);
+		else
+		{
+			zip_file_t* pFileZip = zip_fopen_index(pZipArchive, i, 0);
+			if(!pFileZip)
+			{
+				dbg_msg("unzip", "Error reading file '%s'", EntryStat.name);
+				return false;
+			}
+
+			// create file on disk
+			char aFilePath[256];
+			str_copy(aFilePath, aModRootPath, sizeof(aFilePath));
+			str_append(aFilePath, "/", sizeof(aFilePath));
+			str_append(aFilePath, EntryStat.name, sizeof(aFilePath));
+
+			IOHANDLE FileExtracted = io_open(aFilePath, IOFLAG_WRITE);
+			if(!FileExtracted)
+			{
+				dbg_msg("unzip", "Error creating file '%s'", aFilePath);
+				return false;
+			}
+
+			// read zip file data and write to file on disk
+			char aReadBuff[1024];
+			int ReadCurrentSize = 0;
+			while(ReadCurrentSize != EntryStat.size)
+			{
+				const int ReadLen = zip_fread(pFileZip, aReadBuff, sizeof(aReadBuff));
+				if(ReadLen < 0)
+				{
+					dbg_msg("unzip", "Error reading file '%s'", EntryStat.name);
+					return false;
+				}
+				io_write(FileExtracted, aReadBuff, ReadLen);
+				ReadCurrentSize += ReadLen;
+			}
+
+			io_close(FileExtracted);
+			zip_fclose(pFileZip);
+		}
 	}
 
-	zip_close(pZipFile);
+	zip_close(pZipArchive);
 
 #if 0
 	unzFile ZipFile = unzOpen64(aPath);
