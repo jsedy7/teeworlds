@@ -188,6 +188,17 @@ class CClient : public IClient, public CDemoPlayer::IListner
 
 	int64 TickStartTime(int Tick);
 
+	// DUCK
+	char* m_DuckModDownloadFileBuffer;
+	int m_DuckModDownloadFileSize;
+	int m_DuckModDownloadFileBufferCapacity;
+	int m_DuckModDownloadChunk;
+	int m_DuckModDownloadChunkNum;
+	int m_DuckModDownloadChunkSize;
+	SHA256_DIGEST m_DuckModDownloadSha256;
+	int m_DuckModDownloadAmount;
+	int m_DuckModDownloadTotalsize;
+
 public:
 	IEngine *Engine() { return m_pEngine; }
 	IEngineGraphics *Graphics() { return m_pGraphics; }

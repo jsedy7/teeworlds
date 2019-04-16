@@ -266,6 +266,7 @@ void CServer::CClient::Reset()
 	m_SnapRate = CClient::SNAPRATE_INIT;
 	m_Score = 0;
 	m_MapChunk = 0;
+	m_DuckModChunk = 0;
 }
 
 CServer::CServer() : m_DemoRecorder(&m_SnapshotDelta)
@@ -866,7 +867,12 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 				if(!Unpacker.Error())
 				{
 					m_aClients[ClientID].m_DuckVersion = DuckVersion;
-					SendDuckMod(ClientID);
+
+					// dev mode
+					if(IsDuckDevMode())
+						SendDuckModDevMode(ClientID);
+					else
+						SendDuckModHttp(ClientID);
 					// send map after mod
 				}
 				else
@@ -1800,12 +1806,27 @@ void CServer::SnapSetStaticsize(int ItemType, int Size)
 	m_SnapshotDelta.SetStaticsize(ItemType, Size);
 }
 
+bool CServer::IsDuckDevMode() const
+{
+	return g_Config.m_SvDuckDevModPath[0] != 0;
+}
+
 // DUCK
-void CServer::SendDuckMod(int ClientID)
+void CServer::SendDuckModHttp(int ClientID)
 {
 	CMsgPacker Msg(NETMSG_DUCK_MOD_INFO, true);
 	Msg.AddString(g_Config.m_SvDuckModDescription, 128);
 	Msg.AddString(g_Config.m_SvDuckModUrl, 512);
+	Msg.AddRaw(&m_CurrentDuckModSha256, sizeof(m_CurrentDuckModSha256));
+	SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH, ClientID);
+}
+
+void CServer::SendDuckModDevMode(int ClientID)
+{
+	CMsgPacker Msg(NETMSG_DUCK_MOD_INFO_DEV, true);
+	Msg.AddInt(m_CurrentDuckModZipFileSize);
+	Msg.AddInt(m_MapChunksPerRequest);
+	Msg.AddInt(MAP_CHUNK_SIZE);
 	Msg.AddRaw(&m_CurrentDuckModSha256, sizeof(m_CurrentDuckModSha256));
 	SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH, ClientID);
 }
@@ -1826,6 +1847,7 @@ bool CServer::LoadDuckModZipFile(const char* pModPath)
 	io_read(ModFile, pFileBuff, FileLength);
 	io_close(ModFile);
 
+	m_CurrentDuckModZipFileSize = FileLength;
 	m_CurrentDuckModSha256 = sha256(pFileBuff, FileLength);
 	mem_free(pFileBuff);
 
