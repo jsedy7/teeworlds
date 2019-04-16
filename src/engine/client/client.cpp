@@ -1555,6 +1555,46 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 				dbg_msg("duck", "mod info dev packet, chunk_size=%d chunk_num=%d file_size=%d sha256=%s'", ChunkSize, ChunkNum, ZipFileSize, aModSha256Str);
 			}
 		}
+		else if((pPacket->m_Flags&NET_CHUNKFLAG_VITAL) != 0 && Msg == NETMSG_DUCK_MOD_DATA)
+		{
+			if(!m_DuckModDownloadFileBuffer)
+				return;
+
+			int Size = min(m_DuckModDownloadChunkSize, m_DuckModDownloadTotalsize-m_DuckModDownloadAmount);
+			const unsigned char *pData = Unpacker.GetRaw(Size);
+			if(Unpacker.Error())
+				return;
+
+			dbg_assert(m_DuckModDownloadFileSize+Size <= m_DuckModDownloadFileBufferCapacity, "file buffer overflow");
+			mem_move(m_DuckModDownloadFileBuffer+m_DuckModDownloadFileSize, pData, Size);
+			m_DuckModDownloadFileSize += Size;
+
+			++m_DuckModDownloadChunk;
+			m_DuckModDownloadAmount += Size; // TODO: duplicate of m_DuckModDownloadFileSize?
+
+			dbg_msg("duck", "chunk received size=%d", Size);
+
+			if(m_DuckModDownloadAmount == m_DuckModDownloadTotalsize)
+			{
+				// mod download complete
+				dbg_msg("duck", "mod download complete, loading...");
+
+				GameClient()->InstallAndLoadDuckModFromZipBuffer(m_DuckModDownloadFileBuffer, m_DuckModDownloadFileSize, &m_DuckModDownloadSha256);SendDuckModReady();
+
+				m_DuckModDownloadFileSize = 0;
+				m_DuckModDownloadAmount = 0;
+				m_DuckModDownloadTotalsize = -1;
+
+				SendDuckModReady();
+			}
+			else if(m_DuckModDownloadChunk%m_DuckModDownloadChunkNum == 0)
+			{
+				// request next chunk package of map data
+				CMsgPacker Msg(NETMSG_DUCK_MOD_REQUEST_DATA, true);
+				SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH);
+				dbg_msg("duck", "requested next mod chunk package");
+			}
+		}
 	}
 	else
 	{

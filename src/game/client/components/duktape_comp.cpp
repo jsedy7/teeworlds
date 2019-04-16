@@ -798,3 +798,27 @@ bool CDuktape::TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256)
 	dbg_msg("duck", "mod loaded (already installed) sha256='%s'", aSha256Str);
 	return IsLoaded;
 }
+
+bool CDuktape::InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256)
+{
+	dbg_assert(!IsModAlreadyInstalled(pModSha256), "mod is already installed, check it before calling this");
+
+	HttpBuffer Buff;
+	Buff.m_pData = (char*)pBuffer;
+	Buff.m_Size = BufferSize;
+	Buff.m_Cursor = BufferSize;
+
+	bool IsUnzipped = ExtractAndInstallModZipBuffer(&Buff, pModSha256);
+	dbg_assert(IsUnzipped, "Unzipped to disk: rip in peace");
+
+	if(!IsUnzipped)
+		return false;
+
+	bool IsLoaded = LoadModFilesFromDisk(pModSha256);
+	dbg_assert(IsLoaded, "Loaded from disk: rip in peace");
+
+	char aSha256Str[SHA256_MAXSTRSIZE];
+	sha256_str(*pModSha256, aSha256Str, sizeof(aSha256Str));
+	dbg_msg("duck", "mod loaded from zip buffer sha256='%s'", aSha256Str);
+	return IsLoaded;
+}

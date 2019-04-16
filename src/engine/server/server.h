@@ -288,12 +288,13 @@ public:
 
 	// DUCK
 	SHA256_DIGEST m_CurrentDuckModSha256;
+	char* m_CurrentDuckModZipFileData;
 	int m_CurrentDuckModZipFileSize;
 	char m_aCurrentDuckModPath[128];
 
 	bool IsDuckDevMode() const;
 	void SendDuckModHttp(int ClientID);
-	void SendDuckModDevMode(int ClientID);
+	void SendDuckModChunks(int ClientID);
 	bool LoadDuckModZipFile(const char *pModPath);
 };
 

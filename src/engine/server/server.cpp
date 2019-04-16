@@ -293,6 +293,8 @@ CServer::CServer() : m_DemoRecorder(&m_SnapshotDelta)
 	m_RconPasswordSet = 0;
 	m_GeneratedRconPassword = 0;
 
+	m_CurrentDuckModZipFileData = 0;
+
 	Init();
 }
 
@@ -870,7 +872,7 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 
 					// dev mode
 					if(IsDuckDevMode())
-						SendDuckModDevMode(ClientID);
+						SendDuckModChunks(ClientID);
 					else
 						SendDuckModHttp(ClientID);
 					// send map after mod
@@ -1096,6 +1098,35 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 			// DUCK
 			// TODO: set a variable indicating the client has the mod loaded?
 			SendMap(ClientID);
+		}
+		else if(Msg == NETMSG_DUCK_MOD_REQUEST_DATA)
+		{
+			if((pPacket->m_Flags&NET_CHUNKFLAG_VITAL) != 0 && (m_aClients[ClientID].m_State == CClient::STATE_CONNECTING || m_aClients[ClientID].m_State == CClient::STATE_CONNECTING_AS_SPEC))
+			{
+				int ChunkSize = MAP_CHUNK_SIZE;
+
+				// send map chunks
+				for(int i = 0; i < m_MapChunksPerRequest && m_aClients[ClientID].m_DuckModChunk >= 0; ++i)
+				{
+					int Chunk = m_aClients[ClientID].m_DuckModChunk;
+					int Offset = Chunk * ChunkSize;
+
+					// check for last part
+					if(Offset+ChunkSize >= m_CurrentDuckModZipFileSize)
+					{
+						ChunkSize = m_CurrentDuckModZipFileSize-Offset;
+						m_aClients[ClientID].m_DuckModChunk = -1;
+					}
+					else
+						m_aClients[ClientID].m_DuckModChunk++;
+
+					CMsgPacker Msg(NETMSG_DUCK_MOD_DATA, true);
+					Msg.AddRaw(&m_CurrentDuckModZipFileData[Offset], ChunkSize);
+					SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH, ClientID);
+
+					dbg_msg("duck", "sending mod chunk chunk %d with size %d", Chunk, ChunkSize);
+				}
+			}
 		}
 		else
 		{
@@ -1821,7 +1852,7 @@ void CServer::SendDuckModHttp(int ClientID)
 	SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH, ClientID);
 }
 
-void CServer::SendDuckModDevMode(int ClientID)
+void CServer::SendDuckModChunks(int ClientID)
 {
 	CMsgPacker Msg(NETMSG_DUCK_MOD_INFO_DEV, true);
 	Msg.AddInt(m_CurrentDuckModZipFileSize);
@@ -1840,6 +1871,9 @@ bool CServer::LoadDuckModZipFile(const char* pModPath)
 		return false;
 	}
 
+	if(m_CurrentDuckModZipFileData)
+		mem_free(m_CurrentDuckModZipFileData);
+
 	str_copy(m_aCurrentDuckModPath, pModPath, sizeof(m_aCurrentDuckModPath));
 
 	const int FileLength = io_length(ModFile);
@@ -1847,9 +1881,9 @@ bool CServer::LoadDuckModZipFile(const char* pModPath)
 	io_read(ModFile, pFileBuff, FileLength);
 	io_close(ModFile);
 
+	m_CurrentDuckModZipFileData = pFileBuff;
 	m_CurrentDuckModZipFileSize = FileLength;
 	m_CurrentDuckModSha256 = sha256(pFileBuff, FileLength);
-	mem_free(pFileBuff);
 
 	char aSha256Str[SHA256_MAXSTRSIZE];
 	sha256_str(m_CurrentDuckModSha256, aSha256Str, sizeof(aSha256Str));

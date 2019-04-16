@@ -186,6 +186,7 @@ public:
 	virtual int DuckVersion() const = 0;
 	virtual void StartDuckModHttpDownload(const char* pModDesc, const char* pModUrl, const SHA256_DIGEST* pModSha256) = 0;
 	virtual bool TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256) = 0;
+	virtual bool InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256) = 0;
 };
 
 extern IGameClient *CreateGameClient();

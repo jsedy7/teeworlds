@@ -1704,6 +1704,11 @@ bool CGameClient::TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256)
 	return m_pDuktapeComp->TryLoadInstalledDuckMod(pModSha256);
 }
 
+bool CGameClient::InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256)
+{
+	return m_pDuktapeComp->InstallAndLoadDuckModFromZipBuffer(pBuffer, BufferSize, pModSha256);
+}
+
 IGameClient *CreateGameClient()
 {
 	return new CGameClient();
