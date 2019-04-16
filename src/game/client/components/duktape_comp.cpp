@@ -202,7 +202,7 @@ void CDuktape::ObjectSetMemberRawBuffer(const char* MemberName, const void* pRaw
 
 	duk_size_t OutBufferSize;
 	u8* OutBuffer = (u8*)duk_require_buffer_data(Duk(), -1, &OutBufferSize);
-	dbg_assert(OutBufferSize == RawBufferSize, "buffer size differs");
+	dbg_assert((int)OutBufferSize == RawBufferSize, "buffer size differs");
 	mem_copy(OutBuffer, pRawBuffer, RawBufferSize);
 
 	int rc = duk_put_prop(Duk(), m_CurrentPushedObjID);
@@ -283,7 +283,7 @@ bool CDuktape::ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, con
 
 	dbg_msg("unzip", "OPENING zip source %s", aSha256Str);
 
-	int Error = 0;
+	// int Error = 0;
 	zip *pZipArchive = zip_open_from_source(pZipSrc, 0, &ZipError);
 	if(pZipArchive == NULL)
 	{
@@ -318,7 +318,7 @@ bool CDuktape::ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, con
 			continue;
 
 		// TODO: remove
-		dbg_msg("unzip", "- name: %s, size: %llu, mtime: [%u]", EntryStat.name, EntryStat.size, (unsigned int)EntryStat.mtime);
+		dbg_msg("unzip", "- name: %s, size: %lu, mtime: [%u]", EntryStat.name, EntryStat.size, (unsigned int)EntryStat.mtime);
 
 		const int NameLen = str_length(EntryStat.name);
 		if(EntryStat.name[NameLen-1] != '/')
@@ -395,7 +395,7 @@ bool CDuktape::ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, con
 
 			// read zip file data and write to file on disk
 			char aReadBuff[1024];
-			int ReadCurrentSize = 0;
+			unsigned ReadCurrentSize = 0;
 			while(ReadCurrentSize != EntryStat.size)
 			{
 				const int ReadLen = zip_fread(pFileZip, aReadBuff, sizeof(aReadBuff));

@@ -32,7 +32,7 @@ class CDuktape : public CComponent
 		union
 		{
 			float m_Color[4];
-			IGraphics::CQuadItem m_Quad;
+			IGraphics::CQuadItem m_Quad; // FIXME: not POD (whatever that means)
 		};
 
 		CRenderCmd() {}
