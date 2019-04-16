@@ -1579,13 +1579,20 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 				// mod download complete
 				dbg_msg("duck", "mod download complete, loading...");
 
-				GameClient()->InstallAndLoadDuckModFromZipBuffer(m_DuckModDownloadFileBuffer, m_DuckModDownloadFileSize, &m_DuckModDownloadSha256);SendDuckModReady();
+				bool IsInstalled = GameClient()->InstallAndLoadDuckModFromZipBuffer(m_DuckModDownloadFileBuffer, m_DuckModDownloadFileSize, &m_DuckModDownloadSha256);
 
 				m_DuckModDownloadFileSize = 0;
 				m_DuckModDownloadAmount = 0;
 				m_DuckModDownloadTotalsize = -1;
 
-				SendDuckModReady();
+				if(!IsInstalled)
+				{
+					// TODO: error message
+					dbg_msg("duck", "failed to install & load mod from server chunks");
+					DisconnectWithReason("Failed to install and load mod");
+				}
+				else
+					SendDuckModReady();
 			}
 			else if(m_DuckModDownloadChunk%m_DuckModDownloadChunkNum == 0)
 			{

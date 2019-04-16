@@ -11,14 +11,6 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 typedef int32_t i32;
 
-// TODO: move?
-inline bool StrEndsWith(const char* pStr, const char* pCmp)
-{
-	const int StrLen = str_length(pStr);
-	const int CmpLen = str_length(pCmp);
-	return str_comp_num(pStr + StrLen - CmpLen, pCmp, CmpLen) == 0;
-}
-
 // TODO: rename?
 static CDuktape* s_This = 0;
 inline CDuktape* This() { return s_This; }
@@ -317,9 +309,6 @@ bool CDuktape::ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, con
 		if(zip_stat_index(pZipArchive, i, 0, &EntryStat) != 0)
 			continue;
 
-		// TODO: remove
-		dbg_msg("unzip", "- name: %s, size: %llu, mtime: [%u]", EntryStat.name, EntryStat.size, (unsigned int)EntryStat.mtime);
-
 		const int NameLen = str_length(EntryStat.name);
 		if(EntryStat.name[NameLen-1] != '/')
 		{
@@ -349,6 +338,9 @@ bool CDuktape::ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, con
 		if(zip_stat_index(pZipArchive, i, 0, &EntryStat) != 0)
 			continue;
 
+		// TODO: remove
+		dbg_msg("unzip", "- name: %s, size: %llu, mtime: [%u]", EntryStat.name, EntryStat.size, (unsigned int)EntryStat.mtime);
+
 		// TODO: sanitize folder name
 		const int NameLen = str_length(EntryStat.name);
 		if(EntryStat.name[NameLen-1] == '/')
@@ -369,7 +361,7 @@ bool CDuktape::ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, con
 		else
 		{
 			// filter by extension
-			if(!(StrEndsWith(EntryStat.name, ".js") || StrEndsWith(EntryStat.name, ".json") || StrEndsWith(EntryStat.name, ".png") || StrEndsWith(EntryStat.name, ".wv")))
+			if(!(str_ends_with(EntryStat.name, ".js") || str_ends_with(EntryStat.name, ".json") || str_ends_with(EntryStat.name, ".png") || str_ends_with(EntryStat.name, ".wv")))
 				continue;
 
 			// TODO: verify file type? Might be very expensive to do so.
@@ -610,7 +602,7 @@ bool CDuktape::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
 	for(int i = 0; i < FileCount; i++)
 	{
 		dbg_msg("duck", "file='%s'", pFilePaths[i].m_aBuff);
-		if(StrEndsWith(pFilePaths[i].m_aBuff, ".js"))
+		if(str_ends_with(pFilePaths[i].m_aBuff, ".js"))
 		{
 			const bool Loaded = LoadJsScriptFile(pFilePaths[i].m_aBuff);
 			dbg_assert(Loaded, "error loading js script");

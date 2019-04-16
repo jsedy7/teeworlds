@@ -296,6 +296,7 @@ public:
 	void SendDuckModHttp(int ClientID);
 	void SendDuckModChunks(int ClientID);
 	bool LoadDuckModZipFile(const char *pModPath);
+	bool CompressDuckModFolder(const char* pModPath);
 };
 
 #endif
