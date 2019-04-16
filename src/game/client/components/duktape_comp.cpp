@@ -11,301 +11,12 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 typedef int32_t i32;
 
-// TODO: move
-bool ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, IStorage* pStorage, const SHA256_DIGEST* pModSha256, char* pOutModRootPath)
+// TODO: move?
+inline bool StrEndsWith(const char* pStr, const char* pCmp)
 {
-	dbg_msg("unzip", "EXTRACTING AND INSTALLING MOD");
-
-	char aUserModsPath[512];
-	pStorage->GetCompletePath(IStorage::TYPE_SAVE, "mods", aUserModsPath, sizeof(aUserModsPath));
-	fs_makedir(aUserModsPath); // Teeworlds/mods (user storage)
-
-	// TODO: reduce folder hash string length?
-	SHA256_DIGEST Sha256 = sha256(pHttpZipData->m_pData, pHttpZipData->m_Cursor);
-	char aSha256Str[SHA256_MAXSTRSIZE];
-	sha256_str(Sha256, aSha256Str, sizeof(aSha256Str));
-
-	if(Sha256 != *pModSha256)
-	{
-		dbg_msg("duck", "mod url sha256 and server sent mod sha256 mismatch, received sha256=%s", aSha256Str);
-		// TODO: display error message
-		return false;
-	}
-
-	char aModRootPath[512];
-	str_copy(aModRootPath, aUserModsPath, sizeof(aModRootPath));
-	str_append(aModRootPath, "/", sizeof(aModRootPath));
-	str_append(aModRootPath, aSha256Str, sizeof(aModRootPath));
-
-	mem_copy(pOutModRootPath, aModRootPath, sizeof(aModRootPath));
-
-	char aModMainJsPath[512];
-	str_copy(aModMainJsPath, aUserModsPath, sizeof(aModMainJsPath));
-	str_append(aModMainJsPath, "/main.js", sizeof(aModMainJsPath));
-	IOHANDLE ModMainJs = pStorage->OpenFile(aModMainJsPath, IOFLAG_READ, IStorage::TYPE_SAVE);
-	if(ModMainJs)
-	{
-		io_close(ModMainJs);
-		dbg_msg("duck", "mod is already installed on disk");
-		return true;
-	}
-
-
-	// FIXME: remove this
-	/*
-	str_append(aUserModsPath, "/temp.zip", sizeof(aUserModsPath));
-	IOHANDLE File = io_open(aUserMoodsPath, IOFLAG_WRITE);
-	io_write(File, pHttpZipData->m_pData, pHttpZipData->m_Size);
-	io_close(File);
-
-	zip *pZipArchive = zip_open(aUserMoodsPath, 0, &Error);
-	if(pZipArchive == NULL)
-	{
-		char aErrorBuff[512];
-		zip_error_to_str(aErrorBuff, sizeof(aErrorBuff), Error, errno);
-		dbg_msg("unzip", "Error opening '%s' [%s]", aUserMoodsPath, aErrorBuff);
-		return false;
-	}*/
-
-	zip_error_t ZipError;
-	zip_error_init(&ZipError);
-	zip_source_t* pZipSrc = zip_source_buffer_create(pHttpZipData->m_pData, pHttpZipData->m_Cursor, 1, &ZipError);
-	if(!pZipSrc)
-	{
-		dbg_msg("unzip", "Error creating zip source [%s]", zip_error_strerror(&ZipError));
-		zip_error_fini(&ZipError);
-		return false;
-	}
-
-	dbg_msg("unzip", "OPENING zip source %s", aSha256Str);
-
-	int Error = 0;
-	zip *pZipArchive = zip_open_from_source(pZipSrc, 0, &ZipError);
-	if(pZipArchive == NULL)
-	{
-		dbg_msg("unzip", "Error opening source [%s]", zip_error_strerror(&ZipError));
-		zip_source_free(pZipSrc);
-		zip_error_fini(&ZipError);
-		return false;
-	}
-	zip_error_fini(&ZipError);
-
-	dbg_msg("unzip", "CREATE directory '%s'", aModRootPath);
-	if(fs_makedir(aModRootPath) != 0)
-	{
-		dbg_msg("unzip", "Failed to create directory '%s'", aModRootPath);
-		return false;
-	}
-
-	const int EntryCount = zip_get_num_entries(pZipArchive, 0);
-
-	// find required files
-	const char* aRequiredFiles[] = {
-		"main.js",
-		"mod_info.json"
-	};
-	const int RequiredFilesCount = sizeof(aRequiredFiles)/sizeof(aRequiredFiles[0]);
-
-	int FoundRequiredFilesCount = 0;
-	for(int i = 0; i < EntryCount && FoundRequiredFilesCount < RequiredFilesCount; i++)
-	{
-		zip_stat_t EntryStat;
-		if(zip_stat_index(pZipArchive, i, 0, &EntryStat) != 0)
-			continue;
-
-		// TODO: remove
-		dbg_msg("unzip", "- Name: %s, Size: %llu, mtime: [%u]", EntryStat.name, EntryStat.size, (unsigned int)EntryStat.mtime);
-
-		const int NameLen = str_length(EntryStat.name);
-		if(EntryStat.name[NameLen-1] != '/')
-		{
-			for(int r = 0; r < RequiredFilesCount; r++)
-			{
-				 // TODO: can 2 files have the same name?
-				if(str_comp(EntryStat.name, aRequiredFiles[r]) == 0)
-					FoundRequiredFilesCount++;
-			}
-		}
-	}
-
-	if(FoundRequiredFilesCount != RequiredFilesCount)
-	{
-		dbg_msg("duck", "mod is missing a required file, required files are: ");
-		for(int r = 0; r < RequiredFilesCount; r++)
-		{
-			dbg_msg("duck", "    - %s", aRequiredFiles[r]);
-		}
-		return false;
-	}
-
-	// walk zip file tree and extract
-	for(int i = 0; i < EntryCount; i++)
-	{
-		zip_stat_t EntryStat;
-		if(zip_stat_index(pZipArchive, i, 0, &EntryStat) != 0)
-			continue;
-
-		// TODO: sanitize folder name
-		const int NameLen = str_length(EntryStat.name);
-		if(EntryStat.name[NameLen-1] == '/')
-		{
-			// create sub directory
-			char aSubFolder[512];
-			str_copy(aSubFolder, aModRootPath, sizeof(aSubFolder));
-			str_append(aSubFolder, "/", sizeof(aSubFolder));
-			str_append(aSubFolder, EntryStat.name, sizeof(aSubFolder));
-
-			dbg_msg("unzip", "CREATE SUB directory '%s'", aSubFolder);
-			if(fs_makedir(aSubFolder) != 0)
-			{
-				dbg_msg("unzip", "Failed to create directory '%s'", aSubFolder);
-				return false;
-			}
-		}
-		else
-		{
-			// TODO: filter by file extension
-			// TODO: verify file type? Might be very expensive to do so.
-			zip_file_t* pFileZip = zip_fopen_index(pZipArchive, i, 0);
-			if(!pFileZip)
-			{
-				dbg_msg("unzip", "Error reading file '%s'", EntryStat.name);
-				return false;
-			}
-
-			// create file on disk
-			char aFilePath[256];
-			str_copy(aFilePath, aModRootPath, sizeof(aFilePath));
-			str_append(aFilePath, "/", sizeof(aFilePath));
-			str_append(aFilePath, EntryStat.name, sizeof(aFilePath));
-
-			IOHANDLE FileExtracted = io_open(aFilePath, IOFLAG_WRITE);
-			if(!FileExtracted)
-			{
-				dbg_msg("unzip", "Error creating file '%s'", aFilePath);
-				return false;
-			}
-
-			// read zip file data and write to file on disk
-			char aReadBuff[1024];
-			int ReadCurrentSize = 0;
-			while(ReadCurrentSize != EntryStat.size)
-			{
-				const int ReadLen = zip_fread(pFileZip, aReadBuff, sizeof(aReadBuff));
-				if(ReadLen < 0)
-				{
-					dbg_msg("unzip", "Error reading file '%s'", EntryStat.name);
-					return false;
-				}
-				io_write(FileExtracted, aReadBuff, ReadLen);
-				ReadCurrentSize += ReadLen;
-			}
-
-			io_close(FileExtracted);
-			zip_fclose(pFileZip);
-		}
-	}
-
-	zip_source_close(pZipSrc);
-	// NOTE: no need to call zip_source_free(pZipSrc), HttpBuffer::Release() already frees up the buffer
-
-	//zip_close(pZipArchive);
-
-#if 0
-	unzFile ZipFile = unzOpen64(aPath);
-	unz_global_info GlobalInfo;
-	int r = unzGetGlobalInfo(ZipFile, &GlobalInfo);
-	if(r != UNZ_OK)
-	{
-		dbg_msg("unzip", "could not read file global info (%d)", r);
-		unzClose(ZipFile);
-		dbg_break();
-		return false;
-	}
-
-	for(int i = 0; i < GlobalInfo.number_entry; i++)
-	{
-		// Get info about current file.
-		unz_file_info file_info;
-		char filename[256];
-		if(unzGetCurrentFileInfo(ZipFile, &file_info, filename, sizeof(filename), NULL, 0, NULL, 0) != UNZ_OK)
-		{
-			dbg_msg("unzip", "could not read file info");
-			unzClose(ZipFile);
-			return false;
-		}
-
-		dbg_msg("unzip", "FILE_ENTRY %s", filename);
-
-		/*// Check if this entry is a directory or file.
-		const size_t filename_length = str_length(filename);
-		if(filename[ filename_length-1 ] == '/')
-		{
-			// Entry is a directory, so create it.
-			printf("dir:%s\n", filename);
-			//mkdir(filename);
-		}
-		else
-		{
-			// Entry is a file, so extract it.
-			printf("file:%s\n", filename);
-			if(unzOpenCurrentFile(ZipFile) != UNZ_OK)
-			{
-				dbg_msg("unzip", "could not open file");
-				unzClose(ZipFile);
-				return false;
-			}
-
-			// Open a file to write out the data.
-			FILE *out = fopen(filename, "wb");
-			if(out == NULL)
-			{
-				dbg_msg("unzip", "could not open destination file");
-				unzCloseCurrentFile(ZipFile);
-				unzClose(ZipFile);
-				return false;
-			}
-
-			int error = UNZ_OK;
-			do
-			{
-			error = unzReadCurrentFile(zipfile, read_buffer, READ_SIZE);
-			if(error < 0)
-			{
-			printf("error %d\n", error);
-			unzCloseCurrentFile(zipfile);
-			unzClose(zipfile);
-			return -1;
-			}
-
-			// Write data to file.
-			if(error > 0)
-			{
-			fwrite(read_buffer, error, 1, out); // You should check return of fwrite...
-			}
-			} while (error > 0);
-
-			fclose(out);
-		}*/
-
-		unzCloseCurrentFile(ZipFile);
-
-		// Go the the next entry listed in the zip file.
-		if((i+1) < GlobalInfo.number_entry)
-		{
-			if(unzGoToNextFile(ZipFile) != UNZ_OK)
-			{
-				dbg_msg("unzip", "cound not read next file");
-				unzClose(ZipFile);
-				return false;
-			}
-		}
-	}
-
-	unzClose(ZipFile);
-#endif
-
-	return true;
+	const int StrLen = str_length(pStr);
+	const int CmpLen = str_length(pCmp);
+	return str_comp_num(pStr + StrLen - CmpLen, pCmp, CmpLen) == 0;
 }
 
 // TODO: rename?
@@ -498,6 +209,312 @@ void CDuktape::ObjectSetMemberRawBuffer(const char* MemberName, const void* pRaw
 	dbg_assert(rc == 1, "could not put raw buffer prop");
 }
 
+bool CDuktape::IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256)
+{
+	char aSha256Str[SHA256_MAXSTRSIZE];
+	sha256_str(*pModSha256, aSha256Str, sizeof(aSha256Str));
+
+	char aModMainJsPath[512];
+	str_copy(aModMainJsPath, "mods/", sizeof(aModMainJsPath));
+	str_append(aModMainJsPath, aSha256Str, sizeof(aModMainJsPath));
+	str_append(aModMainJsPath, "/main.js", sizeof(aModMainJsPath));
+
+	IOHANDLE ModMainJs = Storage()->OpenFile(aModMainJsPath, IOFLAG_READ, IStorage::TYPE_SAVE);
+	if(ModMainJs)
+	{
+		io_close(ModMainJs);
+		dbg_msg("duck", "mod is already installed on disk");
+		return true;
+	}
+	return false;
+}
+
+bool CDuktape::ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, const SHA256_DIGEST* pModSha256)
+{
+	dbg_msg("unzip", "EXTRACTING AND INSTALLING MOD");
+
+	char aUserModsPath[512];
+	Storage()->GetCompletePath(IStorage::TYPE_SAVE, "mods", aUserModsPath, sizeof(aUserModsPath));
+	fs_makedir(aUserModsPath); // Teeworlds/mods (user storage)
+
+	// TODO: reduce folder hash string length?
+	SHA256_DIGEST Sha256 = sha256(pHttpZipData->m_pData, pHttpZipData->m_Cursor);
+	char aSha256Str[SHA256_MAXSTRSIZE];
+	sha256_str(Sha256, aSha256Str, sizeof(aSha256Str));
+
+	if(Sha256 != *pModSha256)
+	{
+		dbg_msg("duck", "mod url sha256 and server sent mod sha256 mismatch, received sha256=%s", aSha256Str);
+		// TODO: display error message
+		return false;
+	}
+
+	char aModRootPath[512];
+	str_copy(aModRootPath, aUserModsPath, sizeof(aModRootPath));
+	str_append(aModRootPath, "/", sizeof(aModRootPath));
+	str_append(aModRootPath, aSha256Str, sizeof(aModRootPath));
+
+
+	// FIXME: remove this
+	/*
+	str_append(aUserModsPath, "/temp.zip", sizeof(aUserModsPath));
+	IOHANDLE File = io_open(aUserMoodsPath, IOFLAG_WRITE);
+	io_write(File, pHttpZipData->m_pData, pHttpZipData->m_Size);
+	io_close(File);
+
+	zip *pZipArchive = zip_open(aUserMoodsPath, 0, &Error);
+	if(pZipArchive == NULL)
+	{
+		char aErrorBuff[512];
+		zip_error_to_str(aErrorBuff, sizeof(aErrorBuff), Error, errno);
+		dbg_msg("unzip", "Error opening '%s' [%s]", aUserMoodsPath, aErrorBuff);
+		return false;
+	}*/
+
+	zip_error_t ZipError;
+	zip_error_init(&ZipError);
+	zip_source_t* pZipSrc = zip_source_buffer_create(pHttpZipData->m_pData, pHttpZipData->m_Cursor, 1, &ZipError);
+	if(!pZipSrc)
+	{
+		dbg_msg("unzip", "Error creating zip source [%s]", zip_error_strerror(&ZipError));
+		zip_error_fini(&ZipError);
+		return false;
+	}
+
+	dbg_msg("unzip", "OPENING zip source %s", aSha256Str);
+
+	int Error = 0;
+	zip *pZipArchive = zip_open_from_source(pZipSrc, 0, &ZipError);
+	if(pZipArchive == NULL)
+	{
+		dbg_msg("unzip", "Error opening source [%s]", zip_error_strerror(&ZipError));
+		zip_source_free(pZipSrc);
+		zip_error_fini(&ZipError);
+		return false;
+	}
+	zip_error_fini(&ZipError);
+
+	dbg_msg("unzip", "CREATE directory '%s'", aModRootPath);
+	if(fs_makedir(aModRootPath) != 0)
+	{
+		dbg_msg("unzip", "Failed to create directory '%s'", aModRootPath);
+		return false;
+	}
+
+	const int EntryCount = zip_get_num_entries(pZipArchive, 0);
+
+	// find required files
+	const char* aRequiredFiles[] = {
+		"main.js",
+		"mod_info.json"
+	};
+	const int RequiredFilesCount = sizeof(aRequiredFiles)/sizeof(aRequiredFiles[0]);
+
+	int FoundRequiredFilesCount = 0;
+	for(int i = 0; i < EntryCount && FoundRequiredFilesCount < RequiredFilesCount; i++)
+	{
+		zip_stat_t EntryStat;
+		if(zip_stat_index(pZipArchive, i, 0, &EntryStat) != 0)
+			continue;
+
+		// TODO: remove
+		dbg_msg("unzip", "- name: %s, size: %llu, mtime: [%u]", EntryStat.name, EntryStat.size, (unsigned int)EntryStat.mtime);
+
+		const int NameLen = str_length(EntryStat.name);
+		if(EntryStat.name[NameLen-1] != '/')
+		{
+			for(int r = 0; r < RequiredFilesCount; r++)
+			{
+				 // TODO: can 2 files have the same name?
+				if(str_comp(EntryStat.name, aRequiredFiles[r]) == 0)
+					FoundRequiredFilesCount++;
+			}
+		}
+	}
+
+	if(FoundRequiredFilesCount != RequiredFilesCount)
+	{
+		dbg_msg("duck", "mod is missing a required file, required files are: ");
+		for(int r = 0; r < RequiredFilesCount; r++)
+		{
+			dbg_msg("duck", "    - %s", aRequiredFiles[r]);
+		}
+		return false;
+	}
+
+	// walk zip file tree and extract
+	for(int i = 0; i < EntryCount; i++)
+	{
+		zip_stat_t EntryStat;
+		if(zip_stat_index(pZipArchive, i, 0, &EntryStat) != 0)
+			continue;
+
+		// TODO: sanitize folder name
+		const int NameLen = str_length(EntryStat.name);
+		if(EntryStat.name[NameLen-1] == '/')
+		{
+			// create sub directory
+			char aSubFolder[512];
+			str_copy(aSubFolder, aModRootPath, sizeof(aSubFolder));
+			str_append(aSubFolder, "/", sizeof(aSubFolder));
+			str_append(aSubFolder, EntryStat.name, sizeof(aSubFolder));
+
+			dbg_msg("unzip", "CREATE SUB directory '%s'", aSubFolder);
+			if(fs_makedir(aSubFolder) != 0)
+			{
+				dbg_msg("unzip", "Failed to create directory '%s'", aSubFolder);
+				return false;
+			}
+		}
+		else
+		{
+			// filter by extension
+			if(!(StrEndsWith(EntryStat.name, ".js") || StrEndsWith(EntryStat.name, ".json") || StrEndsWith(EntryStat.name, ".png") || StrEndsWith(EntryStat.name, ".wv")))
+				continue;
+
+			// TODO: verify file type? Might be very expensive to do so.
+			zip_file_t* pFileZip = zip_fopen_index(pZipArchive, i, 0);
+			if(!pFileZip)
+			{
+				dbg_msg("unzip", "Error reading file '%s'", EntryStat.name);
+				return false;
+			}
+
+			// create file on disk
+			char aFilePath[256];
+			str_copy(aFilePath, aModRootPath, sizeof(aFilePath));
+			str_append(aFilePath, "/", sizeof(aFilePath));
+			str_append(aFilePath, EntryStat.name, sizeof(aFilePath));
+
+			IOHANDLE FileExtracted = io_open(aFilePath, IOFLAG_WRITE);
+			if(!FileExtracted)
+			{
+				dbg_msg("unzip", "Error creating file '%s'", aFilePath);
+				return false;
+			}
+
+			// read zip file data and write to file on disk
+			char aReadBuff[1024];
+			int ReadCurrentSize = 0;
+			while(ReadCurrentSize != EntryStat.size)
+			{
+				const int ReadLen = zip_fread(pFileZip, aReadBuff, sizeof(aReadBuff));
+				if(ReadLen < 0)
+				{
+					dbg_msg("unzip", "Error reading file '%s'", EntryStat.name);
+					return false;
+				}
+				io_write(FileExtracted, aReadBuff, ReadLen);
+				ReadCurrentSize += ReadLen;
+			}
+
+			io_close(FileExtracted);
+			zip_fclose(pFileZip);
+		}
+	}
+
+	zip_source_close(pZipSrc);
+	// NOTE: no need to call zip_source_free(pZipSrc), HttpBuffer::Release() already frees up the buffer
+
+	//zip_close(pZipArchive);
+
+#if 0
+	unzFile ZipFile = unzOpen64(aPath);
+	unz_global_info GlobalInfo;
+	int r = unzGetGlobalInfo(ZipFile, &GlobalInfo);
+	if(r != UNZ_OK)
+	{
+		dbg_msg("unzip", "could not read file global info (%d)", r);
+		unzClose(ZipFile);
+		dbg_break();
+		return false;
+	}
+
+	for(int i = 0; i < GlobalInfo.number_entry; i++)
+	{
+		// Get info about current file.
+		unz_file_info file_info;
+		char filename[256];
+		if(unzGetCurrentFileInfo(ZipFile, &file_info, filename, sizeof(filename), NULL, 0, NULL, 0) != UNZ_OK)
+		{
+			dbg_msg("unzip", "could not read file info");
+			unzClose(ZipFile);
+			return false;
+		}
+
+		dbg_msg("unzip", "FILE_ENTRY %s", filename);
+
+		/*// Check if this entry is a directory or file.
+		const size_t filename_length = str_length(filename);
+		if(filename[ filename_length-1 ] == '/')
+		{
+			// Entry is a directory, so create it.
+			printf("dir:%s\n", filename);
+			//mkdir(filename);
+		}
+		else
+		{
+			// Entry is a file, so extract it.
+			printf("file:%s\n", filename);
+			if(unzOpenCurrentFile(ZipFile) != UNZ_OK)
+			{
+				dbg_msg("unzip", "could not open file");
+				unzClose(ZipFile);
+				return false;
+			}
+
+			// Open a file to write out the data.
+			FILE *out = fopen(filename, "wb");
+			if(out == NULL)
+			{
+				dbg_msg("unzip", "could not open destination file");
+				unzCloseCurrentFile(ZipFile);
+				unzClose(ZipFile);
+				return false;
+			}
+
+			int error = UNZ_OK;
+			do
+			{
+			error = unzReadCurrentFile(zipfile, read_buffer, READ_SIZE);
+			if(error < 0)
+			{
+			printf("error %d\n", error);
+			unzCloseCurrentFile(zipfile);
+			unzClose(zipfile);
+			return -1;
+			}
+
+			// Write data to file.
+			if(error > 0)
+			{
+			fwrite(read_buffer, error, 1, out); // You should check return of fwrite...
+			}
+			} while (error > 0);
+
+			fclose(out);
+		}*/
+
+		unzCloseCurrentFile(ZipFile);
+
+		// Go the the next entry listed in the zip file.
+		if((i+1) < GlobalInfo.number_entry)
+		{
+			if(unzGoToNextFile(ZipFile) != UNZ_OK)
+			{
+				dbg_msg("unzip", "cound not read next file");
+				unzClose(ZipFile);
+				return false;
+			}
+		}
+	}
+
+	unzClose(ZipFile);
+#endif
+
+	return true;
+}
+
 bool CDuktape::LoadJsScriptFile(const char* pJsFilePath)
 {
 	IOHANDLE ScriptFile = io_open(pJsFilePath, IOFLAG_READ);
@@ -571,23 +588,22 @@ static int ListDirCallback(const char* pName, int IsDir, int Type, void *pUser)
 	return 0;
 }
 
-// TODO: move?
-inline bool StrEndsWith(const char* pStr, const char* pCmp)
+bool CDuktape::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
 {
-	const int StrLen = str_length(pStr);
-	const int CmpLen = str_length(pCmp);
-	return str_comp_num(pStr + StrLen - CmpLen, pCmp, CmpLen) == 0;
-}
+	char aModRootPath[512];
+	char aSha256Str[SHA256_MAXSTRSIZE];
+	Storage()->GetCompletePath(IStorage::TYPE_SAVE, "mods", aModRootPath, sizeof(aModRootPath));
+	sha256_str(*pModSha256, aSha256Str, sizeof(aSha256Str));
+	str_append(aModRootPath, "/", sizeof(aModRootPath));
+	str_append(aModRootPath, aSha256Str, sizeof(aModRootPath));
 
-bool CDuktape::LoadModFilesFromDisk(const char* pModRootPath)
-{
 	// get files recursively on disk
 	array<CPath> aFilePathList;
 	CFileSearch FileSearch;
-	str_copy(FileSearch.m_BaseBath.m_aBuff, pModRootPath, sizeof(FileSearch.m_BaseBath.m_aBuff));
+	str_copy(FileSearch.m_BaseBath.m_aBuff, aModRootPath, sizeof(FileSearch.m_BaseBath.m_aBuff));
 	FileSearch.m_paFilePathList = &aFilePathList;
 
-	fs_listdir(pModRootPath, ListDirCallback, 1, &FileSearch);
+	fs_listdir(aModRootPath, ListDirCallback, 1, &FileSearch);
 
 	const int FileCount = aFilePathList.size();
 	const CPath* pFilePaths = aFilePathList.base_ptr();
@@ -747,19 +763,38 @@ void CDuktape::RenderDrawSpaceGame()
 	m_aRenderCmdList[DrawSpace::GAME].clear();
 }
 
-void CDuktape::LoadDuckMod(const char* pModUrl, const SHA256_DIGEST* pModSha256)
+bool CDuktape::StartDuckModHttpDownload(const char* pModUrl, const SHA256_DIGEST* pModSha256)
 {
+	dbg_assert(!IsModAlreadyInstalled(pModSha256), "mod is already installed, check it before calling this");
+
 	HttpBuffer Buff;
 	HttpRequestPage(pModUrl, &Buff);
 
-	char aModRootPath[512];
-	bool IsUnzipped = ExtractAndInstallModZipBuffer(&Buff, Storage(), pModSha256, aModRootPath);
+	bool IsUnzipped = ExtractAndInstallModZipBuffer(&Buff, pModSha256);
 	dbg_assert(IsUnzipped, "Unzipped to disk: rip in peace");
 
 	Buff.Release();
 
-	bool Loaded = LoadModFilesFromDisk(aModRootPath);
-	dbg_assert(Loaded, "Loaded from disk: rip in peace");
+	if(!IsUnzipped)
+		return false;
+
+	bool IsLoaded = LoadModFilesFromDisk(pModSha256);
+	dbg_assert(IsLoaded, "Loaded from disk: rip in peace");
 
 	dbg_msg("duck", "mod loaded url='%s'", pModUrl);
+	return IsLoaded;
+}
+
+bool CDuktape::TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256)
+{
+	if(!IsModAlreadyInstalled(pModSha256))
+		return false;
+
+	bool IsLoaded = LoadModFilesFromDisk(pModSha256);
+	dbg_assert(IsLoaded, "Loaded from disk: rip in peace");
+
+	char aSha256Str[SHA256_MAXSTRSIZE];
+	sha256_str(*pModSha256, aSha256Str, sizeof(aSha256Str));
+	dbg_msg("duck", "mod loaded (already installed) sha256='%s'", aSha256Str);
+	return IsLoaded;
 }

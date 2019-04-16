@@ -1463,7 +1463,7 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 				}
 			}
 		}
-		else if((pPacket->m_Flags&NET_CHUNKFLAG_VITAL) != 0 && Msg == NETMSG_DUCK_MOD_DATA)
+		else if((pPacket->m_Flags&NET_CHUNKFLAG_VITAL) != 0 && Msg == NETMSG_DUCK_MOD_INFO)
 		{
 			const char *pModDescription = Unpacker.GetString();
 			const char *pModUrl = Unpacker.GetString();
@@ -1476,10 +1476,36 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 
 			char aModSha256Str[SHA256_MAXSTRSIZE];
 			sha256_str(ModSha256, aModSha256Str, sizeof(aModSha256Str));
+			dbg_msg("duck", "mod info packet, desc='%s' url='%s' 'sha256=%s'", pModDescription, pModUrl, aModSha256Str);
+
+			if(GameClient()->TryLoadInstalledDuckMod(&ModSha256))
+			{
+				SendDuckModReady();
+			}
+			else
+			{
+				// TODO: this is currently blocking, make it not
+				GameClient()->StartDuckModHttpDownload(pModDescription, pModUrl, &ModSha256);
+				SendDuckModReady();
+			}
+
+		}
+		else if((pPacket->m_Flags&NET_CHUNKFLAG_VITAL) != 0 && Msg == NETMSG_DUCK_MOD_INFO_DEV)
+		{
+			/*const char *pModDescription = Unpacker.GetString();
+			SHA256_DIGEST ModSha256 = *(SHA256_DIGEST*)Unpacker.GetRaw(sizeof(ModSha256));
+			if(Unpacker.Error())
+			{
+				dbg_msg("duck", "Error unpacking mod data packet");
+				return;
+			}
+
+			char aModSha256Str[SHA256_MAXSTRSIZE];
+			sha256_str(ModSha256, aModSha256Str, sizeof(aModSha256Str));
 			dbg_msg("duck", "mod data packet, desc='%s' url='%s' 'sha256=%s'", pModDescription, pModUrl, aModSha256Str);
 
-			GameClient()->LoadDuckMod(pModDescription, pModUrl, &ModSha256);
-			SendDuckModReady();
+			GameClient()->LoadDuckMod(pModDescription, 0, &ModSha256);
+			SendDuckModReady();*/
 		}
 	}
 	else

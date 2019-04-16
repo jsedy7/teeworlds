@@ -1803,7 +1803,7 @@ void CServer::SnapSetStaticsize(int ItemType, int Size)
 // DUCK
 void CServer::SendDuckMod(int ClientID)
 {
-	CMsgPacker Msg(NETMSG_DUCK_MOD_DATA, true);
+	CMsgPacker Msg(NETMSG_DUCK_MOD_INFO, true);
 	Msg.AddString(g_Config.m_SvDuckModDescription, 128);
 	Msg.AddString(g_Config.m_SvDuckModUrl, 512);
 	Msg.AddRaw(&m_CurrentDuckModSha256, sizeof(m_CurrentDuckModSha256));

@@ -79,10 +79,13 @@ enum
 	NETMSG_DUCK_NETOBJ,
 
 	// server
+	NETMSG_DUCK_MOD_INFO,
+	NETMSG_DUCK_MOD_INFO_DEV,
 	NETMSG_DUCK_MOD_DATA,
 
 	// client
 	NETMSG_DUCK_MOD_READY,
+	NETMSG_DUCK_MOD_REQUEST_DATA,
 };
 
 // this should be revised
