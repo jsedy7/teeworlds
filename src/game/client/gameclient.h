@@ -294,7 +294,9 @@ public:
 
 	// DUCK
 	virtual int DuckVersion() const;
-	virtual void LoadDuckMod(const char* pModDesc, const char* pModUrl, const SHA256_DIGEST* pModSha256);
+	virtual void StartDuckModHttpDownload(const char* pModDesc, const char* pModUrl, const SHA256_DIGEST* pModSha256);
+	virtual bool TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256);
+	virtual bool InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256);
 };
 
 const char *Localize(const char *pStr, const char *pContext="")

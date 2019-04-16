@@ -12,6 +12,8 @@ struct DrawSpace
 	};
 };
 
+struct HttpBuffer;
+
 class CDuktape : public CComponent
 {
 	duk_context* m_pDukContext;
@@ -57,8 +59,10 @@ class CDuktape : public CComponent
 	void ObjectSetMemberFloat(const char* MemberName, float Value);
 	void ObjectSetMemberRawBuffer(const char* MemberName, const void* pRawBuffer, int RawBufferSize);
 
+	bool IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256);
+	bool ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, const SHA256_DIGEST* pModSha256);
 	bool LoadJsScriptFile(const char* pJsFilePath);
-	bool LoadModFilesFromDisk(const char* pModRootPath);
+	bool LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256);
 
 public:
 	CDuktape();
@@ -70,5 +74,7 @@ public:
 
 	void RenderDrawSpaceGame();
 
-	void LoadDuckMod(const char* pModUrl, const SHA256_DIGEST* pModSha256);
+	bool StartDuckModHttpDownload(const char* pModUrl, const SHA256_DIGEST* pModSha256);
+	bool TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256);
+	bool InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256);
 };

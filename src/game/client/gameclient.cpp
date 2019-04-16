@@ -1694,9 +1694,19 @@ int CGameClient::DuckVersion() const
 	return 0x1;
 }
 
-void CGameClient::LoadDuckMod(const char* pModDesc, const char* pModUrl, const SHA256_DIGEST* pModSha256)
+void CGameClient::StartDuckModHttpDownload(const char* pModDesc, const char* pModUrl, const SHA256_DIGEST* pModSha256)
 {
-	m_pDuktapeComp->LoadDuckMod(pModUrl, pModSha256);
+	m_pDuktapeComp->StartDuckModHttpDownload(pModUrl, pModSha256);
+}
+
+bool CGameClient::TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256)
+{
+	return m_pDuktapeComp->TryLoadInstalledDuckMod(pModSha256);
+}
+
+bool CGameClient::InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256)
+{
+	return m_pDuktapeComp->InstallAndLoadDuckModFromZipBuffer(pBuffer, BufferSize, pModSha256);
 }
 
 IGameClient *CreateGameClient()
