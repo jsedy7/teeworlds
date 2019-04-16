@@ -1861,7 +1861,7 @@ void CServer::SnapSetStaticsize(int ItemType, int Size)
 
 bool CServer::IsDuckDevMode() const
 {
-	return g_Config.m_SvDuckDevModPath[0] != 0;
+	return g_Config.m_SvDuckDev == 1;
 }
 
 // DUCK

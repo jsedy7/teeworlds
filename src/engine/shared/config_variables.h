@@ -106,6 +106,7 @@ MACRO_CONFIG_INT(DbgResizable, dbg_resizable, 0, 0, 0, CFGFLAG_CLIENT, "Enables 
 MACRO_CONFIG_STR(SvDuckModPath, sv_duck_mod_path, 128, "", CFGFLAG_SAVE|CFGFLAG_SERVER, "Duck mod zip file path")
 MACRO_CONFIG_STR(SvDuckModUrl, sv_duck_mod_url, 512, "", CFGFLAG_SAVE|CFGFLAG_SERVER, "Duck mod zip file url")
 MACRO_CONFIG_STR(SvDuckModDescription, sv_duck_mod_description, 128, "", CFGFLAG_SAVE|CFGFLAG_SERVER, "Duck mod short description")
-MACRO_CONFIG_STR(SvDuckDevModPath, sv_duck_mod_dev_dir, 128, "", CFGFLAG_SAVE|CFGFLAG_SERVER, "Duck mod directory if in dev mode (empty=not in dev mode)")
+MACRO_CONFIG_STR(SvDuckDevModPath, sv_duck_mod_dev_dir, 128, "", CFGFLAG_SAVE|CFGFLAG_SERVER, "Duck mod directory if in dev mode")
+MACRO_CONFIG_INT(SvDuckDev, sv_duck_dev, 0, 0, 1, CFGFLAG_SAVE|CFGFLAG_SERVER, "Enables duck dev mode (sends mod files directly, for quick iteration)")
 
 #endif
