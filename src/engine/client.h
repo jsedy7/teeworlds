@@ -152,6 +152,11 @@ public:
 	virtual bool SoundInitFailed() const = 0;
 
 	virtual IGraphics::CTextureHandle GetDebugFont() const = 0; // TODO: remove this function
+
+	// DUCK
+	virtual const char *DuckModDescription() const = 0;
+	virtual int DuckModDownloadAmount() const = 0;
+	virtual int DuckModDownloadTotalsize() const = 0;
 };
 
 class IGameClient : public IInterface

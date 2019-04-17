@@ -1551,7 +1551,8 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 			++m_DuckModDownloadChunk;
 			m_DuckModDownloadAmount += Size; // TODO: duplicate of m_DuckModDownloadFileSize?
 
-			dbg_msg("duck", "chunk received size=%d", Size);
+			if(g_Config.m_Debug)
+				dbg_msg("duck", "chunk received size=%d", Size);
 
 			if(m_DuckModDownloadAmount == m_DuckModDownloadTotalsize)
 			{
@@ -1578,7 +1579,8 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 				// request next chunk package of map data
 				CMsgPacker Msg(NETMSG_DUCK_MOD_REQUEST_DATA, true);
 				SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH);
-				dbg_msg("duck", "requested next mod chunk package");
+				if(g_Config.m_Debug)
+					dbg_msg("duck", "requested next mod chunk package");
 			}
 		}
 	}
