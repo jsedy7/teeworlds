@@ -28,6 +28,8 @@
 
 #include <mastersrv/mastersrv.h>
 
+#include <engine/external/zlib/zlib.h>
+
 #include "register.h"
 #include "server.h"
 
@@ -37,6 +39,7 @@
 #endif
 
 // TODO: only debug?
+// TODO: remove
 #include <zip.h>
 
 /*static const char *StrLtrim(const char *pStr)
@@ -296,8 +299,6 @@ CServer::CServer() : m_DemoRecorder(&m_SnapshotDelta)
 
 	m_RconPasswordSet = 0;
 	m_GeneratedRconPassword = 0;
-
-	m_CurrentDuckModZipFileData = 0;
 
 	Init();
 }
@@ -1126,16 +1127,16 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 					int Offset = Chunk * ChunkSize;
 
 					// check for last part
-					if(Offset+ChunkSize >= m_CurrentDuckModZipFileSize)
+					if(Offset+ChunkSize >= m_CurrentDuckModFileBuffer.m_Size)
 					{
-						ChunkSize = m_CurrentDuckModZipFileSize-Offset;
+						ChunkSize = m_CurrentDuckModFileBuffer.m_Size-Offset;
 						m_aClients[ClientID].m_DuckModChunk = -1;
 					}
 					else
 						m_aClients[ClientID].m_DuckModChunk++;
 
 					CMsgPacker Msg(NETMSG_DUCK_MOD_DATA, true);
-					Msg.AddRaw(&m_CurrentDuckModZipFileData[Offset], ChunkSize);
+					Msg.AddRaw(&m_CurrentDuckModFileBuffer.m_pData[Offset], ChunkSize);
 					SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH, ClientID);
 
 					dbg_msg("duck", "sending mod chunk chunk %d with size %d", Chunk, ChunkSize);
@@ -1877,7 +1878,7 @@ void CServer::SendDuckModHttp(int ClientID)
 void CServer::SendDuckModChunks(int ClientID)
 {
 	CMsgPacker Msg(NETMSG_DUCK_MOD_INFO_DEV, true);
-	Msg.AddInt(m_CurrentDuckModZipFileSize);
+	Msg.AddInt(m_CurrentDuckModFileBuffer.m_Size);
 	Msg.AddInt(m_MapChunksPerRequest);
 	Msg.AddInt(MAP_CHUNK_SIZE);
 	Msg.AddRaw(&m_CurrentDuckModSha256, sizeof(m_CurrentDuckModSha256));
@@ -1955,14 +1956,14 @@ static int ListDirCallback(const char* pName, int IsDir, int StorageType, void *
 
 bool CServer::CompressDuckModFolder(const char* pModPath)
 {
-	enum { STORAGE_TYPE_DATA=1 };
+	enum { STORAGE_TYPE_CURRENT_DIR=2 };
 
 	// find main.js
 	char aMainJsPath[512];
 	str_copy(aMainJsPath, pModPath, sizeof(aMainJsPath));
 	str_append(aMainJsPath, "/main.js", sizeof(aMainJsPath));
 
-	IOHANDLE MainJsFile = Storage()->OpenFile(aMainJsPath, IOFLAG_READ, STORAGE_TYPE_DATA);
+	IOHANDLE MainJsFile = Storage()->OpenFile(aMainJsPath, IOFLAG_READ, STORAGE_TYPE_CURRENT_DIR);
 	if(!MainJsFile)
 	{
 		dbg_msg("duck", "CompressMod: could not find main.js (%s)", aMainJsPath);
@@ -1977,7 +1978,7 @@ bool CServer::CompressDuckModFolder(const char* pModPath)
 	FileSearch.m_paFilePathList = &aFilePathList;
 	FileSearch.m_pStorage = Storage();
 
-	Storage()->ListDirectory(STORAGE_TYPE_DATA, pModPath, ListDirCallback, &FileSearch);
+	Storage()->ListDirectory(STORAGE_TYPE_CURRENT_DIR, pModPath, ListDirCallback, &FileSearch);
 
 	array<CPath> aValidFilePathList;
 
@@ -1993,10 +1994,7 @@ bool CServer::CompressDuckModFolder(const char* pModPath)
 	}
 
 	char aModRootPath[512];
-	Storage()->GetCompletePath(STORAGE_TYPE_DATA, pModPath, aModRootPath, sizeof(aModRootPath));
-
-	// create zip file
-	// TODO: it's really a shame that we can't create a zip file IN MEMORY
+	Storage()->GetCompletePath(STORAGE_TYPE_CURRENT_DIR, pModPath, aModRootPath, sizeof(aModRootPath));
 
 	// get last folder as mod name
 	const char* pModName = str_find(pModPath, "/");
@@ -2010,6 +2008,9 @@ bool CServer::CompressDuckModFolder(const char* pModPath)
 			break;
 	}
 
+#if 0
+	// create zip file
+	// TODO: it's really a shame that we can't create a zip file IN MEMORY
 	char aZipPath[512];
 	str_copy(aZipPath, aModRootPath, sizeof(aZipPath));
 	str_append(aZipPath, "/", sizeof(aZipPath));
@@ -2065,7 +2066,7 @@ bool CServer::CompressDuckModFolder(const char* pModPath)
 
 		dbg_msg("duck", "valid_file='%s'", pRelPath);
 
-		IOHANDLE File = Storage()->OpenFile(pValidFilePaths[i].m_aBuff, IOFLAG_READ, STORAGE_TYPE_DATA);
+		IOHANDLE File = Storage()->OpenFile(pValidFilePaths[i].m_aBuff, IOFLAG_READ, STORAGE_TYPE_CURRENT_DIR);
 		if(!File)
 		{
 			dbg_msg("duck", "CompressMod: Error, can't open '%s'", pValidFilePaths[i].m_aBuff);
@@ -2111,7 +2112,7 @@ bool CServer::CompressDuckModFolder(const char* pModPath)
 	str_append(aZipPath, "/", sizeof(aZipPath));
 	str_append(aZipPath, pModName, sizeof(aZipPath));
 	str_append(aZipPath, ".zip", sizeof(aZipPath));
-	IOHANDLE File = Storage()->OpenFile(aZipPath, IOFLAG_READ, STORAGE_TYPE_DATA);
+	IOHANDLE File = Storage()->OpenFile(aZipPath, IOFLAG_READ, STORAGE_TYPE_CURRENT_DIR);
 	if(!File)
 	{
 		dbg_msg("duck", "CompressMod: Error, can't open '%s'", aZipPath);
@@ -2133,6 +2134,85 @@ bool CServer::CompressDuckModFolder(const char* pModPath)
 	sha256_str(m_CurrentDuckModSha256, aModSha256Str, sizeof(aModSha256Str));
 
 	dbg_msg("duck", "done creating zip file '%s' sha256=%s", aZipPath, aModSha256Str);
+
+	return true;
+#endif
+
+	// simple pack of file data
+
+	// char[4] - "DUCK"
+	// # for each file
+	// int - filepath string length
+	// string - filepath
+	// int - filesize
+	// raw - filedata
+
+	CGrowBuffer FilePackBuff;
+	FilePackBuff.Append("DUCK", 4);
+
+	const int ValidFileCount = aValidFilePathList.size();
+	const CPath* pValidFilePaths = aValidFilePathList.base_ptr();
+	const int ModPathStrLen = str_length(pModPath);
+
+	for(int i = 0; i < ValidFileCount; i++)
+	{
+		const char* pRelPath = str_find(pValidFilePaths[i].m_aBuff, pModPath);
+		dbg_assert(pRelPath != 0, "base mod path should be found");
+		pRelPath += ModPathStrLen+1; // skip 'mod_path/'
+
+		dbg_msg("duck", "valid_file='%s'", pRelPath);
+
+		IOHANDLE File = Storage()->OpenFile(pValidFilePaths[i].m_aBuff, IOFLAG_READ, STORAGE_TYPE_CURRENT_DIR);
+		if(!File)
+		{
+			dbg_msg("duck", "CompressMod: Error, can't open '%s'", pValidFilePaths[i].m_aBuff);
+			return false;
+		}
+
+		int FileSize = (int)io_length(File);
+		char *pFileData = (char *)mem_alloc(FileSize, 1);
+		io_read(File, pFileData, FileSize);
+		io_close(File);
+
+		const int RelPathLen = str_length(pRelPath);
+		FilePackBuff.Append(&RelPathLen, sizeof(RelPathLen));
+		FilePackBuff.Append(pRelPath, RelPathLen);
+
+		FilePackBuff.Append(&FileSize, sizeof(FileSize));
+		FilePackBuff.Append(pFileData, FileSize);
+
+		mem_free(pFileData);
+	}
+
+	m_CurrentDuckModFileBuffer.Clear();
+	m_CurrentDuckModFileBuffer.Grow(compressBound(FilePackBuff.m_Size));
+
+	uLongf DestSize = m_CurrentDuckModFileBuffer.m_Capacity;
+	int CompRet = compress((Bytef*)m_CurrentDuckModFileBuffer.m_pData, &DestSize, (const Bytef*)FilePackBuff.m_pData, FilePackBuff.m_Size);
+
+	if(CompRet != Z_OK)
+	{
+		switch(CompRet)
+		{
+			case Z_MEM_ERROR:
+				dbg_msg("duck", "CompressMod: Error, not enough memory");
+				break;
+			case Z_BUF_ERROR:
+				dbg_msg("duck", "CompressMod: Error, not enough room in the output buffer");
+				break;
+			default:
+				dbg_break(); // should never be reached
+		}
+		return false;
+	}
+
+	m_CurrentDuckModFileBuffer.m_Size = DestSize;
+
+	m_CurrentDuckModSha256 = sha256(m_CurrentDuckModFileBuffer.m_pData, m_CurrentDuckModFileBuffer.m_Size);
+	char aModSha256Str[SHA256_MAXSTRSIZE];
+	sha256_str(m_CurrentDuckModSha256, aModSha256Str, sizeof(aModSha256Str));
+
+	dbg_msg("duck", "done creating file pack size=%d sha256=%s", DestSize, aModSha256Str);
 
 	return true;
 }

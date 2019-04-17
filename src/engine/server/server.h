@@ -5,6 +5,7 @@
 
 #include <engine/server.h>
 #include <engine/shared/memheap.h>
+#include <engine/shared/growbuffer.h>
 
 class CSnapIDPool
 {
@@ -288,8 +289,7 @@ public:
 
 	// DUCK
 	SHA256_DIGEST m_CurrentDuckModSha256;
-	char* m_CurrentDuckModZipFileData;
-	int m_CurrentDuckModZipFileSize;
+	CGrowBuffer m_CurrentDuckModFileBuffer;
 	char m_aCurrentDuckModPath[128];
 
 	bool IsDuckDevMode() const;
