@@ -38,10 +38,6 @@
 	#include <windows.h>
 #endif
 
-// TODO: only debug?
-// TODO: remove
-#include <zip.h>
-
 /*static const char *StrLtrim(const char *pStr)
 {
 	while(*pStr && *pStr >= 0 && *pStr <= 32)
@@ -1979,6 +1975,15 @@ bool CServer::CompressDuckModFolder(const char* pModPath)
 	FileSearch.m_pStorage = Storage();
 
 	Storage()->ListDirectory(STORAGE_TYPE_CURRENT_DIR, pModPath, ListDirCallback, &FileSearch);
+	const int ModPathStrLen = str_length(pModPath);
+
+	// find valid and required files
+	const char* aRequiredFiles[] = {
+		"main.js",
+		"mod_info.json"
+	};
+	const int RequiredFilesCount = sizeof(aRequiredFiles)/sizeof(aRequiredFiles[0]);
+	int FoundRequiredFilesCount = 0;
 
 	array<CPath> aValidFilePathList;
 
@@ -1989,8 +1994,29 @@ bool CServer::CompressDuckModFolder(const char* pModPath)
 		dbg_msg("duck", "file='%s'", pFilePaths[i].m_aBuff);
 		if(str_ends_with(pFilePaths[i].m_aBuff, ".js") || str_ends_with(pFilePaths[i].m_aBuff, ".json") || str_ends_with(pFilePaths[i].m_aBuff, ".png") || str_ends_with(pFilePaths[i].m_aBuff, ".wv"))
 		{
+			const char* pRelPath = str_find(pFilePaths[i].m_aBuff, pModPath);
+			dbg_assert(pRelPath != 0, "base mod path should be found");
+			pRelPath += ModPathStrLen+1; // skip 'mod_path/'
+
+			for(int r = 0; r < RequiredFilesCount; r++)
+			{
+				 // TODO: can 2 files have the same name?
+				if(str_comp(pRelPath, aRequiredFiles[r]) == 0)
+					FoundRequiredFilesCount++;
+			}
+
 			aValidFilePathList.add(pFilePaths[i]);
 		}
+	}
+
+	if(FoundRequiredFilesCount != RequiredFilesCount)
+	{
+		dbg_msg("duck", "CompressMod: mod is missing a required file, required files are: ");
+		for(int r = 0; r < RequiredFilesCount; r++)
+		{
+			dbg_msg("duck", "    - %s", aRequiredFiles[r]);
+		}
+		return false;
 	}
 
 	char aModRootPath[512];
@@ -2008,136 +2034,6 @@ bool CServer::CompressDuckModFolder(const char* pModPath)
 			break;
 	}
 
-#if 0
-	// create zip file
-	// TODO: it's really a shame that we can't create a zip file IN MEMORY
-	char aZipPath[512];
-	str_copy(aZipPath, aModRootPath, sizeof(aZipPath));
-	str_append(aZipPath, "/", sizeof(aZipPath));
-	str_append(aZipPath, pModName, sizeof(aZipPath));
-	str_append(aZipPath, ".zip", sizeof(aZipPath));
-
-	int Error;
-	zip_t* pZipFile = zip_open(aZipPath, ZIP_CREATE | ZIP_TRUNCATE, &Error);
-	if(!pZipFile)
-	{
-		char aErrorBuff[512];
-		zip_error_to_str(aErrorBuff, sizeof(aErrorBuff), Error, errno);
-		dbg_msg("duck", "CompressMod: Error creating '%s' [%s]", aZipPath, aErrorBuff);
-		return false;
-	}
-
-	dbg_msg("duck", "creating zip file '%s'...", aZipPath);
-
-	const int ValidFileCount = aValidFilePathList.size();
-	const CPath* pValidFilePaths = aValidFilePathList.base_ptr();
-	const int ModPathStrLen = str_length(pModPath);
-
-	// folders first
-	for(int i = 0; i < ValidFileCount; i++)
-	{
-		const char* pRelPath = str_find(pValidFilePaths[i].m_aBuff, pModPath);
-		dbg_assert(pRelPath != 0, "base mod path should be found");
-		pRelPath += ModPathStrLen+1; // skip 'mod_path/'
-
-		// add every directory contained in the file path
-		const char* pSlashFound = pRelPath;
-		do
-		{
-			pSlashFound = str_find(pSlashFound, "/");
-			if(pSlashFound)
-			{
-				char aDir[512];
-				str_format(aDir, sizeof(aDir), "%.*s", pSlashFound-pRelPath, pRelPath);
-				zip_int64_t r = zip_dir_add(pZipFile, aDir, ZIP_FL_ENC_UTF_8);
-				//dbg_msg("duck", "dir=%s r=%lld", aDir, r);
-				pSlashFound++;
-			}
-		}
-		while(pSlashFound);
-	}
-
-	// then files
-	for(int i = 0; i < ValidFileCount; i++)
-	{
-		const char* pRelPath = str_find(pValidFilePaths[i].m_aBuff, pModPath);
-		dbg_assert(pRelPath != 0, "base mod path should be found");
-		pRelPath += ModPathStrLen+1; // skip 'mod_path/'
-
-		dbg_msg("duck", "valid_file='%s'", pRelPath);
-
-		IOHANDLE File = Storage()->OpenFile(pValidFilePaths[i].m_aBuff, IOFLAG_READ, STORAGE_TYPE_CURRENT_DIR);
-		if(!File)
-		{
-			dbg_msg("duck", "CompressMod: Error, can't open '%s'", pValidFilePaths[i].m_aBuff);
-			zip_close(pZipFile);
-			return false;
-		}
-
-		int FileSize = (int)io_length(File);
-		char *pFileData = (char *)mem_alloc(FileSize, 1);
-		io_read(File, pFileData, FileSize);
-		io_close(File);
-
-		zip_error_t SourceError;
-		zip_error_init(&SourceError);
-		zip_source_t *pFileSource = zip_source_buffer_create(pFileData, FileSize, 1, &SourceError);
-		if(!pFileSource)
-		{
-			dbg_msg("duck", "Error creating zip source [%s]", zip_error_strerror(&SourceError));
-			zip_error_fini(&SourceError);
-			zip_close(pZipFile);
-			return false;
-		}
-
-		if(zip_file_add(pZipFile, pRelPath, pFileSource, ZIP_FL_ENC_UTF_8) < 0)
-		{
-			mem_free(pFileData);
-			zip_error_fini(&SourceError);
-			zip_close(pZipFile);
-			return false;
-		}
-
-		zip_error_fini(&SourceError);
-	}
-
-	if(zip_close(pZipFile) < 0)
-	{
-		dbg_msg("duck", "Error closing zip file [%s]", zip_strerror(pZipFile));
-		return false;
-	}
-
-	// finally, read the file we just created... and return the buffer
-	str_copy(aZipPath, pModPath, sizeof(aZipPath));
-	str_append(aZipPath, "/", sizeof(aZipPath));
-	str_append(aZipPath, pModName, sizeof(aZipPath));
-	str_append(aZipPath, ".zip", sizeof(aZipPath));
-	IOHANDLE File = Storage()->OpenFile(aZipPath, IOFLAG_READ, STORAGE_TYPE_CURRENT_DIR);
-	if(!File)
-	{
-		dbg_msg("duck", "CompressMod: Error, can't open '%s'", aZipPath);
-		return false;
-	}
-
-	int FileSize = (int)io_length(File);
-	char *pFileData = (char *)mem_alloc(FileSize, 1);
-	io_read(File, pFileData, FileSize);
-	io_close(File);
-
-	if(m_CurrentDuckModZipFileData)
-		mem_free(m_CurrentDuckModZipFileData);
-
-	m_CurrentDuckModZipFileData = pFileData;
-	m_CurrentDuckModZipFileSize = FileSize;
-	m_CurrentDuckModSha256 = sha256(pFileData, FileSize);
-	char aModSha256Str[SHA256_MAXSTRSIZE];
-	sha256_str(m_CurrentDuckModSha256, aModSha256Str, sizeof(aModSha256Str));
-
-	dbg_msg("duck", "done creating zip file '%s' sha256=%s", aZipPath, aModSha256Str);
-
-	return true;
-#endif
-
 	// simple pack of file data
 
 	// char[4] - "DUCK"
@@ -2152,7 +2048,6 @@ bool CServer::CompressDuckModFolder(const char* pModPath)
 
 	const int ValidFileCount = aValidFilePathList.size();
 	const CPath* pValidFilePaths = aValidFilePathList.base_ptr();
-	const int ModPathStrLen = str_length(pModPath);
 
 	for(int i = 0; i < ValidFileCount; i++)
 	{
@@ -2212,7 +2107,7 @@ bool CServer::CompressDuckModFolder(const char* pModPath)
 	char aModSha256Str[SHA256_MAXSTRSIZE];
 	sha256_str(m_CurrentDuckModSha256, aModSha256Str, sizeof(aModSha256Str));
 
-	dbg_msg("duck", "done creating file pack size=%d sha256=%s", DestSize, aModSha256Str);
+	dbg_msg("duck", "done creating mod file pack size=%d comp_ratio=%g sha256=%s", DestSize, FilePackBuff.m_Size/(double)DestSize, aModSha256Str);
 
 	return true;
 }

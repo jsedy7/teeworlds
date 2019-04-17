@@ -27,6 +27,7 @@ struct CGrowBuffer
 			return;
 
 		char* pNewData = (char*)mem_alloc(NewCapacity, 1);
+		dbg_assert(pNewData != 0, "failed to grow buffer, could not allocate");
 		mem_move(pNewData, m_pData, m_Size);
 		mem_free(m_pData);
 
