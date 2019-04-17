@@ -305,9 +305,6 @@ CClient::CClient() : m_DemoPlayer(&m_SnapshotDelta), m_DemoRecorder(&m_SnapshotD
 
 	m_VersionInfo.m_State = CVersionInfo::STATE_INIT;
 
-	m_DuckModDownloadFileBuffer = 0;
-	m_DuckModDownloadFileSize = 0;
-	m_DuckModDownloadFileBufferCapacity = 0;
 	m_DuckModDownloadChunk = 0;
 	m_DuckModDownloadChunkNum = 0;
 	m_DuckModDownloadChunkSize = 0;
@@ -1522,25 +1519,12 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 			}
 			else
 			{
-				if(!m_DuckModDownloadFileBuffer)
-				{
-					m_DuckModDownloadFileBufferCapacity = 1024*1024; // 1Mb
-					m_DuckModDownloadFileBuffer = (char*)mem_alloc(m_DuckModDownloadFileBufferCapacity, 1);
-				}
+				if(m_DuckModDownloadFileBuff.m_pData)
+					m_DuckModDownloadFileBuff.Grow(1024*1024); // 1Mb
+
 				// grow file buffer to fit data
-				if(ZipFileSize > m_DuckModDownloadFileBufferCapacity)
-				{
-					int NewCapacity = m_DuckModDownloadFileBufferCapacity * 2;
-					if(ZipFileSize > NewCapacity)
-						NewCapacity = ZipFileSize;
-
-					char* NewFileBuffer = (char*)mem_alloc(NewCapacity, 1);
-					mem_free(m_DuckModDownloadFileBuffer);
-					m_DuckModDownloadFileBuffer = NewFileBuffer;
-					m_DuckModDownloadFileBufferCapacity = NewCapacity;
-				}
-
-				m_DuckModDownloadFileSize = 0; // reset download file size
+				m_DuckModDownloadFileBuff.Clear();
+				m_DuckModDownloadFileBuff.Grow(ZipFileSize);
 				m_DuckModDownloadChunk = 0;
 				m_DuckModDownloadChunkNum = ChunkNum;
 				m_DuckModDownloadChunkSize = ChunkSize;
@@ -1557,17 +1541,12 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 		}
 		else if((pPacket->m_Flags&NET_CHUNKFLAG_VITAL) != 0 && Msg == NETMSG_DUCK_MOD_DATA)
 		{
-			if(!m_DuckModDownloadFileBuffer)
-				return;
-
 			int Size = min(m_DuckModDownloadChunkSize, m_DuckModDownloadTotalsize-m_DuckModDownloadAmount);
 			const unsigned char *pData = Unpacker.GetRaw(Size);
 			if(Unpacker.Error())
 				return;
 
-			dbg_assert(m_DuckModDownloadFileSize+Size <= m_DuckModDownloadFileBufferCapacity, "file buffer overflow");
-			mem_move(m_DuckModDownloadFileBuffer+m_DuckModDownloadFileSize, pData, Size);
-			m_DuckModDownloadFileSize += Size;
+			m_DuckModDownloadFileBuff.Append(pData, Size);
 
 			++m_DuckModDownloadChunk;
 			m_DuckModDownloadAmount += Size; // TODO: duplicate of m_DuckModDownloadFileSize?
@@ -1579,9 +1558,9 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 				// mod download complete
 				dbg_msg("duck", "mod download complete, loading...");
 
-				bool IsInstalled = GameClient()->InstallAndLoadDuckModFromZipBuffer(m_DuckModDownloadFileBuffer, m_DuckModDownloadFileSize, &m_DuckModDownloadSha256);
+				bool IsInstalled = GameClient()->InstallAndLoadDuckModFromZipBuffer(m_DuckModDownloadFileBuff.m_pData, m_DuckModDownloadFileBuff.m_Size, &m_DuckModDownloadSha256);
 
-				m_DuckModDownloadFileSize = 0;
+				m_DuckModDownloadFileBuff.Clear();
 				m_DuckModDownloadAmount = 0;
 				m_DuckModDownloadTotalsize = -1;
 

@@ -5,6 +5,7 @@
 
 #include <engine/client/http.h>
 #include <engine/shared/growbuffer.h>
+#include <engine/shared/config.h>
 #include <engine/external/zlib/zlib.h>
 #include <zip.h>
 
@@ -511,7 +512,10 @@ bool CDuktape::ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, con
 
 bool CDuktape::ExtractAndInstallModCompressedBuffer(const CGrowBuffer* pCompBuffer, const SHA256_DIGEST* pModSha256)
 {
-	dbg_msg("unzip", "EXTRACTING AND INSTALLING *COMRPESSED* MOD");
+	const bool IsConfigDebug = g_Config.m_Debug;
+
+	if(IsConfigDebug)
+		dbg_msg("unzip", "EXTRACTING AND INSTALLING *COMRPESSED* MOD");
 
 	char aUserModsPath[512];
 	Storage()->GetCompletePath(IStorage::TYPE_SAVE, "mods", aUserModsPath, sizeof(aUserModsPath));
@@ -612,7 +616,8 @@ bool CDuktape::ExtractAndInstallModCompressedBuffer(const CGrowBuffer* pCompBuff
 		mem_move(aFilePath, pFilePath, FilePathLen);
 		aFilePath[FilePathLen] = 0;
 
-		dbg_msg("duck", "file path=%s size=%d", aFilePath, FileSize);
+		if(IsConfigDebug)
+			dbg_msg("duck", "file path=%s size=%d", aFilePath, FileSize);
 
 		for(int r = 0; r < RequiredFilesCount; r++)
 		{
@@ -634,7 +639,8 @@ bool CDuktape::ExtractAndInstallModCompressedBuffer(const CGrowBuffer* pCompBuff
 		return false;
 	}
 
-	dbg_msg("duck", "CREATE directory '%s'", aModRootPath);
+	if(IsConfigDebug)
+		dbg_msg("duck", "CREATE directory '%s'", aModRootPath);
 	if(fs_makedir(aModRootPath) != 0)
 	{
 		dbg_msg("duck", "DecompressMod: Error, failed to create directory '%s'", aModRootPath);
@@ -667,7 +673,9 @@ bool CDuktape::ExtractAndInstallModCompressedBuffer(const CGrowBuffer* pCompBuff
 			{
 				char aDir[512];
 				str_format(aDir, sizeof(aDir), "%.*s", pSlashFound-aFilePath, aFilePath);
-				dbg_msg("duck", "CREATE SUBDIR dir=%s", aDir);
+
+				if(IsConfigDebug)
+					dbg_msg("duck", "CREATE SUBDIR dir=%s", aDir);
 
 				char aDirPath[512];
 				str_copy(aDirPath, aModRootPath, sizeof(aDirPath));
@@ -799,7 +807,7 @@ bool CDuktape::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
 	const CPath* pFilePaths = aFilePathList.base_ptr();
 	for(int i = 0; i < FileCount; i++)
 	{
-		dbg_msg("duck", "file='%s'", pFilePaths[i].m_aBuff);
+		//dbg_msg("duck", "file='%s'", pFilePaths[i].m_aBuff);
 		if(str_ends_with(pFilePaths[i].m_aBuff, ".js"))
 		{
 			const bool Loaded = LoadJsScriptFile(pFilePaths[i].m_aBuff);

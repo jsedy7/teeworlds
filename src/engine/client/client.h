@@ -4,6 +4,7 @@
 #define ENGINE_CLIENT_CLIENT_H
 
 #include <base/hash.h>
+#include <engine/shared/growbuffer.h>
 
 class CGraph
 {
@@ -189,9 +190,7 @@ class CClient : public IClient, public CDemoPlayer::IListner
 	int64 TickStartTime(int Tick);
 
 	// DUCK
-	char* m_DuckModDownloadFileBuffer;
-	int m_DuckModDownloadFileSize;
-	int m_DuckModDownloadFileBufferCapacity;
+	CGrowBuffer m_DuckModDownloadFileBuff;
 	int m_DuckModDownloadChunk;
 	int m_DuckModDownloadChunkNum;
 	int m_DuckModDownloadChunkSize;

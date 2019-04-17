@@ -1135,7 +1135,12 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 					Msg.AddRaw(&m_CurrentDuckModFileBuffer.m_pData[Offset], ChunkSize);
 					SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH, ClientID);
 
-					dbg_msg("duck", "sending mod chunk chunk %d with size %d", Chunk, ChunkSize);
+					if(g_Config.m_Debug)
+					{
+						char aBuf[64];
+						str_format(aBuf, sizeof(aBuf), "sending mod chunk chunk %d with size %d", Chunk, ChunkSize);
+						Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "server", aBuf);
+					}
 				}
 			}
 		}
