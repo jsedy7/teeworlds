@@ -563,5 +563,5 @@ void CPlayers::OnRender()
 	}
 
 	// TODO: Move? Make a component for each draw space?
-	m_pClient->m_pDuktapeComp->RenderDrawSpaceGame();
+	m_pClient->m_pDuktapeComp->m_DukEntry.RenderDrawSpace(CDukEntry::DrawSpace::GAME);
 }

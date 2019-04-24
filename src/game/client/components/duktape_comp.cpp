@@ -34,11 +34,7 @@ duk_ret_t CDuktape::NativeRenderQuad(duk_context *ctx)
 	double Height = duk_to_number(ctx, 3);
 
 	IGraphics::CQuadItem Quad(x, y, Width, Height);
-	CRenderCmd Cmd;
-	Cmd.m_Type = CRenderCmd::QUAD;
-	mem_move(Cmd.m_Quad, &Quad, sizeof(Cmd.m_Quad)); // yep, this is because we don't have c++11
-	This()->m_aRenderCmdList[This()->m_CurrentDrawSpace].add(Cmd);
-
+	This()->m_DukEntry.QueueDrawQuad(Quad);
 	return 0;
 }
 
@@ -48,17 +44,13 @@ duk_ret_t CDuktape::NativeRenderSetColorU32(duk_context *ctx)
 	dbg_assert(n == 1, "Wrong argument count");
 	int x = duk_to_int(ctx, 0);
 
-	float Color[4];
-	Color[0] = (x & 0xFF) / 255.f;
-	Color[1] = ((x >> 8) & 0xFF) / 255.f;
-	Color[2] = ((x >> 16) & 0xFF) / 255.f;
-	Color[3] = ((x >> 24) & 0xFF) / 255.f;
+	float aColor[4];
+	aColor[0] = (x & 0xFF) / 255.f;
+	aColor[1] = ((x >> 8) & 0xFF) / 255.f;
+	aColor[2] = ((x >> 16) & 0xFF) / 255.f;
+	aColor[3] = ((x >> 24) & 0xFF) / 255.f;
 
-	CRenderCmd Cmd;
-	Cmd.m_Type = CRenderCmd::COLOR;
-	memmove(Cmd.m_Color, Color, sizeof(Color));
-	This()->m_aRenderCmdList[This()->m_CurrentDrawSpace].add(Cmd);
-
+	This()->m_DukEntry.QueueSetColor(aColor);
 	return 0;
 }
 
@@ -67,17 +59,13 @@ duk_ret_t CDuktape::NativeRenderSetColorF4(duk_context *ctx)
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 4, "Wrong argument count");
 
-	float Color[4];
-	Color[0] = duk_to_number(ctx, 0);
-	Color[1] = duk_to_number(ctx, 1);
-	Color[2] = duk_to_number(ctx, 2);
-	Color[3] = duk_to_number(ctx, 3);
+	float aColor[4];
+	aColor[0] = duk_to_number(ctx, 0);
+	aColor[1] = duk_to_number(ctx, 1);
+	aColor[2] = duk_to_number(ctx, 2);
+	aColor[3] = duk_to_number(ctx, 3);
 
-	CRenderCmd Cmd;
-	Cmd.m_Type = CRenderCmd::COLOR;
-	memmove(Cmd.m_Color, Color, sizeof(Color));
-	This()->m_aRenderCmdList[This()->m_CurrentDrawSpace].add(Cmd);
-
+	This()->m_DukEntry.QueueSetColor(aColor);
 	return 0;
 }
 
@@ -87,8 +75,9 @@ duk_ret_t CDuktape::NativeSetDrawSpace(duk_context *ctx)
 	dbg_assert(n == 1, "Wrong argument count");
 
 	int ds = duk_to_int(ctx, 0);
-	dbg_assert(ds >= 0 && ds < DrawSpace::_COUNT, "Draw space undefined");
-	This()->m_CurrentDrawSpace = ds;
+	dbg_assert(ds >= 0 && ds < CDukEntry::DrawSpace::_COUNT, "Draw space undefined");
+
+	This()->m_DukEntry.m_CurrentDrawSpace = ds;
 
 	return 0;
 }
@@ -826,6 +815,8 @@ CDuktape::CDuktape()
 
 void CDuktape::OnInit()
 {
+	m_DukEntry.Init(Graphics());
+
 	// load ducktape, eval main.js
 	m_pDukContext = duk_create_heap_default();
 
@@ -869,8 +860,6 @@ void CDuktape::OnInit()
 		"	DRAW_SPACE_GAME: 0,"
 		"	aClients: [],"
 		"};");
-
-	m_CurrentDrawSpace = DrawSpace::GAME;
 }
 
 void CDuktape::OnShutdown()
@@ -930,35 +919,6 @@ void CDuktape::OnMessage(int Msg, void* pRawMsg)
 		}
 		duk_pop(Duk());
 	}
-}
-
-void CDuktape::RenderDrawSpaceGame()
-{
-	Graphics()->TextureClear();
-	Graphics()->QuadsBegin();
-
-	const int CmdCount = m_aRenderCmdList[DrawSpace::GAME].size();
-	const CRenderCmd* aCmds = m_aRenderCmdList[DrawSpace::GAME].base_ptr();
-
-	for(int i = 0; i < CmdCount; i++)
-	{
-		switch(aCmds[i].m_Type)
-		{
-			case CRenderCmd::COLOR: {
-				const float* pColor = aCmds[i].m_Color;
-				Graphics()->SetColor(pColor[0] * pColor[3], pColor[1] * pColor[3], pColor[2] * pColor[3], pColor[3]);
-			} break;
-			case CRenderCmd::QUAD:
-				Graphics()->QuadsDrawTL((IGraphics::CQuadItem*)&aCmds[i].m_Quad, 1);
-				break;
-			default:
-				dbg_assert(0, "Render command type not handled");
-		}
-	}
-
-	Graphics()->QuadsEnd();
-
-	m_aRenderCmdList[DrawSpace::GAME].clear();
 }
 
 bool CDuktape::StartDuckModHttpDownload(const char* pModUrl, const SHA256_DIGEST* pModSha256)
