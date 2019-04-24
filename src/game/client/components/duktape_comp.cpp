@@ -36,7 +36,7 @@ duk_ret_t CDuktape::NativeRenderQuad(duk_context *ctx)
 	IGraphics::CQuadItem Quad(x, y, Width, Height);
 	CRenderCmd Cmd;
 	Cmd.m_Type = CRenderCmd::QUAD;
-	Cmd.m_Quad = Quad;
+	mem_move(Cmd.m_Quad, &Quad, sizeof(Cmd.m_Quad)); // yep, this is because we don't have c++11
 	This()->m_aRenderCmdList[This()->m_CurrentDrawSpace].add(Cmd);
 
 	return 0;
@@ -949,7 +949,7 @@ void CDuktape::RenderDrawSpaceGame()
 				Graphics()->SetColor(pColor[0] * pColor[3], pColor[1] * pColor[3], pColor[2] * pColor[3], pColor[3]);
 			} break;
 			case CRenderCmd::QUAD:
-				Graphics()->QuadsDrawTL(&aCmds[i].m_Quad, 1);
+				Graphics()->QuadsDrawTL((IGraphics::CQuadItem*)&aCmds[i].m_Quad, 1);
 				break;
 			default:
 				dbg_assert(0, "Render command type not handled");
