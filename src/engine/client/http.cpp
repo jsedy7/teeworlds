@@ -13,7 +13,6 @@ void HttpBuffer::Release()
 
 bool ParseHttpUrl(const char* pUrl, char* pHostName, char* pBasePath)
 {
-	dbg_msg("http", "%s", curl_url());
 	if(str_comp_num(pUrl, "http://", 7) != 0)
 	{
 		dbg_msg("http", "url does not start with 'http://' (%s)", pUrl);
@@ -53,9 +52,9 @@ static size_t CurlWriteCallback(char *pChunkBuffer, size_t Size1, size_t ChunkSi
 	HttpBuffer& Buffer = *(HttpBuffer*)pUserData;
 
 	// we're out of space, double capacity
-	if(Buffer.m_Cursor + ChunkSize > Buffer.m_Size)
+	if((int)Buffer.m_Cursor + (int)ChunkSize > Buffer.m_Size)
 	{
-		int NewSize = Buffer.m_Size * 2;
+		unsigned NewSize = Buffer.m_Size * 2;
 		if(Buffer.m_Cursor + ChunkSize > NewSize)
 			NewSize = (Buffer.m_Cursor + ChunkSize) * 2;
 

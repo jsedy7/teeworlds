@@ -11,9 +11,6 @@ Curl = {
 			if ExecuteSilent("pkg-config libcurl") == 0 then
 				option.value = true
 				option.use_pkgconfig = true
-			elseif ExecuteSilent("libcurl-config") > 0 and ExecuteSilent("libcurl-config --cflags") == 0 then
-				option.value = true
-				option.use_ftconfig = true
 			end
 
 			if platform == "win32" then
