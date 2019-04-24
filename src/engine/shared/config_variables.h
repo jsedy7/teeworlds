@@ -67,6 +67,7 @@ MACRO_CONFIG_INT(InpMousesens, inp_mousesens, 100, 5, 100000, CFGFLAG_SAVE|CFGFL
 
 MACRO_CONFIG_INT(JoystickX, joystick_x, 0, 0, 6, CFGFLAG_SAVE|CFGFLAG_CLIENT, "Joystick Axis that controls X axis of mouse")
 MACRO_CONFIG_INT(JoystickY, joystick_y, 1, 0, 6, CFGFLAG_SAVE|CFGFLAG_CLIENT, "Joystick Axis that controls Y axis of mouse")
+MACRO_CONFIG_INT(JoystickTolerance, joystick_tolerance, 5, 0, 50, CFGFLAG_SAVE|CFGFLAG_CLIENT, "Joystick Axis tolerance to account for jitter")
 
 MACRO_CONFIG_STR(SvName, sv_name, 128, "unnamed server", CFGFLAG_SAVE|CFGFLAG_SERVER, "Server name")
 MACRO_CONFIG_STR(SvHostname, sv_hostname, 128, "", CFGFLAG_SAVE|CFGFLAG_SERVER, "Server hostname")
@@ -106,6 +107,7 @@ MACRO_CONFIG_INT(DbgResizable, dbg_resizable, 0, 0, 0, CFGFLAG_CLIENT, "Enables 
 MACRO_CONFIG_STR(SvDuckModPath, sv_duck_mod_path, 128, "", CFGFLAG_SAVE|CFGFLAG_SERVER, "Duck mod zip file path")
 MACRO_CONFIG_STR(SvDuckModUrl, sv_duck_mod_url, 512, "", CFGFLAG_SAVE|CFGFLAG_SERVER, "Duck mod zip file url")
 MACRO_CONFIG_STR(SvDuckModDescription, sv_duck_mod_description, 128, "", CFGFLAG_SAVE|CFGFLAG_SERVER, "Duck mod short description")
-MACRO_CONFIG_STR(SvDuckDevModPath, sv_duck_mod_dev_dir, 128, "", CFGFLAG_SAVE|CFGFLAG_SERVER, "Duck mod directory if in dev mode (empty=not in dev mode)")
+MACRO_CONFIG_STR(SvDuckDevModPath, sv_duck_mod_dev_dir, 128, "", CFGFLAG_SAVE|CFGFLAG_SERVER, "Duck mod directory if in dev mode")
+MACRO_CONFIG_INT(SvDuckDev, sv_duck_dev, 0, 0, 1, CFGFLAG_SAVE|CFGFLAG_SERVER, "Enables duck dev mode (sends mod files directly, for quick iteration)")
 
 #endif

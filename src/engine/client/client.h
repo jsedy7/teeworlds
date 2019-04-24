@@ -4,6 +4,7 @@
 #define ENGINE_CLIENT_CLIENT_H
 
 #include <base/hash.h>
+#include <engine/shared/growbuffer.h>
 
 class CGraph
 {
@@ -116,6 +117,7 @@ class CClient : public IClient, public CDemoPlayer::IListner
 
 	//
 	char m_aCurrentMap[256];
+	char m_aCurrentMapPath[256];
 	SHA256_DIGEST m_CurrentMapSha256;
 	unsigned m_CurrentMapCrc;
 
@@ -189,9 +191,7 @@ class CClient : public IClient, public CDemoPlayer::IListner
 	int64 TickStartTime(int Tick);
 
 	// DUCK
-	char* m_DuckModDownloadFileBuffer;
-	int m_DuckModDownloadFileSize;
-	int m_DuckModDownloadFileBufferCapacity;
+	CGrowBuffer m_DuckModDownloadFileBuff;
 	int m_DuckModDownloadChunk;
 	int m_DuckModDownloadChunkNum;
 	int m_DuckModDownloadChunkSize;
@@ -275,6 +275,7 @@ public:
 	void ProcessConnlessPacket(CNetChunk *pPacket);
 	void ProcessServerPacket(CNetChunk *pPacket);
 
+	const char *GetCurrentMapPath() const { return m_aCurrentMapPath; }
 	virtual const char *MapDownloadName() const { return m_aMapdownloadName; }
 	virtual int MapDownloadAmount() const { return m_MapdownloadAmount; }
 	virtual int MapDownloadTotalsize() const { return m_MapdownloadTotalsize; }
@@ -336,5 +337,9 @@ public:
 
 	// DUCK
 	void SendDuckModReady();
+
+	virtual const char *DuckModDescription() const { return "Mod"; };
+	virtual int DuckModDownloadAmount() const { return m_DuckModDownloadAmount; };
+	virtual int DuckModDownloadTotalsize() const { return m_DuckModDownloadTotalsize; }
 };
 #endif

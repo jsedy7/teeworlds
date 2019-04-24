@@ -505,6 +505,16 @@ int time_houroftheday();
 */
 int time_isxmasday();
 
+/*
+	Function: time_iseasterday
+		Checks if today is in between Good Friday and Easter Monday (Gregorian calendar)
+
+	Returns:
+		1 - if it's egg time
+		0 - if not
+*/
+int time_iseasterday();
+
 /* Group: Network General */
 typedef struct
 {
@@ -1437,6 +1447,20 @@ int str_utf8_encode(char *ptr, int chr);
 		- The string is treated as zero-terminated utf8 string.
 */
 int str_utf8_check(const char *str);
+
+/*
+	Function: str_ends_with
+		Checks if a strings ends with another string
+
+	Parameters:
+		pStr - Pointer to a possible string.
+		pCmp - Pointer to a possible string.
+
+	Returns:
+		0 - false.
+		1 - true.
+*/
+int str_ends_with(const char* pStr, const char* pCmp);
 
 /*
 	Function: secure_random_init

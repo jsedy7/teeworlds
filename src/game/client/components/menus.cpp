@@ -2089,6 +2089,21 @@ int CMenus::Render()
 				Part.w = max(10.0f, (Part.w*Client()->MapDownloadAmount())/Client()->MapDownloadTotalsize());
 				RenderTools()->DrawUIRect(&Part, vec4(1.0f, 1.0f, 1.0f, 0.5f), CUI::CORNER_ALL, 5.0f);
 			}
+			if(Client()->DuckModDownloadTotalsize() > 0)
+			{
+				char aBuf[128];
+				Box.HSplitTop(15.f, 0, &Box);
+				Box.HSplitTop(ButtonHeight, &Part, &Box);
+				UI()->DoLabel(&Part, Client()->DuckModDescription(), ButtonHeight*ms_FontmodHeight*0.8f, CUI::ALIGN_CENTER);
+
+				// progress bar
+				Box.HSplitTop(SpacingH, 0, &Box);
+				Box.HSplitTop(ButtonHeight, &Part, &Box);
+				Part.VMargin(40.0f, &Part);
+				RenderTools()->DrawUIRect(&Part, vec4(1.0f, 1.0f, 1.0f, 0.25f), CUI::CORNER_ALL, 5.0f);
+				Part.w = max(10.0f, (Part.w*Client()->DuckModDownloadAmount())/Client()->DuckModDownloadTotalsize());
+				RenderTools()->DrawUIRect(&Part, vec4(1.0f, 1.0f, 1.0f, 0.5f), CUI::CORNER_ALL, 5.0f);
+			}
 			else
 			{
 				Box.HSplitTop(27.0f, 0, &Box);

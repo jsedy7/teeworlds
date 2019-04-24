@@ -4,20 +4,15 @@
 #include <stdint.h>
 
 #include <engine/client/http.h>
+#include <engine/shared/growbuffer.h>
+#include <engine/shared/config.h>
+#include <engine/external/zlib/zlib.h>
 #include <zip.h>
 
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
 typedef int32_t i32;
-
-// TODO: move?
-inline bool StrEndsWith(const char* pStr, const char* pCmp)
-{
-	const int StrLen = str_length(pStr);
-	const int CmpLen = str_length(pCmp);
-	return str_comp_num(pStr + StrLen - CmpLen, pCmp, CmpLen) == 0;
-}
 
 // TODO: rename?
 static CDuktape* s_This = 0;
@@ -316,10 +311,7 @@ bool CDuktape::ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, con
 		zip_stat_t EntryStat;
 		if(zip_stat_index(pZipArchive, i, 0, &EntryStat) != 0)
 			continue;
-
-		// TODO: remove
-		dbg_msg("unzip", "- name: %s, size: %lu, mtime: [%u]", EntryStat.name, EntryStat.size, (unsigned int)EntryStat.mtime);
-
+    
 		const int NameLen = str_length(EntryStat.name);
 		if(EntryStat.name[NameLen-1] != '/')
 		{
@@ -349,6 +341,9 @@ bool CDuktape::ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, con
 		if(zip_stat_index(pZipArchive, i, 0, &EntryStat) != 0)
 			continue;
 
+		// TODO: remove
+		dbg_msg("unzip", "- name: %s, size: %llu, mtime: [%u]", EntryStat.name, EntryStat.size, (unsigned int)EntryStat.mtime);
+
 		// TODO: sanitize folder name
 		const int NameLen = str_length(EntryStat.name);
 		if(EntryStat.name[NameLen-1] == '/')
@@ -369,7 +364,7 @@ bool CDuktape::ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, con
 		else
 		{
 			// filter by extension
-			if(!(StrEndsWith(EntryStat.name, ".js") || StrEndsWith(EntryStat.name, ".json") || StrEndsWith(EntryStat.name, ".png") || StrEndsWith(EntryStat.name, ".wv")))
+			if(!(str_ends_with(EntryStat.name, ".js") || str_ends_with(EntryStat.name, ".json") || str_ends_with(EntryStat.name, ".png") || str_ends_with(EntryStat.name, ".wv")))
 				continue;
 
 			// TODO: verify file type? Might be very expensive to do so.
@@ -515,6 +510,209 @@ bool CDuktape::ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, con
 	return true;
 }
 
+bool CDuktape::ExtractAndInstallModCompressedBuffer(const CGrowBuffer* pCompBuffer, const SHA256_DIGEST* pModSha256)
+{
+	const bool IsConfigDebug = g_Config.m_Debug;
+
+	if(IsConfigDebug)
+		dbg_msg("unzip", "EXTRACTING AND INSTALLING *COMRPESSED* MOD");
+
+	char aUserModsPath[512];
+	Storage()->GetCompletePath(IStorage::TYPE_SAVE, "mods", aUserModsPath, sizeof(aUserModsPath));
+	fs_makedir(aUserModsPath); // Teeworlds/mods (user storage)
+
+	// TODO: reduce folder hash string length?
+	SHA256_DIGEST Sha256 = sha256(pCompBuffer->m_pData, pCompBuffer->m_Size);
+	char aSha256Str[SHA256_MAXSTRSIZE];
+	sha256_str(Sha256, aSha256Str, sizeof(aSha256Str));
+
+	if(Sha256 != *pModSha256)
+	{
+		dbg_msg("duck", "mod url sha256 and server sent mod sha256 mismatch, received sha256=%s", aSha256Str);
+		// TODO: display error message
+		return false;
+	}
+
+	// mod folder where we're going to extract the files
+	char aModRootPath[512];
+	str_copy(aModRootPath, aUserModsPath, sizeof(aModRootPath));
+	str_append(aModRootPath, "/", sizeof(aModRootPath));
+	str_append(aModRootPath, aSha256Str, sizeof(aModRootPath));
+
+	// uncompress
+	CGrowBuffer FilePackBuff;
+	FilePackBuff.Grow(pCompBuffer->m_Size * 3);
+
+	uLongf DestSize = FilePackBuff.m_Capacity;
+	int UncompRet = uncompress((Bytef*)FilePackBuff.m_pData, &DestSize, (const Bytef*)pCompBuffer->m_pData, pCompBuffer->m_Size);
+	FilePackBuff.m_Size = DestSize;
+
+	int GrowAttempts = 4;
+	while(UncompRet == Z_BUF_ERROR && GrowAttempts--)
+	{
+		FilePackBuff.Grow(FilePackBuff.m_Capacity * 2);
+		DestSize = FilePackBuff.m_Capacity;
+		UncompRet = uncompress((Bytef*)FilePackBuff.m_pData, &DestSize, (const Bytef*)pCompBuffer->m_pData, pCompBuffer->m_Size);
+		FilePackBuff.m_Size = DestSize;
+	}
+
+	if(UncompRet != Z_OK)
+	{
+		switch(UncompRet)
+		{
+			case Z_MEM_ERROR:
+				dbg_msg("duck", "DecompressMod: Error, not enough memory");
+				break;
+			case Z_BUF_ERROR:
+				dbg_msg("duck", "DecompressMod: Error, not enough room in the output buffer");
+				break;
+			case Z_DATA_ERROR:
+				dbg_msg("duck", "DecompressMod: Error, data incomplete or corrupted");
+				break;
+			default:
+				dbg_break(); // should never be reached
+		}
+		return false;
+	}
+
+	// read decompressed pack file
+
+	// header
+	const char* pFilePack = FilePackBuff.m_pData;
+	const int FilePackSize = FilePackBuff.m_Size;
+	const char* const pFilePackEnd = pFilePack + FilePackSize;
+
+	if(str_comp_num(pFilePack, "DUCK", 4) != 0)
+	{
+		dbg_msg("duck", "DecompressMod: Error, invalid pack file");
+		return false;
+	}
+
+	pFilePack += 4;
+
+	// find required files
+	const char* aRequiredFiles[] = {
+		"main.js",
+		"mod_info.json"
+	};
+	const int RequiredFilesCount = sizeof(aRequiredFiles)/sizeof(aRequiredFiles[0]);
+	int FoundRequiredFilesCount = 0;
+
+	// TODO: use packer
+	const char* pCursor = pFilePack;
+	while(pCursor < pFilePackEnd)
+	{
+		const int FilePathLen = *(int*)pCursor;
+		pCursor += 4;
+		const char* pFilePath = pCursor;
+		pCursor += FilePathLen;
+		const int FileSize = *(int*)pCursor;
+		pCursor += 4;
+		const char* pFileData = pCursor;
+		pCursor += FileSize;
+
+		char aFilePath[512];
+		dbg_assert(FilePathLen < sizeof(aFilePath)-1, "FilePathLen too large");
+		mem_move(aFilePath, pFilePath, FilePathLen);
+		aFilePath[FilePathLen] = 0;
+
+		if(IsConfigDebug)
+			dbg_msg("duck", "file path=%s size=%d", aFilePath, FileSize);
+
+		for(int r = 0; r < RequiredFilesCount; r++)
+		{
+			// TODO: can 2 files have the same name?
+			// TODO: not very efficient, but oh well
+			const char* pFind = str_find(aFilePath, aRequiredFiles[r]);
+			if(pFind && FilePathLen-(pFind-aFilePath) == str_length(aRequiredFiles[r]))
+				FoundRequiredFilesCount++;
+		}
+	}
+
+	if(FoundRequiredFilesCount != RequiredFilesCount)
+	{
+		dbg_msg("duck", "mod is missing a required file, required files are: ");
+		for(int r = 0; r < RequiredFilesCount; r++)
+		{
+			dbg_msg("duck", "    - %s", aRequiredFiles[r]);
+		}
+		return false;
+	}
+
+	if(IsConfigDebug)
+		dbg_msg("duck", "CREATE directory '%s'", aModRootPath);
+	if(fs_makedir(aModRootPath) != 0)
+	{
+		dbg_msg("duck", "DecompressMod: Error, failed to create directory '%s'", aModRootPath);
+		return false;
+	}
+
+	pCursor = pFilePack;
+	while(pCursor < pFilePackEnd)
+	{
+		const int FilePathLen = *(int*)pCursor;
+		pCursor += 4;
+		const char* pFilePath = pCursor;
+		pCursor += FilePathLen;
+		const int FileSize = *(int*)pCursor;
+		pCursor += 4;
+		const char* pFileData = pCursor;
+		pCursor += FileSize;
+
+		char aFilePath[512];
+		dbg_assert(FilePathLen < sizeof(aFilePath)-1, "FilePathLen too large");
+		mem_move(aFilePath, pFilePath, FilePathLen);
+		aFilePath[FilePathLen] = 0;
+
+		// create directory to hold the file (if needed)
+		const char* pSlashFound = aFilePath;
+		do
+		{
+			pSlashFound = str_find(pSlashFound, "/");
+			if(pSlashFound)
+			{
+				char aDir[512];
+				str_format(aDir, sizeof(aDir), "%.*s", pSlashFound-aFilePath, aFilePath);
+
+				if(IsConfigDebug)
+					dbg_msg("duck", "CREATE SUBDIR dir=%s", aDir);
+
+				char aDirPath[512];
+				str_copy(aDirPath, aModRootPath, sizeof(aDirPath));
+				str_append(aDirPath, "/", sizeof(aDirPath));
+				str_append(aDirPath, aDir, sizeof(aDirPath));
+
+				if(fs_makedir(aDirPath) != 0)
+				{
+					dbg_msg("duck", "DecompressMod: Error, failed to create directory '%s'", aDirPath);
+					return false;
+				}
+
+				pSlashFound++;
+			}
+		}
+		while(pSlashFound);
+
+		// create file on disk
+		char aDiskFilePath[256];
+		str_copy(aDiskFilePath, aModRootPath, sizeof(aDiskFilePath));
+		str_append(aDiskFilePath, "/", sizeof(aDiskFilePath));
+		str_append(aDiskFilePath, aFilePath, sizeof(aDiskFilePath));
+
+		IOHANDLE FileExtracted = io_open(aDiskFilePath, IOFLAG_WRITE);
+		if(!FileExtracted)
+		{
+			dbg_msg("duck", "Error creating file '%s'", aDiskFilePath);
+			return false;
+		}
+
+		io_write(FileExtracted, pFileData, FileSize);
+		io_close(FileExtracted);
+	}
+
+	return true;
+}
+
 bool CDuktape::LoadJsScriptFile(const char* pJsFilePath)
 {
 	IOHANDLE ScriptFile = io_open(pJsFilePath, IOFLAG_READ);
@@ -609,8 +807,8 @@ bool CDuktape::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
 	const CPath* pFilePaths = aFilePathList.base_ptr();
 	for(int i = 0; i < FileCount; i++)
 	{
-		dbg_msg("duck", "file='%s'", pFilePaths[i].m_aBuff);
-		if(StrEndsWith(pFilePaths[i].m_aBuff, ".js"))
+		//dbg_msg("duck", "file='%s'", pFilePaths[i].m_aBuff);
+		if(str_ends_with(pFilePaths[i].m_aBuff, ".js"))
 		{
 			const bool Loaded = LoadJsScriptFile(pFilePaths[i].m_aBuff);
 			dbg_assert(Loaded, "error loading js script");
@@ -803,12 +1001,12 @@ bool CDuktape::InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int Buffe
 {
 	dbg_assert(!IsModAlreadyInstalled(pModSha256), "mod is already installed, check it before calling this");
 
-	HttpBuffer Buff;
+	CGrowBuffer Buff;
 	Buff.m_pData = (char*)pBuffer;
 	Buff.m_Size = BufferSize;
-	Buff.m_Cursor = BufferSize;
+	Buff.m_Capacity = BufferSize;
 
-	bool IsUnzipped = ExtractAndInstallModZipBuffer(&Buff, pModSha256);
+	bool IsUnzipped = ExtractAndInstallModCompressedBuffer(&Buff, pModSha256);
 	dbg_assert(IsUnzipped, "Unzipped to disk: rip in peace");
 
 	if(!IsUnzipped)

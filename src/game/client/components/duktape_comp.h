@@ -13,6 +13,7 @@ struct DrawSpace
 };
 
 struct HttpBuffer;
+struct CGrowBuffer;
 
 class CDuktape : public CComponent
 {
@@ -61,6 +62,7 @@ class CDuktape : public CComponent
 
 	bool IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256);
 	bool ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, const SHA256_DIGEST* pModSha256);
+	bool ExtractAndInstallModCompressedBuffer(const CGrowBuffer* pBuffer, const SHA256_DIGEST* pModSha256);
 	bool LoadJsScriptFile(const char* pJsFilePath);
 	bool LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256);
 
