@@ -40,6 +40,8 @@ class CDuktape : public CComponent
 	bool LoadJsScriptFile(const char* pJsFilePath);
 	bool LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256);
 
+	void ResetDukContext();
+
 public:
 	CDukEntry m_DukEntry;
 

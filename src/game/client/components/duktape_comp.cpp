@@ -867,6 +867,9 @@ bool CDuktape::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
 
 	fs_listdir(aModRootPath, ListDirCallback, 1, &FileSearch);
 
+	// reset the duk context
+	ResetDukContext();
+
 	const int FileCount = aFilePathList.size();
 	const CPath* pFilePaths = aFilePathList.base_ptr();
 	for(int i = 0; i < FileCount; i++)
@@ -883,14 +886,10 @@ bool CDuktape::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
 	return true;
 }
 
-CDuktape::CDuktape()
+void CDuktape::ResetDukContext()
 {
-	s_This = this;
-}
-
-void CDuktape::OnInit()
-{
-	m_DukEntry.Init(this);
+	if(m_pDukContext)
+		duk_destroy_heap(m_pDukContext);
 
 	// load ducktape, eval main.js
 	m_pDukContext = duk_create_heap_default();
@@ -935,14 +934,29 @@ void CDuktape::OnInit()
 		"};");
 }
 
+CDuktape::CDuktape()
+{
+	s_This = this;
+	m_pDukContext = 0;
+}
+
+void CDuktape::OnInit()
+{
+	m_DukEntry.Init(this);
+}
+
 void CDuktape::OnShutdown()
 {
-	duk_destroy_heap(m_pDukContext);
+	if(m_pDukContext)
+	{
+		duk_destroy_heap(m_pDukContext);
+		m_pDukContext = 0;
+	}
 }
 
 void CDuktape::OnRender()
 {
-	if(Client()->State() != IClient::STATE_ONLINE)
+	if(Client()->State() != IClient::STATE_ONLINE || !m_pDukContext)
 		return;
 
 	// Update Teeworlds global object
