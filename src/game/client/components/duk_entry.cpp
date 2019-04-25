@@ -59,11 +59,11 @@ void CDukEntry::QueueSetTexture(int TextureID)
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
-void CDukEntry::QueueSetTextureUV(const float* pUV)
+void CDukEntry::QueueSetQuadSubSet(const float* pSubSet)
 {
 	CRenderCmd Cmd;
-	Cmd.m_Type = CRenderCmd::SET_TEXTURE_UV;
-	mem_move(Cmd.m_TextureUV, pUV, sizeof(Cmd.m_TextureUV));
+	Cmd.m_Type = CRenderCmd::SET_QUAD_SUBSET;
+	mem_move(Cmd.m_QuadSubSet, pSubSet, sizeof(Cmd.m_QuadSubSet));
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
@@ -94,6 +94,8 @@ void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 	float* pCurrentColor = RenderSpace.m_aCurrentColor;
 	int& rWantTextureID = RenderSpace.m_WantTextureID;
 	int& rCurrentTextureID = RenderSpace.m_CurrentTextureID;
+	float* pWantQuadSubSet = RenderSpace.m_aWantQuadSubSet;
+	float* pCurrentQuadSubSet = RenderSpace.m_aCurrentQuadSubSet;
 
 	for(int i = 0; i < CmdCount; i++)
 	{
@@ -107,6 +109,10 @@ void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 
 			case CRenderCmd::SET_TEXTURE: {
 				rWantTextureID = Cmd.m_TextureID;
+			} break;
+
+			case CRenderCmd::SET_QUAD_SUBSET: {
+				mem_move(pWantQuadSubSet, Cmd.m_QuadSubSet, sizeof(Cmd.m_QuadSubSet));
 			} break;
 
 			case CRenderCmd::DRAW_QUAD: {
@@ -128,6 +134,15 @@ void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 				{
 					Graphics()->SetColor(pWantColor[0] * pWantColor[3], pWantColor[1] * pWantColor[3], pWantColor[2] * pWantColor[3], pWantColor[3]);
 					mem_move(pCurrentColor, pWantColor, sizeof(float)*4);
+				}
+
+				if(pWantQuadSubSet[0] != pCurrentQuadSubSet[0] ||
+				   pWantQuadSubSet[1] != pCurrentQuadSubSet[1] ||
+				   pWantQuadSubSet[2] != pCurrentQuadSubSet[2] ||
+				   pWantQuadSubSet[3] != pCurrentQuadSubSet[3])
+				{
+					Graphics()->QuadsSetSubset(pWantQuadSubSet[0], pWantQuadSubSet[1], pWantQuadSubSet[2], pWantQuadSubSet[3]);
+					mem_move(pCurrentQuadSubSet, pWantQuadSubSet, sizeof(float)*4);
 				}
 
 				Graphics()->QuadsDrawTL((IGraphics::CQuadItem*)&Cmd.m_Quad, 1);

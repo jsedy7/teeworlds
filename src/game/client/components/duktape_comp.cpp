@@ -1,6 +1,7 @@
 #include "duktape_comp.h"
 #include <engine/storage.h>
 #include <generated/protocol.h>
+#include <generated/client_data.h>
 #include <stdint.h>
 
 #include <engine/client/http.h>
@@ -74,6 +75,21 @@ duk_ret_t CDuktape::NativeRenderSetTexture(duk_context *ctx)
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
 	This()->m_DukEntry.QueueSetTexture((int)duk_to_int(ctx, 0));
+	return 0;
+}
+
+duk_ret_t CDuktape::NativeRenderSetQuadSubSet(duk_context* ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 4, "Wrong argument count");
+
+	float aSubSet[4];
+	aSubSet[0] = duk_to_number(ctx, 0);
+	aSubSet[1] = duk_to_number(ctx, 1);
+	aSubSet[2] = duk_to_number(ctx, 2);
+	aSubSet[3] = duk_to_number(ctx, 3);
+
+	This()->m_DukEntry.QueueSetQuadSubSet(aSubSet);
 	return 0;
 }
 
@@ -169,6 +185,45 @@ duk_ret_t CDuktape::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 	//dbg_msg("duk", "DrawTeeBodyAndFeet( tee = { size: %g, pos_x: %g, pos_y: %g }", Size, PosX, PosY);
 	This()->m_DukEntry.QueueDrawTeeBodyAndFeet(TeeDrawInfo);
 	return 0;
+}
+
+duk_ret_t CDuktape::NativeGetBaseTexture(duk_context* ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	int ImgID = duk_to_int(ctx, 0);
+
+	duk_push_int(ctx, *(int*)&g_pData->m_aImages[ImgID % NUM_IMAGES].m_Id);
+	return 1;
+}
+
+duk_ret_t CDuktape::NativeGetSpriteSubSet(duk_context* ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	int SpriteID = duk_to_int(ctx, 0);
+
+	CDataSprite Spr = g_pData->m_aSprites[SpriteID % NUM_SPRITES];
+	int x = Spr.m_X;
+	int y = Spr.m_Y;
+	int w = Spr.m_W;
+	int h = Spr.m_H;
+	int cx = Spr.m_pSet->m_Gridx;
+	int cy = Spr.m_pSet->m_Gridy;
+
+	float x1 = x/(float)cx;
+	float x2 = (x+w-1/32.0f)/(float)cx;
+	float y1 = y/(float)cy;
+	float y2 = (y+h-1/32.0f)/(float)cy;
+
+	This()->PushObject();
+	This()->ObjectSetMemberFloat("x1", x1);
+	This()->ObjectSetMemberFloat("y1", y1);
+	This()->ObjectSetMemberFloat("x2", x2);
+	This()->ObjectSetMemberFloat("y2", y2);
+	return 1;
 }
 
 duk_ret_t CDuktape::NativeMapSetTileCollisionFlags(duk_context *ctx)
@@ -933,8 +988,11 @@ void CDuktape::ResetDukContext()
 	REGISTER_FUNC(RenderSetColorU32, 1);
 	REGISTER_FUNC(RenderSetColorF4, 4);
 	REGISTER_FUNC(RenderSetTexture, 1);
-	REGISTER_FUNC(SetDrawSpace, 1);
+	REGISTER_FUNC(RenderSetQuadSubSet, 4);
 	REGISTER_FUNC(RenderDrawTeeBodyAndFeet, 1);
+	REGISTER_FUNC(SetDrawSpace, 1);
+	REGISTER_FUNC(GetBaseTexture, 1);
+	REGISTER_FUNC(GetSpriteSubSet, 1);
 	REGISTER_FUNC(MapSetTileCollisionFlags, 3);
 	REGISTER_FUNC(UnpackFloat, 1);
 

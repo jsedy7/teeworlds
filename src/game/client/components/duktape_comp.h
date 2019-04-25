@@ -18,8 +18,11 @@ class CDuktape : public CComponent
 	static duk_ret_t NativeRenderSetColorU32(duk_context *ctx);
 	static duk_ret_t NativeRenderSetColorF4(duk_context *ctx);
 	static duk_ret_t NativeRenderSetTexture(duk_context *ctx);
+	static duk_ret_t NativeRenderSetQuadSubSet(duk_context *ctx);
 	static duk_ret_t NativeSetDrawSpace(duk_context *ctx);
 	static duk_ret_t NativeRenderDrawTeeBodyAndFeet(duk_context *ctx);
+	static duk_ret_t NativeGetBaseTexture(duk_context *ctx);
+	static duk_ret_t NativeGetSpriteSubSet(duk_context *ctx);
 	static duk_ret_t NativeMapSetTileCollisionFlags(duk_context *ctx);
 
 	template<typename IntT>
