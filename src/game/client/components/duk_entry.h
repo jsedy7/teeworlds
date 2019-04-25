@@ -32,6 +32,8 @@ struct CDukEntry
 		float m_Pos[2]; // vec2
 		bool m_IsWalking;
 		bool m_IsGrounded;
+		bool m_GotAirJump;
+		int m_Emote;
 	};
 
 	struct CRenderCmd

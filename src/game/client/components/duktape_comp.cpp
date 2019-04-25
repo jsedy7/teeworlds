@@ -113,6 +113,8 @@ duk_ret_t CDuktape::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 	float PosY = 0;
 	bool IsWalking = false;
 	bool IsGrounded = true;
+	bool GotAirJump = true;
+	int Emote = 0;
 
 	if(duk_get_prop_string(ctx, 0, "size"))
 	{
@@ -144,6 +146,16 @@ duk_ret_t CDuktape::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 		IsGrounded = (bool)duk_to_boolean(ctx, -1);
 		duk_pop(ctx);
 	}
+	if(duk_get_prop_string(ctx, 0, "got_air_jump"))
+	{
+		GotAirJump = (bool)duk_to_boolean(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_string(ctx, 0, "emote"))
+	{
+		Emote = (int)duk_to_int(ctx, -1);
+		duk_pop(ctx);
+	}
 
 	CDukEntry::CTeeDrawInfo TeeDrawInfo;
 	TeeDrawInfo.m_Size = Size;
@@ -152,6 +164,8 @@ duk_ret_t CDuktape::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 	TeeDrawInfo.m_Pos[1] = PosY;
 	TeeDrawInfo.m_IsWalking = IsWalking;
 	TeeDrawInfo.m_IsGrounded = IsGrounded;
+	TeeDrawInfo.m_GotAirJump = GotAirJump;
+	TeeDrawInfo.m_Emote = Emote;
 	//dbg_msg("duk", "DrawTeeBodyAndFeet( tee = { size: %g, pos_x: %g, pos_y: %g }", Size, PosX, PosY);
 	This()->m_DukEntry.QueueDrawTeeBodyAndFeet(TeeDrawInfo);
 	return 0;

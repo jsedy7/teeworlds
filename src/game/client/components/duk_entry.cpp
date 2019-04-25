@@ -9,10 +9,11 @@ void CDukEntry::DrawTeeBodyAndFeet(const CTeeDrawInfo& TeeDrawInfo)
 	State.Set(&g_pData->m_aAnimations[ANIM_BASE], 0);
 	CTeeRenderInfo RenderInfo = GameClient()->m_aClients[GameClient()->m_LocalClientID].m_RenderInfo;
 	RenderInfo.m_Size = TeeDrawInfo.m_Size;
+	RenderInfo.m_GotAirJump = TeeDrawInfo.m_GotAirJump;
 
 	vec2 Direction = direction(TeeDrawInfo.m_Angle);
 	vec2 Pos = vec2(TeeDrawInfo.m_Pos[0], TeeDrawInfo.m_Pos[1]);
-	int Emote = -1;
+	int Emote = TeeDrawInfo.m_Emote;
 
 	const float WalkTimeMagic = 100.0f;
 	float WalkTime =
