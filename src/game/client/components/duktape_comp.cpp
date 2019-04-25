@@ -236,6 +236,29 @@ duk_ret_t CDuktape::NativeGetSpriteSubSet(duk_context* ctx)
 	return 1;
 }
 
+duk_ret_t CDuktape::NativeGetSpriteScale(duk_context* ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	int SpriteID = duk_to_int(ctx, 0);
+
+	CDataSprite Spr = g_pData->m_aSprites[SpriteID % NUM_SPRITES];
+	int x = Spr.m_X;
+	int y = Spr.m_Y;
+	int w = Spr.m_W;
+	int h = Spr.m_H;
+
+	float f = sqrtf(h*h + w*w);
+	float ScaleW = w/f;
+	float ScaleH = h/f;
+
+	This()->PushObject();
+	This()->ObjectSetMemberFloat("w", ScaleW);
+	This()->ObjectSetMemberFloat("h", ScaleH);
+	return 1;
+}
+
 duk_ret_t CDuktape::NativeMapSetTileCollisionFlags(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -1004,6 +1027,7 @@ void CDuktape::ResetDukContext()
 	REGISTER_FUNC(SetDrawSpace, 1);
 	REGISTER_FUNC(GetBaseTexture, 1);
 	REGISTER_FUNC(GetSpriteSubSet, 1);
+	REGISTER_FUNC(GetSpriteScale, 1);
 	REGISTER_FUNC(MapSetTileCollisionFlags, 3);
 	REGISTER_FUNC(UnpackFloat, 1);
 
