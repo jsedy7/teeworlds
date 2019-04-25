@@ -93,6 +93,16 @@ duk_ret_t CDuktape::NativeRenderSetQuadSubSet(duk_context* ctx)
 	return 0;
 }
 
+duk_ret_t CDuktape::NativeRenderSetQuadRotation(duk_context* ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	float Angle = duk_to_number(ctx, 0);
+	This()->m_DukEntry.QueueSetQuadRotation(Angle);
+	return 0;
+}
+
 duk_ret_t CDuktape::NativeSetDrawSpace(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -989,6 +999,7 @@ void CDuktape::ResetDukContext()
 	REGISTER_FUNC(RenderSetColorF4, 4);
 	REGISTER_FUNC(RenderSetTexture, 1);
 	REGISTER_FUNC(RenderSetQuadSubSet, 4);
+	REGISTER_FUNC(RenderSetQuadRotation, 1);
 	REGISTER_FUNC(RenderDrawTeeBodyAndFeet, 1);
 	REGISTER_FUNC(SetDrawSpace, 1);
 	REGISTER_FUNC(GetBaseTexture, 1);

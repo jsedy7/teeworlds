@@ -43,6 +43,7 @@ struct CDukEntry
 			SET_COLOR=0,
 			SET_TEXTURE,
 			SET_QUAD_SUBSET,
+			SET_QUAD_ROTATION,
 			DRAW_QUAD,
 			DRAW_TEE_BODYANDFEET
 		};
@@ -55,6 +56,7 @@ struct CDukEntry
 			float m_Quad[4]; // POD IGraphics::CQuadItem
 			int m_TextureID;
 			float m_QuadSubSet[4];
+			float m_QuadRotation;
 
 			// TODO: this is kinda big...
 			CTeeDrawInfo m_TeeBodyAndFeet;
@@ -69,6 +71,8 @@ struct CDukEntry
 		float m_aCurrentQuadSubSet[4];
 		int m_WantTextureID;
 		int m_CurrentTextureID;
+		float m_WantQuadRotation;
+		float m_CurrentQuadRotation;
 
 		CRenderSpace()
 		{
@@ -78,6 +82,8 @@ struct CDukEntry
 			mem_zero(m_aCurrentQuadSubSet, sizeof(m_aCurrentQuadSubSet));
 			m_WantTextureID = -1; // clear by default
 			m_CurrentTextureID = 0;
+			m_WantQuadRotation = 0; // clear by default
+			m_CurrentQuadRotation = -1;
 		}
 	};
 
@@ -92,6 +98,7 @@ struct CDukEntry
 	void QueueSetColor(const float* pColor);
 	void QueueSetTexture(int TextureID);
 	void QueueSetQuadSubSet(const float* pSubSet);
+	void QueueSetQuadRotation(float Angle);
 	void QueueDrawQuad(IGraphics::CQuadItem Quad);
 	void QueueDrawTeeBodyAndFeet(const CTeeDrawInfo& TeeDrawInfo);
 

@@ -67,6 +67,14 @@ void CDukEntry::QueueSetQuadSubSet(const float* pSubSet)
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
+void CDukEntry::QueueSetQuadRotation(float Angle)
+{
+	CRenderCmd Cmd;
+	Cmd.m_Type = CRenderCmd::SET_QUAD_ROTATION;
+	Cmd.m_QuadRotation = Angle;
+	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
+}
+
 void CDukEntry::QueueDrawQuad(IGraphics::CQuadItem Quad)
 {
 	CRenderCmd Cmd;
@@ -96,6 +104,8 @@ void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 	int& rCurrentTextureID = RenderSpace.m_CurrentTextureID;
 	float* pWantQuadSubSet = RenderSpace.m_aWantQuadSubSet;
 	float* pCurrentQuadSubSet = RenderSpace.m_aCurrentQuadSubSet;
+	float& rWantQuadRotation = RenderSpace.m_WantQuadRotation;
+	float& rCurrenQuadRotation = RenderSpace.m_CurrentQuadRotation;
 
 	for(int i = 0; i < CmdCount; i++)
 	{
@@ -113,6 +123,10 @@ void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 
 			case CRenderCmd::SET_QUAD_SUBSET: {
 				mem_move(pWantQuadSubSet, Cmd.m_QuadSubSet, sizeof(Cmd.m_QuadSubSet));
+			} break;
+
+			case CRenderCmd::SET_QUAD_ROTATION: {
+				rWantQuadRotation = Cmd.m_QuadRotation;
 			} break;
 
 			case CRenderCmd::DRAW_QUAD: {
@@ -143,6 +157,12 @@ void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 				{
 					Graphics()->QuadsSetSubset(pWantQuadSubSet[0], pWantQuadSubSet[1], pWantQuadSubSet[2], pWantQuadSubSet[3]);
 					mem_move(pCurrentQuadSubSet, pWantQuadSubSet, sizeof(float)*4);
+				}
+
+				if(rWantQuadRotation != rCurrenQuadRotation)
+				{
+					Graphics()->QuadsSetRotation(rWantQuadRotation);
+					rCurrenQuadRotation = rWantQuadRotation;
 				}
 
 				Graphics()->QuadsDrawTL((IGraphics::CQuadItem*)&Cmd.m_Quad, 1);
