@@ -3,7 +3,7 @@
 #include <game/client/animstate.h>
 #include <game/client/render.h>
 
-void CDukEntry::DrawTeeBodyAndFeet(const CDukEntry::CTeeDrawInfo& TeeDrawInfo)
+void CDukEntry::DrawTeeBodyAndFeet(const CTeeDrawInfo& TeeDrawInfo)
 {
 	CAnimState State;
 	State.Set(&g_pData->m_aAnimations[ANIM_BASE], 0);
@@ -11,8 +11,27 @@ void CDukEntry::DrawTeeBodyAndFeet(const CDukEntry::CTeeDrawInfo& TeeDrawInfo)
 	RenderInfo.m_Size = TeeDrawInfo.m_Size;
 
 	vec2 Direction = vec2(1, 0);
+	vec2 Pos = vec2(TeeDrawInfo.m_Pos[0], TeeDrawInfo.m_Pos[1]);
 	int Emote = -1;
-	RenderTools()->RenderTee(&State, &RenderInfo, Emote, Direction, *(vec2*)TeeDrawInfo.m_Pos);
+
+	const float WalkTimeMagic = 100.0f;
+	float WalkTime =
+		((Pos.x >= 0)
+			? fmod(Pos.x, WalkTimeMagic)
+			: WalkTimeMagic - fmod(-Pos.x, WalkTimeMagic))
+		/ WalkTimeMagic;
+
+	if(TeeDrawInfo.m_IsWalking)
+		State.Add(&g_pData->m_aAnimations[ANIM_WALK], WalkTime, 1.0f);
+	else
+	{
+		if(TeeDrawInfo.m_IsGrounded)
+			State.Add(&g_pData->m_aAnimations[ANIM_IDLE], 0, 1.0f); // TODO: some sort of time here
+		else
+			State.Add(&g_pData->m_aAnimations[ANIM_INAIR], 0, 1.0f); // TODO: some sort of time here
+	}
+
+	RenderTools()->RenderTee(&State, &RenderInfo, Emote, Direction, Pos);
 }
 
 void CDukEntry::Init(CDuktape* pDuktape)
@@ -31,6 +50,22 @@ void CDukEntry::QueueSetColor(const float* pColor)
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
+void CDukEntry::QueueSetTexture(int TextureID)
+{
+	CRenderCmd Cmd;
+	Cmd.m_Type = CRenderCmd::SET_TEXTURE;
+	Cmd.m_TextureID = TextureID;
+	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
+}
+
+void CDukEntry::QueueSetTextureUV(const float* pUV)
+{
+	CRenderCmd Cmd;
+	Cmd.m_Type = CRenderCmd::SET_TEXTURE_UV;
+	mem_move(Cmd.m_TextureUV, pUV, sizeof(Cmd.m_TextureUV));
+	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
+}
+
 void CDukEntry::QueueDrawQuad(IGraphics::CQuadItem Quad)
 {
 	CRenderCmd Cmd;
@@ -39,42 +74,74 @@ void CDukEntry::QueueDrawQuad(IGraphics::CQuadItem Quad)
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
-void CDukEntry::QueueDrawTeeBodyAndFeet(const CDukEntry::CTeeDrawInfo& TeeDrawInfo)
+void CDukEntry::QueueDrawTeeBodyAndFeet(const CTeeDrawInfo& TeeDrawInfo)
 {
 	CRenderCmd Cmd;
-	Cmd.m_Type = CDukEntry::CRenderCmd::DRAW_TEE;
-	Cmd.m_Tee = TeeDrawInfo;
+	Cmd.m_Type = CDukEntry::CRenderCmd::DRAW_TEE_BODYANDFEET;
+	Cmd.m_TeeBodyAndFeet = TeeDrawInfo;
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
 void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 {
-	Graphics()->TextureClear();
-	Graphics()->QuadsBegin();
-
 	const int CmdCount = m_aRenderCmdList[Space].size();
 	const CRenderCmd* aCmds = m_aRenderCmdList[Space].base_ptr();
 
+	// TODO: merge CRenderSpace and DrawSpace
+	CRenderSpace& RenderSpace = m_aRenderSpace[Space];
+	float* pWantColor = RenderSpace.m_aWantColor;
+	float* pCurrentColor = RenderSpace.m_aCurrentColor;
+	int& rWantTextureID = RenderSpace.m_WantTextureID;
+	int& rCurrentTextureID = RenderSpace.m_CurrentTextureID;
+
 	for(int i = 0; i < CmdCount; i++)
 	{
-		switch(aCmds[i].m_Type)
+		const CRenderCmd& Cmd = aCmds[i];
+
+		switch(Cmd.m_Type)
 		{
 			case CRenderCmd::SET_COLOR: {
-				const float* pColor = aCmds[i].m_Color;
-				Graphics()->SetColor(pColor[0] * pColor[3], pColor[1] * pColor[3], pColor[2] * pColor[3], pColor[3]);
+				mem_move(pWantColor, Cmd.m_Color, sizeof(Cmd.m_Color));
 			} break;
-			case CRenderCmd::DRAW_QUAD:
-				Graphics()->QuadsDrawTL((IGraphics::CQuadItem*)&aCmds[i].m_Quad, 1);
-				break;
-			case CRenderCmd::DRAW_TEE:
 
+			case CRenderCmd::SET_TEXTURE: {
+				rWantTextureID = Cmd.m_TextureID;
+			} break;
+
+			case CRenderCmd::DRAW_QUAD: {
+				if(rWantTextureID != rCurrentTextureID)
+				{
+					if(rWantTextureID < 0)
+						Graphics()->TextureClear();
+					else
+						Graphics()->TextureSet(*(IGraphics::CTextureHandle*)&rWantTextureID);
+					rCurrentTextureID = rWantTextureID;
+				}
+
+				Graphics()->QuadsBegin();
+
+				if(pWantColor[0] != pCurrentColor[0] ||
+				   pWantColor[1] != pCurrentColor[1] ||
+				   pWantColor[2] != pCurrentColor[2] ||
+				   pWantColor[3] != pCurrentColor[3])
+				{
+					Graphics()->SetColor(pWantColor[0] * pWantColor[3], pWantColor[1] * pWantColor[3], pWantColor[2] * pWantColor[3], pWantColor[3]);
+					mem_move(pCurrentColor, pWantColor, sizeof(float)*4);
+				}
+
+				Graphics()->QuadsDrawTL((IGraphics::CQuadItem*)&Cmd.m_Quad, 1);
+				Graphics()->QuadsEnd();
+			} break;
+
+			case CRenderCmd::DRAW_TEE_BODYANDFEET:
+				DrawTeeBodyAndFeet(Cmd.m_TeeBodyAndFeet);
 				break;
+
 			default:
 				dbg_assert(0, "Render command type not handled");
 		}
 	}
 
-	Graphics()->QuadsEnd();
-
 	m_aRenderCmdList[Space].clear();
+	RenderSpace = CRenderSpace();
 }

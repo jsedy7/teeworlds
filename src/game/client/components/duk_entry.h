@@ -29,6 +29,8 @@ struct CDukEntry
 	{
 		float m_Size;
 		float m_Pos[2]; // vec2
+		bool m_IsWalking;
+		bool m_IsGrounded;
 	};
 
 	struct CRenderCmd
@@ -36,8 +38,10 @@ struct CDukEntry
 		enum TypeEnum
 		{
 			SET_COLOR=0,
+			SET_TEXTURE,
+			SET_TEXTURE_UV,
 			DRAW_QUAD,
-			DRAW_TEE
+			DRAW_TEE_BODYANDFEET
 		};
 
 		int m_Type;
@@ -46,22 +50,41 @@ struct CDukEntry
 		{
 			float m_Color[4];
 			float m_Quad[4]; // POD IGraphics::CQuadItem
+			int m_TextureID;
+			float m_TextureUV[8];
 
 			// TODO: this is kinda big...
-			CTeeDrawInfo m_Tee;
+			CTeeDrawInfo m_TeeBodyAndFeet;
 		};
+	};
 
-		CRenderCmd() {}
+	struct CRenderSpace
+	{
+		float m_aWantColor[4];
+		float m_aCurrentColor[4];
+		int m_WantTextureID;
+		int m_CurrentTextureID;
+
+		CRenderSpace()
+		{
+			mem_zero(m_aWantColor, sizeof(m_aWantColor));
+			mem_zero(m_aCurrentColor, sizeof(m_aCurrentColor));
+			m_WantTextureID = -1; // clear by default
+			m_CurrentTextureID = 0;
+		}
 	};
 
 	int m_CurrentDrawSpace;
 	array<CRenderCmd> m_aRenderCmdList[DrawSpace::_COUNT];
+	CRenderSpace m_aRenderSpace[DrawSpace::_COUNT];
 
 	void DrawTeeBodyAndFeet(const CTeeDrawInfo& TeeDrawInfo);
 
 	void Init(CDuktape* pDuktape);
 
 	void QueueSetColor(const float* pColor);
+	void QueueSetTexture(int TextureID);
+	void QueueSetTextureUV(const float* pUV);
 	void QueueDrawQuad(IGraphics::CQuadItem Quad);
 	void QueueDrawTeeBodyAndFeet(const CTeeDrawInfo& TeeDrawInfo);
 
