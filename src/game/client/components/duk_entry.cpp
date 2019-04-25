@@ -10,7 +10,7 @@ void CDukEntry::DrawTeeBodyAndFeet(const CTeeDrawInfo& TeeDrawInfo)
 	CTeeRenderInfo RenderInfo = GameClient()->m_aClients[GameClient()->m_LocalClientID].m_RenderInfo;
 	RenderInfo.m_Size = TeeDrawInfo.m_Size;
 
-	vec2 Direction = vec2(1, 0);
+	vec2 Direction = direction(TeeDrawInfo.m_Angle);
 	vec2 Pos = vec2(TeeDrawInfo.m_Pos[0], TeeDrawInfo.m_Pos[1]);
 	int Emote = -1;
 

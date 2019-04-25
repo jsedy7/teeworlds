@@ -28,6 +28,7 @@ struct CDukEntry
 	struct CTeeDrawInfo
 	{
 		float m_Size;
+		float m_Angle;
 		float m_Pos[2]; // vec2
 		bool m_IsWalking;
 		bool m_IsGrounded;

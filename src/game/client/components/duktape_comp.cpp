@@ -98,6 +98,7 @@ duk_ret_t CDuktape::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 	/*
 	 * tee = {
 	 *	size: float,
+	 *	angle: float,
 	 *	pos_x: float,
 	 *	pos_y: float,
 	 *	is_walking: bool,
@@ -107,6 +108,7 @@ duk_ret_t CDuktape::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 	 */
 
 	float Size = 64;
+	float Angle = 0;
 	float PosX = 0;
 	float PosY = 0;
 	bool IsWalking = false;
@@ -115,6 +117,11 @@ duk_ret_t CDuktape::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 	if(duk_get_prop_string(ctx, 0, "size"))
 	{
 		Size = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_string(ctx, 0, "angle"))
+	{
+		Angle = (float)duk_to_number(ctx, -1);
 		duk_pop(ctx);
 	}
 	if(duk_get_prop_string(ctx, 0, "pos_x"))
@@ -140,6 +147,7 @@ duk_ret_t CDuktape::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 
 	CDukEntry::CTeeDrawInfo TeeDrawInfo;
 	TeeDrawInfo.m_Size = Size;
+	TeeDrawInfo.m_Angle = Angle;
 	TeeDrawInfo.m_Pos[0] = PosX;
 	TeeDrawInfo.m_Pos[1] = PosY;
 	TeeDrawInfo.m_IsWalking = IsWalking;
