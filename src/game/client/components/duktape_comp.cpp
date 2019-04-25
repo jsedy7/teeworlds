@@ -82,6 +82,49 @@ duk_ret_t CDuktape::NativeSetDrawSpace(duk_context *ctx)
 	return 0;
 }
 
+duk_ret_t CDuktape::NativeDrawTeeBodyAndFeet(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	/*
+	 * tee = {
+	 *	"size": float,
+	 *	"pos_x": float,
+	 *	"pos_y": float,
+	 * }
+	 *
+	 */
+
+	float Size = 64;
+	float PosX = 0;
+	float PosY = 0;
+
+	if(duk_get_prop_string(ctx, 0, "size"))
+	{
+		Size = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_string(ctx, 0, "pos_x"))
+	{
+		PosX = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_string(ctx, 0, "pos_y"))
+	{
+		PosY = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+
+	CDukEntry::CTeeDrawInfo TeeDrawInfo;
+	TeeDrawInfo.m_Size = Size;
+	TeeDrawInfo.m_Pos[0] = PosX;
+	TeeDrawInfo.m_Pos[1] = PosY;
+	//dbg_msg("duk", "DrawTeeBodyAndFeet( tee = { size: %g, pos_x: %g, pos_y: %g }", Size, PosX, PosY);
+	This()->m_DukEntry.QueueDrawTeeBodyAndFeet(TeeDrawInfo);
+	return 0;
+}
+
 duk_ret_t CDuktape::NativeMapSetTileCollisionFlags(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -499,7 +542,7 @@ bool CDuktape::ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, con
 	return true;
 }
 
-bool CDuktape::ExtractAndInstallModCompressedBuffer(const CGrowBuffer* pCompBuffer, const SHA256_DIGEST* pModSha256)
+bool CDuktape::ExtractAndInstallModCompressedBuffer(const void* pCompBuff, int CompBuffSize, const SHA256_DIGEST* pModSha256)
 {
 	const bool IsConfigDebug = g_Config.m_Debug;
 
@@ -511,7 +554,7 @@ bool CDuktape::ExtractAndInstallModCompressedBuffer(const CGrowBuffer* pCompBuff
 	fs_makedir(aUserModsPath); // Teeworlds/mods (user storage)
 
 	// TODO: reduce folder hash string length?
-	SHA256_DIGEST Sha256 = sha256(pCompBuffer->m_pData, pCompBuffer->m_Size);
+	SHA256_DIGEST Sha256 = sha256(pCompBuff, CompBuffSize);
 	char aSha256Str[SHA256_MAXSTRSIZE];
 	sha256_str(Sha256, aSha256Str, sizeof(aSha256Str));
 
@@ -530,10 +573,10 @@ bool CDuktape::ExtractAndInstallModCompressedBuffer(const CGrowBuffer* pCompBuff
 
 	// uncompress
 	CGrowBuffer FilePackBuff;
-	FilePackBuff.Grow(pCompBuffer->m_Size * 3);
+	FilePackBuff.Grow(CompBuffSize * 3);
 
 	uLongf DestSize = FilePackBuff.m_Capacity;
-	int UncompRet = uncompress((Bytef*)FilePackBuff.m_pData, &DestSize, (const Bytef*)pCompBuffer->m_pData, pCompBuffer->m_Size);
+	int UncompRet = uncompress((Bytef*)FilePackBuff.m_pData, &DestSize, (const Bytef*)pCompBuff, CompBuffSize);
 	FilePackBuff.m_Size = DestSize;
 
 	int GrowAttempts = 4;
@@ -541,7 +584,7 @@ bool CDuktape::ExtractAndInstallModCompressedBuffer(const CGrowBuffer* pCompBuff
 	{
 		FilePackBuff.Grow(FilePackBuff.m_Capacity * 2);
 		DestSize = FilePackBuff.m_Capacity;
-		UncompRet = uncompress((Bytef*)FilePackBuff.m_pData, &DestSize, (const Bytef*)pCompBuffer->m_pData, pCompBuffer->m_Size);
+		UncompRet = uncompress((Bytef*)FilePackBuff.m_pData, &DestSize, (const Bytef*)pCompBuff, CompBuffSize);
 		FilePackBuff.m_Size = DestSize;
 	}
 
@@ -815,29 +858,15 @@ CDuktape::CDuktape()
 
 void CDuktape::OnInit()
 {
-	m_DukEntry.Init(Graphics());
+	m_DukEntry.Init(this);
 
 	// load ducktape, eval main.js
 	m_pDukContext = duk_create_heap_default();
 
 	// function binding
-	duk_push_c_function(Duk(), NativePrint, 1 /*nargs*/);
+	// special functions
+	duk_push_c_function(Duk(), NativePrint, 1);
 	duk_put_global_string(Duk(), "print");
-
-	duk_push_c_function(Duk(), NativeRenderQuad, 4 /*nargs*/);
-	duk_put_global_string(Duk(), "TwRenderQuad");
-
-	duk_push_c_function(Duk(), NativeRenderSetColorU32, 1);
-	duk_put_global_string(Duk(), "TwRenderSetColorU32");
-
-	duk_push_c_function(Duk(), NativeRenderSetColorF4, 4);
-	duk_put_global_string(Duk(), "TwRenderSetColorF4");
-
-	duk_push_c_function(Duk(), NativeSetDrawSpace, 1);
-	duk_put_global_string(Duk(), "TwSetDrawSpace");
-
-	duk_push_c_function(Duk(), NativeMapSetTileCollisionFlags, 3);
-	duk_put_global_string(Duk(), "TwMapSetTileCollisionFlags");
 
 	duk_push_c_function(Duk(), NativeUnpackInteger<i32>, 1);
 	duk_put_global_string(Duk(), "TwUnpackInt32");
@@ -851,8 +880,19 @@ void CDuktape::OnInit()
 	duk_push_c_function(Duk(), NativeUnpackInteger<u32>, 1);
 	duk_put_global_string(Duk(), "TwUnpackUint32");
 
-	duk_push_c_function(Duk(), NativeUnpackFloat, 1);
-	duk_put_global_string(Duk(), "TwUnpackFloat");
+#define REGISTER_FUNC(fname, arg_count) \
+	duk_push_c_function(Duk(), Native##fname, arg_count);\
+	duk_put_global_string(Duk(), "Tw" #fname)
+
+	REGISTER_FUNC(RenderQuad, 4);
+	REGISTER_FUNC(RenderSetColorU32, 1);
+	REGISTER_FUNC(RenderSetColorF4, 4);
+	REGISTER_FUNC(SetDrawSpace, 1);
+	REGISTER_FUNC(DrawTeeBodyAndFeet, 1);
+	REGISTER_FUNC(MapSetTileCollisionFlags, 3);
+	REGISTER_FUNC(UnpackFloat, 1);
+
+#undef REGISTER_FUNC
 
 	// Teeworlds global object
 	duk_eval_string(Duk(),
@@ -961,12 +1001,7 @@ bool CDuktape::InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int Buffe
 {
 	dbg_assert(!IsModAlreadyInstalled(pModSha256), "mod is already installed, check it before calling this");
 
-	CGrowBuffer Buff;
-	Buff.m_pData = (char*)pBuffer;
-	Buff.m_Size = BufferSize;
-	Buff.m_Capacity = BufferSize;
-
-	bool IsUnzipped = ExtractAndInstallModCompressedBuffer(&Buff, pModSha256);
+	bool IsUnzipped = ExtractAndInstallModCompressedBuffer(pBuffer, BufferSize, pModSha256);
 	dbg_assert(IsUnzipped, "Unzipped to disk: rip in peace");
 
 	if(!IsUnzipped)

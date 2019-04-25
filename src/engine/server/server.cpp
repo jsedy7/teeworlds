@@ -2049,6 +2049,7 @@ bool CServer::CompressDuckModFolder(const char* pModPath)
 	// raw - filedata
 
 	CGrowBuffer FilePackBuff;
+	FilePackBuff.Grow(1024*1024); // 1Mb
 	FilePackBuff.Append("DUCK", 4);
 
 	const int ValidFileCount = aValidFilePathList.size();

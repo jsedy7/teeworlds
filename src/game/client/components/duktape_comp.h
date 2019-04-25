@@ -18,6 +18,7 @@ class CDuktape : public CComponent
 	static duk_ret_t NativeRenderSetColorU32(duk_context *ctx);
 	static duk_ret_t NativeRenderSetColorF4(duk_context *ctx);
 	static duk_ret_t NativeSetDrawSpace(duk_context *ctx);
+	static duk_ret_t NativeDrawTeeBodyAndFeet(duk_context *ctx);
 	static duk_ret_t NativeMapSetTileCollisionFlags(duk_context *ctx);
 
 	template<typename IntT>
@@ -34,7 +35,7 @@ class CDuktape : public CComponent
 
 	bool IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256);
 	bool ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, const SHA256_DIGEST* pModSha256);
-	bool ExtractAndInstallModCompressedBuffer(const CGrowBuffer* pBuffer, const SHA256_DIGEST* pModSha256);
+	bool ExtractAndInstallModCompressedBuffer(const void* pCompBuff, int CompBuffSize, const SHA256_DIGEST* pModSha256);
 	bool LoadJsScriptFile(const char* pJsFilePath);
 	bool LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256);
 
@@ -51,4 +52,6 @@ public:
 	bool StartDuckModHttpDownload(const char* pModUrl, const SHA256_DIGEST* pModSha256);
 	bool TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256);
 	bool InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256);
+
+	friend class CDukEntry;
 };

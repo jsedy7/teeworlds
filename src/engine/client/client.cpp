@@ -1520,12 +1520,9 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 			}
 			else
 			{
-				if(m_DuckModDownloadFileBuff.m_pData)
-					m_DuckModDownloadFileBuff.Grow(1024*1024); // 1Mb
-
 				// grow file buffer to fit data
 				m_DuckModDownloadFileBuff.Clear();
-				m_DuckModDownloadFileBuff.Grow(ZipFileSize);
+				m_DuckModDownloadFileBuff.Grow(max(ZipFileSize, 1024*1024)); // 1Mb
 				m_DuckModDownloadChunk = 0;
 				m_DuckModDownloadChunkNum = ChunkNum;
 				m_DuckModDownloadChunkSize = ChunkSize;

@@ -1,6 +1,13 @@
 #pragma once
 #include <base/system.h>
 
+//#define DBG_MEM_USAGE
+
+#ifdef DBG_MEM_USAGE
+#define Grow(Size) GrowImp(Size, __FILE__, __LINE__)
+#define Append(Buff, Size) AppendImp(Buff, Size, __FILE__, __LINE__)
+#endif
+
 // Simple growable buffer
 // tries to free itself on destruct, but can be freed before
 struct CGrowBuffer
@@ -21,7 +28,11 @@ struct CGrowBuffer
 		Release();
 	}
 
+#ifdef DBG_MEM_USAGE
+	inline void GrowImp(int NewCapacity, const char* file, int line)
+#else
 	inline void Grow(int NewCapacity)
+#endif
 	{
 		if(NewCapacity < m_Capacity)
 			return;
@@ -31,11 +42,19 @@ struct CGrowBuffer
 		mem_move(pNewData, m_pData, m_Size);
 		mem_free(m_pData);
 
+#ifdef DBG_MEM_USAGE
+		dbg_msg("memory", "Grow(%s:%d) %llx : %d -> %llx : %d", file, line, m_pData, m_Capacity, pNewData, NewCapacity);
+#endif
+
 		m_pData = pNewData;
 		m_Capacity = NewCapacity;
 	}
 
+#ifdef DBG_MEM_USAGE
+	inline char* AppendImp(const void* pBuff, int BuffSize, const char* file, int line)
+#else
 	inline char* Append(const void* pBuff, int BuffSize)
+#endif
 	{
 		// grow
 		if(BuffSize + m_Size > m_Capacity)
@@ -44,7 +63,11 @@ struct CGrowBuffer
 			if(BuffSize + m_Size > NewCapacity)
 				NewCapacity = BuffSize + m_Size;
 
+#ifdef DBG_MEM_USAGE
+			GrowImp(NewCapacity, file, line);
+#else
 			Grow(NewCapacity);
+#endif
 		}
 
 		mem_move(m_pData + m_Size, pBuff, BuffSize);
