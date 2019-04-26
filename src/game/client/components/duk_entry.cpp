@@ -3,7 +3,7 @@
 #include <game/client/animstate.h>
 #include <game/client/render.h>
 
-void CDukEntry::DrawTeeBodyAndFeet(const CTeeDrawInfo& TeeDrawInfo)
+void CDukEntry::DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo)
 {
 	CAnimState State;
 	State.Set(&g_pData->m_aAnimations[ANIM_BASE], 0);
@@ -33,6 +33,17 @@ void CDukEntry::DrawTeeBodyAndFeet(const CTeeDrawInfo& TeeDrawInfo)
 	}
 
 	RenderTools()->RenderTee(&State, &RenderInfo, Emote, Direction, Pos);
+}
+
+void CDukEntry::DrawTeeHand(const CDukEntry::CTeeDrawHand& Hand)
+{
+	CTeeRenderInfo RenderInfo = GameClient()->m_aClients[GameClient()->m_LocalClientID].m_RenderInfo;
+	RenderInfo.m_Size = Hand.m_Size;
+	vec2 Pos(Hand.m_Pos[0], Hand.m_Pos[1]);
+	vec2 Offset(Hand.m_Offset[0], Hand.m_Offset[1]);
+	vec2 Dir = direction(Hand.m_AngleDir);
+
+	RenderTools()->RenderTeeHand(&RenderInfo, Pos, Dir, Hand.m_AngleOff, Offset);
 }
 
 void CDukEntry::Init(CDuktape* pDuktape)
@@ -83,11 +94,19 @@ void CDukEntry::QueueDrawQuad(IGraphics::CQuadItem Quad)
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
-void CDukEntry::QueueDrawTeeBodyAndFeet(const CTeeDrawInfo& TeeDrawInfo)
+void CDukEntry::QueueDrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo)
 {
 	CRenderCmd Cmd;
 	Cmd.m_Type = CDukEntry::CRenderCmd::DRAW_TEE_BODYANDFEET;
 	Cmd.m_TeeBodyAndFeet = TeeDrawInfo;
+	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
+}
+
+void CDukEntry::QueueDrawTeeHand(const CDukEntry::CTeeDrawHand& Hand)
+{
+	CRenderCmd Cmd;
+	Cmd.m_Type = CDukEntry::CRenderCmd::DRAW_TEE_HAND;
+	Cmd.m_TeeHand = Hand;
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
@@ -171,6 +190,10 @@ void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 
 			case CRenderCmd::DRAW_TEE_BODYANDFEET:
 				DrawTeeBodyAndFeet(Cmd.m_TeeBodyAndFeet);
+				break;
+
+			case CRenderCmd::DRAW_TEE_HAND:
+				DrawTeeHand(Cmd.m_TeeHand);
 				break;
 
 			default:

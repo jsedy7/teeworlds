@@ -129,6 +129,8 @@ duk_ret_t CDuktape::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 	 *	pos_y: float,
 	 *	is_walking: bool,
 	 *	is_grounded: bool,
+	 *	got_air_jump: bool,
+	 *	emote: int,
 	 * }
 	 *
 	 */
@@ -183,7 +185,7 @@ duk_ret_t CDuktape::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 		duk_pop(ctx);
 	}
 
-	CDukEntry::CTeeDrawInfo TeeDrawInfo;
+	CDukEntry::CTeeDrawBodyAndFeetInfo TeeDrawInfo;
 	TeeDrawInfo.m_Size = Size;
 	TeeDrawInfo.m_Angle = Angle;
 	TeeDrawInfo.m_Pos[0] = PosX;
@@ -194,6 +196,85 @@ duk_ret_t CDuktape::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 	TeeDrawInfo.m_Emote = Emote;
 	//dbg_msg("duk", "DrawTeeBodyAndFeet( tee = { size: %g, pos_x: %g, pos_y: %g }", Size, PosX, PosY);
 	This()->m_DukEntry.QueueDrawTeeBodyAndFeet(TeeDrawInfo);
+	return 0;
+}
+
+duk_ret_t CDuktape::NativeRenderDrawTeeHand(duk_context* ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	/*
+	 * hand = {
+	 *	size: float,
+	 *	angle_dir: float,
+	 *	angle_off: float,
+	 *	pos_x: float,
+	 *	pos_y: float,
+	 *	off_x: float,
+	 *	off_y: float,
+	 * }
+	 *
+	 */
+
+	float Size = 64;
+	float AngleDir = 0;
+	float AngleOff = 0;
+	float PosX = 0;
+	float PosY = 0;
+	float OffX = 0;
+	float OffY = 0;
+	bool IsWalking = false;
+	bool IsGrounded = true;
+	bool GotAirJump = true;
+	int Emote = 0;
+
+	if(duk_get_prop_string(ctx, 0, "size"))
+	{
+		Size = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_string(ctx, 0, "angle_dir"))
+	{
+		AngleDir = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_string(ctx, 0, "angle_off"))
+	{
+		AngleOff = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_string(ctx, 0, "pos_x"))
+	{
+		PosX = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_string(ctx, 0, "pos_y"))
+	{
+		PosY = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_string(ctx, 0, "off_x"))
+	{
+		OffX = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_string(ctx, 0, "off_y"))
+	{
+		OffY = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+
+	CDukEntry::CTeeDrawHand TeeHandInfo;
+	TeeHandInfo.m_Size = Size;
+	TeeHandInfo.m_AngleDir = AngleDir;
+	TeeHandInfo.m_AngleOff = AngleOff;
+	TeeHandInfo.m_Pos[0] = PosX;
+	TeeHandInfo.m_Pos[1] = PosY;
+	TeeHandInfo.m_Offset[0] = OffX;
+	TeeHandInfo.m_Offset[1] = OffY;
+	//dbg_msg("duk", "NativeRenderDrawTeeHand( hand = { size: %g, angle_dir: %g, angle_off: %g, pos_x: %g, pos_y: %g, off_x: %g, off_y: %g }", Size, AngleDir, AngleOff, PosX, PosY, OffX, OffY);
+	This()->m_DukEntry.QueueDrawTeeHand(TeeHandInfo);
 	return 0;
 }
 
@@ -1208,6 +1289,7 @@ void CDuktape::ResetDukContext()
 	REGISTER_FUNC(RenderSetQuadSubSet, 4);
 	REGISTER_FUNC(RenderSetQuadRotation, 1);
 	REGISTER_FUNC(RenderDrawTeeBodyAndFeet, 1);
+	REGISTER_FUNC(RenderDrawTeeHand, 1);
 	REGISTER_FUNC(SetDrawSpace, 1);
 	REGISTER_FUNC(GetBaseTexture, 1);
 	REGISTER_FUNC(GetSpriteSubSet, 1);

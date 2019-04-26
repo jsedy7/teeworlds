@@ -25,7 +25,7 @@ struct CDukEntry
 		};
 	};
 
-	struct CTeeDrawInfo
+	struct CTeeDrawBodyAndFeetInfo
 	{
 		float m_Size;
 		float m_Angle;
@@ -34,6 +34,15 @@ struct CDukEntry
 		bool m_IsGrounded;
 		bool m_GotAirJump;
 		int m_Emote;
+	};
+
+	struct CTeeDrawHand
+	{
+		float m_Size;
+		float m_AngleDir;
+		float m_AngleOff;
+		float m_Pos[2]; // vec2
+		float m_Offset[2]; // vec2
 	};
 
 	struct CRenderCmd
@@ -45,7 +54,8 @@ struct CDukEntry
 			SET_QUAD_SUBSET,
 			SET_QUAD_ROTATION,
 			DRAW_QUAD,
-			DRAW_TEE_BODYANDFEET
+			DRAW_TEE_BODYANDFEET,
+			DRAW_TEE_HAND,
 		};
 
 		int m_Type;
@@ -59,7 +69,8 @@ struct CDukEntry
 			float m_QuadRotation;
 
 			// TODO: this is kinda big...
-			CTeeDrawInfo m_TeeBodyAndFeet;
+			CTeeDrawBodyAndFeetInfo m_TeeBodyAndFeet;
+			CTeeDrawHand m_TeeHand;
 		};
 	};
 
@@ -91,7 +102,8 @@ struct CDukEntry
 	array<CRenderCmd> m_aRenderCmdList[DrawSpace::_COUNT];
 	CRenderSpace m_aRenderSpace[DrawSpace::_COUNT];
 
-	void DrawTeeBodyAndFeet(const CTeeDrawInfo& TeeDrawInfo);
+	void DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo);
+	void DrawTeeHand(const CTeeDrawHand& Hand);
 
 	void Init(CDuktape* pDuktape);
 
@@ -100,7 +112,8 @@ struct CDukEntry
 	void QueueSetQuadSubSet(const float* pSubSet);
 	void QueueSetQuadRotation(float Angle);
 	void QueueDrawQuad(IGraphics::CQuadItem Quad);
-	void QueueDrawTeeBodyAndFeet(const CTeeDrawInfo& TeeDrawInfo);
+	void QueueDrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo);
+	void QueueDrawTeeHand(const CTeeDrawHand& Hand);
 
 	void RenderDrawSpace(DrawSpace::Enum Space);
 };

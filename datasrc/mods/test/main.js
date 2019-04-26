@@ -77,7 +77,6 @@ function DrawTeeWeapon(weapId, x, y)
 
     var weapX = x - quadW / 2 + (dir.x * spec.offset_x);
     var weapY = y - quadH / 2 + (dir.y * spec.offset_x) + dir.y * spec.offset_y;
-    printObj(dir);
 
     TwRenderSetColorF4(1, 1, 1, 1);
     TwRenderSetTexture(spec.sprite_body_texid);
@@ -88,6 +87,31 @@ function DrawTeeWeapon(weapId, x, y)
 
     TwRenderSetQuadRotation(angle);
     TwRenderQuad(weapX, weapY, quadW, quadH);
+
+    // tee hand
+    var hand = {
+        size: 64,
+        angle_dir: angle,
+        angle_off: -(Math.PI/2),
+        pos_x: weapX + quadW/2,
+        pos_y: weapY + quadH/2,
+    };
+
+    if(weapId == 1) {
+        hand.off_x = -15;
+        hand.off_y = 4;
+        TwRenderDrawTeeHand(hand);
+    }
+    else if(weapId == 2) {
+        hand.off_x = -5;
+        hand.off_y = 4;
+        TwRenderDrawTeeHand(hand);
+    }
+    else if(weapId == 3) {
+        hand.off_x = -4;
+        hand.off_y = 7;
+        TwRenderDrawTeeHand(hand);
+    }
 }
 
 function OnUpdate(clientLocalTime)
@@ -104,7 +128,7 @@ function OnUpdate(clientLocalTime)
         pos_x: 150/* + 500.0 * (Math.sin(clientLocalTime) * 0.5 + 0.5)*/,
         pos_y: 305,
         is_walking: false,
-        is_grounded: true,
+        is_grounded: false,
         got_air_jump: true,
         emote: 0/*Math.floor(clientLocalTime) % 6*/
     }
