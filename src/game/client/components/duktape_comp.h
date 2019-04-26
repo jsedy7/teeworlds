@@ -25,6 +25,7 @@ class CDuktape : public CComponent
 	static duk_ret_t NativeGetBaseTexture(duk_context *ctx);
 	static duk_ret_t NativeGetSpriteSubSet(duk_context *ctx);
 	static duk_ret_t NativeGetSpriteScale(duk_context *ctx);
+	static duk_ret_t NativeGetWeaponSpec(duk_context *ctx);
 	static duk_ret_t NativeMapSetTileCollisionFlags(duk_context *ctx);
 
 	template<typename IntT>
@@ -38,6 +39,7 @@ class CDuktape : public CComponent
 	void ObjectSetMemberInt(const char* MemberName, int Value);
 	void ObjectSetMemberFloat(const char* MemberName, float Value);
 	void ObjectSetMemberRawBuffer(const char* MemberName, const void* pRawBuffer, int RawBufferSize);
+	void ObjectSetMember(const char* MemberName);
 
 	bool IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256);
 	bool ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, const SHA256_DIGEST* pModSha256);

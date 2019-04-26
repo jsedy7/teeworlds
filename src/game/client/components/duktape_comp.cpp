@@ -259,6 +259,54 @@ duk_ret_t CDuktape::NativeGetSpriteScale(duk_context* ctx)
 	return 1;
 }
 
+duk_ret_t CDuktape::NativeGetWeaponSpec(duk_context* ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	int WeaponID = clamp((int)duk_to_int(ctx, 0), 0, NUM_WEAPONS-1);
+	const CDataWeaponspec BaseSpec = g_pData->m_Weapons.m_aId[WeaponID];
+
+	This()->PushObject();
+	This()->ObjectSetMemberInt("texid_sprite_body", *(int*)&BaseSpec.m_pSpriteBody->m_pSet->m_pImage->m_Id);
+	This()->ObjectSetMemberInt("texid_sprite_cursor", *(int*)&BaseSpec.m_pSpriteCursor->m_pSet->m_pImage->m_Id);
+	This()->ObjectSetMemberInt("texid_sprite_proj", *(int*)&BaseSpec.m_pSpriteProj->m_pSet->m_pImage->m_Id);
+	This()->ObjectSetMemberInt("num_sprite_muzzles", BaseSpec.m_NumSpriteMuzzles);
+
+
+	// sprite muzzles array
+	duk_idx_t ArrayIdx;
+	ArrayIdx = duk_push_array(ctx);
+
+	for(int i = 0; i < BaseSpec.m_NumSpriteMuzzles; i++)
+	{
+		duk_push_int(ctx, *(int*)&BaseSpec.m_aSpriteMuzzles[i]->m_pSet->m_pImage->m_Id);
+		duk_put_prop_index(ctx, ArrayIdx, i);
+	}
+
+	This()->ObjectSetMember("texid_sprite_muzzles"); // should pop array
+
+
+	This()->ObjectSetMemberInt("visual_size", BaseSpec.m_VisualSize);
+	This()->ObjectSetMemberInt("fire_delay", BaseSpec.m_Firedelay);
+	This()->ObjectSetMemberInt("max_ammo", BaseSpec.m_Maxammo);
+	This()->ObjectSetMemberInt("ammo_regen_time", BaseSpec.m_Ammoregentime);
+	This()->ObjectSetMemberInt("damage", BaseSpec.m_Damage);
+
+	This()->ObjectSetMemberFloat("offset_x", BaseSpec.m_Offsetx);
+	This()->ObjectSetMemberFloat("offset_y", BaseSpec.m_Offsety);
+	This()->ObjectSetMemberFloat("muzzle_offset_x", BaseSpec.m_Muzzleoffsetx);
+	This()->ObjectSetMemberFloat("muzzle_offset_y", BaseSpec.m_Muzzleoffsety);
+	This()->ObjectSetMemberFloat("muzzle_duration", BaseSpec.m_Muzzleduration);
+
+	/*switch(WeaponID)
+	{
+		case WEAPON_GUN:
+
+	}*/
+	return 1;
+}
+
 duk_ret_t CDuktape::NativeMapSetTileCollisionFlags(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -368,6 +416,11 @@ void CDuktape::ObjectSetMemberRawBuffer(const char* MemberName, const void* pRaw
 
 	int rc = duk_put_prop(Duk(), m_CurrentPushedObjID);
 	dbg_assert(rc == 1, "could not put raw buffer prop");
+}
+
+void CDuktape::ObjectSetMember(const char* MemberName)
+{
+	duk_put_prop_string(Duk(), m_CurrentPushedObjID, MemberName);
 }
 
 bool CDuktape::IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256)
@@ -1028,6 +1081,7 @@ void CDuktape::ResetDukContext()
 	REGISTER_FUNC(GetBaseTexture, 1);
 	REGISTER_FUNC(GetSpriteSubSet, 1);
 	REGISTER_FUNC(GetSpriteScale, 1);
+	REGISTER_FUNC(GetWeaponSpec, 1);
 	REGISTER_FUNC(MapSetTileCollisionFlags, 3);
 	REGISTER_FUNC(UnpackFloat, 1);
 
