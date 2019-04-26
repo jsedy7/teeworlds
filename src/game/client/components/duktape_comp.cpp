@@ -435,6 +435,22 @@ duk_ret_t CDuktape::NativeMapSetTileCollisionFlags(duk_context *ctx)
 	return 0;
 }
 
+duk_ret_t CDuktape::NativeDirectionFromAngle(duk_context* ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	float Angle = (float)duk_to_number(ctx, 0);
+	vec2 Dir = direction(Angle);
+
+	int DirObjIdx = duk_push_object(ctx);
+		duk_push_number(ctx, Dir.x);
+		duk_put_prop_string(ctx, DirObjIdx, "x");
+		duk_push_number(ctx, Dir.y);
+		duk_put_prop_string(ctx, DirObjIdx, "y");
+	return 1;
+}
+
 template<typename IntT>
 duk_ret_t CDuktape::NativeUnpackInteger(duk_context *ctx)
 {
@@ -1183,6 +1199,8 @@ void CDuktape::ResetDukContext()
 	duk_push_c_function(Duk(), Native##fname, arg_count);\
 	duk_put_global_string(Duk(), "Tw" #fname)
 
+	REGISTER_FUNC(UnpackFloat, 1);
+
 	REGISTER_FUNC(RenderQuad, 4);
 	REGISTER_FUNC(RenderSetColorU32, 1);
 	REGISTER_FUNC(RenderSetColorF4, 4);
@@ -1196,7 +1214,7 @@ void CDuktape::ResetDukContext()
 	REGISTER_FUNC(GetSpriteScale, 1);
 	REGISTER_FUNC(GetWeaponSpec, 1);
 	REGISTER_FUNC(MapSetTileCollisionFlags, 3);
-	REGISTER_FUNC(UnpackFloat, 1);
+	REGISTER_FUNC(DirectionFromAngle, 1);
 
 #undef REGISTER_FUNC
 
