@@ -208,14 +208,8 @@ duk_ret_t CDuktape::NativeGetBaseTexture(duk_context* ctx)
 	return 1;
 }
 
-duk_ret_t CDuktape::NativeGetSpriteSubSet(duk_context* ctx)
+static void GetSpriteSubSet(const CDataSprite& Spr, float* pOutSubSet)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
-
-	int SpriteID = duk_to_int(ctx, 0);
-
-	CDataSprite Spr = g_pData->m_aSprites[SpriteID % NUM_SPRITES];
 	int x = Spr.m_X;
 	int y = Spr.m_Y;
 	int w = Spr.m_W;
@@ -228,11 +222,28 @@ duk_ret_t CDuktape::NativeGetSpriteSubSet(duk_context* ctx)
 	float y1 = y/(float)cy;
 	float y2 = (y+h-1/32.0f)/(float)cy;
 
+	pOutSubSet[0] = x1;
+	pOutSubSet[1] = y1;
+	pOutSubSet[2] = x2;
+	pOutSubSet[3] = y2;
+}
+
+duk_ret_t CDuktape::NativeGetSpriteSubSet(duk_context* ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	int SpriteID = duk_to_int(ctx, 0);
+
+	CDataSprite Spr = g_pData->m_aSprites[SpriteID % NUM_SPRITES];
+	float aSubSet[4];
+	GetSpriteSubSet(Spr, aSubSet);
+
 	This()->PushObject();
-	This()->ObjectSetMemberFloat("x1", x1);
-	This()->ObjectSetMemberFloat("y1", y1);
-	This()->ObjectSetMemberFloat("x2", x2);
-	This()->ObjectSetMemberFloat("y2", y2);
+	This()->ObjectSetMemberFloat("x1", aSubSet[0]);
+	This()->ObjectSetMemberFloat("y1", aSubSet[1]);
+	This()->ObjectSetMemberFloat("x2", aSubSet[2]);
+	This()->ObjectSetMemberFloat("y2", aSubSet[3]);
 	return 1;
 }
 
@@ -268,9 +279,110 @@ duk_ret_t CDuktape::NativeGetWeaponSpec(duk_context* ctx)
 	const CDataWeaponspec BaseSpec = g_pData->m_Weapons.m_aId[WeaponID];
 
 	This()->PushObject();
-	This()->ObjectSetMemberInt("texid_sprite_body", *(int*)&BaseSpec.m_pSpriteBody->m_pSet->m_pImage->m_Id);
-	This()->ObjectSetMemberInt("texid_sprite_cursor", *(int*)&BaseSpec.m_pSpriteCursor->m_pSet->m_pImage->m_Id);
-	This()->ObjectSetMemberInt("texid_sprite_proj", *(int*)&BaseSpec.m_pSpriteProj->m_pSet->m_pImage->m_Id);
+	This()->ObjectSetMemberInt("sprite_body_texid", *(int*)&BaseSpec.m_pSpriteBody->m_pSet->m_pImage->m_Id);
+
+	/*
+	 * sprite_***_subset = {
+	 *	x1: float,
+	 *	y1: float,
+	 *	x2: float,
+	 *	y2: float,
+	 * }
+	 *
+	 * sprite_***_scale = {
+	 *	w: float,
+	 *	h: float,
+	 * }
+	 */
+
+	{
+	float aSubSet[4];
+	GetSpriteSubSet(*BaseSpec.m_pSpriteBody, aSubSet);
+	int SpriteSubsetObjIdx = duk_push_object(ctx);
+		duk_push_number(ctx, aSubSet[0]);
+		duk_put_prop_string(ctx, SpriteSubsetObjIdx, "x1");
+		duk_push_number(ctx, aSubSet[1]);
+		duk_put_prop_string(ctx, SpriteSubsetObjIdx, "y1");
+		duk_push_number(ctx, aSubSet[2]);
+		duk_put_prop_string(ctx, SpriteSubsetObjIdx, "x2");
+		duk_push_number(ctx, aSubSet[3]);
+		duk_put_prop_string(ctx, SpriteSubsetObjIdx, "y2");
+	This()->ObjectSetMember("sprite_body_subset"); // should pop obj
+
+	int w = BaseSpec.m_pSpriteBody->m_W;
+	int h = BaseSpec.m_pSpriteBody->m_H;
+	float f = sqrtf(h*h + w*w);
+	float ScaleW = w/f;
+	float ScaleH = h/f;
+
+	int SpriteScaleObjIdx = duk_push_object(ctx);
+		duk_push_number(ctx, ScaleW);
+		duk_put_prop_string(ctx, SpriteScaleObjIdx, "w");
+		duk_push_number(ctx, ScaleH);
+		duk_put_prop_string(ctx, SpriteScaleObjIdx, "h");
+	This()->ObjectSetMember("sprite_body_scale"); // should pop obj
+	}
+
+	This()->ObjectSetMemberInt("sprite_cursor_texid", *(int*)&BaseSpec.m_pSpriteCursor->m_pSet->m_pImage->m_Id);
+
+	{
+	float aSubSet[4];
+	GetSpriteSubSet(*BaseSpec.m_pSpriteCursor, aSubSet);
+	int SpriteSubsetObjIdx = duk_push_object(ctx);
+		duk_push_number(ctx, aSubSet[0]);
+		duk_put_prop_string(ctx, SpriteSubsetObjIdx, "x1");
+		duk_push_number(ctx, aSubSet[1]);
+		duk_put_prop_string(ctx, SpriteSubsetObjIdx, "y1");
+		duk_push_number(ctx, aSubSet[2]);
+		duk_put_prop_string(ctx, SpriteSubsetObjIdx, "x2");
+		duk_push_number(ctx, aSubSet[3]);
+		duk_put_prop_string(ctx, SpriteSubsetObjIdx, "y2");
+	This()->ObjectSetMember("sprite_cursor_subset"); // should pop obj
+
+	int w = BaseSpec.m_pSpriteCursor->m_W;
+	int h = BaseSpec.m_pSpriteCursor->m_H;
+	float f = sqrtf(h*h + w*w);
+	float ScaleW = w/f;
+	float ScaleH = h/f;
+
+	int SpriteScaleObjIdx = duk_push_object(ctx);
+		duk_push_number(ctx, ScaleW);
+		duk_put_prop_string(ctx, SpriteScaleObjIdx, "w");
+		duk_push_number(ctx, ScaleH);
+		duk_put_prop_string(ctx, SpriteScaleObjIdx, "h");
+	This()->ObjectSetMember("sprite_cursor_scale"); // should pop obj
+	}
+
+	This()->ObjectSetMemberInt("sprite_proj_texid", *(int*)&BaseSpec.m_pSpriteProj->m_pSet->m_pImage->m_Id);
+
+	{
+	float aSubSet[4];
+	GetSpriteSubSet(*BaseSpec.m_pSpriteProj, aSubSet);
+	int SpriteSubsetObjIdx = duk_push_object(ctx);
+		duk_push_number(ctx, aSubSet[0]);
+		duk_put_prop_string(ctx, SpriteSubsetObjIdx, "x1");
+		duk_push_number(ctx, aSubSet[1]);
+		duk_put_prop_string(ctx, SpriteSubsetObjIdx, "y1");
+		duk_push_number(ctx, aSubSet[2]);
+		duk_put_prop_string(ctx, SpriteSubsetObjIdx, "x2");
+		duk_push_number(ctx, aSubSet[3]);
+		duk_put_prop_string(ctx, SpriteSubsetObjIdx, "y2");
+	This()->ObjectSetMember("sprite_proj_subset"); // should pop obj
+
+	int w = BaseSpec.m_pSpriteProj->m_W;
+	int h = BaseSpec.m_pSpriteProj->m_H;
+	float f = sqrtf(h*h + w*w);
+	float ScaleW = w/f;
+	float ScaleH = h/f;
+
+	int SpriteScaleObjIdx = duk_push_object(ctx);
+		duk_push_number(ctx, ScaleW);
+		duk_put_prop_string(ctx, SpriteScaleObjIdx, "w");
+		duk_push_number(ctx, ScaleH);
+		duk_put_prop_string(ctx, SpriteScaleObjIdx, "h");
+	This()->ObjectSetMember("sprite_proj_scale"); // should pop obj
+	}
+
 	This()->ObjectSetMemberInt("num_sprite_muzzles", BaseSpec.m_NumSpriteMuzzles);
 
 
@@ -284,7 +396,7 @@ duk_ret_t CDuktape::NativeGetWeaponSpec(duk_context* ctx)
 		duk_put_prop_index(ctx, ArrayIdx, i);
 	}
 
-	This()->ObjectSetMember("texid_sprite_muzzles"); // should pop array
+	This()->ObjectSetMember("sprite_muzzles_texids"); // should pop array
 
 
 	This()->ObjectSetMemberInt("visual_size", BaseSpec.m_VisualSize);
@@ -299,6 +411,7 @@ duk_ret_t CDuktape::NativeGetWeaponSpec(duk_context* ctx)
 	This()->ObjectSetMemberFloat("muzzle_offset_y", BaseSpec.m_Muzzleoffsety);
 	This()->ObjectSetMemberFloat("muzzle_duration", BaseSpec.m_Muzzleduration);
 
+	// TODO: extended weapon spec
 	/*switch(WeaponID)
 	{
 		case WEAPON_GUN:

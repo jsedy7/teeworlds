@@ -50,7 +50,8 @@ public:
 	{
 		srand(time_get());
 		dbg_logger_stdout();
-		dbg_logger_debugger();
+		//dbg_logger_debugger();
+		// TODO: LordSk: reenable this
 
 		//
 		dbg_msg("engine", "running on %s-%s-%s", CONF_FAMILY_STRING, CONF_PLATFORM_STRING, CONF_ARCH_STRING);
