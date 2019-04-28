@@ -60,6 +60,8 @@ public:
 	virtual void OnShutdown();
 	virtual void OnRender();
 	virtual void OnMessage(int Msg, void *pRawMsg);
+	virtual void OnStateChange(int NewState, int OldState);
+	void OnModReset();
 
 	bool StartDuckModHttpDownload(const char* pModUrl, const SHA256_DIGEST* pModSha256);
 	bool TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256);

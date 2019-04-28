@@ -2,6 +2,9 @@
 #include "duktape_comp.h"
 #include <game/client/animstate.h>
 #include <game/client/render.h>
+#include <engine/external/pnglite/pnglite.h>
+#include <engine/storage.h>
+#include <base/hash.h>
 
 void CDukEntry::DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo)
 {
@@ -52,6 +55,16 @@ void CDukEntry::Init(CDuktape* pDuktape)
 	m_pRenderTools = pDuktape->RenderTools();
 	m_pGameClient = pDuktape->m_pClient;
 	m_CurrentDrawSpace = 0;
+}
+
+void CDukEntry::Reset()
+{
+	for(int i = 0 ; i < m_aTextures.size(); i++)
+	{
+		Graphics()->UnloadTexture(&m_aTextures[i].m_Handle);
+	}
+
+	m_aTextures.clear();
 }
 
 void CDukEntry::QueueSetColor(const float* pColor)
@@ -203,4 +216,13 @@ void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 
 	m_aRenderCmdList[Space].clear();
 	RenderSpace = CRenderSpace();
+}
+
+bool CDukEntry::LoadTexture(const char *pTexturePath, const char* pTextureName)
+{
+	IGraphics::CTextureHandle Handle = Graphics()->LoadTexture(pTexturePath, IStorage::TYPE_SAVE, CImageInfo::FORMAT_AUTO, 0);
+	uint32_t Hash = hash_fnv1a(pTextureName, str_length(pTextureName));
+	CTextureHashPair Pair = { Hash, Handle };
+	m_aTextures.add(Pair);
+	return Handle.IsValid();
 }

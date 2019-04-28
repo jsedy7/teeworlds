@@ -1,4 +1,5 @@
 #pragma once
+#include <stdint.h>
 #include <base/tl/array.h>
 #include <engine/graphics.h>
 #include <generated/protocol.h>
@@ -102,10 +103,19 @@ struct CDukEntry
 	array<CRenderCmd> m_aRenderCmdList[DrawSpace::_COUNT];
 	CRenderSpace m_aRenderSpace[DrawSpace::_COUNT];
 
+	struct CTextureHashPair
+	{
+		uint32_t m_Hash;
+		IGraphics::CTextureHandle m_Handle;
+	};
+
+	array<CTextureHashPair> m_aTextures;
+
 	void DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo);
 	void DrawTeeHand(const CTeeDrawHand& Hand);
 
 	void Init(CDuktape* pDuktape);
+	void Reset();
 
 	void QueueSetColor(const float* pColor);
 	void QueueSetTexture(int TextureID);
@@ -116,4 +126,6 @@ struct CDukEntry
 	void QueueDrawTeeHand(const CTeeDrawHand& Hand);
 
 	void RenderDrawSpace(DrawSpace::Enum Space);
+
+	bool LoadTexture(const char* pTexturePath, const char *pTextureName);
 };

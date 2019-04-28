@@ -1220,9 +1220,11 @@ bool CDuktape::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
 	char aModRootPath[512];
 	char aSha256Str[SHA256_MAXSTRSIZE];
 	Storage()->GetCompletePath(IStorage::TYPE_SAVE, "mods", aModRootPath, sizeof(aModRootPath));
+	const int SaveDirPathLen = str_length(aModRootPath)-4;
 	sha256_str(*pModSha256, aSha256Str, sizeof(aSha256Str));
 	str_append(aModRootPath, "/", sizeof(aModRootPath));
 	str_append(aModRootPath, aSha256Str, sizeof(aModRootPath));
+	const int ModRootDirLen = str_length(aModRootPath);
 
 	// get files recursively on disk
 	array<CPath> aFilePathList;
@@ -1232,8 +1234,8 @@ bool CDuktape::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
 
 	fs_listdir(aModRootPath, ListDirCallback, 1, &FileSearch);
 
-	// reset the duk context
-	ResetDukContext();
+	// reset mod
+	OnModReset();
 
 	const int FileCount = aFilePathList.size();
 	const CPath* pFilePaths = aFilePathList.base_ptr();
@@ -1244,6 +1246,14 @@ bool CDuktape::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
 		{
 			const bool Loaded = LoadJsScriptFile(pFilePaths[i].m_aBuff);
 			dbg_assert(Loaded, "error loading js script");
+			// TODO: show error instead of breaking
+		}
+		else if(str_ends_with(pFilePaths[i].m_aBuff, ".png"))
+		{
+			const char* pTextureName = pFilePaths[i].m_aBuff+ModRootDirLen+1;
+			const bool Loaded = m_DukEntry.LoadTexture(pFilePaths[i].m_aBuff+SaveDirPathLen, pTextureName);
+			dbg_assert(Loaded, "error loading png image");
+			dbg_msg("duck", "image loaded '%s' (%x)", pTextureName, m_DukEntry.m_aTextures[m_DukEntry.m_aTextures.size()-1].m_Hash);
 			// TODO: show error instead of breaking
 		}
 	}
@@ -1380,6 +1390,20 @@ void CDuktape::OnMessage(int Msg, void* pRawMsg)
 		}
 		duk_pop(Duk());
 	}
+}
+
+void CDuktape::OnStateChange(int NewState, int OldState)
+{
+	if(NewState == IClient::STATE_OFFLINE)
+	{
+		OnModReset();
+	}
+}
+
+void CDuktape::OnModReset()
+{
+	ResetDukContext();
+	m_DukEntry.Reset();
 }
 
 bool CDuktape::StartDuckModHttpDownload(const char* pModUrl, const SHA256_DIGEST* pModSha256)
