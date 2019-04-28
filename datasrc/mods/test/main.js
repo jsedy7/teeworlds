@@ -65,18 +65,21 @@ function OnLoad()
     printObj(TwGetWeaponSpec(1));
 }
 
-function DrawTeeWeapon(weapId, x, y)
+function DrawTeeWeapon(weapId, x, y, teeSize)
 {
     var angle = lastClientlocalTime;
     var dir = TwDirectionFromAngle(angle);
     var spec = TwGetWeaponSpec(weapId);
     var ss = spec.sprite_body_subset;
     var scale = spec.sprite_body_scale;
-    var quadW = scale.w * spec.visual_size;
-    var quadH = scale.h * spec.visual_size;
+    var teeScale = teeSize/64;
+    var quadW = scale.w * spec.visual_size * teeScale;
+    var quadH = scale.h * spec.visual_size * teeScale;
+    var offX = spec.offset_x * teeScale
+    var offY = spec.offset_y * teeScale
 
-    var weapX = x - quadW / 2 + (dir.x * spec.offset_x);
-    var weapY = y - quadH / 2 + (dir.y * spec.offset_x) + dir.y * spec.offset_y;
+    var weapX = x - quadW / 2 + (dir.x * offX);
+    var weapY = y - quadH / 2 + (dir.y * offX) + dir.y * offY;
 
     TwRenderSetColorF4(1, 1, 1, 1);
     TwRenderSetTexture(spec.sprite_body_texid);
@@ -90,7 +93,7 @@ function DrawTeeWeapon(weapId, x, y)
 
     // tee hand
     var hand = {
-        size: 64,
+        size: teeSize,
         angle_dir: angle,
         angle_off: -(Math.PI/2),
         pos_x: weapX + quadW/2,
@@ -98,18 +101,18 @@ function DrawTeeWeapon(weapId, x, y)
     };
 
     if(weapId == 1) {
-        hand.off_x = -15;
-        hand.off_y = 4;
+        hand.off_x = -15 * teeScale;
+        hand.off_y = 4 * teeScale;
         TwRenderDrawTeeHand(hand);
     }
     else if(weapId == 2) {
-        hand.off_x = -5;
-        hand.off_y = 4;
+        hand.off_x = -5 * teeScale;
+        hand.off_y = 4 * teeScale;
         TwRenderDrawTeeHand(hand);
     }
     else if(weapId == 3) {
-        hand.off_x = -4;
-        hand.off_y = 7;
+        hand.off_x = -4 * teeScale;
+        hand.off_y = 7 * teeScale;
         TwRenderDrawTeeHand(hand);
     }
 }
@@ -123,17 +126,17 @@ function OnUpdate(clientLocalTime)
     TwSetDrawSpace(Teeworlds.DRAW_SPACE_GAME);
 
     var tee = {
-        size: 64,
+        size: 128,
         angle: clientLocalTime,
-        pos_x: 150/* + 500.0 * (Math.sin(clientLocalTime) * 0.5 + 0.5)*/,
+        pos_x: 150 + 500.0 * (Math.sin(clientLocalTime) * 0.5 + 0.5),
         pos_y: 305,
         is_walking: false,
         is_grounded: false,
         got_air_jump: true,
-        emote: 0/*Math.floor(clientLocalTime) % 6*/
+        emote: Math.floor(clientLocalTime) % 6
     }
     
-    DrawTeeWeapon(Math.floor(clientLocalTime) % 6, tee.pos_x, tee.pos_y);
+    DrawTeeWeapon(Math.floor(clientLocalTime) % 6, tee.pos_x, tee.pos_y, tee.size);
     TwRenderDrawTeeBodyAndFeet(tee);
 }
 
