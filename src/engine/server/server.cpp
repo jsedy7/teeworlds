@@ -875,11 +875,11 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 					if(IsDuckDevMode())
 					{
 						// TODO: oh god, do this elsewhere / cache it
-						if(CompressDuckModFolder(g_Config.m_SvDuckDevModPath))
+						if(CompressDuckModFolder(g_Config.m_SvDuckDevModDir))
 							SendDuckModChunks(ClientID);
 						else
 						{
-							dbg_msg("server", "failed to load and compress duck mod. path='%s'", g_Config.m_SvDuckDevModPath);
+							dbg_msg("duck", "[dev mode] failed to load and compress duck mod (sv_duck_dev_mod_dir). dir='%s'", g_Config.m_SvDuckDevModDir);
 							m_NetServer.Drop(ClientID, "Server local mod is invalid");
 							return;
 						}
@@ -1379,15 +1379,15 @@ int CServer::Run()
 	// load duck mod
 	if(IsDuckDevMode())
 	{
-		if(!CompressDuckModFolder(g_Config.m_SvDuckDevModPath))
+		if(!CompressDuckModFolder(g_Config.m_SvDuckDevModDir))
 		{
-			dbg_msg("server", "failed to load and compress duck mod. path='%s'", g_Config.m_SvDuckDevModPath);
+			dbg_msg("duck", "[dev mode] failed to load and compress duck mod (sv_duck_dev_mod_dir). dir='%s'", g_Config.m_SvDuckDevModDir);
 			return -1;
 		}
 	}
 	else if(!LoadDuckModZipFile(g_Config.m_SvDuckModPath))
 	{
-		dbg_msg("server", "failed to load duck mod. path='%s'", g_Config.m_SvDuckModPath);
+		dbg_msg("duck", "[release mode] failed to load duck mod (sv_duck_mod_path). path='%s'", g_Config.m_SvDuckModPath);
 		return -1;
 	}
 
