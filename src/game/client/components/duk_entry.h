@@ -128,4 +128,5 @@ struct CDukEntry
 	void RenderDrawSpace(DrawSpace::Enum Space);
 
 	bool LoadTexture(const char* pTexturePath, const char *pTextureName);
+	IGraphics::CTextureHandle GetTexture(const char* pTextureName);
 };

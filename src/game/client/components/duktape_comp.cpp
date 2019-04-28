@@ -501,6 +501,17 @@ duk_ret_t CDuktape::NativeGetWeaponSpec(duk_context* ctx)
 	return 1;
 }
 
+duk_ret_t CDuktape::NativeGetModTexture(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	const char* pTextureName = duk_get_string(ctx, 0);
+	IGraphics::CTextureHandle Handle = This()->m_DukEntry.GetTexture(pTextureName);
+	duk_push_int(ctx, *(int*)&Handle);
+	return 1;
+}
+
 duk_ret_t CDuktape::NativeMapSetTileCollisionFlags(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -1251,7 +1262,8 @@ bool CDuktape::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
 		else if(str_ends_with(pFilePaths[i].m_aBuff, ".png"))
 		{
 			const char* pTextureName = pFilePaths[i].m_aBuff+ModRootDirLen+1;
-			const bool Loaded = m_DukEntry.LoadTexture(pFilePaths[i].m_aBuff+SaveDirPathLen, pTextureName);
+			const char* pTextureRelPath = pFilePaths[i].m_aBuff+SaveDirPathLen;
+			const bool Loaded = m_DukEntry.LoadTexture(pTextureRelPath, pTextureName);
 			dbg_assert(Loaded, "error loading png image");
 			dbg_msg("duck", "image loaded '%s' (%x)", pTextureName, m_DukEntry.m_aTextures[m_DukEntry.m_aTextures.size()-1].m_Hash);
 			// TODO: show error instead of breaking
@@ -1305,6 +1317,7 @@ void CDuktape::ResetDukContext()
 	REGISTER_FUNC(GetSpriteSubSet, 1);
 	REGISTER_FUNC(GetSpriteScale, 1);
 	REGISTER_FUNC(GetWeaponSpec, 1);
+	REGISTER_FUNC(GetModTexture, 1);
 	REGISTER_FUNC(MapSetTileCollisionFlags, 3);
 	REGISTER_FUNC(DirectionFromAngle, 1);
 

@@ -27,6 +27,7 @@ class CDuktape : public CComponent
 	static duk_ret_t NativeGetSpriteSubSet(duk_context *ctx);
 	static duk_ret_t NativeGetSpriteScale(duk_context *ctx);
 	static duk_ret_t NativeGetWeaponSpec(duk_context *ctx);
+	static duk_ret_t NativeGetModTexture(duk_context *ctx);
 	static duk_ret_t NativeMapSetTileCollisionFlags(duk_context *ctx);
 	static duk_ret_t NativeDirectionFromAngle(duk_context *ctx);
 

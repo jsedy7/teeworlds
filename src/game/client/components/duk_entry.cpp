@@ -132,12 +132,8 @@ void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 	CRenderSpace& RenderSpace = m_aRenderSpace[Space];
 	float* pWantColor = RenderSpace.m_aWantColor;
 	float* pCurrentColor = RenderSpace.m_aCurrentColor;
-	int& rWantTextureID = RenderSpace.m_WantTextureID;
-	int& rCurrentTextureID = RenderSpace.m_CurrentTextureID;
 	float* pWantQuadSubSet = RenderSpace.m_aWantQuadSubSet;
 	float* pCurrentQuadSubSet = RenderSpace.m_aCurrentQuadSubSet;
-	float& rWantQuadRotation = RenderSpace.m_WantQuadRotation;
-	float& rCurrenQuadRotation = RenderSpace.m_CurrentQuadRotation;
 
 	for(int i = 0; i < CmdCount; i++)
 	{
@@ -150,7 +146,7 @@ void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 			} break;
 
 			case CRenderCmd::SET_TEXTURE: {
-				rWantTextureID = Cmd.m_TextureID;
+				RenderSpace.m_WantTextureID = Cmd.m_TextureID;
 			} break;
 
 			case CRenderCmd::SET_QUAD_SUBSET: {
@@ -158,17 +154,17 @@ void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 			} break;
 
 			case CRenderCmd::SET_QUAD_ROTATION: {
-				rWantQuadRotation = Cmd.m_QuadRotation;
+				RenderSpace.m_WantQuadRotation = Cmd.m_QuadRotation;
 			} break;
 
 			case CRenderCmd::DRAW_QUAD: {
-				if(rWantTextureID != rCurrentTextureID)
+				if(RenderSpace.m_WantTextureID != RenderSpace.m_CurrentTextureID)
 				{
-					if(rWantTextureID < 0)
+					if(RenderSpace.m_WantTextureID < 0)
 						Graphics()->TextureClear();
 					else
-						Graphics()->TextureSet(*(IGraphics::CTextureHandle*)&rWantTextureID);
-					rCurrentTextureID = rWantTextureID;
+						Graphics()->TextureSet(*(IGraphics::CTextureHandle*)&RenderSpace.m_WantTextureID);
+					RenderSpace.m_CurrentTextureID = RenderSpace.m_WantTextureID;
 				}
 
 				Graphics()->QuadsBegin();
@@ -191,10 +187,10 @@ void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 					mem_move(pCurrentQuadSubSet, pWantQuadSubSet, sizeof(float)*4);
 				}
 
-				if(rWantQuadRotation != rCurrenQuadRotation)
+				if(RenderSpace.m_WantQuadRotation != RenderSpace.m_CurrentQuadRotation)
 				{
-					Graphics()->QuadsSetRotation(rWantQuadRotation);
-					rCurrenQuadRotation = rWantQuadRotation;
+					Graphics()->QuadsSetRotation(RenderSpace.m_WantQuadRotation);
+					RenderSpace.m_CurrentQuadRotation = RenderSpace.m_WantQuadRotation;
 				}
 
 				Graphics()->QuadsDrawTL((IGraphics::CQuadItem*)&Cmd.m_Quad, 1);
@@ -225,4 +221,20 @@ bool CDukEntry::LoadTexture(const char *pTexturePath, const char* pTextureName)
 	CTextureHashPair Pair = { Hash, Handle };
 	m_aTextures.add(Pair);
 	return Handle.IsValid();
+}
+
+IGraphics::CTextureHandle CDukEntry::GetTexture(const char *pTextureName)
+{
+	const uint32_t SearchHash = hash_fnv1a(pTextureName, str_length(pTextureName));
+
+	const CTextureHashPair* Pairs = m_aTextures.base_ptr();
+	const int PairCount = m_aTextures.size();
+
+	for(int i = 0; i < PairCount; i++)
+	{
+		if(Pairs[i].m_Hash == SearchHash)
+			return Pairs[i].m_Handle;
+	}
+
+	return IGraphics::CTextureHandle();
 }
