@@ -1449,20 +1449,6 @@ int str_utf8_encode(char *ptr, int chr);
 int str_utf8_check(const char *str);
 
 /*
-	Function: str_ends_with
-		Checks if a strings ends with another string
-
-	Parameters:
-		pStr - Pointer to a possible string.
-		pCmp - Pointer to a possible string.
-
-	Returns:
-		0 - false.
-		1 - true.
-*/
-int str_ends_with(const char* pStr, const char* pCmp);
-
-/*
 	Function: secure_random_init
 		Initializes the secure random module.
 		You *MUST* check the return value of this function.

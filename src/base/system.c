@@ -2365,13 +2365,6 @@ unsigned str_quickhash(const char *str)
 	return hash;
 }
 
-int str_ends_with(const char* pStr, const char* pCmp)
-{
-	const int StrLen = str_length(pStr);
-	const int CmpLen = str_length(pCmp);
-	return str_comp_num(pStr + StrLen - CmpLen, pCmp, CmpLen) == 0;
-}
-
 struct SECURE_RANDOM_DATA
 {
 	int initialized;

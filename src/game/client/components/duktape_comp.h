@@ -20,6 +20,7 @@ class CDuktape : public CComponent
 	static duk_ret_t NativeRenderSetTexture(duk_context *ctx);
 	static duk_ret_t NativeRenderSetQuadSubSet(duk_context *ctx);
 	static duk_ret_t NativeRenderSetQuadRotation(duk_context *ctx);
+	static duk_ret_t NativeRenderSetTeeSkin(duk_context *ctx);
 	static duk_ret_t NativeSetDrawSpace(duk_context *ctx);
 	static duk_ret_t NativeRenderDrawTeeBodyAndFeet(duk_context *ctx);
 	static duk_ret_t NativeRenderDrawTeeHand(duk_context *ctx);
@@ -28,6 +29,7 @@ class CDuktape : public CComponent
 	static duk_ret_t NativeGetSpriteScale(duk_context *ctx);
 	static duk_ret_t NativeGetWeaponSpec(duk_context *ctx);
 	static duk_ret_t NativeGetModTexture(duk_context *ctx);
+	static duk_ret_t NativeGetClientSkinInfo(duk_context *ctx);
 	static duk_ret_t NativeMapSetTileCollisionFlags(duk_context *ctx);
 	static duk_ret_t NativeDirectionFromAngle(duk_context *ctx);
 

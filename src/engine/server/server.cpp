@@ -1997,7 +1997,7 @@ bool CServer::CompressDuckModFolder(const char* pModPath)
 	for(int i = 0; i < FileCount; i++)
 	{
 		dbg_msg("duck", "file='%s'", pFilePaths[i].m_aBuff);
-		if(str_ends_with(pFilePaths[i].m_aBuff, ".js") || str_ends_with(pFilePaths[i].m_aBuff, ".json") || str_ends_with(pFilePaths[i].m_aBuff, ".png") || str_ends_with(pFilePaths[i].m_aBuff, ".wv"))
+		if(str_endswith(pFilePaths[i].m_aBuff, ".js") || str_endswith(pFilePaths[i].m_aBuff, ".json") || str_endswith(pFilePaths[i].m_aBuff, ".png") || str_endswith(pFilePaths[i].m_aBuff, ".wv"))
 		{
 			const char* pRelPath = str_find(pFilePaths[i].m_aBuff, pModPath);
 			dbg_assert(pRelPath != 0, "base mod path should be found");

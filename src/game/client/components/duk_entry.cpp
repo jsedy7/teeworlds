@@ -6,11 +6,14 @@
 #include <engine/storage.h>
 #include <base/hash.h>
 
-void CDukEntry::DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo)
+void CDukEntry::DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo)
 {
 	CAnimState State;
 	State.Set(&g_pData->m_aAnimations[ANIM_BASE], 0);
-	CTeeRenderInfo RenderInfo = GameClient()->m_aClients[GameClient()->m_LocalClientID].m_RenderInfo;
+
+	CTeeRenderInfo RenderInfo;
+	mem_move(RenderInfo.m_aTextures, SkinInfo.m_aTextures, sizeof(RenderInfo.m_aTextures));
+	mem_move(RenderInfo.m_aColors, SkinInfo.m_aColors, sizeof(RenderInfo.m_aColors));
 	RenderInfo.m_Size = TeeDrawInfo.m_Size;
 	RenderInfo.m_GotAirJump = TeeDrawInfo.m_GotAirJump;
 
@@ -99,6 +102,14 @@ void CDukEntry::QueueSetQuadRotation(float Angle)
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
+void CDukEntry::QueueSetTeeSkin(const CTeeSkinInfo& SkinInfo)
+{
+	CRenderCmd Cmd;
+	Cmd.m_Type = CRenderCmd::SET_TEE_SKIN;
+	Cmd.m_TeeSkinInfo = SkinInfo;
+	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
+}
+
 void CDukEntry::QueueDrawQuad(IGraphics::CQuadItem Quad)
 {
 	CRenderCmd Cmd;
@@ -155,6 +166,10 @@ void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 
 			case CRenderCmd::SET_QUAD_ROTATION: {
 				RenderSpace.m_WantQuadRotation = Cmd.m_QuadRotation;
+			} break
+				;
+			case CRenderCmd::SET_TEE_SKIN: {
+				RenderSpace.m_CurrentTeeSkin = Cmd.m_TeeSkinInfo;
 			} break;
 
 			case CRenderCmd::DRAW_QUAD: {
@@ -198,7 +213,7 @@ void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 			} break;
 
 			case CRenderCmd::DRAW_TEE_BODYANDFEET:
-				DrawTeeBodyAndFeet(Cmd.m_TeeBodyAndFeet);
+				DrawTeeBodyAndFeet(Cmd.m_TeeBodyAndFeet, RenderSpace.m_CurrentTeeSkin);
 				break;
 
 			case CRenderCmd::DRAW_TEE_HAND:

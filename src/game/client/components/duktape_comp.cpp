@@ -103,6 +103,73 @@ duk_ret_t CDuktape::NativeRenderSetQuadRotation(duk_context* ctx)
 	return 0;
 }
 
+duk_ret_t CDuktape::NativeRenderSetTeeSkin(duk_context* ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	CDukEntry::CTeeSkinInfo SkinInfo;
+
+	for(int i = 0; i < NUM_SKINPARTS; i++)
+	{
+		SkinInfo.m_aTextures[i]	= -1;
+		SkinInfo.m_aColors[i][0] = 1;
+		SkinInfo.m_aColors[i][1] = 1;
+		SkinInfo.m_aColors[i][2] = 1;
+		SkinInfo.m_aColors[i][3] = 1;
+	}
+
+	if(duk_get_prop_string(ctx, 0, "textures"))
+	{
+		for(int i = 0; i < NUM_SKINPARTS; i++)
+		{
+			if(duk_get_prop_index(ctx, -1, i))
+			{
+				SkinInfo.m_aTextures[i] = (int)duk_to_int(ctx, -1);
+				duk_pop(ctx);
+			}
+		}
+		duk_pop(ctx);
+	}
+
+	if(duk_get_prop_string(ctx, 0, "colors"))
+	{
+		for(int i = 0; i < NUM_SKINPARTS; i++)
+		{
+			// TODO: make colors simple arrays? instead of rgba objects
+			if(duk_get_prop_index(ctx, -1, i))
+			{
+				duk_to_object(ctx, -1);
+				if(duk_get_prop_string(ctx, -1, "r"))
+				{
+					SkinInfo.m_aColors[i][0] = (float)duk_to_number(ctx, -1);
+					duk_pop(ctx);
+				}
+				if(duk_get_prop_string(ctx, -1, "g"))
+				{
+					SkinInfo.m_aColors[i][1] = (float)duk_to_number(ctx, -1);
+					duk_pop(ctx);
+				}
+				if(duk_get_prop_string(ctx, -1, "b"))
+				{
+					SkinInfo.m_aColors[i][2] = (float)duk_to_number(ctx, -1);
+					duk_pop(ctx);
+				}
+				if(duk_get_prop_string(ctx, -1, "a"))
+				{
+					SkinInfo.m_aColors[i][3] = (float)duk_to_number(ctx, -1);
+					duk_pop(ctx);
+				}
+				duk_pop(ctx);
+			}
+		}
+		duk_pop(ctx);
+	}
+
+	This()->m_DukEntry.QueueSetTeeSkin(SkinInfo);
+	return 0;
+}
+
 duk_ret_t CDuktape::NativeSetDrawSpace(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -512,6 +579,51 @@ duk_ret_t CDuktape::NativeGetModTexture(duk_context *ctx)
 	return 1;
 }
 
+duk_ret_t CDuktape::NativeGetClientSkinInfo(duk_context* ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	const int ClientID = clamp((int)duk_to_int(ctx, 0), 0, MAX_CLIENTS-1);
+	if(!This()->m_pClient->m_aClients[ClientID].m_Active)
+	{
+		duk_push_null(ctx);
+		return 1; // client not active, return null
+	}
+
+	const CTeeRenderInfo& RenderInfo = This()->m_pClient->m_aClients[ClientID].m_RenderInfo;
+
+	This()->PushObject();
+
+	duk_idx_t ArrayIdx = duk_push_array(ctx);
+	for(int i = 0; i < NUM_SKINPARTS; i++)
+	{
+		duk_push_int(ctx, *(int*)&RenderInfo.m_aTextures[i]);
+		duk_put_prop_index(ctx, ArrayIdx, i);
+	}
+	This()->ObjectSetMember("textures");
+
+	ArrayIdx = duk_push_array(ctx);
+	for(int i = 0; i < NUM_SKINPARTS; i++)
+	{
+		const vec4 Color = RenderInfo.m_aColors[i];
+		duk_idx_t ColorObj = duk_push_object(ctx);
+		duk_push_number(ctx, Color.r);
+		duk_put_prop_string(ctx, ColorObj, "r");
+		duk_push_number(ctx, Color.g);
+		duk_put_prop_string(ctx, ColorObj, "g");
+		duk_push_number(ctx, Color.b);
+		duk_put_prop_string(ctx, ColorObj, "b");
+		duk_push_number(ctx, Color.a);
+		duk_put_prop_string(ctx, ColorObj, "a");
+
+		duk_put_prop_index(ctx, ArrayIdx, i);
+	}
+	This()->ObjectSetMember("colors");
+
+	return 1;
+}
+
 duk_ret_t CDuktape::NativeMapSetTileCollisionFlags(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -804,7 +916,7 @@ bool CDuktape::ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, con
 		else
 		{
 			// filter by extension
-			if(!(str_ends_with(EntryStat.name, ".js") || str_ends_with(EntryStat.name, ".json") || str_ends_with(EntryStat.name, ".png") || str_ends_with(EntryStat.name, ".wv")))
+			if(!(str_endswith(EntryStat.name, ".js") || str_endswith(EntryStat.name, ".json") || str_endswith(EntryStat.name, ".png") || str_endswith(EntryStat.name, ".wv")))
 				continue;
 
 			// TODO: verify file type? Might be very expensive to do so.
@@ -1253,13 +1365,13 @@ bool CDuktape::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
 	for(int i = 0; i < FileCount; i++)
 	{
 		//dbg_msg("duck", "file='%s'", pFilePaths[i].m_aBuff);
-		if(str_ends_with(pFilePaths[i].m_aBuff, ".js"))
+		if(str_endswith(pFilePaths[i].m_aBuff, ".js"))
 		{
 			const bool Loaded = LoadJsScriptFile(pFilePaths[i].m_aBuff);
 			dbg_assert(Loaded, "error loading js script");
 			// TODO: show error instead of breaking
 		}
-		else if(str_ends_with(pFilePaths[i].m_aBuff, ".png"))
+		else if(str_endswith(pFilePaths[i].m_aBuff, ".png"))
 		{
 			const char* pTextureName = pFilePaths[i].m_aBuff+ModRootDirLen+1;
 			const char* pTextureRelPath = pFilePaths[i].m_aBuff+SaveDirPathLen;
@@ -1310,6 +1422,7 @@ void CDuktape::ResetDukContext()
 	REGISTER_FUNC(RenderSetTexture, 1);
 	REGISTER_FUNC(RenderSetQuadSubSet, 4);
 	REGISTER_FUNC(RenderSetQuadRotation, 1);
+	REGISTER_FUNC(RenderSetTeeSkin, 1);
 	REGISTER_FUNC(RenderDrawTeeBodyAndFeet, 1);
 	REGISTER_FUNC(RenderDrawTeeHand, 1);
 	REGISTER_FUNC(SetDrawSpace, 1);
@@ -1318,6 +1431,7 @@ void CDuktape::ResetDukContext()
 	REGISTER_FUNC(GetSpriteScale, 1);
 	REGISTER_FUNC(GetWeaponSpec, 1);
 	REGISTER_FUNC(GetModTexture, 1);
+	REGISTER_FUNC(GetClientSkinInfo, 1);
 	REGISTER_FUNC(MapSetTileCollisionFlags, 3);
 	REGISTER_FUNC(DirectionFromAngle, 1);
 

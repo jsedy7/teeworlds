@@ -46,6 +46,12 @@ struct CDukEntry
 		float m_Offset[2]; // vec2
 	};
 
+	struct CTeeSkinInfo
+	{
+		int m_aTextures[NUM_SKINPARTS];
+		float m_aColors[NUM_SKINPARTS][4];
+	};
+
 	struct CRenderCmd
 	{
 		enum TypeEnum
@@ -54,6 +60,7 @@ struct CDukEntry
 			SET_TEXTURE,
 			SET_QUAD_SUBSET,
 			SET_QUAD_ROTATION,
+			SET_TEE_SKIN,
 			DRAW_QUAD,
 			DRAW_TEE_BODYANDFEET,
 			DRAW_TEE_HAND,
@@ -72,6 +79,7 @@ struct CDukEntry
 			// TODO: this is kinda big...
 			CTeeDrawBodyAndFeetInfo m_TeeBodyAndFeet;
 			CTeeDrawHand m_TeeHand;
+			CTeeSkinInfo m_TeeSkinInfo;
 		};
 	};
 
@@ -85,6 +93,7 @@ struct CDukEntry
 		int m_CurrentTextureID;
 		float m_WantQuadRotation;
 		float m_CurrentQuadRotation;
+		CTeeSkinInfo m_CurrentTeeSkin;
 
 		CRenderSpace()
 		{
@@ -96,6 +105,15 @@ struct CDukEntry
 			m_CurrentTextureID = 0;
 			m_WantQuadRotation = 0; // clear by default
 			m_CurrentQuadRotation = -1;
+
+			for(int i = 0; i < NUM_SKINPARTS; i++)
+			{
+				m_CurrentTeeSkin.m_aTextures[i] = -1;
+				m_CurrentTeeSkin.m_aColors[i][0] = 1.0f;
+				m_CurrentTeeSkin.m_aColors[i][1] = 1.0f;
+				m_CurrentTeeSkin.m_aColors[i][2] = 1.0f;
+				m_CurrentTeeSkin.m_aColors[i][3] = 1.0f;
+			}
 		}
 	};
 
@@ -111,7 +129,7 @@ struct CDukEntry
 
 	array<CTextureHashPair> m_aTextures;
 
-	void DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo);
+	void DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo);
 	void DrawTeeHand(const CTeeDrawHand& Hand);
 
 	void Init(CDuktape* pDuktape);
@@ -121,6 +139,7 @@ struct CDukEntry
 	void QueueSetTexture(int TextureID);
 	void QueueSetQuadSubSet(const float* pSubSet);
 	void QueueSetQuadRotation(float Angle);
+	void QueueSetTeeSkin(const CTeeSkinInfo& SkinInfo);
 	void QueueDrawQuad(IGraphics::CQuadItem Quad);
 	void QueueDrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo);
 	void QueueDrawTeeHand(const CTeeDrawHand& Hand);
