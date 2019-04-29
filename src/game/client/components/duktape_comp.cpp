@@ -8,6 +8,7 @@
 #include <engine/shared/growbuffer.h>
 #include <engine/shared/config.h>
 #include <engine/external/zlib/zlib.h>
+#include <game/client/components/skins.h>
 #include <zip.h>
 
 typedef uint8_t u8;
@@ -621,6 +622,31 @@ duk_ret_t CDuktape::NativeGetClientSkinInfo(duk_context* ctx)
 	}
 	This()->ObjectSetMember("colors");
 
+	return 1;
+}
+
+duk_ret_t CDuktape::NativeGetSkinPartTexture(duk_context* ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 2, "Wrong argument count");
+
+	// TODO: bound check
+	int Part = clamp((int)duk_to_int(ctx, 0), 0, NUM_SKINPARTS-1);
+	const char* PartName = duk_to_string(ctx, 1);
+
+	int SkinPartID = This()->m_pClient->m_pSkins->FindSkinPart(Part, PartName, true);
+	if(SkinPartID < 0)
+	{
+		duk_push_null(ctx);
+		return 1;
+	}
+
+	duk_idx_t ArrayIdx = duk_push_array(ctx);
+
+	duk_push_int(ctx, *(int*)&This()->m_pClient->m_pSkins->GetSkinPart(Part, SkinPartID)->m_OrgTexture);
+	duk_put_prop_index(ctx, ArrayIdx, 0);
+	duk_push_int(ctx, *(int*)&This()->m_pClient->m_pSkins->GetSkinPart(Part, SkinPartID)->m_ColorTexture);
+	duk_put_prop_index(ctx, ArrayIdx, 1);
 	return 1;
 }
 
@@ -1287,7 +1313,7 @@ bool CDuktape::LoadJsScriptFile(const char* pJsFilePath)
 		/* Use duk_safe_to_string() to convert error into string.  This API
 		 * call is guaranteed not to throw an error during the coercion.
 		 */
-		dbg_msg("duck", "Script error: %s", duk_safe_to_string(Duk(), -1));
+		dbg_msg("duck", "[JS ERROR] %s: %s", pJsFilePath, duk_safe_to_string(Duk(), -1));
 		return false;
 	}
 	duk_pop(Duk());
@@ -1432,6 +1458,7 @@ void CDuktape::ResetDukContext()
 	REGISTER_FUNC(GetWeaponSpec, 1);
 	REGISTER_FUNC(GetModTexture, 1);
 	REGISTER_FUNC(GetClientSkinInfo, 1);
+	REGISTER_FUNC(GetSkinPartTexture, 2);
 	REGISTER_FUNC(MapSetTileCollisionFlags, 3);
 	REGISTER_FUNC(DirectionFromAngle, 1);
 
@@ -1484,7 +1511,25 @@ void CDuktape::OnRender()
 	int NumArgs = 1;
 	if(duk_pcall(Duk(), NumArgs) != 0)
 	{
-		dbg_msg("duck", "OnUpdate(): Script error: %s", duk_safe_to_string(Duk(), -1));
+		if(duk_is_error(Duk(), -1))
+		{
+			/* Accessing .stack might cause an error to be thrown, so wrap this
+			 * access in a duk_safe_call() if it matters.
+			 */
+			duk_get_prop_string(Duk(), -1, "stack");
+			const char* pStack = duk_safe_to_string(Duk(), -1);
+			duk_pop(Duk());
+
+			//.stack, .fileName, and .lineNumber
+			//duk_get_prop_string(Duk(), -1, "stack");
+
+			dbg_msg("duck", "[JS ERROR] OnUpdate(): %s", pStack);
+		}
+		else
+		{
+			/* Non-Error value, coerce safely to string. */
+			dbg_msg("duck", "[JS ERROR] OnUpdate(): %s", duk_safe_to_string(Duk(), -1));
+		}
 		dbg_break();
 	}
 	duk_pop(Duk());

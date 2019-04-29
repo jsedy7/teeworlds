@@ -30,6 +30,7 @@ class CDuktape : public CComponent
 	static duk_ret_t NativeGetWeaponSpec(duk_context *ctx);
 	static duk_ret_t NativeGetModTexture(duk_context *ctx);
 	static duk_ret_t NativeGetClientSkinInfo(duk_context *ctx);
+	static duk_ret_t NativeGetSkinPartTexture(duk_context *ctx);
 	static duk_ret_t NativeMapSetTileCollisionFlags(duk_context *ctx);
 	static duk_ret_t NativeDirectionFromAngle(duk_context *ctx);
 
