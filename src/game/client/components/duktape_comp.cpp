@@ -1291,7 +1291,7 @@ bool CDuktape::ExtractAndInstallModCompressedBuffer(const void* pCompBuff, int C
 	return true;
 }
 
-bool CDuktape::LoadJsScriptFile(const char* pJsFilePath)
+bool CDuktape::LoadJsScriptFile(const char* pJsFilePath, const char* pJsRelFilePath)
 {
 	IOHANDLE ScriptFile = io_open(pJsFilePath, IOFLAG_READ);
 	if(!ScriptFile)
@@ -1306,19 +1306,40 @@ bool CDuktape::LoadJsScriptFile(const char* pJsFilePath)
 	pFileData[FileSize] = 0;
 	io_close(ScriptFile);
 
+	char aErrFuncBuff[1024];
+	str_format(aErrFuncBuff, sizeof(aErrFuncBuff),
+		"Duktape.errCreate = function(err) { \
+			try { \
+				if(typeof err === 'object' && \
+				typeof err.stack !== 'undefined' && \
+				typeof err.lineNumber === 'number') { \
+					err.stack = err.stack + ' (%s:' + err.lineNumber + ')'; \
+					err.message = err.stack; \
+				} \
+			} \
+			catch(e) { \
+			} \
+			return err; \
+	   }", pJsRelFilePath);
+
+	duk_push_string(Duk(), aErrFuncBuff);
+	if(duk_peval(Duk()) != 0)
+	{
+		dbg_msg("duck", "[JS ERROR] %s: %s", pJsRelFilePath, duk_safe_to_string(Duk(), -1));
+		return false;
+	}
+	duk_pop(Duk());
+
 	// eval script
 	duk_push_string(Duk(), pFileData);
 	if(duk_peval(Duk()) != 0)
 	{
-		/* Use duk_safe_to_string() to convert error into string.  This API
-		 * call is guaranteed not to throw an error during the coercion.
-		 */
 		dbg_msg("duck", "[JS ERROR] %s: %s", pJsFilePath, duk_safe_to_string(Duk(), -1));
 		return false;
 	}
 	duk_pop(Duk());
 
-	dbg_msg("duck", "'%s' loaded (%d)", pJsFilePath, FileSize);
+	dbg_msg("duck", "'%s' loaded (%d)", pJsRelFilePath, FileSize);
 	mem_free(pFileData);
 	return true;
 }
@@ -1393,7 +1414,8 @@ bool CDuktape::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
 		//dbg_msg("duck", "file='%s'", pFilePaths[i].m_aBuff);
 		if(str_endswith(pFilePaths[i].m_aBuff, ".js"))
 		{
-			const bool Loaded = LoadJsScriptFile(pFilePaths[i].m_aBuff);
+			const char* pRelPath = pFilePaths[i].m_aBuff+ModRootDirLen+1;
+			const bool Loaded = LoadJsScriptFile(pFilePaths[i].m_aBuff, pRelPath);
 			dbg_assert(Loaded, "error loading js script");
 			// TODO: show error instead of breaking
 		}

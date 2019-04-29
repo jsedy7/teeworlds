@@ -28,16 +28,35 @@ function copy(destObj, srcObj)
     }
 }
 
+function objToStr(obj)
+{
+    if(Array.isArray(obj)) {
+        var str = "[ ";
+        var arrayLength = obj.length;
+        for (var i = 0; i < arrayLength; i++) {
+            str += objToStr(obj[i]) + ", ";
+        }
+        str += "]";
+        return str;
+    }
+
+    if((typeof obj === "object") && (obj !== null)) {
+        var str = "{ ";
+        for(var key in obj) {
+            if(obj.hasOwnProperty(key)) {
+                str += key + ": " + objToStr(obj[key]) + ", ";
+            }
+        }
+        str += "}";
+        return str;
+    }
+
+    return "" + obj;
+}
+
 function printObj(obj)
 {
-    var str = "{ ";
-    for(var key in obj) {
-        if(obj.hasOwnProperty(key)) {
-            str += key + ": " + obj[key] + ", ";
-        }
-    }
-    str += "}"
-    print(str);
+    print(objToStr(obj));
 }
 
 function printRawBuffer(buff)
@@ -126,7 +145,7 @@ function OnUpdate(clientLocalTime)
     TwSetDrawSpace(Teeworlds.DRAW_SPACE_GAME);
 
     var tee = {
-        size: 128,
+        size: 64 + 64 * (Math.sin(clientLocalTime * 1.3) * 0.5 + 0.5),
         angle: clientLocalTime,
         pos_x: 150 + 500.0 * (Math.sin(clientLocalTime) * 0.5 + 0.5),
         pos_y: 305,
@@ -137,7 +156,61 @@ function OnUpdate(clientLocalTime)
     }
     
     DrawTeeWeapon(Math.floor(clientLocalTime) % 6, tee.pos_x, tee.pos_y, tee.size);
+
+    var skinInfo = TwGetClientSkinInfo(0);
+    
+    var partNames = [
+        [
+            "bear",
+            "kitty",
+            "standard"
+        ],
+        [
+            "bear",
+            "cammo1",
+            "cammo2",
+            "cammostripes",
+            "donny",
+            "duodonny",
+            "saddo",
+            "stripe",
+            "stripes",
+            "toptri",
+            "twintri",
+            "uppy",
+            "warpaint",
+            "whisker",
+        ],
+        [
+            "hair",
+            "twinbopp",
+            "unibop",
+        ],
+        [
+        ],
+        [
+        ],
+        [
+        ]
+    ];
+
+    for(var i = 0; i < 6; i++) {
+        skinInfo.colors[i].r = Math.cos(clientLocalTime + i*i) * 0.5 + 0.5;
+        skinInfo.colors[i].g = Math.cos(clientLocalTime * 2 + i*i) * 0.5 + 0.5;
+        skinInfo.colors[i].b = Math.cos(clientLocalTime * 3 + i*i) * 0.5 + 0.5;
+        var tex = TwGetSkinPartTexture(i, partNames[i][Math.floor(clientLocalTime * (i/3.0+1.0)) % partNames[i].length]);
+
+        if(tex != null)
+            skinInfo.textures[i] = tex[0];
+    }
+
+    TwRenderSetTeeSkin(skinInfo);
     TwRenderDrawTeeBodyAndFeet(tee);
+
+    TwRenderSetColorF4(1, 1, 1, 1);
+    TwRenderSetTexture(TwGetModTexture("deadtee.png"));
+    TwRenderSetQuadRotation(clientLocalTime * -2.0);
+    TwRenderQuad(tee.pos_x, 350, 100, 100);
 }
 
 function OnMessage(netObj)

@@ -50,7 +50,7 @@ class CDuktape : public CComponent
 	bool IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256);
 	bool ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, const SHA256_DIGEST* pModSha256);
 	bool ExtractAndInstallModCompressedBuffer(const void* pCompBuff, int CompBuffSize, const SHA256_DIGEST* pModSha256);
-	bool LoadJsScriptFile(const char* pJsFilePath);
+	bool LoadJsScriptFile(const char* pJsFilePath, const char* pJsRelFilePath);
 	bool LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256);
 
 	void ResetDukContext();
