@@ -639,6 +639,45 @@ duk_ret_t CDuktape::NativeGetClientSkinInfo(duk_context* ctx)
 	return 1;
 }
 
+duk_ret_t CDuktape::NativeGetStandardSkinInfo(duk_context* ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 0, "Wrong argument count");
+
+	// TODO: make an actual standard skin info
+	const CTeeRenderInfo& RenderInfo = This()->m_pClient->m_aClients[This()->m_pClient->m_LocalClientID].m_RenderInfo;
+
+	This()->PushObject();
+
+	duk_idx_t ArrayIdx = duk_push_array(ctx);
+	for(int i = 0; i < NUM_SKINPARTS; i++)
+	{
+		duk_push_int(ctx, *(int*)&RenderInfo.m_aTextures[i]);
+		duk_put_prop_index(ctx, ArrayIdx, i);
+	}
+	This()->ObjectSetMember("textures");
+
+	ArrayIdx = duk_push_array(ctx);
+	for(int i = 0; i < NUM_SKINPARTS; i++)
+	{
+		const vec4 Color = RenderInfo.m_aColors[i];
+		duk_idx_t ColorObj = duk_push_object(ctx);
+		duk_push_number(ctx, Color.r);
+		duk_put_prop_string(ctx, ColorObj, "r");
+		duk_push_number(ctx, Color.g);
+		duk_put_prop_string(ctx, ColorObj, "g");
+		duk_push_number(ctx, Color.b);
+		duk_put_prop_string(ctx, ColorObj, "b");
+		duk_push_number(ctx, Color.a);
+		duk_put_prop_string(ctx, ColorObj, "a");
+
+		duk_put_prop_index(ctx, ArrayIdx, i);
+	}
+	This()->ObjectSetMember("colors");
+
+	return 1;
+}
+
 duk_ret_t CDuktape::NativeGetSkinPartTexture(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -1495,6 +1534,7 @@ void CDuktape::ResetDukContext()
 	REGISTER_FUNC(GetWeaponSpec, 1);
 	REGISTER_FUNC(GetModTexture, 1);
 	REGISTER_FUNC(GetClientSkinInfo, 1);
+	REGISTER_FUNC(GetStandardSkinInfo, 0);
 	REGISTER_FUNC(GetSkinPartTexture, 2);
 	REGISTER_FUNC(MapSetTileCollisionFlags, 3);
 	REGISTER_FUNC(DirectionFromAngle, 1);
