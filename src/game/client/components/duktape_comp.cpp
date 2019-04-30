@@ -801,38 +801,38 @@ duk_ret_t CDuktape::NativeUnpackFloat(duk_context *ctx)
 
 void CDuktape::PushObject()
 {
-	m_CurrentPushedObjID = duk_push_object(Duk());
+	m_CurrentPushedObjID = duk_push_object(Ctx());
 }
 
 void CDuktape::ObjectSetMemberInt(const char* MemberName, int Value)
 {
-	duk_push_int(Duk(), Value);
-	duk_put_prop_string(Duk(), m_CurrentPushedObjID, MemberName);
+	duk_push_int(Ctx(), Value);
+	duk_put_prop_string(Ctx(), m_CurrentPushedObjID, MemberName);
 }
 
 void CDuktape::ObjectSetMemberFloat(const char* MemberName, float Value)
 {
-	duk_push_number(Duk(), Value);
-	duk_put_prop_string(Duk(), m_CurrentPushedObjID, MemberName);
+	duk_push_number(Ctx(), Value);
+	duk_put_prop_string(Ctx(), m_CurrentPushedObjID, MemberName);
 }
 
 void CDuktape::ObjectSetMemberRawBuffer(const char* MemberName, const void* pRawBuffer, int RawBufferSize)
 {
-	duk_push_string(Duk(), MemberName);
-	duk_push_fixed_buffer(Duk(), RawBufferSize);
+	duk_push_string(Ctx(), MemberName);
+	duk_push_fixed_buffer(Ctx(), RawBufferSize);
 
 	duk_size_t OutBufferSize;
-	u8* OutBuffer = (u8*)duk_require_buffer_data(Duk(), -1, &OutBufferSize);
+	u8* OutBuffer = (u8*)duk_require_buffer_data(Ctx(), -1, &OutBufferSize);
 	dbg_assert((int)OutBufferSize == RawBufferSize, "buffer size differs");
 	mem_copy(OutBuffer, pRawBuffer, RawBufferSize);
 
-	int rc = duk_put_prop(Duk(), m_CurrentPushedObjID);
+	int rc = duk_put_prop(Ctx(), m_CurrentPushedObjID);
 	dbg_assert(rc == 1, "could not put raw buffer prop");
 }
 
 void CDuktape::ObjectSetMember(const char* MemberName)
 {
-	duk_put_prop_string(Duk(), m_CurrentPushedObjID, MemberName);
+	duk_put_prop_string(Ctx(), m_CurrentPushedObjID, MemberName);
 }
 
 bool CDuktape::IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256)
@@ -1375,22 +1375,22 @@ bool CDuktape::LoadJsScriptFile(const char* pJsFilePath, const char* pJsRelFileP
 			return err; \
 	   }", pJsRelFilePath);
 
-	duk_push_string(Duk(), aErrFuncBuff);
-	if(duk_peval(Duk()) != 0)
+	duk_push_string(Ctx(), aErrFuncBuff);
+	if(duk_peval(Ctx()) != 0)
 	{
-		dbg_msg("duck", "[JS ERROR] %s: %s", pJsRelFilePath, duk_safe_to_string(Duk(), -1));
+		dbg_msg("duck", "[JS ERROR] %s: %s", pJsRelFilePath, duk_safe_to_string(Ctx(), -1));
 		return false;
 	}
-	duk_pop(Duk());
+	duk_pop(Ctx());
 
 	// eval script
-	duk_push_string(Duk(), pFileData);
-	if(duk_peval(Duk()) != 0)
+	duk_push_string(Ctx(), pFileData);
+	if(duk_peval(Ctx()) != 0)
 	{
-		dbg_msg("duck", "[JS ERROR] %s: %s", pJsFilePath, duk_safe_to_string(Duk(), -1));
+		dbg_msg("duck", "[JS ERROR] %s: %s", pJsFilePath, duk_safe_to_string(Ctx(), -1));
 		return false;
 	}
-	duk_pop(Duk());
+	duk_pop(Ctx());
 
 	dbg_msg("duck", "'%s' loaded (%d)", pJsRelFilePath, FileSize);
 	mem_free(pFileData);
@@ -1483,6 +1483,7 @@ bool CDuktape::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
 		}
 	}
 
+	m_IsModLoaded = true;
 	return true;
 }
 
@@ -1496,24 +1497,24 @@ void CDuktape::ResetDukContext()
 
 	// function binding
 	// special functions
-	duk_push_c_function(Duk(), NativePrint, 1);
-	duk_put_global_string(Duk(), "print");
+	duk_push_c_function(Ctx(), NativePrint, 1);
+	duk_put_global_string(Ctx(), "print");
 
-	duk_push_c_function(Duk(), NativeUnpackInteger<i32>, 1);
-	duk_put_global_string(Duk(), "TwUnpackInt32");
+	duk_push_c_function(Ctx(), NativeUnpackInteger<i32>, 1);
+	duk_put_global_string(Ctx(), "TwUnpackInt32");
 
-	duk_push_c_function(Duk(), NativeUnpackInteger<u8>, 1);
-	duk_put_global_string(Duk(), "TwUnpackUint8");
+	duk_push_c_function(Ctx(), NativeUnpackInteger<u8>, 1);
+	duk_put_global_string(Ctx(), "TwUnpackUint8");
 
-	duk_push_c_function(Duk(), NativeUnpackInteger<u16>, 1);
-	duk_put_global_string(Duk(), "TwUnpackUint16");
+	duk_push_c_function(Ctx(), NativeUnpackInteger<u16>, 1);
+	duk_put_global_string(Ctx(), "TwUnpackUint16");
 
-	duk_push_c_function(Duk(), NativeUnpackInteger<u32>, 1);
-	duk_put_global_string(Duk(), "TwUnpackUint32");
+	duk_push_c_function(Ctx(), NativeUnpackInteger<u32>, 1);
+	duk_put_global_string(Ctx(), "TwUnpackUint32");
 
 #define REGISTER_FUNC(fname, arg_count) \
-	duk_push_c_function(Duk(), Native##fname, arg_count);\
-	duk_put_global_string(Duk(), "Tw" #fname)
+	duk_push_c_function(Ctx(), Native##fname, arg_count);\
+	duk_put_global_string(Ctx(), "Tw" #fname)
 
 	REGISTER_FUNC(UnpackFloat, 1);
 
@@ -1542,17 +1543,19 @@ void CDuktape::ResetDukContext()
 #undef REGISTER_FUNC
 
 	// Teeworlds global object
-	duk_eval_string(Duk(),
+	duk_eval_string(Ctx(),
 		"var Teeworlds = {"
 		"	DRAW_SPACE_GAME: 0,"
 		"	aClients: [],"
 		"};");
+	duk_pop(Ctx());
 }
 
 CDuktape::CDuktape()
 {
 	s_This = this;
 	m_pDukContext = 0;
+	m_IsModLoaded = false;
 }
 
 void CDuktape::OnInit()
@@ -1571,31 +1574,32 @@ void CDuktape::OnShutdown()
 
 void CDuktape::OnRender()
 {
-	if(Client()->State() != IClient::STATE_ONLINE || !m_pDukContext)
+	if(Client()->State() != IClient::STATE_ONLINE || !IsLoaded())
 		return;
 
 	// Update Teeworlds global object
 	char aEvalBuff[256];
 	str_format(aEvalBuff, sizeof(aEvalBuff), "Teeworlds.intraTick = %g;", Client()->IntraGameTick());
-	duk_eval_string(Duk(), aEvalBuff);
+	duk_eval_string(Ctx(), aEvalBuff);
+	duk_pop(Ctx());
+
 	str_format(aEvalBuff, sizeof(aEvalBuff), "Teeworlds.mapSize = { x: %d, y: %d };", Collision()->GetWidth(), Collision()->GetHeight());
-	duk_eval_string(Duk(), aEvalBuff);
+	duk_eval_string(Ctx(), aEvalBuff);
+	duk_pop(Ctx());
 
 	// Call OnUpdate()
-	duk_get_global_string(Duk(), "OnUpdate");
-	/* push arguments here */
-	duk_push_number(Duk(), Client()->LocalTime());
+	duk_get_global_string(Ctx(), "OnUpdate");
+	duk_push_number(Ctx(), Client()->LocalTime());
 	int NumArgs = 1;
-	if(duk_pcall(Duk(), NumArgs) != 0)
+	if(duk_pcall(Ctx(), NumArgs) != DUK_EXEC_SUCCESS)
 	{
-		if(duk_is_error(Duk(), -1))
+		if(duk_is_error(Ctx(), -1))
 		{
-			/* Accessing .stack might cause an error to be thrown, so wrap this
-			 * access in a duk_safe_call() if it matters.
-			 */
-			duk_get_prop_string(Duk(), -1, "stack");
-			const char* pStack = duk_safe_to_string(Duk(), -1);
-			duk_pop(Duk());
+			// Accessing .stack might cause an error to be thrown, so wrap this
+			// access in a duk_safe_call() if it matters.
+			duk_get_prop_string(Ctx(), -1, "stack");
+			const char* pStack = duk_safe_to_string(Ctx(), -1);
+			duk_pop(Ctx());
 
 			//.stack, .fileName, and .lineNumber
 			//duk_get_prop_string(Duk(), -1, "stack");
@@ -1604,12 +1608,14 @@ void CDuktape::OnRender()
 		}
 		else
 		{
-			/* Non-Error value, coerce safely to string. */
-			dbg_msg("duck", "[JS ERROR] OnUpdate(): %s", duk_safe_to_string(Duk(), -1));
+			dbg_msg("duck", "[JS ERROR] OnUpdate(): %s", duk_safe_to_string(Ctx(), -1));
 		}
 		dbg_break();
 	}
-	duk_pop(Duk());
+	duk_pop(Ctx());
+
+	/*int n = duk_get_top(Ctx());
+	dbg_msg("duck", "OnCharacterCorePreTick() top=%d", n);*/
 }
 
 void CDuktape::OnMessage(int Msg, void* pRawMsg)
@@ -1622,7 +1628,7 @@ void CDuktape::OnMessage(int Msg, void* pRawMsg)
 		const u8* pObjRawData = (u8*)pUnpacker->GetRaw(ObjSize);
 		//dbg_msg("duck", "DUK packed netobj, id=0x%x size=%d", ObjID, ObjSize);
 
-		duk_get_global_string(Duk(), "OnMessage");
+		duk_get_global_string(Ctx(), "OnMessage");
 
 		// make netObj
 		PushObject();
@@ -1632,18 +1638,18 @@ void CDuktape::OnMessage(int Msg, void* pRawMsg)
 
 		// call OnMessage(netObj)
 		int NumArgs = 1;
-		if(duk_pcall(Duk(), NumArgs) != 0)
+		if(duk_pcall(Ctx(), NumArgs) != 0)
 		{
-			dbg_msg("duck", "OnMessage(): Script error: %s", duk_safe_to_string(Duk(), -1));
+			dbg_msg("duck", "OnMessage(): Script error: %s", duk_safe_to_string(Ctx(), -1));
 			dbg_break();
 		}
-		duk_pop(Duk());
+		duk_pop(Ctx());
 	}
 }
 
 void CDuktape::OnStateChange(int NewState, int OldState)
 {
-	if(NewState == IClient::STATE_OFFLINE)
+	if(OldState != IClient::STATE_OFFLINE && NewState == IClient::STATE_OFFLINE)
 	{
 		OnModReset();
 	}
@@ -1653,6 +1659,17 @@ void CDuktape::OnModReset()
 {
 	ResetDukContext();
 	m_DukEntry.Reset();
+	m_IsModLoaded = false;
+}
+
+void CDuktape::OnModUnload()
+{
+	if(m_pDukContext)
+		duk_destroy_heap(m_pDukContext);
+	m_pDukContext = 0;
+
+	m_DukEntry.Reset();
+	m_IsModLoaded = false;
 }
 
 bool CDuktape::StartDuckModHttpDownload(const char* pModUrl, const SHA256_DIGEST* pModSha256)

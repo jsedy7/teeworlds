@@ -56,6 +56,7 @@ void CDukEntry::DrawTeeHand(const CDukEntry::CTeeDrawHand& Hand, const CTeeSkinI
 
 void CDukEntry::Init(CDuktape* pDuktape)
 {
+	m_pDuktape = pDuktape;
 	m_pGraphics = pDuktape->Graphics();
 	m_pRenderTools = pDuktape->RenderTools();
 	m_pGameClient = pDuktape->m_pClient;
@@ -142,6 +143,31 @@ void CDukEntry::QueueDrawTeeHand(const CDukEntry::CTeeDrawHand& Hand)
 	Cmd.m_Type = CDukEntry::CRenderCmd::DRAW_TEE_HAND;
 	Cmd.m_TeeHand = Hand;
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
+}
+
+bool CDukEntry::LoadTexture(const char *pTexturePath, const char* pTextureName)
+{
+	IGraphics::CTextureHandle Handle = Graphics()->LoadTexture(pTexturePath, IStorage::TYPE_SAVE, CImageInfo::FORMAT_AUTO, 0);
+	uint32_t Hash = hash_fnv1a(pTextureName, str_length(pTextureName));
+	CTextureHashPair Pair = { Hash, Handle };
+	m_aTextures.add(Pair);
+	return Handle.IsValid();
+}
+
+IGraphics::CTextureHandle CDukEntry::GetTexture(const char *pTextureName)
+{
+	const uint32_t SearchHash = hash_fnv1a(pTextureName, str_length(pTextureName));
+
+	const CTextureHashPair* Pairs = m_aTextures.base_ptr();
+	const int PairCount = m_aTextures.size();
+
+	for(int i = 0; i < PairCount; i++)
+	{
+		if(Pairs[i].m_Hash == SearchHash)
+			return Pairs[i].m_Handle;
+	}
+
+	return IGraphics::CTextureHandle();
 }
 
 void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
@@ -243,27 +269,170 @@ void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 	RenderSpace = CRenderSpace();
 }
 
-bool CDukEntry::LoadTexture(const char *pTexturePath, const char* pTextureName)
+// TODO: move this?
+static duk_idx_t DuktapePushCharacterCore(duk_context* pCtx, const CCharacterCore* pCharCore)
 {
-	IGraphics::CTextureHandle Handle = Graphics()->LoadTexture(pTexturePath, IStorage::TYPE_SAVE, CImageInfo::FORMAT_AUTO, 0);
-	uint32_t Hash = hash_fnv1a(pTextureName, str_length(pTextureName));
-	CTextureHashPair Pair = { Hash, Handle };
-	m_aTextures.add(Pair);
-	return Handle.IsValid();
+	duk_idx_t CharCoreObjIdx = duk_push_object(pCtx);
+	duk_push_number(pCtx, pCharCore->m_Pos.x);
+	duk_put_prop_string(pCtx, CharCoreObjIdx, "pos_x");
+	duk_push_number(pCtx, pCharCore->m_Pos.y);
+	duk_put_prop_string(pCtx, CharCoreObjIdx, "pos_y");
+	duk_push_number(pCtx, pCharCore->m_Vel.x);
+	duk_put_prop_string(pCtx, CharCoreObjIdx, "vel_x");
+	duk_push_number(pCtx, pCharCore->m_Vel.y);
+	duk_put_prop_string(pCtx, CharCoreObjIdx, "vel_y");
+	duk_push_number(pCtx, pCharCore->m_HookPos.x);
+	duk_put_prop_string(pCtx, CharCoreObjIdx, "hook_pos_x");
+	duk_push_number(pCtx, pCharCore->m_HookPos.y);
+	duk_put_prop_string(pCtx, CharCoreObjIdx, "hook_pos_y");
+	duk_push_number(pCtx, pCharCore->m_HookDir.x);
+	duk_put_prop_string(pCtx, CharCoreObjIdx, "hook_dir_x");
+	duk_push_number(pCtx, pCharCore->m_HookDir.y);
+	duk_put_prop_string(pCtx, CharCoreObjIdx, "hook_dir_y");
+
+	duk_push_int(pCtx, pCharCore->m_HookTick);
+	duk_put_prop_string(pCtx, CharCoreObjIdx, "hook_tick");
+	duk_push_int(pCtx, pCharCore->m_HookState);
+	duk_put_prop_string(pCtx, CharCoreObjIdx, "hook_state");
+	duk_push_int(pCtx, pCharCore->m_HookedPlayer);
+	duk_put_prop_string(pCtx, CharCoreObjIdx, "hooked_player");
+	duk_push_int(pCtx, pCharCore->m_Jumped);
+	duk_put_prop_string(pCtx, CharCoreObjIdx, "jumped");
+	duk_push_int(pCtx, pCharCore->m_Direction);
+	duk_put_prop_string(pCtx, CharCoreObjIdx, "direction");
+	duk_push_int(pCtx, pCharCore->m_Angle);
+	duk_put_prop_string(pCtx, CharCoreObjIdx, "angle");
+	duk_push_int(pCtx, pCharCore->m_TriggeredEvents);
+	duk_put_prop_string(pCtx, CharCoreObjIdx, "triggered_events");
+	return CharCoreObjIdx;
 }
 
-IGraphics::CTextureHandle CDukEntry::GetTexture(const char *pTextureName)
+static duk_idx_t DuktapePushNetObjPlayerInput(duk_context* pCtx, const CNetObj_PlayerInput* pInput)
 {
-	const uint32_t SearchHash = hash_fnv1a(pTextureName, str_length(pTextureName));
+	duk_idx_t InputObjIdx = duk_push_object(pCtx);
+	duk_push_int(pCtx, pInput->m_Direction);
+	duk_put_prop_string(pCtx, InputObjIdx, "direction");
+	duk_push_int(pCtx, pInput->m_TargetX);
+	duk_put_prop_string(pCtx, InputObjIdx, "target_x");
+	duk_push_int(pCtx, pInput->m_TargetY);
+	duk_put_prop_string(pCtx, InputObjIdx, "target_y");
+	duk_push_int(pCtx, pInput->m_Jump);
+	duk_put_prop_string(pCtx, InputObjIdx, "jump");
+	duk_push_int(pCtx, pInput->m_Fire);
+	duk_put_prop_string(pCtx, InputObjIdx, "fire");
+	duk_push_int(pCtx, pInput->m_Hook);
+	duk_put_prop_string(pCtx, InputObjIdx, "hook");
+	duk_push_int(pCtx, pInput->m_PlayerFlags);
+	duk_put_prop_string(pCtx, InputObjIdx, "player_flags");
+	duk_push_int(pCtx, pInput->m_WantedWeapon);
+	duk_put_prop_string(pCtx, InputObjIdx, "wanted_weapon");
+	duk_push_int(pCtx, pInput->m_NextWeapon);
+	duk_put_prop_string(pCtx, InputObjIdx, "next_weapon");
+	duk_push_int(pCtx, pInput->m_PrevWeapon);
+	duk_put_prop_string(pCtx, InputObjIdx, "prev_weapon");
+	return InputObjIdx;
+}
 
-	const CTextureHashPair* Pairs = m_aTextures.base_ptr();
-	const int PairCount = m_aTextures.size();
-
-	for(int i = 0; i < PairCount; i++)
+inline void GetIntProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, int* pOutInt)
+{
+	if(duk_get_prop_string(pCtx, ObjIdx, pPropName))
 	{
-		if(Pairs[i].m_Hash == SearchHash)
-			return Pairs[i].m_Handle;
+		*pOutInt = duk_to_int(pCtx, -1);
+		duk_pop(pCtx);
+	}
+}
+
+inline void GetFloatProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, float* pOutFloat)
+{
+	if(duk_get_prop_string(pCtx, ObjIdx, pPropName))
+	{
+		*pOutFloat = duk_to_number(pCtx, -1);
+		duk_pop(pCtx);
+	}
+}
+
+static void DuktapeReadCharacterCore(duk_context* pCtx, duk_idx_t ObjIdx, CCharacterCore* pOutCharCore)
+{
+	GetFloatProp(pCtx, ObjIdx, "pos_x", &pOutCharCore->m_Pos.x);
+	GetFloatProp(pCtx, ObjIdx, "pos_y", &pOutCharCore->m_Pos.y);
+	GetFloatProp(pCtx, ObjIdx, "vel_x", &pOutCharCore->m_Vel.x);
+	GetFloatProp(pCtx, ObjIdx, "vel_y", &pOutCharCore->m_Vel.y);
+	GetFloatProp(pCtx, ObjIdx, "hook_pos_x", &pOutCharCore->m_HookPos.x);
+	GetFloatProp(pCtx, ObjIdx, "hook_pos_y", &pOutCharCore->m_HookPos.y);
+	GetFloatProp(pCtx, ObjIdx, "hook_dir_x", &pOutCharCore->m_HookDir.x);
+	GetFloatProp(pCtx, ObjIdx, "hook_dir_y", &pOutCharCore->m_HookDir.y);
+
+	GetIntProp(pCtx, ObjIdx, "hook_tick", &pOutCharCore->m_HookTick);
+	GetIntProp(pCtx, ObjIdx, "hook_state", &pOutCharCore->m_HookState);
+	GetIntProp(pCtx, ObjIdx, "hooked_player", &pOutCharCore->m_HookedPlayer);
+	GetIntProp(pCtx, ObjIdx, "jumped", &pOutCharCore->m_Jumped);
+	GetIntProp(pCtx, ObjIdx, "direction", &pOutCharCore->m_Direction);
+	GetIntProp(pCtx, ObjIdx, "angle", &pOutCharCore->m_Angle);
+	GetIntProp(pCtx, ObjIdx, "triggered_events", &pOutCharCore->m_TriggeredEvents);
+}
+
+static void DuktapeReadNetObjPlayerInput(duk_context* pCtx, duk_idx_t ObjIdx, CNetObj_PlayerInput* pOutInput)
+{
+	GetIntProp(pCtx, ObjIdx, "direction", &pOutInput->m_Direction);
+	GetIntProp(pCtx, ObjIdx, "target_x", &pOutInput->m_TargetX);
+	GetIntProp(pCtx, ObjIdx, "target_y", &pOutInput->m_TargetY);
+	GetIntProp(pCtx, ObjIdx, "jump", &pOutInput->m_Jump);
+	GetIntProp(pCtx, ObjIdx, "fire", &pOutInput->m_Fire);
+	GetIntProp(pCtx, ObjIdx, "hook", &pOutInput->m_Hook);
+	GetIntProp(pCtx, ObjIdx, "player_flags", &pOutInput->m_PlayerFlags);
+	GetIntProp(pCtx, ObjIdx, "wanted_weapon", &pOutInput->m_WantedWeapon);
+	GetIntProp(pCtx, ObjIdx, "next_weapon", &pOutInput->m_NextWeapon);
+	GetIntProp(pCtx, ObjIdx, "prev_weapon", &pOutInput->m_PrevWeapon);
+}
+
+void CDukEntry::CharacterCorePreTick(CCharacterCore* pCharCore)
+{
+	if(!Duktape()->IsLoaded())
+		return;
+
+	duk_context* pCtx = Duktape()->Ctx();
+
+	duk_get_global_string(pCtx, "OnCharacterCorePreTick");
+
+	// arguments (CCharacterCore object, CNetObj_PlayerInput object)
+	DuktapePushCharacterCore(pCtx, pCharCore);
+	DuktapePushNetObjPlayerInput(pCtx, &pCharCore->m_Input);
+
+	// TODO: make a function out of this? CallJsFunction(funcname, numargs)?
+	int NumArgs = 2;
+	if(duk_pcall(pCtx, NumArgs) != DUK_EXEC_SUCCESS)
+	{
+		if(duk_is_error(pCtx, -1))
+		{
+			duk_get_prop_string(pCtx, -1, "stack");
+			const char* pStack = duk_safe_to_string(pCtx, -1);
+			duk_pop(pCtx);
+
+			dbg_msg("duck", "[JS ERROR] OnCharacterCorePreTick(): %s", pStack);
+		}
+		else
+		{
+			dbg_msg("duck", "[JS ERROR] OnCharacterCorePreTick(): %s", duk_safe_to_string(pCtx, -1));
+		}
+		dbg_break();
 	}
 
-	return IGraphics::CTextureHandle();
+	// EXPECTS: return [ char_core_obj, input_obj ]
+	if(duk_get_prop_index(pCtx, -1, 0))
+	{
+		DuktapeReadCharacterCore(pCtx, -1, pCharCore);
+		duk_pop(pCtx);
+	}
+	if(duk_get_prop_index(pCtx, -1, 1))
+	{
+		DuktapeReadNetObjPlayerInput(pCtx, -1, &pCharCore->m_Input);
+		duk_pop(pCtx);
+	}
+
+	duk_pop(pCtx);
+}
+
+void CDukEntry::CharacterCorePostTick(CCharacterCore* pCharCore)
+{
+
 }

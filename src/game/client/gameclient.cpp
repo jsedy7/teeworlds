@@ -490,7 +490,9 @@ void CGameClient::EvolveCharacter(CNetObj_Character *pCharacter, int Tick)
 	while(pCharacter->m_Tick < Tick)
 	{
 		pCharacter->m_Tick++;
+		m_pDuktapeComp->m_DukEntry.CharacterCorePreTick(&TempCore);
 		TempCore.Tick(false);
+		m_pDuktapeComp->m_DukEntry.CharacterCorePostTick(&TempCore);
 		TempCore.Move();
 		TempCore.Quantize();
 	}
@@ -1412,10 +1414,16 @@ void CGameClient::OnPredict()
 				const int *pInput = Client()->GetInput(Tick);
 				if(pInput)
 					World.m_apCharacters[c]->m_Input = *((const CNetObj_PlayerInput*)pInput);
+				m_pDuktapeComp->m_DukEntry.CharacterCorePreTick(World.m_apCharacters[c]);
 				World.m_apCharacters[c]->Tick(true);
+				m_pDuktapeComp->m_DukEntry.CharacterCorePostTick(World.m_apCharacters[c]);
 			}
 			else
+			{
+				m_pDuktapeComp->m_DukEntry.CharacterCorePreTick(World.m_apCharacters[c]);
 				World.m_apCharacters[c]->Tick(false);
+				m_pDuktapeComp->m_DukEntry.CharacterCorePostTick(World.m_apCharacters[c]);
+			}
 
 		}
 

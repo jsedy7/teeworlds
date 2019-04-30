@@ -7,12 +7,15 @@
 class CDuktape;
 class CRenderTools;
 class CGameClient;
+class CCharacterCore;
 
 struct CDukEntry
 {
+	CDuktape* m_pDuktape;
 	IGraphics* m_pGraphics;
 	CRenderTools* m_pRenderTools;
 	CGameClient* m_pGameClient;
+	inline CDuktape* Duktape() { return m_pDuktape; }
 	inline IGraphics* Graphics() { return m_pGraphics; }
 	inline CRenderTools* RenderTools() { return m_pRenderTools; }
 	inline CGameClient* GameClient() { return m_pGameClient; }
@@ -146,8 +149,11 @@ struct CDukEntry
 	void QueueDrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo);
 	void QueueDrawTeeHand(const CTeeDrawHand& Hand);
 
-	void RenderDrawSpace(DrawSpace::Enum Space);
-
 	bool LoadTexture(const char* pTexturePath, const char *pTextureName);
 	IGraphics::CTextureHandle GetTexture(const char* pTextureName);
+
+	// "entries"
+	void RenderDrawSpace(DrawSpace::Enum Space);
+	void CharacterCorePreTick(CCharacterCore* pCharCore);
+	void CharacterCorePostTick(CCharacterCore* pCharCore);
 };

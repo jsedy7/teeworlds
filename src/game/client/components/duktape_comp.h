@@ -12,7 +12,9 @@ struct CGrowBuffer;
 class CDuktape : public CComponent
 {
 	duk_context* m_pDukContext;
-	inline duk_context* Duk() { return m_pDukContext; }
+	int m_CurrentPushedObjID;
+	bool m_IsModLoaded;
+	inline duk_context* Ctx() { return m_pDukContext; }
 
 	static duk_ret_t NativeRenderQuad(duk_context *ctx);
 	static duk_ret_t NativeRenderQuadCentered(duk_context *ctx);
@@ -40,8 +42,6 @@ class CDuktape : public CComponent
 	static duk_ret_t NativeUnpackInteger(duk_context *ctx);
 	static duk_ret_t NativeUnpackFloat(duk_context *ctx);
 
-	int m_CurrentPushedObjID;
-
 	// TODO: not great if we want to do nested objects
 	void PushObject();
 	void ObjectSetMemberInt(const char* MemberName, int Value);
@@ -68,10 +68,13 @@ public:
 	virtual void OnMessage(int Msg, void *pRawMsg);
 	virtual void OnStateChange(int NewState, int OldState);
 	void OnModReset();
+	void OnModUnload();
 
 	bool StartDuckModHttpDownload(const char* pModUrl, const SHA256_DIGEST* pModSha256);
 	bool TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256);
 	bool InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256);
+
+	inline bool IsLoaded() const { return m_pDukContext != 0 && m_IsModLoaded; }
 
 	friend class CDukEntry;
 };
