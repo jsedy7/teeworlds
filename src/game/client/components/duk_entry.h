@@ -62,6 +62,7 @@ struct CDukEntry
 			SET_QUAD_ROTATION,
 			SET_TEE_SKIN,
 			DRAW_QUAD,
+			DRAW_QUAD_CENTERED,
 			DRAW_TEE_BODYANDFEET,
 			DRAW_TEE_HAND,
 		};
@@ -130,7 +131,7 @@ struct CDukEntry
 	array<CTextureHashPair> m_aTextures;
 
 	void DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo);
-	void DrawTeeHand(const CTeeDrawHand& Hand);
+	void DrawTeeHand(const CTeeDrawHand& Hand, const CTeeSkinInfo& SkinInfo);
 
 	void Init(CDuktape* pDuktape);
 	void Reset();
@@ -141,6 +142,7 @@ struct CDukEntry
 	void QueueSetQuadRotation(float Angle);
 	void QueueSetTeeSkin(const CTeeSkinInfo& SkinInfo);
 	void QueueDrawQuad(IGraphics::CQuadItem Quad);
+	void QueueDrawQuadCentered(IGraphics::CQuadItem Quad);
 	void QueueDrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo);
 	void QueueDrawTeeHand(const CTeeDrawHand& Hand);
 

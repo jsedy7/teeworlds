@@ -40,6 +40,20 @@ duk_ret_t CDuktape::NativeRenderQuad(duk_context *ctx)
 	return 0;
 }
 
+duk_ret_t CDuktape::NativeRenderQuadCentered(duk_context* ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 4, "Wrong argument count");
+	double x = duk_to_number(ctx, 0);
+	double y = duk_to_number(ctx, 1);
+	double Width = duk_to_number(ctx, 2);
+	double Height = duk_to_number(ctx, 3);
+
+	IGraphics::CQuadItem Quad(x, y, Width, Height);
+	This()->m_DukEntry.QueueDrawQuadCentered(Quad);
+	return 0;
+}
+
 duk_ret_t CDuktape::NativeRenderSetColorU32(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -1465,6 +1479,7 @@ void CDuktape::ResetDukContext()
 	REGISTER_FUNC(UnpackFloat, 1);
 
 	REGISTER_FUNC(RenderQuad, 4);
+	REGISTER_FUNC(RenderQuadCentered, 4);
 	REGISTER_FUNC(RenderSetColorU32, 1);
 	REGISTER_FUNC(RenderSetColorF4, 4);
 	REGISTER_FUNC(RenderSetTexture, 1);

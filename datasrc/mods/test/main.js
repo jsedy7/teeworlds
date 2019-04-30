@@ -97,8 +97,8 @@ function DrawTeeWeapon(weapId, x, y, teeSize)
     var offX = spec.offset_x * teeScale
     var offY = spec.offset_y * teeScale
 
-    var weapX = x - quadW / 2 + (dir.x * offX);
-    var weapY = y - quadH / 2 + (dir.y * offX) + dir.y * offY;
+    var weapX = x + (dir.x * offX);
+    var weapY = y + (dir.y * offX) + dir.y * offY;
 
     TwRenderSetColorF4(1, 1, 1, 1);
     TwRenderSetTexture(spec.sprite_body_texid);
@@ -108,15 +108,15 @@ function DrawTeeWeapon(weapId, x, y, teeSize)
         TwRenderSetQuadSubSet(ss.x1, ss.y2, ss.x2, ss.y1); // FLIP Y
 
     TwRenderSetQuadRotation(angle);
-    TwRenderQuad(weapX, weapY, quadW, quadH);
+    TwRenderQuadCentered(weapX, weapY, quadW, quadH);
 
     // tee hand
     var hand = {
         size: teeSize,
         angle_dir: angle,
         angle_off: -(Math.PI/2),
-        pos_x: weapX + quadW/2,
-        pos_y: weapY + quadH/2,
+        pos_x: weapX,
+        pos_y: weapY,
     };
 
     if(weapId == 1) {
@@ -154,8 +154,6 @@ function OnUpdate(clientLocalTime)
         got_air_jump: true,
         emote: Math.floor(clientLocalTime) % 6
     }
-    
-    DrawTeeWeapon(Math.floor(clientLocalTime) % 6, tee.pos_x, tee.pos_y, tee.size);
 
     var skinInfo = TwGetClientSkinInfo(0);
     
@@ -187,10 +185,13 @@ function OnUpdate(clientLocalTime)
             "unibop",
         ],
         [
+            "standard"
         ],
         [
+            "standard"
         ],
         [
+            "standard"
         ]
     ];
 
@@ -205,11 +206,14 @@ function OnUpdate(clientLocalTime)
     }
 
     TwRenderSetTeeSkin(skinInfo);
+
+    DrawTeeWeapon(Math.floor(clientLocalTime) % 6, tee.pos_x, tee.pos_y, tee.size);
+    
     TwRenderDrawTeeBodyAndFeet(tee);
 
     TwRenderSetColorF4(1, 1, 1, 1);
     TwRenderSetTexture(TwGetModTexture("deadtee.png"));
-    TwRenderSetQuadRotation(clientLocalTime * -2.0);
+    TwRenderSetQuadRotation(clientLocalTime * -20.0);
     TwRenderQuad(tee.pos_x, 350, 100, 100);
 }
 

@@ -41,9 +41,11 @@ void CDukEntry::DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, c
 	RenderTools()->RenderTee(&State, &RenderInfo, Emote, Direction, Pos);
 }
 
-void CDukEntry::DrawTeeHand(const CDukEntry::CTeeDrawHand& Hand)
+void CDukEntry::DrawTeeHand(const CDukEntry::CTeeDrawHand& Hand, const CTeeSkinInfo& SkinInfo)
 {
-	CTeeRenderInfo RenderInfo = GameClient()->m_aClients[GameClient()->m_LocalClientID].m_RenderInfo;
+	CTeeRenderInfo RenderInfo;
+	mem_move(RenderInfo.m_aTextures, SkinInfo.m_aTextures, sizeof(RenderInfo.m_aTextures));
+	mem_move(RenderInfo.m_aColors, SkinInfo.m_aColors, sizeof(RenderInfo.m_aColors));
 	RenderInfo.m_Size = Hand.m_Size;
 	vec2 Pos(Hand.m_Pos[0], Hand.m_Pos[1]);
 	vec2 Offset(Hand.m_Offset[0], Hand.m_Offset[1]);
@@ -118,6 +120,14 @@ void CDukEntry::QueueDrawQuad(IGraphics::CQuadItem Quad)
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
+void CDukEntry::QueueDrawQuadCentered(IGraphics::CQuadItem Quad)
+{
+	CRenderCmd Cmd;
+	Cmd.m_Type = CDukEntry::CRenderCmd::DRAW_QUAD_CENTERED;
+	mem_move(Cmd.m_Quad, &Quad, sizeof(Cmd.m_Quad));
+	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
+}
+
 void CDukEntry::QueueDrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo)
 {
 	CRenderCmd Cmd;
@@ -172,6 +182,7 @@ void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 				RenderSpace.m_CurrentTeeSkin = Cmd.m_TeeSkinInfo;
 			} break;
 
+			case CRenderCmd::DRAW_QUAD_CENTERED:
 			case CRenderCmd::DRAW_QUAD: {
 				if(RenderSpace.m_WantTextureID != RenderSpace.m_CurrentTextureID)
 				{
@@ -208,7 +219,10 @@ void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 					RenderSpace.m_CurrentQuadRotation = RenderSpace.m_WantQuadRotation;
 				}
 
-				Graphics()->QuadsDrawTL((IGraphics::CQuadItem*)&Cmd.m_Quad, 1);
+				if(Cmd.m_Type == CRenderCmd::DRAW_QUAD_CENTERED)
+					Graphics()->QuadsDraw((IGraphics::CQuadItem*)&Cmd.m_Quad, 1);
+				else
+					Graphics()->QuadsDrawTL((IGraphics::CQuadItem*)&Cmd.m_Quad, 1);
 				Graphics()->QuadsEnd();
 			} break;
 
@@ -217,7 +231,7 @@ void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 				break;
 
 			case CRenderCmd::DRAW_TEE_HAND:
-				DrawTeeHand(Cmd.m_TeeHand);
+				DrawTeeHand(Cmd.m_TeeHand, RenderSpace.m_CurrentTeeSkin);
 				break;
 
 			default:

@@ -15,6 +15,7 @@ class CDuktape : public CComponent
 	inline duk_context* Duk() { return m_pDukContext; }
 
 	static duk_ret_t NativeRenderQuad(duk_context *ctx);
+	static duk_ret_t NativeRenderQuadCentered(duk_context *ctx);
 	static duk_ret_t NativeRenderSetColorU32(duk_context *ctx);
 	static duk_ret_t NativeRenderSetColorF4(duk_context *ctx);
 	static duk_ret_t NativeRenderSetTexture(duk_context *ctx);
