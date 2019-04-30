@@ -1614,8 +1614,7 @@ void CDuktape::OnRender()
 	}
 	duk_pop(Ctx());
 
-	/*int n = duk_get_top(Ctx());
-	dbg_msg("duck", "OnCharacterCorePreTick() top=%d", n);*/
+	dbg_assert(duk_get_top(Ctx()) == 0, "stack leak");
 }
 
 void CDuktape::OnMessage(int Msg, void* pRawMsg)

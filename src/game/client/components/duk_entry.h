@@ -154,6 +154,6 @@ struct CDukEntry
 
 	// "entries"
 	void RenderDrawSpace(DrawSpace::Enum Space);
-	void CharacterCorePreTick(CCharacterCore* pCharCore);
-	void CharacterCorePostTick(CCharacterCore* pCharCore);
+	void CharacterCorePreTick(CCharacterCore** apCharCores);
+	void CharacterCorePostTick(CCharacterCore** apCharCores);
 };

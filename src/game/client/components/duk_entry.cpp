@@ -385,18 +385,39 @@ static void DuktapeReadNetObjPlayerInput(duk_context* pCtx, duk_idx_t ObjIdx, CN
 	GetIntProp(pCtx, ObjIdx, "prev_weapon", &pOutInput->m_PrevWeapon);
 }
 
-void CDukEntry::CharacterCorePreTick(CCharacterCore* pCharCore)
+void CDukEntry::CharacterCorePreTick(CCharacterCore** apCharCores)
 {
 	if(!Duktape()->IsLoaded())
 		return;
 
 	duk_context* pCtx = Duktape()->Ctx();
 
-	duk_get_global_string(pCtx, "OnCharacterCorePreTick");
+	if(!duk_get_global_string(pCtx, "OnCharacterCorePreTick"))
+	{
+		duk_pop(pCtx);
+		return;
+	}
 
-	// arguments (CCharacterCore object, CNetObj_PlayerInput object)
-	DuktapePushCharacterCore(pCtx, pCharCore);
-	DuktapePushNetObjPlayerInput(pCtx, &pCharCore->m_Input);
+	// arguments (array[CCharacterCore object], array[CNetObj_PlayerInput object])
+	duk_idx_t ArrayCharCoresIdx = duk_push_array(pCtx);
+	for(int c = 0; c < MAX_CLIENTS; c++)
+	{
+		if(apCharCores[c])
+			DuktapePushCharacterCore(pCtx, apCharCores[c]);
+		else
+			duk_push_null(pCtx);
+		duk_put_prop_index(pCtx, ArrayCharCoresIdx, c);
+	}
+
+	duk_idx_t ArrayInputIdx = duk_push_array(pCtx);
+	for(int c = 0; c < MAX_CLIENTS; c++)
+	{
+		if(apCharCores[c])
+			DuktapePushNetObjPlayerInput(pCtx, &apCharCores[c]->m_Input);
+		else
+			duk_push_null(pCtx);
+		duk_put_prop_index(pCtx, ArrayInputIdx, c);
+	}
 
 	// TODO: make a function out of this? CallJsFunction(funcname, numargs)?
 	int NumArgs = 2;
@@ -417,22 +438,129 @@ void CDukEntry::CharacterCorePreTick(CCharacterCore* pCharCore)
 		dbg_break();
 	}
 
-	// EXPECTS: return [ char_core_obj, input_obj ]
+	if(duk_get_top(pCtx) < 2)
+	{
+		duk_pop(pCtx);
+		return;
+	}
+
+	// EXPECTS RETURN: [array[CCharacterCore object], array[CNetObj_PlayerInput object]]
 	if(duk_get_prop_index(pCtx, -1, 0))
 	{
-		DuktapeReadCharacterCore(pCtx, -1, pCharCore);
+		for(int c = 0; c < MAX_CLIENTS; c++)
+		{
+			if(duk_get_prop_index(pCtx, -1, c))
+			{
+				if(!duk_is_null(pCtx, -1))
+					DuktapeReadCharacterCore(pCtx, -1, apCharCores[c]);
+				duk_pop(pCtx);
+			}
+		}
 		duk_pop(pCtx);
 	}
 	if(duk_get_prop_index(pCtx, -1, 1))
 	{
-		DuktapeReadNetObjPlayerInput(pCtx, -1, &pCharCore->m_Input);
+		for(int c = 0; c < MAX_CLIENTS; c++)
+		{
+			if(duk_get_prop_index(pCtx, -1, c))
+			{
+				if(!duk_is_null(pCtx, -1))
+					DuktapeReadNetObjPlayerInput(pCtx, -1, &apCharCores[c]->m_Input);
+				duk_pop(pCtx);
+			}
+		}
 		duk_pop(pCtx);
 	}
 
 	duk_pop(pCtx);
 }
 
-void CDukEntry::CharacterCorePostTick(CCharacterCore* pCharCore)
+void CDukEntry::CharacterCorePostTick(CCharacterCore** apCharCores)
 {
+	if(!Duktape()->IsLoaded())
+		return;
 
+	duk_context* pCtx = Duktape()->Ctx();
+
+	if(!duk_get_global_string(pCtx, "OnCharacterCorePostTick"))
+	{
+		duk_pop(pCtx);
+		return;
+	}
+
+	// arguments (array[CCharacterCore object], array[CNetObj_PlayerInput object])
+	duk_idx_t ArrayCharCoresIdx = duk_push_array(pCtx);
+	for(int c = 0; c < MAX_CLIENTS; c++)
+	{
+		if(apCharCores[c])
+			DuktapePushCharacterCore(pCtx, apCharCores[c]);
+		else
+			duk_push_null(pCtx);
+		duk_put_prop_index(pCtx, ArrayCharCoresIdx, c);
+	}
+
+	duk_idx_t ArrayInputIdx = duk_push_array(pCtx);
+	for(int c = 0; c < MAX_CLIENTS; c++)
+	{
+		if(apCharCores[c])
+			DuktapePushNetObjPlayerInput(pCtx, &apCharCores[c]->m_Input);
+		else
+			duk_push_null(pCtx);
+		duk_put_prop_index(pCtx, ArrayInputIdx, c);
+	}
+
+	// TODO: make a function out of this? CallJsFunction(funcname, numargs)?
+	int NumArgs = 2;
+	if(duk_pcall(pCtx, NumArgs) != DUK_EXEC_SUCCESS)
+	{
+		if(duk_is_error(pCtx, -1))
+		{
+			duk_get_prop_string(pCtx, -1, "stack");
+			const char* pStack = duk_safe_to_string(pCtx, -1);
+			duk_pop(pCtx);
+
+			dbg_msg("duck", "[JS ERROR] OnCharacterCorePostTick(): %s", pStack);
+		}
+		else
+		{
+			dbg_msg("duck", "[JS ERROR] OnCharacterCorePostTick(): %s", duk_safe_to_string(pCtx, -1));
+		}
+		dbg_break();
+	}
+
+	if(duk_get_top(pCtx) < 2)
+	{
+		duk_pop(pCtx);
+		return;
+	}
+
+	// EXPECTS RETURN: [array[CCharacterCore object], array[CNetObj_PlayerInput object]]
+	if(duk_get_prop_index(pCtx, -1, 0))
+	{
+		for(int c = 0; c < MAX_CLIENTS; c++)
+		{
+			if(duk_get_prop_index(pCtx, -1, c))
+			{
+				if(!duk_is_null(pCtx, -1))
+					DuktapeReadCharacterCore(pCtx, -1, apCharCores[c]);
+				duk_pop(pCtx);
+			}
+		}
+		duk_pop(pCtx);
+	}
+	if(duk_get_prop_index(pCtx, -1, 1))
+	{
+		for(int c = 0; c < MAX_CLIENTS; c++)
+		{
+			if(duk_get_prop_index(pCtx, -1, c))
+			{
+				if(!duk_is_null(pCtx, -1))
+					DuktapeReadNetObjPlayerInput(pCtx, -1, &apCharCores[c]->m_Input);
+				duk_pop(pCtx);
+			}
+		}
+		duk_pop(pCtx);
+	}
+
+	duk_pop(pCtx);
 }
