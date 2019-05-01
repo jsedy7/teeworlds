@@ -170,6 +170,20 @@ IGraphics::CTextureHandle CDukEntry::GetTexture(const char *pTextureName)
 	return IGraphics::CTextureHandle();
 }
 
+void CDukEntry::SetSolidBlock(int BlockId, const CDuckCollision::CSolidBlock& Block)
+{
+	// TODO: make a better system
+	dbg_assert(BlockId >= 0 && BlockId < m_Collision.m_aSolidBlocks.size(), "BlockId out of bounds");
+	m_Collision.m_aSolidBlocks[BlockId] = Block;
+}
+
+void CDukEntry::ClearSolidBlock(int BlockId)
+{
+	// TODO: make a better system
+	dbg_assert(BlockId >= 0 && BlockId < m_Collision.m_aSolidBlocks.size(), "BlockId out of bounds");
+	m_Collision.m_aSolidBlocks[BlockId].m_Flags = -1;
+}
+
 void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 {
 	const int CmdCount = m_aRenderCmdList[Space].size();
@@ -267,122 +281,6 @@ void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 
 	m_aRenderCmdList[Space].clear();
 	RenderSpace = CRenderSpace();
-}
-
-// TODO: move this?
-static duk_idx_t DuktapePushCharacterCore(duk_context* pCtx, const CCharacterCore* pCharCore)
-{
-	duk_idx_t CharCoreObjIdx = duk_push_object(pCtx);
-	duk_push_number(pCtx, pCharCore->m_Pos.x);
-	duk_put_prop_string(pCtx, CharCoreObjIdx, "pos_x");
-	duk_push_number(pCtx, pCharCore->m_Pos.y);
-	duk_put_prop_string(pCtx, CharCoreObjIdx, "pos_y");
-	duk_push_number(pCtx, pCharCore->m_Vel.x);
-	duk_put_prop_string(pCtx, CharCoreObjIdx, "vel_x");
-	duk_push_number(pCtx, pCharCore->m_Vel.y);
-	duk_put_prop_string(pCtx, CharCoreObjIdx, "vel_y");
-	duk_push_number(pCtx, pCharCore->m_HookPos.x);
-	duk_put_prop_string(pCtx, CharCoreObjIdx, "hook_pos_x");
-	duk_push_number(pCtx, pCharCore->m_HookPos.y);
-	duk_put_prop_string(pCtx, CharCoreObjIdx, "hook_pos_y");
-	duk_push_number(pCtx, pCharCore->m_HookDir.x);
-	duk_put_prop_string(pCtx, CharCoreObjIdx, "hook_dir_x");
-	duk_push_number(pCtx, pCharCore->m_HookDir.y);
-	duk_put_prop_string(pCtx, CharCoreObjIdx, "hook_dir_y");
-
-	duk_push_int(pCtx, pCharCore->m_HookTick);
-	duk_put_prop_string(pCtx, CharCoreObjIdx, "hook_tick");
-	duk_push_int(pCtx, pCharCore->m_HookState);
-	duk_put_prop_string(pCtx, CharCoreObjIdx, "hook_state");
-	duk_push_int(pCtx, pCharCore->m_HookedPlayer);
-	duk_put_prop_string(pCtx, CharCoreObjIdx, "hooked_player");
-	duk_push_int(pCtx, pCharCore->m_Jumped);
-	duk_put_prop_string(pCtx, CharCoreObjIdx, "jumped");
-	duk_push_int(pCtx, pCharCore->m_Direction);
-	duk_put_prop_string(pCtx, CharCoreObjIdx, "direction");
-	duk_push_int(pCtx, pCharCore->m_Angle);
-	duk_put_prop_string(pCtx, CharCoreObjIdx, "angle");
-	duk_push_int(pCtx, pCharCore->m_TriggeredEvents);
-	duk_put_prop_string(pCtx, CharCoreObjIdx, "triggered_events");
-	return CharCoreObjIdx;
-}
-
-static duk_idx_t DuktapePushNetObjPlayerInput(duk_context* pCtx, const CNetObj_PlayerInput* pInput)
-{
-	duk_idx_t InputObjIdx = duk_push_object(pCtx);
-	duk_push_int(pCtx, pInput->m_Direction);
-	duk_put_prop_string(pCtx, InputObjIdx, "direction");
-	duk_push_int(pCtx, pInput->m_TargetX);
-	duk_put_prop_string(pCtx, InputObjIdx, "target_x");
-	duk_push_int(pCtx, pInput->m_TargetY);
-	duk_put_prop_string(pCtx, InputObjIdx, "target_y");
-	duk_push_int(pCtx, pInput->m_Jump);
-	duk_put_prop_string(pCtx, InputObjIdx, "jump");
-	duk_push_int(pCtx, pInput->m_Fire);
-	duk_put_prop_string(pCtx, InputObjIdx, "fire");
-	duk_push_int(pCtx, pInput->m_Hook);
-	duk_put_prop_string(pCtx, InputObjIdx, "hook");
-	duk_push_int(pCtx, pInput->m_PlayerFlags);
-	duk_put_prop_string(pCtx, InputObjIdx, "player_flags");
-	duk_push_int(pCtx, pInput->m_WantedWeapon);
-	duk_put_prop_string(pCtx, InputObjIdx, "wanted_weapon");
-	duk_push_int(pCtx, pInput->m_NextWeapon);
-	duk_put_prop_string(pCtx, InputObjIdx, "next_weapon");
-	duk_push_int(pCtx, pInput->m_PrevWeapon);
-	duk_put_prop_string(pCtx, InputObjIdx, "prev_weapon");
-	return InputObjIdx;
-}
-
-inline void GetIntProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, int* pOutInt)
-{
-	if(duk_get_prop_string(pCtx, ObjIdx, pPropName))
-	{
-		*pOutInt = duk_to_int(pCtx, -1);
-		duk_pop(pCtx);
-	}
-}
-
-inline void GetFloatProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, float* pOutFloat)
-{
-	if(duk_get_prop_string(pCtx, ObjIdx, pPropName))
-	{
-		*pOutFloat = duk_to_number(pCtx, -1);
-		duk_pop(pCtx);
-	}
-}
-
-static void DuktapeReadCharacterCore(duk_context* pCtx, duk_idx_t ObjIdx, CCharacterCore* pOutCharCore)
-{
-	GetFloatProp(pCtx, ObjIdx, "pos_x", &pOutCharCore->m_Pos.x);
-	GetFloatProp(pCtx, ObjIdx, "pos_y", &pOutCharCore->m_Pos.y);
-	GetFloatProp(pCtx, ObjIdx, "vel_x", &pOutCharCore->m_Vel.x);
-	GetFloatProp(pCtx, ObjIdx, "vel_y", &pOutCharCore->m_Vel.y);
-	GetFloatProp(pCtx, ObjIdx, "hook_pos_x", &pOutCharCore->m_HookPos.x);
-	GetFloatProp(pCtx, ObjIdx, "hook_pos_y", &pOutCharCore->m_HookPos.y);
-	GetFloatProp(pCtx, ObjIdx, "hook_dir_x", &pOutCharCore->m_HookDir.x);
-	GetFloatProp(pCtx, ObjIdx, "hook_dir_y", &pOutCharCore->m_HookDir.y);
-
-	GetIntProp(pCtx, ObjIdx, "hook_tick", &pOutCharCore->m_HookTick);
-	GetIntProp(pCtx, ObjIdx, "hook_state", &pOutCharCore->m_HookState);
-	GetIntProp(pCtx, ObjIdx, "hooked_player", &pOutCharCore->m_HookedPlayer);
-	GetIntProp(pCtx, ObjIdx, "jumped", &pOutCharCore->m_Jumped);
-	GetIntProp(pCtx, ObjIdx, "direction", &pOutCharCore->m_Direction);
-	GetIntProp(pCtx, ObjIdx, "angle", &pOutCharCore->m_Angle);
-	GetIntProp(pCtx, ObjIdx, "triggered_events", &pOutCharCore->m_TriggeredEvents);
-}
-
-static void DuktapeReadNetObjPlayerInput(duk_context* pCtx, duk_idx_t ObjIdx, CNetObj_PlayerInput* pOutInput)
-{
-	GetIntProp(pCtx, ObjIdx, "direction", &pOutInput->m_Direction);
-	GetIntProp(pCtx, ObjIdx, "target_x", &pOutInput->m_TargetX);
-	GetIntProp(pCtx, ObjIdx, "target_y", &pOutInput->m_TargetY);
-	GetIntProp(pCtx, ObjIdx, "jump", &pOutInput->m_Jump);
-	GetIntProp(pCtx, ObjIdx, "fire", &pOutInput->m_Fire);
-	GetIntProp(pCtx, ObjIdx, "hook", &pOutInput->m_Hook);
-	GetIntProp(pCtx, ObjIdx, "player_flags", &pOutInput->m_PlayerFlags);
-	GetIntProp(pCtx, ObjIdx, "wanted_weapon", &pOutInput->m_WantedWeapon);
-	GetIntProp(pCtx, ObjIdx, "next_weapon", &pOutInput->m_NextWeapon);
-	GetIntProp(pCtx, ObjIdx, "prev_weapon", &pOutInput->m_PrevWeapon);
 }
 
 void CDukEntry::CharacterCorePreTick(CCharacterCore** apCharCores)

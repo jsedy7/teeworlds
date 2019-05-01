@@ -639,6 +639,14 @@ duk_ret_t CDuktape::NativeGetClientSkinInfo(duk_context* ctx)
 	return 1;
 }
 
+duk_ret_t CDuktape::NativeGetClientCharacterCores(duk_context* ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 0, "Wrong argument count");
+
+	return 1;
+}
+
 duk_ret_t CDuktape::NativeGetStandardSkinInfo(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -731,7 +739,59 @@ duk_ret_t CDuktape::NativeDirectionFromAngle(duk_context* ctx)
 		duk_put_prop_string(ctx, DirObjIdx, "x");
 		duk_push_number(ctx, Dir.y);
 		duk_put_prop_string(ctx, DirObjIdx, "y");
-	return 1;
+		return 1;
+}
+
+duk_ret_t CDuktape::NativeCollisionSetSolidBlock(duk_context* ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 2, "Wrong argument count");
+
+	int BlockId = duk_to_int(ctx, 0);
+
+	CDuckCollision::CSolidBlock SolidBlock;
+	SolidBlock.m_Flags = -1;
+
+	if(duk_get_prop_string(ctx, 1, "flags"))
+	{
+		SolidBlock.m_Flags = (int)duk_to_int(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_string(ctx, 1, "pos_x"))
+	{
+		SolidBlock.m_Pos.x = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_string(ctx, 1, "pos_y"))
+	{
+		SolidBlock.m_Pos.y = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_string(ctx, 1, "width"))
+	{
+		SolidBlock.m_Size.x = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_string(ctx, 1, "height"))
+	{
+		SolidBlock.m_Size.y = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+
+	if(BlockId >= 0)
+		This()->m_DukEntry.SetSolidBlock(BlockId, SolidBlock);
+	return 0;
+}
+
+duk_ret_t CDuktape::NativeCollisionClearSolidBlock(duk_context* ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	int BlockId = duk_to_int(ctx, 0);
+	if(BlockId >= 0)
+		This()->m_DukEntry.ClearSolidBlock(BlockId);
+	return 0;
 }
 
 template<typename IntT>
@@ -1539,6 +1599,8 @@ void CDuktape::ResetDukContext()
 	REGISTER_FUNC(GetSkinPartTexture, 2);
 	REGISTER_FUNC(MapSetTileCollisionFlags, 3);
 	REGISTER_FUNC(DirectionFromAngle, 1);
+	REGISTER_FUNC(CollisionSetSolidBlock, 2);
+	REGISTER_FUNC(CollisionClearSolidBlock, 1);
 
 #undef REGISTER_FUNC
 
@@ -1724,4 +1786,76 @@ bool CDuktape::InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int Buffe
 	sha256_str(*pModSha256, aSha256Str, sizeof(aSha256Str));
 	dbg_msg("duck", "mod loaded from zip buffer sha256='%s'", aSha256Str);
 	return IsLoaded;
+}
+
+duk_idx_t DuktapePushCharacterCore(duk_context* pCtx, const CCharacterCore* pCharCore)
+{
+	duk_idx_t CharCoreObjIdx = duk_push_object(pCtx);
+	SetFloatProp(pCtx, CharCoreObjIdx, "pos_x", pCharCore->m_Pos.x);
+	SetFloatProp(pCtx, CharCoreObjIdx, "pos_y", pCharCore->m_Pos.y);
+	SetFloatProp(pCtx, CharCoreObjIdx, "vel_x", pCharCore->m_Vel.x);
+	SetFloatProp(pCtx, CharCoreObjIdx, "vel_y", pCharCore->m_Vel.y);
+	SetFloatProp(pCtx, CharCoreObjIdx, "hook_pos_x", pCharCore->m_HookPos.x);
+	SetFloatProp(pCtx, CharCoreObjIdx, "hook_pos_y", pCharCore->m_HookPos.y);
+	SetFloatProp(pCtx, CharCoreObjIdx, "hook_dir_x", pCharCore->m_HookDir.x);
+	SetFloatProp(pCtx, CharCoreObjIdx, "hook_dir_y", pCharCore->m_HookDir.y);
+
+	SetIntProp(pCtx, CharCoreObjIdx, "hook_tick", pCharCore->m_HookTick);
+	SetIntProp(pCtx, CharCoreObjIdx, "hook_state", pCharCore->m_HookState);
+	SetIntProp(pCtx, CharCoreObjIdx, "hooked_player", pCharCore->m_HookedPlayer);
+	SetIntProp(pCtx, CharCoreObjIdx, "jumped", pCharCore->m_Jumped);
+	SetIntProp(pCtx, CharCoreObjIdx, "direction", pCharCore->m_Direction);
+	SetIntProp(pCtx, CharCoreObjIdx, "angle", pCharCore->m_Angle);
+	SetIntProp(pCtx, CharCoreObjIdx, "triggered_events", pCharCore->m_TriggeredEvents);
+	return CharCoreObjIdx;
+}
+
+duk_idx_t DuktapePushNetObjPlayerInput(duk_context* pCtx, const CNetObj_PlayerInput* pInput)
+{
+	duk_idx_t InputObjIdx = duk_push_object(pCtx);
+	SetIntProp(pCtx, InputObjIdx, "direction", pInput->m_Direction);
+	SetIntProp(pCtx, InputObjIdx, "target_x", pInput->m_TargetX);
+	SetIntProp(pCtx, InputObjIdx, "target_y", pInput->m_TargetY);
+	SetIntProp(pCtx, InputObjIdx, "jump", pInput->m_Jump);
+	SetIntProp(pCtx, InputObjIdx, "fire", pInput->m_Fire);
+	SetIntProp(pCtx, InputObjIdx, "hook", pInput->m_Hook);
+	SetIntProp(pCtx, InputObjIdx, "player_flags", pInput->m_PlayerFlags);
+	SetIntProp(pCtx, InputObjIdx, "wanted_weapon", pInput->m_WantedWeapon);
+	SetIntProp(pCtx, InputObjIdx, "next_weapon", pInput->m_NextWeapon);
+	SetIntProp(pCtx, InputObjIdx, "prev_weapon", pInput->m_PrevWeapon);
+	return InputObjIdx;
+}
+
+void DuktapeReadCharacterCore(duk_context* pCtx, duk_idx_t ObjIdx, CCharacterCore* pOutCharCore)
+{
+	GetFloatProp(pCtx, ObjIdx, "pos_x", &pOutCharCore->m_Pos.x);
+	GetFloatProp(pCtx, ObjIdx, "pos_y", &pOutCharCore->m_Pos.y);
+	GetFloatProp(pCtx, ObjIdx, "vel_x", &pOutCharCore->m_Vel.x);
+	GetFloatProp(pCtx, ObjIdx, "vel_y", &pOutCharCore->m_Vel.y);
+	GetFloatProp(pCtx, ObjIdx, "hook_pos_x", &pOutCharCore->m_HookPos.x);
+	GetFloatProp(pCtx, ObjIdx, "hook_pos_y", &pOutCharCore->m_HookPos.y);
+	GetFloatProp(pCtx, ObjIdx, "hook_dir_x", &pOutCharCore->m_HookDir.x);
+	GetFloatProp(pCtx, ObjIdx, "hook_dir_y", &pOutCharCore->m_HookDir.y);
+
+	GetIntProp(pCtx, ObjIdx, "hook_tick", &pOutCharCore->m_HookTick);
+	GetIntProp(pCtx, ObjIdx, "hook_state", &pOutCharCore->m_HookState);
+	GetIntProp(pCtx, ObjIdx, "hooked_player", &pOutCharCore->m_HookedPlayer);
+	GetIntProp(pCtx, ObjIdx, "jumped", &pOutCharCore->m_Jumped);
+	GetIntProp(pCtx, ObjIdx, "direction", &pOutCharCore->m_Direction);
+	GetIntProp(pCtx, ObjIdx, "angle", &pOutCharCore->m_Angle);
+	GetIntProp(pCtx, ObjIdx, "triggered_events", &pOutCharCore->m_TriggeredEvents);
+}
+
+void DuktapeReadNetObjPlayerInput(duk_context* pCtx, duk_idx_t ObjIdx, CNetObj_PlayerInput* pOutInput)
+{
+	GetIntProp(pCtx, ObjIdx, "direction", &pOutInput->m_Direction);
+	GetIntProp(pCtx, ObjIdx, "target_x", &pOutInput->m_TargetX);
+	GetIntProp(pCtx, ObjIdx, "target_y", &pOutInput->m_TargetY);
+	GetIntProp(pCtx, ObjIdx, "jump", &pOutInput->m_Jump);
+	GetIntProp(pCtx, ObjIdx, "fire", &pOutInput->m_Fire);
+	GetIntProp(pCtx, ObjIdx, "hook", &pOutInput->m_Hook);
+	GetIntProp(pCtx, ObjIdx, "player_flags", &pOutInput->m_PlayerFlags);
+	GetIntProp(pCtx, ObjIdx, "wanted_weapon", &pOutInput->m_WantedWeapon);
+	GetIntProp(pCtx, ObjIdx, "next_weapon", &pOutInput->m_NextWeapon);
+	GetIntProp(pCtx, ObjIdx, "prev_weapon", &pOutInput->m_PrevWeapon);
 }

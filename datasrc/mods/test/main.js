@@ -3,6 +3,11 @@ print('Ducktape version = ' + Duktape.version);
 
 var lastClientlocalTime = 0.0;
 
+var game = {
+    debugRects: [],
+    hookBlocks: []
+};
+
 OnLoad();
 
 
@@ -155,7 +160,7 @@ function OnUpdate(clientLocalTime)
         emote: Math.floor(clientLocalTime) % 6
     }
 
-    var skinInfo = TwGetClientSkinInfo(0);
+    var skinInfo = TwGetStandardSkinInfo();
     
     var partNames = [
         [
@@ -202,7 +207,7 @@ function OnUpdate(clientLocalTime)
         var tex = TwGetSkinPartTexture(i, partNames[i][Math.floor(clientLocalTime * (i/3.0+1.0)) % partNames[i].length]);
 
         if(tex != null)
-            skinInfo.textures[i] = tex[0];
+            skinInfo.textures[i] = tex[1];
     }
 
     TwRenderSetTeeSkin(skinInfo);
@@ -213,11 +218,79 @@ function OnUpdate(clientLocalTime)
 
     TwRenderSetColorF4(1, 1, 1, 1);
     TwRenderSetTexture(TwGetModTexture("deadtee.png"));
-    TwRenderSetQuadRotation(clientLocalTime * -20.0);
+    TwRenderSetQuadRotation(clientLocalTime * -2.0);
     TwRenderQuad(tee.pos_x, 350, 100, 100);
+
+    // draw debug rects
+    game.debugRects.forEach(function(r) {
+        TwRenderSetTexture(-1);
+        TwRenderSetColorU32(r.color);
+        TwRenderQuad(r.x, r.y, r.w, r.h);
+    });
+
+    // draw hook blocks
+    game.hookBlocks.forEach(function(block) {
+        TwRenderSetTexture(-1);
+        TwRenderSetColorF4(1, 0.5 + (Math.sin(clientLocalTime) * 0.5 + 0.5) * 0.5, 1, 1);
+        TwRenderQuad(block.pos_x, block.pos_y, block.width, block.height);
+    });
 }
 
 function OnMessage(netObj)
 {
     //printObj(netObj);
+    
+    if(netObj.netID == 0x1) { // DEBUG_RECT
+        var rectId = TwUnpackInt32(netObj);
+        var rect = {
+            x: TwUnpackFloat(netObj),
+            y: TwUnpackFloat(netObj),
+            w: TwUnpackFloat(netObj),
+            h: TwUnpackFloat(netObj),
+            color: TwUnpackUint32(netObj),
+        };
+        game.debugRects[rectId] = rect;
+        return;
+    }
+
+    if(netObj.netID == 0x3) { // CNetObj_HookBlock
+        var blockId = TwUnpackInt32(netObj);
+        var block = {
+            flags: TwUnpackInt32(netObj),
+            pos_x: TwUnpackFloat(netObj),
+            pos_y: TwUnpackFloat(netObj),
+            vel_x: TwUnpackFloat(netObj),
+            vel_y: TwUnpackFloat(netObj),
+            width: TwUnpackFloat(netObj),
+            height: TwUnpackFloat(netObj),
+        };
+        game.hookBlocks[blockId] = block;
+        TwCollisionSetSolidBlock(blockId, block);
+        return;
+    }
 }
+
+/*function OnCharacterCorePreTick(listCharCore, listInput)
+{
+    //printObj(listCharCore);
+    //printObj(listInput);
+    var count = listCharCore.length;
+    for(var i = 0; i < count; i++)
+    {
+        if(listCharCore[i] !== null)
+        {
+        }
+    }
+    return [ listCharCore, listInput ];
+}*/
+
+/*function OnCharacterCorePostTick(listCharCore, listInput)
+{
+    var count = listCharCore.length;
+    for(var i = 0; i < count; i++)
+    {
+        if(listCharCore[i] !== null)
+            listCharCore[i].vel_y -= 10.0;
+    }
+    return [ listCharCore, listInput ];
+}*/

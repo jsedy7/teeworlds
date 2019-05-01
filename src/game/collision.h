@@ -25,7 +25,7 @@ public:
 	};
 
 	CCollision();
-	void Init(class CLayers *pLayers);
+	virtual void Init(class CLayers *pLayers);
 	virtual bool CheckPoint(float x, float y) const { return IsTileSolid(round_to_int(x), round_to_int(y)); }
 	bool CheckPoint(vec2 Pos) const { return CheckPoint(Pos.x, Pos.y); }
 	virtual int GetCollisionAt(float x, float y) const { return GetTile(round_to_int(x), round_to_int(y)); }

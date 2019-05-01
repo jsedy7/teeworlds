@@ -56,6 +56,7 @@ struct CNetObj_HookBlock
 	enum { NET_ID = DukNetObjID::HOOK_BLOCK };
 
 	int m_Id;
+	int m_Flags;
 	float m_PosX;
 	float m_PosY;
 	float m_VelX;
