@@ -639,10 +639,40 @@ duk_ret_t CDuktape::NativeGetClientSkinInfo(duk_context* ctx)
 	return 1;
 }
 
-duk_ret_t CDuktape::NativeGetClientCharacterCores(duk_context* ctx)
+duk_ret_t CDuktape::NativeGetClientCharacterPositions(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 0, "Wrong argument count");
+
+	float IntraTick = This()->Client()->IntraGameTick();
+
+	duk_idx_t ArrayIdx = duk_push_array(ctx);
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		const CGameClient::CClientData& ClientData = This()->m_pClient->m_aClients[i];
+		if(ClientData.m_Active)
+		{
+			CNetObj_Character Prev = This()->m_pClient->m_Snap.m_aCharacters[i].m_Prev;
+			CNetObj_Character Cur = This()->m_pClient->m_Snap.m_aCharacters[i].m_Cur;
+
+			float IntraTick = This()->Client()->IntraGameTick();
+			if(i == This()->m_pClient->m_LocalClientID)
+			{
+				IntraTick = This()->Client()->PredIntraGameTick();
+				This()->m_pClient->m_PredictedChar.Write(&Cur);
+				This()->m_pClient->m_PredictedPrevChar.Write(&Prev);
+			}
+
+			vec2 Position = mix(vec2(Prev.m_X, Prev.m_Y), vec2(Cur.m_X, Cur.m_Y), IntraTick);
+
+			duk_idx_t PosObjIdx = duk_push_object(ctx);
+			SetFloatProp(ctx, PosObjIdx, "pos_x", Position.x);
+			SetFloatProp(ctx, PosObjIdx, "pos_y", Position.y);
+		}
+		else
+			duk_push_null(ctx);
+		duk_put_prop_index(ctx, ArrayIdx, i);
+	}
 
 	return 1;
 }
@@ -1595,6 +1625,7 @@ void CDuktape::ResetDukContext()
 	REGISTER_FUNC(GetWeaponSpec, 1);
 	REGISTER_FUNC(GetModTexture, 1);
 	REGISTER_FUNC(GetClientSkinInfo, 1);
+	REGISTER_FUNC(GetClientCharacterPositions, 0);
 	REGISTER_FUNC(GetStandardSkinInfo, 0);
 	REGISTER_FUNC(GetSkinPartTexture, 2);
 	REGISTER_FUNC(MapSetTileCollisionFlags, 3);
