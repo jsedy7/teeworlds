@@ -713,7 +713,7 @@ duk_ret_t CDuktape::NativeMapSetTileCollisionFlags(duk_context *ctx)
 	int Ty = duk_to_int(ctx, 1);
 	int Flags = duk_to_int(ctx, 2);
 
-	This()->Collision()->SetTileCollisionFlags(Tx, Ty, Flags);
+	This()->m_DukEntry.m_Collision.SetTileCollisionFlags(Tx, Ty, Flags);
 
 	return 0;
 }

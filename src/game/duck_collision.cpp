@@ -1,13 +1,15 @@
 #include "duck_collision.h"
+#include <base/system.h>
+#include <game/mapitems.h>
+
+vec2 HookBlockPos = vec2(800, 512);
+vec2 HookBlockSize = vec2(96, 64);
+vec2 HookBlockVel = vec2(0, 0);
 
 bool CDuckCollision::CheckPoint(float x, float y) const
 {
-	vec2 HookBlockPos = vec2(800, 500);
-	vec2 HookBlockSize = vec2(100, 50);
-	vec2 HookBlockVel = vec2(0, 0);
-
-	if((x >= HookBlockPos.x && x < (HookBlockPos.x+HookBlockSize.x) &&
-		y >= HookBlockPos.y && y < (HookBlockPos.y+HookBlockSize.y)))
+	if((x > HookBlockPos.x && x < (HookBlockPos.x+HookBlockSize.x) &&
+		y > HookBlockPos.y && y < (HookBlockPos.y+HookBlockSize.y)))
 	{
 		return true;
 	}
@@ -17,15 +19,19 @@ bool CDuckCollision::CheckPoint(float x, float y) const
 
 int CDuckCollision::GetCollisionAt(float x, float y) const
 {
-	vec2 HookBlockPos = vec2(800, 500);
-	vec2 HookBlockSize = vec2(100, 50);
-	vec2 HookBlockVel = vec2(0, 0);
-
-	if((x >= HookBlockPos.x && x < (HookBlockPos.x+HookBlockSize.x) &&
-		y >= HookBlockPos.y && y < (HookBlockPos.y+HookBlockSize.y)))
+	if((x > HookBlockPos.x && x < (HookBlockPos.x+HookBlockSize.x) &&
+		y > HookBlockPos.y && y < (HookBlockPos.y+HookBlockSize.y)))
 	{
 		return COLFLAG_SOLID;
 	}
 
 	return CCollision::GetCollisionAt(x, y);
+}
+
+
+void CDuckCollision::SetTileCollisionFlags(int Tx, int Ty, int Flags)
+{
+	dbg_assert(Tx >= 0 && Tx < m_Width, "Tx out of bounds");
+	dbg_assert(Ty >= 0 && Ty < m_Height, "Ty out of bounds");
+	m_pTiles[Ty*m_Width+Tx].m_Index = Flags;
 }

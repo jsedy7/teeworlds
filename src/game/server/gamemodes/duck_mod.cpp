@@ -31,13 +31,15 @@ void CGameControllerDUCK::FlipSolidRect(float Rx, float Ry, float Rw, float Rh, 
 	Flip.w = Rw;
 	Flip.h = Rh;
 
+	CDuckCollision* pCollision = (CDuckCollision*)GameServer()->Collision();
+
 	if(Solid)
 	{
 		for(int y = 0; y < Flip.h; y++)
 		{
 			for(int x = 0; x < Flip.w; x++)
 			{
-				GameServer()->Collision()->SetTileCollisionFlags(Flip.x + x, Flip.y + y, CCollision::COLFLAG_SOLID | (CCollision::COLFLAG_NOHOOK * !IsHookable));
+				pCollision->SetTileCollisionFlags(Flip.x + x, Flip.y + y, CCollision::COLFLAG_SOLID | (CCollision::COLFLAG_NOHOOK * !IsHookable));
 			}
 		}
 	}
@@ -47,7 +49,7 @@ void CGameControllerDUCK::FlipSolidRect(float Rx, float Ry, float Rw, float Rh, 
 		{
 			for(int x = 0; x < Flip.w; x++)
 			{
-				GameServer()->Collision()->SetTileCollisionFlags(Flip.x + x, Flip.y + y, 0);
+				pCollision->SetTileCollisionFlags(Flip.x + x, Flip.y + y, 0);
 			}
 		}
 	}

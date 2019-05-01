@@ -33,8 +33,8 @@ void CGameControllerTEST::Tick()
 {
 	IGameController::Tick();
 
-	vec2 HookBlockPos = vec2(800, 500);
-	vec2 HookBlockSize = vec2(100, 50);
+	vec2 HookBlockPos = vec2(800, 512);
+	vec2 HookBlockSize = vec2(96, 64);
 	vec2 HookBlockVel = vec2(0, 0);
 
 	for(int p = 0; p < MAX_PLAYERS; p++)

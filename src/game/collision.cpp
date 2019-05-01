@@ -145,13 +145,6 @@ bool CCollision::TestBox(vec2 Pos, vec2 Size) const
 	return false;
 }
 
-void CCollision::SetTileCollisionFlags(int Tx, int Ty, int Flags)
-{
-	dbg_assert(Tx >= 0 && Tx < m_Width, "Tx out of bounds");
-	dbg_assert(Ty >= 0 && Ty < m_Height, "Ty out of bounds");
-	m_pTiles[Ty*m_Width+Tx].m_Index = Flags;
-}
-
 void CCollision::MoveBox(vec2 *pInoutPos, vec2 *pInoutVel, vec2 Size, float Elasticity) const
 {
 	// do the move
