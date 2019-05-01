@@ -288,15 +288,20 @@ public:
 	void SnapSetStaticsize(int ItemType, int Size);
 
 	// DUCK
-	SHA256_DIGEST m_CurrentDuckModSha256;
-	CGrowBuffer m_CurrentDuckModFileBuffer;
-	char m_aCurrentDuckModPath[128];
+	SHA256_DIGEST m_DuckModSha256;
+	CGrowBuffer m_DuckModFileBuffer;
+	char m_aDuckDevModFolderPath[128];
+	char m_aDuckModZipPath[128];
+	char m_aDuckModReleaseUrl[512];
 
 	bool IsDuckDevMode() const;
+	void ResetDuckMod();
 	void SendDuckModHttp(int ClientID);
 	void SendDuckModChunks(int ClientID);
 	bool LoadDuckModZipFile(const char *pModPath);
 	bool CompressDuckModFolder(const char* pModPath);
+
+	bool LoadDuckMod(const char* pReleaseUrl, const char* pReleaseZipPath, const char* pDevFolderPath);
 };
 
 #endif

@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <game/server/gamecontext.h>
 #include <game/server/entities/character.h>
+#include <game/server/player.h>
 #include <game/my_protocol.h>
 
 inline bool IsInsideRect(vec2 Pos, vec2 RectPos, vec2 RectSize)
@@ -102,6 +103,12 @@ CGameControllerDUCK::CGameControllerDUCK(class CGameContext *pGameServer)
 	Pair.m_LineFlip = false;
 	Pair.m_IsLineHookable = false;
 	m_aButtonLinePairs[3] = Pair;
+
+	// load duck mod
+	if(!Server()->LoadDuckMod("https://github.com/LordSk/teeworlds/releases/download/0.1-test0/portal.zip", "data/mods/portal.zip", "data/mods/portal"))
+	{
+		dbg_msg("server", "failed to load duck mod");
+	}
 }
 
 void CGameControllerDUCK::Tick()
@@ -173,6 +180,9 @@ void CGameControllerDUCK::Tick()
 		{
 			if(GameServer()->m_apPlayers[p])
 			{
+				if(GameServer()->m_apPlayers[p]->IsDummy())
+					continue;
+
 				CNetObj_DebugRect Rect;
 				Rect.id = bpi;
 				Rect.x = Pair.m_ButtonPos.x * 32;

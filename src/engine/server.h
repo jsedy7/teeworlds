@@ -68,6 +68,8 @@ public:
 
 	virtual void DemoRecorder_HandleAutoStart() = 0;
 	virtual bool DemoRecorder_IsRecording() = 0;
+
+	virtual bool LoadDuckMod(const char* pReleaseUrl, const char* pReleaseZipPath, const char* pDevFolderPath) = 0;
 };
 
 class IGameServer : public IInterface

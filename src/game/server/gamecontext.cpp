@@ -19,6 +19,7 @@
 #include "gamemodes/mod.h"
 #include "gamemodes/tdm.h"
 #include "gamemodes/duck_mod.h"
+#include "gamemodes/test.h"
 #include "gamecontext.h"
 #include "player.h"
 
@@ -1481,6 +1482,8 @@ void CGameContext::OnInit()
 		m_pController = new CGameControllerTDM(this);
 	else if(str_comp_nocase(g_Config.m_SvGametype, "duck") == 0)
 		m_pController = new CGameControllerDUCK(this);
+	else if(str_comp_nocase(g_Config.m_SvGametype, "test") == 0)
+		m_pController = new CGameControllerTEST(this);
 	else
 		m_pController = new CGameControllerDM(this);
 

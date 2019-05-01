@@ -875,11 +875,11 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 					if(IsDuckDevMode())
 					{
 						// TODO: oh god, do this elsewhere / cache it
-						if(CompressDuckModFolder(g_Config.m_SvDuckDevModDir))
+						if(CompressDuckModFolder(m_aDuckDevModFolderPath))
 							SendDuckModChunks(ClientID);
 						else
 						{
-							dbg_msg("duck", "[dev mode] failed to load and compress duck mod (sv_duck_dev_mod_dir). dir='%s'", g_Config.m_SvDuckDevModDir);
+							dbg_msg("duck", "[dev mode] failed to load and compress duck mod (sv_duck_dev_mod_dir). dir='%s'", m_aDuckDevModFolderPath);
 							m_NetServer.Drop(ClientID, "Server local mod is invalid");
 							return;
 						}
@@ -1123,16 +1123,16 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 					int Offset = Chunk * ChunkSize;
 
 					// check for last part
-					if(Offset+ChunkSize >= m_CurrentDuckModFileBuffer.m_Size)
+					if(Offset+ChunkSize >= m_DuckModFileBuffer.m_Size)
 					{
-						ChunkSize = m_CurrentDuckModFileBuffer.m_Size-Offset;
+						ChunkSize = m_DuckModFileBuffer.m_Size-Offset;
 						m_aClients[ClientID].m_DuckModChunk = -1;
 					}
 					else
 						m_aClients[ClientID].m_DuckModChunk++;
 
 					CMsgPacker Msg(NETMSG_DUCK_MOD_DATA, true);
-					Msg.AddRaw(&m_CurrentDuckModFileBuffer.m_pData[Offset], ChunkSize);
+					Msg.AddRaw(&m_DuckModFileBuffer.m_pData[Offset], ChunkSize);
 					SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH, ClientID);
 
 					if(g_Config.m_Debug)
@@ -1375,22 +1375,6 @@ int CServer::Run()
 	}
 	m_MapChunksPerRequest = g_Config.m_SvMapDownloadSpeed;
 
-	// DUCK
-	// load duck mod
-	if(IsDuckDevMode())
-	{
-		if(!CompressDuckModFolder(g_Config.m_SvDuckDevModDir))
-		{
-			dbg_msg("duck", "[dev mode] failed to load and compress duck mod (sv_duck_dev_mod_dir). dir='%s'", g_Config.m_SvDuckDevModDir);
-			return -1;
-		}
-	}
-	else if(!LoadDuckModZipFile(g_Config.m_SvDuckModPath))
-	{
-		dbg_msg("duck", "[release mode] failed to load duck mod (sv_duck_mod_path). path='%s'", g_Config.m_SvDuckModPath);
-		return -1;
-	}
-
 	// start server
 	NETADDR BindAddr;
 	if(g_Config.m_Bindaddr[0] && net_host_lookup(g_Config.m_Bindaddr, &BindAddr, NETTYPE_ALL) == 0)
@@ -1447,19 +1431,6 @@ int CServer::Run()
 			int64 t = time_get();
 			int NewTicks = 0;
 
-			// DUCK
-			if(!IsDuckDevMode() && str_comp(g_Config.m_SvDuckModPath, m_aCurrentDuckModPath) != 0)
-			{
-				m_MapReload = 1;
-
-				// load duck mod
-				if(!LoadDuckModZipFile(g_Config.m_SvDuckModPath))
-				{
-					dbg_msg("server", "failed to load duck mod. path='%s'", g_Config.m_SvDuckModPath);
-					return -1;
-				}
-			}
-
 			// load new map TODO: don't poll this
 			if(str_comp(g_Config.m_SvMap, m_aCurrentMap) != 0 || m_MapReload || m_CurrentGameTick >= 0x6FFFFFFF) //	force reload to make sure the ticks stay within a valid range
 			{
@@ -1474,6 +1445,7 @@ int CServer::Run()
 						aSpecs[c] = GameServer()->IsClientSpectator(c);
 
 					GameServer()->OnShutdown();
+					ResetDuckMod();
 
 					for(int c = 0; c < MAX_CLIENTS; c++)
 					{
@@ -1866,23 +1838,32 @@ bool CServer::IsDuckDevMode() const
 	return g_Config.m_SvDuckDev == 1;
 }
 
+void CServer::ResetDuckMod()
+{
+	m_DuckModSha256 = SHA256_ZEROED;
+	m_DuckModFileBuffer.Clear();
+	mem_zero(m_aDuckDevModFolderPath, sizeof(m_aDuckDevModFolderPath));
+	mem_zero(m_aDuckModZipPath, sizeof(m_aDuckModZipPath));
+	mem_zero(m_aDuckModReleaseUrl, sizeof(m_aDuckModReleaseUrl));
+}
+
 // DUCK
 void CServer::SendDuckModHttp(int ClientID)
 {
 	CMsgPacker Msg(NETMSG_DUCK_MOD_INFO, true);
-	Msg.AddString(g_Config.m_SvDuckModDescription, 128);
-	Msg.AddString(g_Config.m_SvDuckModUrl, 512);
-	Msg.AddRaw(&m_CurrentDuckModSha256, sizeof(m_CurrentDuckModSha256));
+	Msg.AddString("Mod description", 128); // TODO: add mod description, preview image?
+	Msg.AddString(m_aDuckModReleaseUrl, 512);
+	Msg.AddRaw(&m_DuckModSha256, sizeof(m_DuckModSha256));
 	SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH, ClientID);
 }
 
 void CServer::SendDuckModChunks(int ClientID)
 {
 	CMsgPacker Msg(NETMSG_DUCK_MOD_INFO_DEV, true);
-	Msg.AddInt(m_CurrentDuckModFileBuffer.m_Size);
+	Msg.AddInt(m_DuckModFileBuffer.m_Size);
 	Msg.AddInt(m_MapChunksPerRequest);
 	Msg.AddInt(MAP_CHUNK_SIZE);
-	Msg.AddRaw(&m_CurrentDuckModSha256, sizeof(m_CurrentDuckModSha256));
+	Msg.AddRaw(&m_DuckModSha256, sizeof(m_DuckModSha256));
 	SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH, ClientID);
 }
 
@@ -1895,19 +1876,17 @@ bool CServer::LoadDuckModZipFile(const char* pModPath)
 		return false;
 	}
 
-	str_copy(m_aCurrentDuckModPath, pModPath, sizeof(m_aCurrentDuckModPath));
-
 	const int FileLength = io_length(ModFile);
 	char* pFileBuff = (char*)mem_alloc(FileLength, 1);
 	io_read(ModFile, pFileBuff, FileLength);
 	io_close(ModFile);
 
-	m_CurrentDuckModSha256 = sha256(pFileBuff, FileLength);
+	m_DuckModSha256 = sha256(pFileBuff, FileLength);
 
 	mem_free(pFileBuff);
 
 	char aSha256Str[SHA256_MAXSTRSIZE];
-	sha256_str(m_CurrentDuckModSha256, aSha256Str, sizeof(aSha256Str));
+	sha256_str(m_DuckModSha256, aSha256Str, sizeof(aSha256Str));
 	dbg_msg("duck", "mod loaded path=%s sha256=%s", pModPath, aSha256Str);
 	return true;
 }
@@ -2085,11 +2064,11 @@ bool CServer::CompressDuckModFolder(const char* pModPath)
 		mem_free(pFileData);
 	}
 
-	m_CurrentDuckModFileBuffer.Clear();
-	m_CurrentDuckModFileBuffer.Grow(compressBound(FilePackBuff.m_Size));
+	m_DuckModFileBuffer.Clear();
+	m_DuckModFileBuffer.Grow(compressBound(FilePackBuff.m_Size));
 
-	uLongf DestSize = m_CurrentDuckModFileBuffer.m_Capacity;
-	int CompRet = compress((Bytef*)m_CurrentDuckModFileBuffer.m_pData, &DestSize, (const Bytef*)FilePackBuff.m_pData, FilePackBuff.m_Size);
+	uLongf DestSize = m_DuckModFileBuffer.m_Capacity;
+	int CompRet = compress((Bytef*)m_DuckModFileBuffer.m_pData, &DestSize, (const Bytef*)FilePackBuff.m_pData, FilePackBuff.m_Size);
 
 	if(CompRet != Z_OK)
 	{
@@ -2107,16 +2086,44 @@ bool CServer::CompressDuckModFolder(const char* pModPath)
 		return false;
 	}
 
-	m_CurrentDuckModFileBuffer.m_Size = DestSize;
+	m_DuckModFileBuffer.m_Size = DestSize;
 
-	m_CurrentDuckModSha256 = sha256(m_CurrentDuckModFileBuffer.m_pData, m_CurrentDuckModFileBuffer.m_Size);
+	m_DuckModSha256 = sha256(m_DuckModFileBuffer.m_pData, m_DuckModFileBuffer.m_Size);
 	char aModSha256Str[SHA256_MAXSTRSIZE];
-	sha256_str(m_CurrentDuckModSha256, aModSha256Str, sizeof(aModSha256Str));
+	sha256_str(m_DuckModSha256, aModSha256Str, sizeof(aModSha256Str));
 
 	dbg_msg("duck", "done creating mod file pack size=%d comp_ratio=%g sha256=%s", DestSize, FilePackBuff.m_Size/(double)DestSize, aModSha256Str);
 
 	return true;
 }
+
+bool CServer::LoadDuckMod(const char* pReleaseUrl, const char* pReleaseZipPath, const char* pDevFolderPath)
+{
+	str_copy(m_aDuckModReleaseUrl, pReleaseUrl, sizeof(m_aDuckModReleaseUrl));
+	str_copy(m_aDuckModZipPath, pReleaseZipPath, sizeof(m_aDuckModZipPath));
+	str_copy(m_aDuckDevModFolderPath, pDevFolderPath, sizeof(m_aDuckDevModFolderPath));
+
+	if(IsDuckDevMode())
+	{
+		dbg_msg("duck", "[dev mode] loading duck mod...");
+		if(!CompressDuckModFolder(pDevFolderPath))
+		{
+			dbg_msg("duck", "[dev mode] failed to load and compress duck mod (sv_duck_dev_mod_dir). dir='%s'", pDevFolderPath);
+			return false;
+		}
+	}
+	else
+	{
+		dbg_msg("duck", "[release mode] loading duck mod...");
+		if(!LoadDuckModZipFile(pReleaseZipPath))
+		{
+			dbg_msg("duck", "[release mode] failed to load duck mod (sv_duck_mod_path). path='%s'", pReleaseZipPath);
+			return false;
+		}
+	}
+	return true;
+}
+
 
 static CServer *CreateServer() { return new CServer(); }
 
@@ -2224,4 +2231,3 @@ int main(int argc, const char **argv) // ignore_convention
 
 	return 0;
 }
-
