@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <base/tl/array.h>
 #include <engine/graphics.h>
+#include <game/duck_collision.h>
 #include <generated/protocol.h>
 
 class CDuktape;
@@ -132,6 +133,8 @@ struct CDukEntry
 	};
 
 	array<CTextureHashPair> m_aTextures;
+
+	CDuckCollision m_Collision;
 
 	void DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo);
 	void DrawTeeHand(const CTeeDrawHand& Hand, const CTeeSkinInfo& SkinInfo);

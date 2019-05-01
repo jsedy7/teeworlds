@@ -12,6 +12,9 @@ struct DukNetObjID
 		TEST=0,
 		DEBUG_RECT,
 		MAP_RECT_SET_SOLID,
+
+		HOOK_BLOCK,
+
 		_COUNT
 	};
 };
@@ -46,4 +49,17 @@ struct CNetObj_MapRectSetSolid
 	u16 y;
 	u16 w;
 	u16 h;
+};
+
+struct CNetObj_HookBlock
+{
+	enum { NET_ID = DukNetObjID::HOOK_BLOCK };
+
+	int m_Id;
+	float m_PosX;
+	float m_PosY;
+	float m_VelX;
+	float m_VelY;
+	float m_Width;
+	float m_Height;
 };

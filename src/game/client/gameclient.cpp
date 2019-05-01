@@ -394,6 +394,7 @@ void CGameClient::OnConnected()
 {
 	m_Layers.Init(Kernel());
 	m_Collision.Init(Layers());
+	m_pDuktapeComp->m_DukEntry.m_Collision.Init(Layers());
 
 	RenderTools()->RenderTilemapGenerateSkip(Layers());
 
@@ -1834,6 +1835,11 @@ bool CGameClient::TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256)
 bool CGameClient::InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256)
 {
 	return m_pDuktapeComp->InstallAndLoadDuckModFromZipBuffer(pBuffer, BufferSize, pModSha256);
+}
+
+CCollision* CGameClient::Collision()
+{
+	return& m_pDuktapeComp->m_DukEntry.m_Collision;
 }
 
 IGameClient *CreateGameClient()

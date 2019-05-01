@@ -1468,6 +1468,7 @@ void CGameContext::OnInit()
 
 	m_Layers.Init(Kernel());
 	m_Collision.Init(&m_Layers);
+	m_DuckCollision.Init(&m_Layers);
 
 	// select gametype
 	if(str_comp_nocase(g_Config.m_SvGametype, "mod") == 0)

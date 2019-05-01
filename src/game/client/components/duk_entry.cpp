@@ -438,8 +438,9 @@ void CDukEntry::CharacterCorePreTick(CCharacterCore** apCharCores)
 		dbg_break();
 	}
 
-	if(duk_get_top(pCtx) < 2)
+	if(duk_is_undefined(pCtx, -1))
 	{
+		dbg_msg("duck", "[JS WARNING] OnCharacterCorePreTick() must return a value");
 		duk_pop(pCtx);
 		return;
 	}
@@ -528,8 +529,9 @@ void CDukEntry::CharacterCorePostTick(CCharacterCore** apCharCores)
 		dbg_break();
 	}
 
-	if(duk_get_top(pCtx) < 2)
+	if(duk_is_undefined(pCtx, -1))
 	{
+		dbg_msg("duck", "[JS WARNING] OnCharacterCorePostTick() must return a value");
 		duk_pop(pCtx);
 		return;
 	}

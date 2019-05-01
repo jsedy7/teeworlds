@@ -8,6 +8,7 @@
 
 #include <game/layers.h>
 #include <game/voting.h>
+#include <game/duck_collision.h>
 
 #include "eventhandler.h"
 #include "gameworld.h"
@@ -41,6 +42,7 @@ class CGameContext : public IGameServer
 	CCollision m_Collision;
 	CNetObjHandler m_NetObjHandler;
 	CTuningParams m_Tuning;
+	CDuckCollision m_DuckCollision;
 
 	static void ConTuneParam(IConsole::IResult *pResult, void *pUserData);
 	static void ConTuneReset(IConsole::IResult *pResult, void *pUserData);
@@ -71,7 +73,7 @@ class CGameContext : public IGameServer
 public:
 	IServer *Server() const { return m_pServer; }
 	class IConsole *Console() { return m_pConsole; }
-	CCollision *Collision() { return &m_Collision; }
+	CCollision *Collision() { return &m_DuckCollision; }
 	CTuningParams *Tuning() { return &m_Tuning; }
 
 	CGameContext();
