@@ -43,10 +43,10 @@ void CGameControllerTEST::Tick()
 	CDuckCollision::CSolidBlock SolidBlock;
 	SolidBlock.m_Pos = HookBlockPos;
 	SolidBlock.m_Size = HookBlockSize;
-	SolidBlock.m_Flags = CCollision::COLFLAG_SOLID|CCollision::COLFLAG_NOHOOK;
+	SolidBlock.m_Flags = CCollision::COLFLAG_SOLID;
 
 	CDuckCollision* pCollision = (CDuckCollision*)GameServer()->Collision();
-	pCollision->m_aSolidBlocks[0] = SolidBlock;
+	pCollision->SetSolidBlock(0, SolidBlock);
 
 	for(int p = 0; p < MAX_PLAYERS; p++)
 	{
@@ -66,7 +66,7 @@ void CGameControllerTEST::Tick()
 
 			CNetObj_HookBlock NetHookBlock;
 			NetHookBlock.m_Id = 0;
-			NetHookBlock.m_Flags = CCollision::COLFLAG_SOLID|CCollision::COLFLAG_NOHOOK;
+			NetHookBlock.m_Flags = CCollision::COLFLAG_SOLID;
 			NetHookBlock.m_PosX = HookBlockPos.x;
 			NetHookBlock.m_PosY = HookBlockPos.y;
 			NetHookBlock.m_VelX = HookBlockVel.x;

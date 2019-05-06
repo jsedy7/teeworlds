@@ -172,16 +172,12 @@ IGraphics::CTextureHandle CDukEntry::GetTexture(const char *pTextureName)
 
 void CDukEntry::SetSolidBlock(int BlockId, const CDuckCollision::CSolidBlock& Block)
 {
-	// TODO: make a better system
-	dbg_assert(BlockId >= 0 && BlockId < m_Collision.m_aSolidBlocks.size(), "BlockId out of bounds");
-	m_Collision.m_aSolidBlocks[BlockId] = Block;
+	m_Collision.SetSolidBlock(BlockId, Block);
 }
 
 void CDukEntry::ClearSolidBlock(int BlockId)
 {
-	// TODO: make a better system
-	dbg_assert(BlockId >= 0 && BlockId < m_Collision.m_aSolidBlocks.size(), "BlockId out of bounds");
-	m_Collision.m_aSolidBlocks[BlockId].m_Flags = -1;
+	m_Collision.ClearSolidBlock(BlockId);
 }
 
 void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
@@ -232,6 +228,7 @@ void CDukEntry::RenderDrawSpace(DrawSpace::Enum Space)
 						Graphics()->TextureSet(*(IGraphics::CTextureHandle*)&RenderSpace.m_WantTextureID);
 					RenderSpace.m_CurrentTextureID = RenderSpace.m_WantTextureID;
 				}
+				Graphics()->TextureSet(*(IGraphics::CTextureHandle*)&RenderSpace.m_WantTextureID);
 
 				Graphics()->QuadsBegin();
 
