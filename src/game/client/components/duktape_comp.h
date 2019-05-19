@@ -61,7 +61,7 @@ class CDuktape : public CComponent
 	void ResetDukContext();
 
 public:
-	CDukEntry m_DukEntry;
+	CDukBridge m_DukEntry;
 
 	CDuktape();
 
@@ -79,7 +79,7 @@ public:
 
 	inline bool IsLoaded() const { return m_pDukContext != 0 && m_IsModLoaded; }
 
-	friend class CDukEntry;
+	friend class CDukBridge;
 };
 
 inline void GetIntProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, int* pOutInt)

@@ -5,12 +5,14 @@
 #include <game/duck_collision.h>
 #include <generated/protocol.h>
 
+// Bridge between teeworlds and duktape
+
 class CDuktape;
 class CRenderTools;
 class CGameClient;
 class CCharacterCore;
 
-struct CDukEntry
+struct CDukBridge
 {
 	CDuktape* m_pDuktape;
 	IGraphics* m_pGraphics;

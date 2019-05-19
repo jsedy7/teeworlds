@@ -123,7 +123,7 @@ duk_ret_t CDuktape::NativeRenderSetTeeSkin(duk_context* ctx)
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
 
-	CDukEntry::CTeeSkinInfo SkinInfo;
+	CDukBridge::CTeeSkinInfo SkinInfo;
 
 	for(int i = 0; i < NUM_SKINPARTS; i++)
 	{
@@ -191,7 +191,7 @@ duk_ret_t CDuktape::NativeSetDrawSpace(duk_context *ctx)
 	dbg_assert(n == 1, "Wrong argument count");
 
 	int ds = duk_to_int(ctx, 0);
-	dbg_assert(ds >= 0 && ds < CDukEntry::DrawSpace::_COUNT, "Draw space undefined");
+	dbg_assert(ds >= 0 && ds < CDukBridge::DrawSpace::_COUNT, "Draw space undefined");
 
 	This()->m_DukEntry.m_CurrentDrawSpace = ds;
 
@@ -267,7 +267,7 @@ duk_ret_t CDuktape::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 		duk_pop(ctx);
 	}
 
-	CDukEntry::CTeeDrawBodyAndFeetInfo TeeDrawInfo;
+	CDukBridge::CTeeDrawBodyAndFeetInfo TeeDrawInfo;
 	TeeDrawInfo.m_Size = Size;
 	TeeDrawInfo.m_Angle = Angle;
 	TeeDrawInfo.m_Pos[0] = PosX;
@@ -347,7 +347,7 @@ duk_ret_t CDuktape::NativeRenderDrawTeeHand(duk_context* ctx)
 		duk_pop(ctx);
 	}
 
-	CDukEntry::CTeeDrawHand TeeHandInfo;
+	CDukBridge::CTeeDrawHand TeeHandInfo;
 	TeeHandInfo.m_Size = Size;
 	TeeHandInfo.m_AngleDir = AngleDir;
 	TeeHandInfo.m_AngleOff = AngleOff;
