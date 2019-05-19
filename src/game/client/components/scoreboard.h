@@ -16,6 +16,7 @@ class CScoreboard : public CComponent
 	const char *GetClanName(int Team);
 
 	bool m_Active;
+	bool m_Activate;
 	int m_PlayerLines;
  	class CUIRect m_TotalRect;
  	class CPlayerStats
@@ -39,7 +40,7 @@ public:
 	
  	bool Active();
 	void ResetPlayerStats(int ClientID);
- 	class CUIRect GetScoreboardRect(); 
+ 	class CUIRect GetScoreboardRect();
 };
 
 #endif
