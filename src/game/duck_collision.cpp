@@ -12,6 +12,7 @@ void CDuckCollision::Init(CLayers* pLayers)
 
 	m_aStaticBlocks.hint_size(1024);
 	m_aDynamicDisks.hint_size(1024);
+	m_aDynamicDisksPredicted.hint_size(1024);
 	for(int i = 0; i < MAX_SOLIDBLOCK_FETCH_IDS; i++)
 	{
 		m_aSolidBlockDataID[i] = -1;
@@ -99,5 +100,23 @@ void CDuckCollision::ClearSolidBlock(int BlockId)
 			m_aSolidBlockDataID[LastFetchID] = DataID;
 
 		m_aSolidBlockDataID[BlockId] = -1;
+	}
+}
+
+void CDuckCollision::OnPredictStart()
+{
+	const int DiskCount = m_aDynamicDisks.size();
+	m_aDynamicDisksPredicted.set_size(DiskCount);
+	mem_move(m_aDynamicDisksPredicted.base_ptr(), m_aDynamicDisks.base_ptr(), sizeof(m_aDynamicDisks.base_ptr()[0]) * DiskCount);
+}
+
+void CDuckCollision::OnPredictTick()
+{
+	const int DiskCount = m_aDynamicDisks.size();
+	for(int i = 0; i < DiskCount; i++)
+	{
+		CDynamicDisk& Disk = m_aDynamicDisks[i];
+		Disk.m_Pos += Disk.m_Vel;
+		// TODO: Disk.Move() like CCharacterCore::Move()
 	}
 }

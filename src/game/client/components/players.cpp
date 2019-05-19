@@ -563,5 +563,5 @@ void CPlayers::OnRender()
 	}
 
 	// TODO: Move? Make a component for each draw space?
-	m_pClient->m_pDuckJs->m_DukEntry.RenderDrawSpace(CDuckBridge::DrawSpace::GAME);
+	m_pClient->m_pDuckJs->m_Bridge.RenderDrawSpace(CDuckBridge::DrawSpace::GAME);
 }

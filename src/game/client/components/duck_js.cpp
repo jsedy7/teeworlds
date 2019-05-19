@@ -36,7 +36,7 @@ duk_ret_t CDuckJs::NativeRenderQuad(duk_context *ctx)
 	double Height = duk_to_number(ctx, 3);
 
 	IGraphics::CQuadItem Quad(x, y, Width, Height);
-	This()->m_DukEntry.QueueDrawQuad(Quad);
+	This()->m_Bridge.QueueDrawQuad(Quad);
 	return 0;
 }
 
@@ -50,7 +50,7 @@ duk_ret_t CDuckJs::NativeRenderQuadCentered(duk_context* ctx)
 	double Height = duk_to_number(ctx, 3);
 
 	IGraphics::CQuadItem Quad(x, y, Width, Height);
-	This()->m_DukEntry.QueueDrawQuadCentered(Quad);
+	This()->m_Bridge.QueueDrawQuadCentered(Quad);
 	return 0;
 }
 
@@ -66,7 +66,7 @@ duk_ret_t CDuckJs::NativeRenderSetColorU32(duk_context *ctx)
 	aColor[2] = ((x >> 16) & 0xFF) / 255.f;
 	aColor[3] = ((x >> 24) & 0xFF) / 255.f;
 
-	This()->m_DukEntry.QueueSetColor(aColor);
+	This()->m_Bridge.QueueSetColor(aColor);
 	return 0;
 }
 
@@ -81,7 +81,7 @@ duk_ret_t CDuckJs::NativeRenderSetColorF4(duk_context *ctx)
 	aColor[2] = duk_to_number(ctx, 2);
 	aColor[3] = duk_to_number(ctx, 3);
 
-	This()->m_DukEntry.QueueSetColor(aColor);
+	This()->m_Bridge.QueueSetColor(aColor);
 	return 0;
 }
 
@@ -89,7 +89,7 @@ duk_ret_t CDuckJs::NativeRenderSetTexture(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
-	This()->m_DukEntry.QueueSetTexture((int)duk_to_int(ctx, 0));
+	This()->m_Bridge.QueueSetTexture((int)duk_to_int(ctx, 0));
 	return 0;
 }
 
@@ -104,7 +104,7 @@ duk_ret_t CDuckJs::NativeRenderSetQuadSubSet(duk_context* ctx)
 	aSubSet[2] = duk_to_number(ctx, 2);
 	aSubSet[3] = duk_to_number(ctx, 3);
 
-	This()->m_DukEntry.QueueSetQuadSubSet(aSubSet);
+	This()->m_Bridge.QueueSetQuadSubSet(aSubSet);
 	return 0;
 }
 
@@ -114,7 +114,7 @@ duk_ret_t CDuckJs::NativeRenderSetQuadRotation(duk_context* ctx)
 	dbg_assert(n == 1, "Wrong argument count");
 
 	float Angle = duk_to_number(ctx, 0);
-	This()->m_DukEntry.QueueSetQuadRotation(Angle);
+	This()->m_Bridge.QueueSetQuadRotation(Angle);
 	return 0;
 }
 
@@ -181,7 +181,7 @@ duk_ret_t CDuckJs::NativeRenderSetTeeSkin(duk_context* ctx)
 		duk_pop(ctx);
 	}
 
-	This()->m_DukEntry.QueueSetTeeSkin(SkinInfo);
+	This()->m_Bridge.QueueSetTeeSkin(SkinInfo);
 	return 0;
 }
 
@@ -193,7 +193,7 @@ duk_ret_t CDuckJs::NativeSetDrawSpace(duk_context *ctx)
 	int ds = duk_to_int(ctx, 0);
 	dbg_assert(ds >= 0 && ds < CDuckBridge::DrawSpace::_COUNT, "Draw space undefined");
 
-	This()->m_DukEntry.m_CurrentDrawSpace = ds;
+	This()->m_Bridge.m_CurrentDrawSpace = ds;
 
 	return 0;
 }
@@ -277,7 +277,7 @@ duk_ret_t CDuckJs::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 	TeeDrawInfo.m_GotAirJump = GotAirJump;
 	TeeDrawInfo.m_Emote = Emote;
 	//dbg_msg("duk", "DrawTeeBodyAndFeet( tee = { size: %g, pos_x: %g, pos_y: %g }", Size, PosX, PosY);
-	This()->m_DukEntry.QueueDrawTeeBodyAndFeet(TeeDrawInfo);
+	This()->m_Bridge.QueueDrawTeeBodyAndFeet(TeeDrawInfo);
 	return 0;
 }
 
@@ -356,7 +356,7 @@ duk_ret_t CDuckJs::NativeRenderDrawTeeHand(duk_context* ctx)
 	TeeHandInfo.m_Offset[0] = OffX;
 	TeeHandInfo.m_Offset[1] = OffY;
 	//dbg_msg("duk", "NativeRenderDrawTeeHand( hand = { size: %g, angle_dir: %g, angle_off: %g, pos_x: %g, pos_y: %g, off_x: %g, off_y: %g }", Size, AngleDir, AngleOff, PosX, PosY, OffX, OffY);
-	This()->m_DukEntry.QueueDrawTeeHand(TeeHandInfo);
+	This()->m_Bridge.QueueDrawTeeHand(TeeHandInfo);
 	return 0;
 }
 
@@ -589,7 +589,7 @@ duk_ret_t CDuckJs::NativeGetModTexture(duk_context *ctx)
 	dbg_assert(n == 1, "Wrong argument count");
 
 	const char* pTextureName = duk_get_string(ctx, 0);
-	IGraphics::CTextureHandle Handle = This()->m_DukEntry.GetTexture(pTextureName);
+	IGraphics::CTextureHandle Handle = This()->m_Bridge.GetTexture(pTextureName);
 	duk_push_int(ctx, *(int*)&Handle);
 	return 1;
 }
@@ -751,7 +751,7 @@ duk_ret_t CDuckJs::NativeMapSetTileCollisionFlags(duk_context *ctx)
 	int Ty = duk_to_int(ctx, 1);
 	int Flags = duk_to_int(ctx, 2);
 
-	This()->m_DukEntry.m_Collision.SetTileCollisionFlags(Tx, Ty, Flags);
+	This()->m_Bridge.m_Collision.SetTileCollisionFlags(Tx, Ty, Flags);
 
 	return 0;
 }
@@ -809,7 +809,7 @@ duk_ret_t CDuckJs::NativeCollisionSetSolidBlock(duk_context* ctx)
 	}
 
 	if(BlockId >= 0)
-		This()->m_DukEntry.SetSolidBlock(BlockId, SolidBlock);
+		This()->m_Bridge.SetSolidBlock(BlockId, SolidBlock);
 	return 0;
 }
 
@@ -820,7 +820,7 @@ duk_ret_t CDuckJs::NativeCollisionClearSolidBlock(duk_context* ctx)
 
 	int BlockId = duk_to_int(ctx, 0);
 	if(BlockId >= 0)
-		This()->m_DukEntry.ClearSolidBlock(BlockId);
+		This()->m_Bridge.ClearSolidBlock(BlockId);
 	return 0;
 }
 
@@ -1566,9 +1566,9 @@ bool CDuckJs::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
 		{
 			const char* pTextureName = pFilePaths[i].m_aBuff+ModRootDirLen+1;
 			const char* pTextureRelPath = pFilePaths[i].m_aBuff+SaveDirPathLen;
-			const bool Loaded = m_DukEntry.LoadTexture(pTextureRelPath, pTextureName);
+			const bool Loaded = m_Bridge.LoadTexture(pTextureRelPath, pTextureName);
 			dbg_assert(Loaded, "error loading png image");
-			dbg_msg("duck", "image loaded '%s' (%x)", pTextureName, m_DukEntry.m_aTextures[m_DukEntry.m_aTextures.size()-1].m_Hash);
+			dbg_msg("duck", "image loaded '%s' (%x)", pTextureName, m_Bridge.m_aTextures[m_Bridge.m_aTextures.size()-1].m_Hash);
 			// TODO: show error instead of breaking
 		}
 	}
@@ -1653,7 +1653,7 @@ CDuckJs::CDuckJs()
 
 void CDuckJs::OnInit()
 {
-	m_DukEntry.Init(this);
+	m_Bridge.Init(this);
 }
 
 void CDuckJs::OnShutdown()
@@ -1750,7 +1750,7 @@ void CDuckJs::OnStateChange(int NewState, int OldState)
 void CDuckJs::OnModReset()
 {
 	ResetDukContext();
-	m_DukEntry.Reset();
+	m_Bridge.Reset();
 	m_IsModLoaded = false;
 }
 
@@ -1760,7 +1760,7 @@ void CDuckJs::OnModUnload()
 		duk_destroy_heap(m_pDukContext);
 	m_pDukContext = 0;
 
-	m_DukEntry.Reset();
+	m_Bridge.Reset();
 	m_IsModLoaded = false;
 }
 

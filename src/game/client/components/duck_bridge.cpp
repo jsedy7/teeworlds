@@ -461,3 +461,15 @@ void CDuckBridge::CharacterCorePostTick(CCharacterCore** apCharCores)
 
 	duk_pop(pCtx);
 }
+
+void CDuckBridge::Predict()
+{
+	m_Collision.OnPredictStart();
+
+	const int StartTick = GameClient()->Client()->GameTick()+1;
+	const int EndTick = GameClient()->Client()->PredGameTick();
+	for(int Tick = StartTick; Tick <= EndTick; Tick++)
+	{
+		m_Collision.OnPredictTick();
+	}
+}

@@ -61,7 +61,7 @@ class CDuckJs : public CComponent
 	void ResetDukContext();
 
 public:
-	CDuckBridge m_DukEntry;
+	CDuckBridge m_Bridge;
 
 	CDuckJs();
 

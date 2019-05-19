@@ -396,7 +396,7 @@ void CGameClient::OnConnected()
 {
 	m_Layers.Init(Kernel());
 	m_Collision.Init(Layers());
-	m_pDuckJs->m_DukEntry.m_Collision.Init(Layers());
+	m_pDuckJs->m_Bridge.m_Collision.Init(Layers());
 
 	RenderTools()->RenderTilemapGenerateSkip(Layers());
 
@@ -1395,6 +1395,8 @@ void CGameClient::OnPredict()
 		m_aClients[i].m_Predicted.Read(&m_Snap.m_aCharacters[i].m_Cur);
 	}
 
+	m_pDuckJs->m_Bridge.Predict();
+
 	// predict
 	for(int Tick = Client()->GameTick()+1; Tick <= Client()->PredGameTick(); Tick++)
 	{
@@ -1419,7 +1421,7 @@ void CGameClient::OnPredict()
 			}
 		}
 
-		m_pDuckJs->m_DukEntry.CharacterCorePreTick(World.m_apCharacters);
+		m_pDuckJs->m_Bridge.CharacterCorePreTick(World.m_apCharacters);
 
 		for(int c = 0; c < MAX_CLIENTS; c++)
 		{
@@ -1432,7 +1434,7 @@ void CGameClient::OnPredict()
 				World.m_apCharacters[c]->Tick(false);
 		}
 
-		m_pDuckJs->m_DukEntry.CharacterCorePostTick(World.m_apCharacters);
+		m_pDuckJs->m_Bridge.CharacterCorePostTick(World.m_apCharacters);
 
 		// move all players and quantize their data
 		for(int c = 0; c < MAX_CLIENTS; c++)
@@ -1841,7 +1843,7 @@ bool CGameClient::InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int Bu
 
 CCollision* CGameClient::Collision()
 {
-	return& m_pDuckJs->m_DukEntry.m_Collision;
+	return& m_pDuckJs->m_Bridge.m_Collision;
 }
 
 IGameClient *CreateGameClient()

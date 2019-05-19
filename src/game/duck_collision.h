@@ -33,7 +33,10 @@ public:
 	int16_t m_aSolidBlockDataID[MAX_SOLIDBLOCK_FETCH_IDS];
 	array<CStaticBlock> m_aStaticBlocks;
 	array<CDynamicDisk> m_aDynamicDisks;
+	array<CDynamicDisk> m_aDynamicDisksPredicted;
 
 	void SetSolidBlock(int BlockId, CStaticBlock Block);
 	void ClearSolidBlock(int BlockId);
+	void OnPredictStart();
+	void OnPredictTick();
 };
