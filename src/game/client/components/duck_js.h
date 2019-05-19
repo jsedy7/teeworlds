@@ -4,12 +4,12 @@
 #include <game/client/component.h>
 #include <engine/graphics.h>
 
-#include "duk_entry.h"
+#include "duck_bridge.h"
 
 struct HttpBuffer;
 struct CGrowBuffer;
 
-class CDuktape : public CComponent
+class CDuckJs : public CComponent
 {
 	duk_context* m_pDukContext;
 	int m_CurrentPushedObjID;
@@ -61,9 +61,9 @@ class CDuktape : public CComponent
 	void ResetDukContext();
 
 public:
-	CDukBridge m_DukEntry;
+	CDuckBridge m_DukEntry;
 
-	CDuktape();
+	CDuckJs();
 
 	virtual void OnInit();
 	virtual void OnShutdown();
@@ -79,7 +79,7 @@ public:
 
 	inline bool IsLoaded() const { return m_pDukContext != 0 && m_IsModLoaded; }
 
-	friend class CDukBridge;
+	friend class CDuckBridge;
 };
 
 inline void GetIntProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, int* pOutInt)

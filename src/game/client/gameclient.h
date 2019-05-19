@@ -329,7 +329,7 @@ public:
 	class CItems *m_pItems;
 	class CMapLayers *m_pMapLayersBackGround;
 	class CMapLayers *m_pMapLayersForeGround;
-	class CDuktape *m_pDuktapeComp;
+	class CDuckJs *m_pDuckJs;
 
 	// DUCK
 	virtual int DuckVersion() const;

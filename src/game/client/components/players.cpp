@@ -18,7 +18,7 @@
 #include <game/client/components/sounds.h>
 #include <game/client/components/controls.h>
 
-#include <game/client/components/duktape_comp.h>
+#include <game/client/components/duck_js.h>
 
 #include "players.h"
 
@@ -563,5 +563,5 @@ void CPlayers::OnRender()
 	}
 
 	// TODO: Move? Make a component for each draw space?
-	m_pClient->m_pDuktapeComp->m_DukEntry.RenderDrawSpace(CDukBridge::DrawSpace::GAME);
+	m_pClient->m_pDuckJs->m_DukEntry.RenderDrawSpace(CDuckBridge::DrawSpace::GAME);
 }

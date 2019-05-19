@@ -7,18 +7,18 @@
 
 // Bridge between teeworlds and duktape
 
-class CDuktape;
+class CDuckJs;
 class CRenderTools;
 class CGameClient;
 class CCharacterCore;
 
-struct CDukBridge
+struct CDuckBridge
 {
-	CDuktape* m_pDuktape;
+	CDuckJs* m_pDuckJs;
 	IGraphics* m_pGraphics;
 	CRenderTools* m_pRenderTools;
 	CGameClient* m_pGameClient;
-	inline CDuktape* Duktape() { return m_pDuktape; }
+	inline CDuckJs* DuckJs() { return m_pDuckJs; }
 	inline IGraphics* Graphics() { return m_pGraphics; }
 	inline CRenderTools* RenderTools() { return m_pRenderTools; }
 	inline CGameClient* GameClient() { return m_pGameClient; }
@@ -141,7 +141,7 @@ struct CDukBridge
 	void DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo);
 	void DrawTeeHand(const CTeeDrawHand& Hand, const CTeeSkinInfo& SkinInfo);
 
-	void Init(CDuktape* pDuktape);
+	void Init(CDuckJs* pDuckJs);
 	void Reset();
 
 	void QueueSetColor(const float* pColor);

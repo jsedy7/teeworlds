@@ -51,7 +51,7 @@
 #include "components/spectator.h"
 #include "components/stats.h"
 #include "components/voting.h"
-#include "components/duktape_comp.h"
+#include "components/duck_js.h"
 
 // instanciate all systems
 static CKillMessages gs_KillMessages;
@@ -78,7 +78,7 @@ static CDamageInd gsDamageInd;
 static CVoting gs_Voting;
 static CSpectator gs_Spectator;
 static CStats gs_Stats;
-static CDuktape gs_Duktape;
+static CDuckJs gs_DuckJs;
 
 static CPlayers gs_Players;
 static CNamePlates gs_NamePlates;
@@ -207,7 +207,7 @@ void CGameClient::OnConsoleInit()
 	m_pMapLayersBackGround = &::gs_MapLayersBackGround;
 	m_pMapLayersForeGround = &::gs_MapLayersForeGround;
 	m_pStats = &::gs_Stats;
-	m_pDuktapeComp = &::gs_Duktape;
+	m_pDuckJs = &::gs_DuckJs;
 
 	// make a list of all the systems, make sure to add them in the corrent render order
 	m_All.Add(m_pSkins);
@@ -222,7 +222,7 @@ void CGameClient::OnConsoleInit()
 	m_All.Add(m_pSounds);
 	m_All.Add(m_pVoting);
 
-	m_All.Add(m_pDuktapeComp); // has to be first
+	m_All.Add(m_pDuckJs); // has to be first
 	m_All.Add(&gs_MapLayersBackGround); // first to render
 	m_All.Add(&m_pParticles->m_RenderTrail);
 	m_All.Add(m_pItems);
@@ -258,7 +258,7 @@ void CGameClient::OnConsoleInit()
 	m_Input.Add(&gs_Emoticon);
 	m_Input.Add(m_pControls);
 	m_Input.Add(m_pBinds);
-	m_Input.Add(m_pDuktapeComp);
+	m_Input.Add(m_pDuckJs);
 
 	// add the some console commands
 	Console()->Register("team", "i", CFGFLAG_CLIENT, ConTeam, this, "Switch team");
@@ -396,7 +396,7 @@ void CGameClient::OnConnected()
 {
 	m_Layers.Init(Kernel());
 	m_Collision.Init(Layers());
-	m_pDuktapeComp->m_DukEntry.m_Collision.Init(Layers());
+	m_pDuckJs->m_DukEntry.m_Collision.Init(Layers());
 
 	RenderTools()->RenderTilemapGenerateSkip(Layers());
 
@@ -700,7 +700,7 @@ void CGameClient::OnMessage(int MsgId, CUnpacker *pUnpacker)
 	}
 	else if(MsgId == NETMSG_DUCK_NETOBJ)
 	{
-		m_pDuktapeComp->OnMessage(MsgId, pUnpacker);
+		m_pDuckJs->OnMessage(MsgId, pUnpacker);
 		// TODO: how does demo recording handle this?
 		return;
 	}
@@ -1419,7 +1419,7 @@ void CGameClient::OnPredict()
 			}
 		}
 
-		m_pDuktapeComp->m_DukEntry.CharacterCorePreTick(World.m_apCharacters);
+		m_pDuckJs->m_DukEntry.CharacterCorePreTick(World.m_apCharacters);
 
 		for(int c = 0; c < MAX_CLIENTS; c++)
 		{
@@ -1432,7 +1432,7 @@ void CGameClient::OnPredict()
 				World.m_apCharacters[c]->Tick(false);
 		}
 
-		m_pDuktapeComp->m_DukEntry.CharacterCorePostTick(World.m_apCharacters);
+		m_pDuckJs->m_DukEntry.CharacterCorePostTick(World.m_apCharacters);
 
 		// move all players and quantize their data
 		for(int c = 0; c < MAX_CLIENTS; c++)
@@ -1826,22 +1826,22 @@ int CGameClient::DuckVersion() const
 
 void CGameClient::StartDuckModHttpDownload(const char* pModDesc, const char* pModUrl, const SHA256_DIGEST* pModSha256)
 {
-	m_pDuktapeComp->StartDuckModHttpDownload(pModUrl, pModSha256);
+	m_pDuckJs->StartDuckModHttpDownload(pModUrl, pModSha256);
 }
 
 bool CGameClient::TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256)
 {
-	return m_pDuktapeComp->TryLoadInstalledDuckMod(pModSha256);
+	return m_pDuckJs->TryLoadInstalledDuckMod(pModSha256);
 }
 
 bool CGameClient::InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256)
 {
-	return m_pDuktapeComp->InstallAndLoadDuckModFromZipBuffer(pBuffer, BufferSize, pModSha256);
+	return m_pDuckJs->InstallAndLoadDuckModFromZipBuffer(pBuffer, BufferSize, pModSha256);
 }
 
 CCollision* CGameClient::Collision()
 {
-	return& m_pDuktapeComp->m_DukEntry.m_Collision;
+	return& m_pDuckJs->m_DukEntry.m_Collision;
 }
 
 IGameClient *CreateGameClient()

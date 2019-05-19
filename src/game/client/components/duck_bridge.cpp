@@ -1,12 +1,12 @@
-#include "duk_entry.h"
-#include "duktape_comp.h"
+#include "duck_bridge.h"
+#include "duck_js.h"
 #include <game/client/animstate.h>
 #include <game/client/render.h>
 #include <engine/external/pnglite/pnglite.h>
 #include <engine/storage.h>
 #include <base/hash.h>
 
-void CDukBridge::DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo)
+void CDuckBridge::DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo)
 {
 	CAnimState State;
 	State.Set(&g_pData->m_aAnimations[ANIM_BASE], 0);
@@ -41,7 +41,7 @@ void CDukBridge::DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, 
 	RenderTools()->RenderTee(&State, &RenderInfo, Emote, Direction, Pos);
 }
 
-void CDukBridge::DrawTeeHand(const CDukBridge::CTeeDrawHand& Hand, const CTeeSkinInfo& SkinInfo)
+void CDuckBridge::DrawTeeHand(const CDuckBridge::CTeeDrawHand& Hand, const CTeeSkinInfo& SkinInfo)
 {
 	CTeeRenderInfo RenderInfo;
 	mem_move(RenderInfo.m_aTextures, SkinInfo.m_aTextures, sizeof(RenderInfo.m_aTextures));
@@ -54,16 +54,16 @@ void CDukBridge::DrawTeeHand(const CDukBridge::CTeeDrawHand& Hand, const CTeeSki
 	RenderTools()->RenderTeeHand(&RenderInfo, Pos, Dir, Hand.m_AngleOff, Offset);
 }
 
-void CDukBridge::Init(CDuktape* pDuktape)
+void CDuckBridge::Init(CDuckJs* pDuckJs)
 {
-	m_pDuktape = pDuktape;
-	m_pGraphics = pDuktape->Graphics();
-	m_pRenderTools = pDuktape->RenderTools();
-	m_pGameClient = pDuktape->m_pClient;
+	m_pDuckJs = pDuckJs;
+	m_pGraphics = pDuckJs->Graphics();
+	m_pRenderTools = pDuckJs->RenderTools();
+	m_pGameClient = pDuckJs->m_pClient;
 	m_CurrentDrawSpace = 0;
 }
 
-void CDukBridge::Reset()
+void CDuckBridge::Reset()
 {
 	for(int i = 0 ; i < m_aTextures.size(); i++)
 	{
@@ -73,7 +73,7 @@ void CDukBridge::Reset()
 	m_aTextures.clear();
 }
 
-void CDukBridge::QueueSetColor(const float* pColor)
+void CDuckBridge::QueueSetColor(const float* pColor)
 {
 	CRenderCmd Cmd;
 	Cmd.m_Type = CRenderCmd::SET_COLOR;
@@ -81,7 +81,7 @@ void CDukBridge::QueueSetColor(const float* pColor)
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
-void CDukBridge::QueueSetTexture(int TextureID)
+void CDuckBridge::QueueSetTexture(int TextureID)
 {
 	CRenderCmd Cmd;
 	Cmd.m_Type = CRenderCmd::SET_TEXTURE;
@@ -89,7 +89,7 @@ void CDukBridge::QueueSetTexture(int TextureID)
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
-void CDukBridge::QueueSetQuadSubSet(const float* pSubSet)
+void CDuckBridge::QueueSetQuadSubSet(const float* pSubSet)
 {
 	CRenderCmd Cmd;
 	Cmd.m_Type = CRenderCmd::SET_QUAD_SUBSET;
@@ -97,7 +97,7 @@ void CDukBridge::QueueSetQuadSubSet(const float* pSubSet)
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
-void CDukBridge::QueueSetQuadRotation(float Angle)
+void CDuckBridge::QueueSetQuadRotation(float Angle)
 {
 	CRenderCmd Cmd;
 	Cmd.m_Type = CRenderCmd::SET_QUAD_ROTATION;
@@ -105,7 +105,7 @@ void CDukBridge::QueueSetQuadRotation(float Angle)
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
-void CDukBridge::QueueSetTeeSkin(const CTeeSkinInfo& SkinInfo)
+void CDuckBridge::QueueSetTeeSkin(const CTeeSkinInfo& SkinInfo)
 {
 	CRenderCmd Cmd;
 	Cmd.m_Type = CRenderCmd::SET_TEE_SKIN;
@@ -113,39 +113,39 @@ void CDukBridge::QueueSetTeeSkin(const CTeeSkinInfo& SkinInfo)
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
-void CDukBridge::QueueDrawQuad(IGraphics::CQuadItem Quad)
+void CDuckBridge::QueueDrawQuad(IGraphics::CQuadItem Quad)
 {
 	CRenderCmd Cmd;
-	Cmd.m_Type = CDukBridge::CRenderCmd::DRAW_QUAD;
+	Cmd.m_Type = CDuckBridge::CRenderCmd::DRAW_QUAD;
 	mem_move(Cmd.m_Quad, &Quad, sizeof(Cmd.m_Quad)); // yep, this is because we don't have c++11
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
-void CDukBridge::QueueDrawQuadCentered(IGraphics::CQuadItem Quad)
+void CDuckBridge::QueueDrawQuadCentered(IGraphics::CQuadItem Quad)
 {
 	CRenderCmd Cmd;
-	Cmd.m_Type = CDukBridge::CRenderCmd::DRAW_QUAD_CENTERED;
+	Cmd.m_Type = CDuckBridge::CRenderCmd::DRAW_QUAD_CENTERED;
 	mem_move(Cmd.m_Quad, &Quad, sizeof(Cmd.m_Quad));
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
-void CDukBridge::QueueDrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo)
+void CDuckBridge::QueueDrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo)
 {
 	CRenderCmd Cmd;
-	Cmd.m_Type = CDukBridge::CRenderCmd::DRAW_TEE_BODYANDFEET;
+	Cmd.m_Type = CDuckBridge::CRenderCmd::DRAW_TEE_BODYANDFEET;
 	Cmd.m_TeeBodyAndFeet = TeeDrawInfo;
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
-void CDukBridge::QueueDrawTeeHand(const CDukBridge::CTeeDrawHand& Hand)
+void CDuckBridge::QueueDrawTeeHand(const CDuckBridge::CTeeDrawHand& Hand)
 {
 	CRenderCmd Cmd;
-	Cmd.m_Type = CDukBridge::CRenderCmd::DRAW_TEE_HAND;
+	Cmd.m_Type = CDuckBridge::CRenderCmd::DRAW_TEE_HAND;
 	Cmd.m_TeeHand = Hand;
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
-bool CDukBridge::LoadTexture(const char *pTexturePath, const char* pTextureName)
+bool CDuckBridge::LoadTexture(const char *pTexturePath, const char* pTextureName)
 {
 	IGraphics::CTextureHandle Handle = Graphics()->LoadTexture(pTexturePath, IStorage::TYPE_SAVE, CImageInfo::FORMAT_AUTO, 0);
 	uint32_t Hash = hash_fnv1a(pTextureName, str_length(pTextureName));
@@ -154,7 +154,7 @@ bool CDukBridge::LoadTexture(const char *pTexturePath, const char* pTextureName)
 	return Handle.IsValid();
 }
 
-IGraphics::CTextureHandle CDukBridge::GetTexture(const char *pTextureName)
+IGraphics::CTextureHandle CDuckBridge::GetTexture(const char *pTextureName)
 {
 	const uint32_t SearchHash = hash_fnv1a(pTextureName, str_length(pTextureName));
 
@@ -170,17 +170,17 @@ IGraphics::CTextureHandle CDukBridge::GetTexture(const char *pTextureName)
 	return IGraphics::CTextureHandle();
 }
 
-void CDukBridge::SetSolidBlock(int BlockId, const CDuckCollision::CStaticBlock& Block)
+void CDuckBridge::SetSolidBlock(int BlockId, const CDuckCollision::CStaticBlock& Block)
 {
 	m_Collision.SetSolidBlock(BlockId, Block);
 }
 
-void CDukBridge::ClearSolidBlock(int BlockId)
+void CDuckBridge::ClearSolidBlock(int BlockId)
 {
 	m_Collision.ClearSolidBlock(BlockId);
 }
 
-void CDukBridge::RenderDrawSpace(DrawSpace::Enum Space)
+void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 {
 	const int CmdCount = m_aRenderCmdList[Space].size();
 	const CRenderCmd* aCmds = m_aRenderCmdList[Space].base_ptr();
@@ -280,12 +280,12 @@ void CDukBridge::RenderDrawSpace(DrawSpace::Enum Space)
 	RenderSpace = CRenderSpace();
 }
 
-void CDukBridge::CharacterCorePreTick(CCharacterCore** apCharCores)
+void CDuckBridge::CharacterCorePreTick(CCharacterCore** apCharCores)
 {
-	if(!Duktape()->IsLoaded())
+	if(!DuckJs()->IsLoaded())
 		return;
 
-	duk_context* pCtx = Duktape()->Ctx();
+	duk_context* pCtx = DuckJs()->Ctx();
 
 	if(!duk_get_global_string(pCtx, "OnCharacterCorePreTick"))
 	{
@@ -371,12 +371,12 @@ void CDukBridge::CharacterCorePreTick(CCharacterCore** apCharCores)
 	duk_pop(pCtx);
 }
 
-void CDukBridge::CharacterCorePostTick(CCharacterCore** apCharCores)
+void CDuckBridge::CharacterCorePostTick(CCharacterCore** apCharCores)
 {
-	if(!Duktape()->IsLoaded())
+	if(!DuckJs()->IsLoaded())
 		return;
 
-	duk_context* pCtx = Duktape()->Ctx();
+	duk_context* pCtx = DuckJs()->Ctx();
 
 	if(!duk_get_global_string(pCtx, "OnCharacterCorePostTick"))
 	{

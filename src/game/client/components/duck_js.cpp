@@ -1,4 +1,4 @@
-#include "duktape_comp.h"
+#include "duck_js.h"
 #include <engine/storage.h>
 #include <generated/protocol.h>
 #include <generated/client_data.h>
@@ -17,8 +17,8 @@ typedef uint32_t u32;
 typedef int32_t i32;
 
 // TODO: rename?
-static CDuktape* s_This = 0;
-inline CDuktape* This() { return s_This; }
+static CDuckJs* s_This = 0;
+inline CDuckJs* This() { return s_This; }
 
 static duk_ret_t NativePrint(duk_context *ctx)
 {
@@ -26,7 +26,7 @@ static duk_ret_t NativePrint(duk_context *ctx)
 	return 0;  /* no return value (= undefined) */
 }
 
-duk_ret_t CDuktape::NativeRenderQuad(duk_context *ctx)
+duk_ret_t CDuckJs::NativeRenderQuad(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 4, "Wrong argument count");
@@ -40,7 +40,7 @@ duk_ret_t CDuktape::NativeRenderQuad(duk_context *ctx)
 	return 0;
 }
 
-duk_ret_t CDuktape::NativeRenderQuadCentered(duk_context* ctx)
+duk_ret_t CDuckJs::NativeRenderQuadCentered(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 4, "Wrong argument count");
@@ -54,7 +54,7 @@ duk_ret_t CDuktape::NativeRenderQuadCentered(duk_context* ctx)
 	return 0;
 }
 
-duk_ret_t CDuktape::NativeRenderSetColorU32(duk_context *ctx)
+duk_ret_t CDuckJs::NativeRenderSetColorU32(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
@@ -70,7 +70,7 @@ duk_ret_t CDuktape::NativeRenderSetColorU32(duk_context *ctx)
 	return 0;
 }
 
-duk_ret_t CDuktape::NativeRenderSetColorF4(duk_context *ctx)
+duk_ret_t CDuckJs::NativeRenderSetColorF4(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 4, "Wrong argument count");
@@ -85,7 +85,7 @@ duk_ret_t CDuktape::NativeRenderSetColorF4(duk_context *ctx)
 	return 0;
 }
 
-duk_ret_t CDuktape::NativeRenderSetTexture(duk_context *ctx)
+duk_ret_t CDuckJs::NativeRenderSetTexture(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
@@ -93,7 +93,7 @@ duk_ret_t CDuktape::NativeRenderSetTexture(duk_context *ctx)
 	return 0;
 }
 
-duk_ret_t CDuktape::NativeRenderSetQuadSubSet(duk_context* ctx)
+duk_ret_t CDuckJs::NativeRenderSetQuadSubSet(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 4, "Wrong argument count");
@@ -108,7 +108,7 @@ duk_ret_t CDuktape::NativeRenderSetQuadSubSet(duk_context* ctx)
 	return 0;
 }
 
-duk_ret_t CDuktape::NativeRenderSetQuadRotation(duk_context* ctx)
+duk_ret_t CDuckJs::NativeRenderSetQuadRotation(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
@@ -118,12 +118,12 @@ duk_ret_t CDuktape::NativeRenderSetQuadRotation(duk_context* ctx)
 	return 0;
 }
 
-duk_ret_t CDuktape::NativeRenderSetTeeSkin(duk_context* ctx)
+duk_ret_t CDuckJs::NativeRenderSetTeeSkin(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
 
-	CDukBridge::CTeeSkinInfo SkinInfo;
+	CDuckBridge::CTeeSkinInfo SkinInfo;
 
 	for(int i = 0; i < NUM_SKINPARTS; i++)
 	{
@@ -185,20 +185,20 @@ duk_ret_t CDuktape::NativeRenderSetTeeSkin(duk_context* ctx)
 	return 0;
 }
 
-duk_ret_t CDuktape::NativeSetDrawSpace(duk_context *ctx)
+duk_ret_t CDuckJs::NativeSetDrawSpace(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
 
 	int ds = duk_to_int(ctx, 0);
-	dbg_assert(ds >= 0 && ds < CDukBridge::DrawSpace::_COUNT, "Draw space undefined");
+	dbg_assert(ds >= 0 && ds < CDuckBridge::DrawSpace::_COUNT, "Draw space undefined");
 
 	This()->m_DukEntry.m_CurrentDrawSpace = ds;
 
 	return 0;
 }
 
-duk_ret_t CDuktape::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
+duk_ret_t CDuckJs::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
@@ -267,7 +267,7 @@ duk_ret_t CDuktape::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 		duk_pop(ctx);
 	}
 
-	CDukBridge::CTeeDrawBodyAndFeetInfo TeeDrawInfo;
+	CDuckBridge::CTeeDrawBodyAndFeetInfo TeeDrawInfo;
 	TeeDrawInfo.m_Size = Size;
 	TeeDrawInfo.m_Angle = Angle;
 	TeeDrawInfo.m_Pos[0] = PosX;
@@ -281,7 +281,7 @@ duk_ret_t CDuktape::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 	return 0;
 }
 
-duk_ret_t CDuktape::NativeRenderDrawTeeHand(duk_context* ctx)
+duk_ret_t CDuckJs::NativeRenderDrawTeeHand(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
@@ -347,7 +347,7 @@ duk_ret_t CDuktape::NativeRenderDrawTeeHand(duk_context* ctx)
 		duk_pop(ctx);
 	}
 
-	CDukBridge::CTeeDrawHand TeeHandInfo;
+	CDuckBridge::CTeeDrawHand TeeHandInfo;
 	TeeHandInfo.m_Size = Size;
 	TeeHandInfo.m_AngleDir = AngleDir;
 	TeeHandInfo.m_AngleOff = AngleOff;
@@ -360,7 +360,7 @@ duk_ret_t CDuktape::NativeRenderDrawTeeHand(duk_context* ctx)
 	return 0;
 }
 
-duk_ret_t CDuktape::NativeGetBaseTexture(duk_context* ctx)
+duk_ret_t CDuckJs::NativeGetBaseTexture(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
@@ -391,7 +391,7 @@ static void GetSpriteSubSet(const CDataSprite& Spr, float* pOutSubSet)
 	pOutSubSet[3] = y2;
 }
 
-duk_ret_t CDuktape::NativeGetSpriteSubSet(duk_context* ctx)
+duk_ret_t CDuckJs::NativeGetSpriteSubSet(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
@@ -410,7 +410,7 @@ duk_ret_t CDuktape::NativeGetSpriteSubSet(duk_context* ctx)
 	return 1;
 }
 
-duk_ret_t CDuktape::NativeGetSpriteScale(duk_context* ctx)
+duk_ret_t CDuckJs::NativeGetSpriteScale(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
@@ -433,7 +433,7 @@ duk_ret_t CDuktape::NativeGetSpriteScale(duk_context* ctx)
 	return 1;
 }
 
-duk_ret_t CDuktape::NativeGetWeaponSpec(duk_context* ctx)
+duk_ret_t CDuckJs::NativeGetWeaponSpec(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
@@ -583,7 +583,7 @@ duk_ret_t CDuktape::NativeGetWeaponSpec(duk_context* ctx)
 	return 1;
 }
 
-duk_ret_t CDuktape::NativeGetModTexture(duk_context *ctx)
+duk_ret_t CDuckJs::NativeGetModTexture(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
@@ -594,7 +594,7 @@ duk_ret_t CDuktape::NativeGetModTexture(duk_context *ctx)
 	return 1;
 }
 
-duk_ret_t CDuktape::NativeGetClientSkinInfo(duk_context* ctx)
+duk_ret_t CDuckJs::NativeGetClientSkinInfo(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
@@ -639,7 +639,7 @@ duk_ret_t CDuktape::NativeGetClientSkinInfo(duk_context* ctx)
 	return 1;
 }
 
-duk_ret_t CDuktape::NativeGetClientCharacterPositions(duk_context* ctx)
+duk_ret_t CDuckJs::NativeGetClientCharacterPositions(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 0, "Wrong argument count");
@@ -677,7 +677,7 @@ duk_ret_t CDuktape::NativeGetClientCharacterPositions(duk_context* ctx)
 	return 1;
 }
 
-duk_ret_t CDuktape::NativeGetStandardSkinInfo(duk_context* ctx)
+duk_ret_t CDuckJs::NativeGetStandardSkinInfo(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 0, "Wrong argument count");
@@ -716,7 +716,7 @@ duk_ret_t CDuktape::NativeGetStandardSkinInfo(duk_context* ctx)
 	return 1;
 }
 
-duk_ret_t CDuktape::NativeGetSkinPartTexture(duk_context* ctx)
+duk_ret_t CDuckJs::NativeGetSkinPartTexture(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 2, "Wrong argument count");
@@ -741,7 +741,7 @@ duk_ret_t CDuktape::NativeGetSkinPartTexture(duk_context* ctx)
 	return 1;
 }
 
-duk_ret_t CDuktape::NativeMapSetTileCollisionFlags(duk_context *ctx)
+duk_ret_t CDuckJs::NativeMapSetTileCollisionFlags(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 3, "Wrong argument count");
@@ -756,7 +756,7 @@ duk_ret_t CDuktape::NativeMapSetTileCollisionFlags(duk_context *ctx)
 	return 0;
 }
 
-duk_ret_t CDuktape::NativeDirectionFromAngle(duk_context* ctx)
+duk_ret_t CDuckJs::NativeDirectionFromAngle(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
@@ -772,7 +772,7 @@ duk_ret_t CDuktape::NativeDirectionFromAngle(duk_context* ctx)
 		return 1;
 }
 
-duk_ret_t CDuktape::NativeCollisionSetSolidBlock(duk_context* ctx)
+duk_ret_t CDuckJs::NativeCollisionSetSolidBlock(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 2, "Wrong argument count");
@@ -813,7 +813,7 @@ duk_ret_t CDuktape::NativeCollisionSetSolidBlock(duk_context* ctx)
 	return 0;
 }
 
-duk_ret_t CDuktape::NativeCollisionClearSolidBlock(duk_context* ctx)
+duk_ret_t CDuckJs::NativeCollisionClearSolidBlock(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
@@ -825,7 +825,7 @@ duk_ret_t CDuktape::NativeCollisionClearSolidBlock(duk_context* ctx)
 }
 
 template<typename IntT>
-duk_ret_t CDuktape::NativeUnpackInteger(duk_context *ctx)
+duk_ret_t CDuckJs::NativeUnpackInteger(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
@@ -859,7 +859,7 @@ duk_ret_t CDuktape::NativeUnpackInteger(duk_context *ctx)
 	return 1;
 }
 
-duk_ret_t CDuktape::NativeUnpackFloat(duk_context *ctx)
+duk_ret_t CDuckJs::NativeUnpackFloat(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
@@ -889,24 +889,24 @@ duk_ret_t CDuktape::NativeUnpackFloat(duk_context *ctx)
 	return 1;
 }
 
-void CDuktape::PushObject()
+void CDuckJs::PushObject()
 {
 	m_CurrentPushedObjID = duk_push_object(Ctx());
 }
 
-void CDuktape::ObjectSetMemberInt(const char* MemberName, int Value)
+void CDuckJs::ObjectSetMemberInt(const char* MemberName, int Value)
 {
 	duk_push_int(Ctx(), Value);
 	duk_put_prop_string(Ctx(), m_CurrentPushedObjID, MemberName);
 }
 
-void CDuktape::ObjectSetMemberFloat(const char* MemberName, float Value)
+void CDuckJs::ObjectSetMemberFloat(const char* MemberName, float Value)
 {
 	duk_push_number(Ctx(), Value);
 	duk_put_prop_string(Ctx(), m_CurrentPushedObjID, MemberName);
 }
 
-void CDuktape::ObjectSetMemberRawBuffer(const char* MemberName, const void* pRawBuffer, int RawBufferSize)
+void CDuckJs::ObjectSetMemberRawBuffer(const char* MemberName, const void* pRawBuffer, int RawBufferSize)
 {
 	duk_push_string(Ctx(), MemberName);
 	duk_push_fixed_buffer(Ctx(), RawBufferSize);
@@ -920,12 +920,12 @@ void CDuktape::ObjectSetMemberRawBuffer(const char* MemberName, const void* pRaw
 	dbg_assert(rc == 1, "could not put raw buffer prop");
 }
 
-void CDuktape::ObjectSetMember(const char* MemberName)
+void CDuckJs::ObjectSetMember(const char* MemberName)
 {
 	duk_put_prop_string(Ctx(), m_CurrentPushedObjID, MemberName);
 }
 
-bool CDuktape::IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256)
+bool CDuckJs::IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256)
 {
 	char aSha256Str[SHA256_MAXSTRSIZE];
 	sha256_str(*pModSha256, aSha256Str, sizeof(aSha256Str));
@@ -945,7 +945,7 @@ bool CDuktape::IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256)
 	return false;
 }
 
-bool CDuktape::ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, const SHA256_DIGEST* pModSha256)
+bool CDuckJs::ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, const SHA256_DIGEST* pModSha256)
 {
 	dbg_msg("unzip", "EXTRACTING AND INSTALLING MOD");
 
@@ -1231,7 +1231,7 @@ bool CDuktape::ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, con
 	return true;
 }
 
-bool CDuktape::ExtractAndInstallModCompressedBuffer(const void* pCompBuff, int CompBuffSize, const SHA256_DIGEST* pModSha256)
+bool CDuckJs::ExtractAndInstallModCompressedBuffer(const void* pCompBuff, int CompBuffSize, const SHA256_DIGEST* pModSha256)
 {
 	const bool IsConfigDebug = g_Config.m_Debug;
 
@@ -1434,7 +1434,7 @@ bool CDuktape::ExtractAndInstallModCompressedBuffer(const void* pCompBuff, int C
 	return true;
 }
 
-bool CDuktape::LoadJsScriptFile(const char* pJsFilePath, const char* pJsRelFilePath)
+bool CDuckJs::LoadJsScriptFile(const char* pJsFilePath, const char* pJsRelFilePath)
 {
 	IOHANDLE ScriptFile = io_open(pJsFilePath, IOFLAG_READ);
 	if(!ScriptFile)
@@ -1528,7 +1528,7 @@ static int ListDirCallback(const char* pName, int IsDir, int Type, void *pUser)
 	return 0;
 }
 
-bool CDuktape::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
+bool CDuckJs::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
 {
 	char aModRootPath[512];
 	char aSha256Str[SHA256_MAXSTRSIZE];
@@ -1577,7 +1577,7 @@ bool CDuktape::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
 	return true;
 }
 
-void CDuktape::ResetDukContext()
+void CDuckJs::ResetDukContext()
 {
 	if(m_pDukContext)
 		duk_destroy_heap(m_pDukContext);
@@ -1644,19 +1644,19 @@ void CDuktape::ResetDukContext()
 	duk_pop(Ctx());
 }
 
-CDuktape::CDuktape()
+CDuckJs::CDuckJs()
 {
 	s_This = this;
 	m_pDukContext = 0;
 	m_IsModLoaded = false;
 }
 
-void CDuktape::OnInit()
+void CDuckJs::OnInit()
 {
 	m_DukEntry.Init(this);
 }
 
-void CDuktape::OnShutdown()
+void CDuckJs::OnShutdown()
 {
 	if(m_pDukContext)
 	{
@@ -1665,7 +1665,7 @@ void CDuktape::OnShutdown()
 	}
 }
 
-void CDuktape::OnRender()
+void CDuckJs::OnRender()
 {
 	if(Client()->State() != IClient::STATE_ONLINE || !IsLoaded())
 		return;
@@ -1710,7 +1710,7 @@ void CDuktape::OnRender()
 	dbg_assert(duk_get_top(Ctx()) == 0, "stack leak");
 }
 
-void CDuktape::OnMessage(int Msg, void* pRawMsg)
+void CDuckJs::OnMessage(int Msg, void* pRawMsg)
 {
 	if(Msg == NETMSG_DUCK_NETOBJ)
 	{
@@ -1739,7 +1739,7 @@ void CDuktape::OnMessage(int Msg, void* pRawMsg)
 	}
 }
 
-void CDuktape::OnStateChange(int NewState, int OldState)
+void CDuckJs::OnStateChange(int NewState, int OldState)
 {
 	if(OldState != IClient::STATE_OFFLINE && NewState == IClient::STATE_OFFLINE)
 	{
@@ -1747,14 +1747,14 @@ void CDuktape::OnStateChange(int NewState, int OldState)
 	}
 }
 
-void CDuktape::OnModReset()
+void CDuckJs::OnModReset()
 {
 	ResetDukContext();
 	m_DukEntry.Reset();
 	m_IsModLoaded = false;
 }
 
-void CDuktape::OnModUnload()
+void CDuckJs::OnModUnload()
 {
 	if(m_pDukContext)
 		duk_destroy_heap(m_pDukContext);
@@ -1764,7 +1764,7 @@ void CDuktape::OnModUnload()
 	m_IsModLoaded = false;
 }
 
-bool CDuktape::StartDuckModHttpDownload(const char* pModUrl, const SHA256_DIGEST* pModSha256)
+bool CDuckJs::StartDuckModHttpDownload(const char* pModUrl, const SHA256_DIGEST* pModSha256)
 {
 	dbg_assert(!IsModAlreadyInstalled(pModSha256), "mod is already installed, check it before calling this");
 
@@ -1786,7 +1786,7 @@ bool CDuktape::StartDuckModHttpDownload(const char* pModUrl, const SHA256_DIGEST
 	return IsLoaded;
 }
 
-bool CDuktape::TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256)
+bool CDuckJs::TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256)
 {
 	if(!IsModAlreadyInstalled(pModSha256))
 		return false;
@@ -1800,7 +1800,7 @@ bool CDuktape::TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256)
 	return IsLoaded;
 }
 
-bool CDuktape::InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256)
+bool CDuckJs::InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256)
 {
 	dbg_assert(!IsModAlreadyInstalled(pModSha256), "mod is already installed, check it before calling this");
 
