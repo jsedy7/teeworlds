@@ -11,7 +11,7 @@ public:
 	int GetCollisionAt(float x, float y) const;
 	void SetTileCollisionFlags(int Tx, int Ty, int Flags);
 
-	struct CSolidBlock
+	struct CStaticBlock
 	{
 		vec2 m_Pos;
 		vec2 m_Size;
@@ -19,13 +19,21 @@ public:
 		int16_t m_FetchID;
 	};
 
+	struct CDynamicDisk
+	{
+		vec2 m_Pos;
+		vec2 m_Vel;
+		float m_Radius;
+	};
+
 	enum {
 		MAX_SOLIDBLOCK_FETCH_IDS=10000
 	};
 
 	int16_t m_aSolidBlockDataID[MAX_SOLIDBLOCK_FETCH_IDS];
-	array<CSolidBlock> m_aSolidBlocks;
+	array<CStaticBlock> m_aStaticBlocks;
+	array<CDynamicDisk> m_aDynamicDisks;
 
-	void SetSolidBlock(int BlockId, CSolidBlock Block);
+	void SetSolidBlock(int BlockId, CStaticBlock Block);
 	void ClearSolidBlock(int BlockId);
 };

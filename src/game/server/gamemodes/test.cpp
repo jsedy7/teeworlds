@@ -40,7 +40,7 @@ void CGameControllerTEST::Tick()
 	vec2 HookBlockSize = vec2(100 + 400 * a, 64);
 	vec2 HookBlockVel = vec2(0, 0);
 
-	CDuckCollision::CSolidBlock SolidBlock;
+	CDuckCollision::CStaticBlock SolidBlock;
 	SolidBlock.m_Pos = HookBlockPos;
 	SolidBlock.m_Size = HookBlockSize;
 	SolidBlock.m_Flags = CCollision::COLFLAG_SOLID;

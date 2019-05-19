@@ -140,7 +140,6 @@ public:
 
 	CTuningParams m_Tuning;
 	class CCharacterCore *m_apCharacters[MAX_CLIENTS];
-	class CDukBridge* m_pDukBridge;
 };
 
 class CCharacterCore

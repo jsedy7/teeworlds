@@ -170,7 +170,7 @@ IGraphics::CTextureHandle CDukBridge::GetTexture(const char *pTextureName)
 	return IGraphics::CTextureHandle();
 }
 
-void CDukBridge::SetSolidBlock(int BlockId, const CDuckCollision::CSolidBlock& Block)
+void CDukBridge::SetSolidBlock(int BlockId, const CDuckCollision::CStaticBlock& Block)
 {
 	m_Collision.SetSolidBlock(BlockId, Block);
 }
@@ -276,7 +276,7 @@ void CDukBridge::RenderDrawSpace(DrawSpace::Enum Space)
 		}
 	}
 
-	m_aRenderCmdList[Space].clear();
+	m_aRenderCmdList[Space].set_size(0);
 	RenderSpace = CRenderSpace();
 }
 

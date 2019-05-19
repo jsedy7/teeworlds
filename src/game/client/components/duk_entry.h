@@ -157,8 +157,10 @@ struct CDukBridge
 	bool LoadTexture(const char* pTexturePath, const char *pTextureName);
 	IGraphics::CTextureHandle GetTexture(const char* pTextureName);
 
-	void SetSolidBlock(int BlockId, const CDuckCollision::CSolidBlock& Block);
+	void SetSolidBlock(int BlockId, const CDuckCollision::CStaticBlock& Block);
 	void ClearSolidBlock(int BlockId);
+
+
 
 	// "entries"
 	void RenderDrawSpace(DrawSpace::Enum Space);

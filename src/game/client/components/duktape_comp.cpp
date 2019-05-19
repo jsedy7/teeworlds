@@ -779,7 +779,7 @@ duk_ret_t CDuktape::NativeCollisionSetSolidBlock(duk_context* ctx)
 
 	int BlockId = duk_to_int(ctx, 0);
 
-	CDuckCollision::CSolidBlock SolidBlock;
+	CDuckCollision::CStaticBlock SolidBlock;
 	SolidBlock.m_Flags = -1;
 
 	if(duk_get_prop_string(ctx, 1, "flags"))
