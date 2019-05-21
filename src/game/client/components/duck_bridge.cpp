@@ -170,16 +170,6 @@ IGraphics::CTextureHandle CDuckBridge::GetTexture(const char *pTextureName)
 	return IGraphics::CTextureHandle();
 }
 
-void CDuckBridge::SetSolidBlock(int BlockId, const CDuckCollision::CStaticBlock& Block)
-{
-	m_Collision.SetSolidBlock(BlockId, Block);
-}
-
-void CDuckBridge::ClearSolidBlock(int BlockId)
-{
-	m_Collision.ClearSolidBlock(BlockId);
-}
-
 void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 {
 	const int CmdCount = m_aRenderCmdList[Space].size();
@@ -464,12 +454,18 @@ void CDuckBridge::CharacterCorePostTick(CCharacterCore** apCharCores)
 
 void CDuckBridge::Predict()
 {
-	m_Collision.OnPredictStart();
-
+	/*
 	const int StartTick = GameClient()->Client()->GameTick()+1;
 	const int EndTick = GameClient()->Client()->PredGameTick();
 	for(int Tick = StartTick; Tick <= EndTick; Tick++)
 	{
-		m_Collision.OnPredictTick();
+		const int DiskCount = m_Collision.m_aDynamicDisks.size();
+		for(int i = 0; i < DiskCount; i++)
+		{
+			CDuckCollision::CDynamicDisk& Disk = m_Collision.m_aDynamicDisks[i];
+			Disk.m_Pos += Disk.m_Vel;
+			// TODO: Disk.Move() like CCharacterCore::Move()
+		}
 	}
+	*/
 }

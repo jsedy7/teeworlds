@@ -38,8 +38,10 @@ class CDuckJs : public CComponent
 	static duk_ret_t NativeGetSkinPartTexture(duk_context *ctx);
 	static duk_ret_t NativeMapSetTileCollisionFlags(duk_context *ctx);
 	static duk_ret_t NativeDirectionFromAngle(duk_context *ctx);
-	static duk_ret_t NativeCollisionSetSolidBlock(duk_context *ctx);
-	static duk_ret_t NativeCollisionClearSolidBlock(duk_context *ctx);
+	static duk_ret_t NativeCollisionSetStaticBlock(duk_context *ctx);
+	static duk_ret_t NativeCollisionClearStaticBlock(duk_context *ctx);
+	static duk_ret_t NativeCollisionSetDynamicDisk(duk_context *ctx);
+	static duk_ret_t NativeCollisionClearDynamicDisk(duk_context *ctx);
 
 	template<typename IntT>
 	static duk_ret_t NativeUnpackInteger(duk_context *ctx);

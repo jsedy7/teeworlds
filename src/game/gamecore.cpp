@@ -1,6 +1,7 @@
 /* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
 #include "gamecore.h"
+#include "duck_collision.h"
 
 const char *CTuningParams::m_apNames[] =
 {
@@ -293,6 +294,11 @@ void CCharacterCore::Tick(bool UseInput)
 
 	if(m_pWorld)
 	{
+		// TODO: if duck?
+		CDuckCollision* pDuckCollision = (CDuckCollision*)m_pCollision;
+		const int DiskCount = pDuckCollision->m_aDynamicDisks.size();
+		const CDuckCollision::CDynamicDisk* pDisks = pDuckCollision->m_aDynamicDisks.base_ptr();
+
 		for(int i = 0; i < MAX_CLIENTS; i++)
 		{
 			CCharacterCore *pCharCore = m_pWorld->m_apCharacters[i];
@@ -338,6 +344,28 @@ void CCharacterCore::Tick(bool UseInput)
 				}
 			}
 		}
+
+		for(int DiskId = 0; DiskId < DiskCount; DiskId++)
+		{
+			const CDuckCollision::CDynamicDisk& Disk = pDisks[DiskId];
+
+			float Distance = distance(m_Pos, Disk.m_Pos);
+			vec2 Dir = normalize(m_Pos - Disk.m_Pos);
+			float MinDist = Disk.m_Radius + PhysSize * 0.5f;
+			if(Distance < MinDist*1.25f && Distance > 0.0f)
+			{
+				float a = (MinDist*1.45f - Distance);
+				float Velocity = 0.5f;
+
+				// make sure that we don't add excess force by checking the
+				// direction against the current velocity. if not zero.
+				if (length(m_Vel) > 0.0001)
+					Velocity = 1-(dot(normalize(m_Vel), Dir)+1)/2;
+
+				m_Vel += Dir*a*(Velocity*0.75f);
+				m_Vel *= 0.85f;
+			}
+		}
 	}
 
 	// clamp the velocity to something sane
@@ -363,6 +391,7 @@ void CCharacterCore::Move()
 	if(m_pWorld->m_Tuning.m_PlayerCollision)
 	{
 		// check player collision
+		CCharacterCore** pWorldCharacters = m_pWorld->m_apCharacters;
 		float Distance = distance(m_Pos, NewPos);
 		int End = Distance+1;
 		vec2 LastPos = m_Pos;
@@ -372,7 +401,7 @@ void CCharacterCore::Move()
 			vec2 Pos = mix(m_Pos, NewPos, a);
 			for(int p = 0; p < MAX_CLIENTS; p++)
 			{
-				CCharacterCore *pCharCore = m_pWorld->m_apCharacters[p];
+				CCharacterCore *pCharCore = pWorldCharacters[p];
 				if(!pCharCore || pCharCore == this)
 					continue;
 				float D = distance(Pos, pCharCore->m_Pos);
@@ -386,6 +415,34 @@ void CCharacterCore::Move()
 				}
 			}
 			LastPos = Pos;
+		}
+	}
+
+	// TODO: if duck?
+	CDuckCollision* pDuckCollision = (CDuckCollision*)m_pCollision;
+	const int DiskCount = pDuckCollision->m_aDynamicDisks.size();
+	const CDuckCollision::CDynamicDisk* pDisks = pDuckCollision->m_aDynamicDisks.base_ptr();
+
+	float Distance = distance(m_Pos, NewPos);
+	int End = Distance+1;
+	vec2 LastPos = m_Pos;
+	for(int i = 0; i < End; i++)
+	{
+		float a = i/Distance;
+		vec2 Pos = mix(m_Pos, NewPos, a);
+
+		for(int DiskId = 0; DiskId < DiskCount; DiskId++)
+		{
+			const CDuckCollision::CDynamicDisk& Disk = pDisks[DiskId];
+			float D = distance(Pos, Disk.m_Pos);
+			if(D < (Disk.m_Radius+PhysSize*0.5f) && D > 0.0f)
+			{
+				if(a > 0.0f)
+					m_Pos = LastPos;
+				else if(distance(NewPos, Disk.m_Pos) > D)
+					m_Pos = NewPos;
+				return;
+			}
 		}
 	}
 

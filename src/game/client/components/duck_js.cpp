@@ -772,7 +772,7 @@ duk_ret_t CDuckJs::NativeDirectionFromAngle(duk_context* ctx)
 		return 1;
 }
 
-duk_ret_t CDuckJs::NativeCollisionSetSolidBlock(duk_context* ctx)
+duk_ret_t CDuckJs::NativeCollisionSetStaticBlock(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 2, "Wrong argument count");
@@ -809,18 +809,80 @@ duk_ret_t CDuckJs::NativeCollisionSetSolidBlock(duk_context* ctx)
 	}
 
 	if(BlockId >= 0)
-		This()->m_Bridge.SetSolidBlock(BlockId, SolidBlock);
+		This()->m_Bridge.m_Collision.SetStaticBlock(BlockId, SolidBlock);
 	return 0;
 }
 
-duk_ret_t CDuckJs::NativeCollisionClearSolidBlock(duk_context* ctx)
+duk_ret_t CDuckJs::NativeCollisionClearStaticBlock(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
 
 	int BlockId = duk_to_int(ctx, 0);
 	if(BlockId >= 0)
-		This()->m_Bridge.ClearSolidBlock(BlockId);
+		This()->m_Bridge.m_Collision.ClearStaticBlock(BlockId);
+	return 0;
+}
+
+duk_ret_t CDuckJs::NativeCollisionSetDynamicDisk(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 2, "Wrong argument count");
+
+	int DiskId = duk_to_int(ctx, 0);
+
+	CDuckCollision::CDynamicDisk Disk;
+	Disk.m_Flags = -1;
+
+	if(duk_get_prop_string(ctx, 1, "flags"))
+	{
+		Disk.m_Flags = (int)duk_to_int(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_string(ctx, 1, "pos_x"))
+	{
+		Disk.m_Pos.x = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_string(ctx, 1, "pos_y"))
+	{
+		Disk.m_Pos.y = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_string(ctx, 1, "vel_x"))
+	{
+		Disk.m_Vel.x = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_string(ctx, 1, "vel_y"))
+	{
+		Disk.m_Vel.y = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_string(ctx, 1, "radius"))
+	{
+		Disk.m_Radius = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_string(ctx, 1, "hook_force"))
+	{
+		Disk.m_HookForce = (float)duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+
+	if(DiskId >= 0)
+		This()->m_Bridge.m_Collision.SetDynamicDisk(DiskId, Disk);
+	return 0;
+}
+
+duk_ret_t CDuckJs::NativeCollisionClearDynamicDisk(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	int DiskId = duk_to_int(ctx, 0);
+	if(DiskId >= 0)
+		This()->m_Bridge.m_Collision.ClearDynamicDisk(DiskId);
 	return 0;
 }
 
@@ -1630,8 +1692,10 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(GetSkinPartTexture, 2);
 	REGISTER_FUNC(MapSetTileCollisionFlags, 3);
 	REGISTER_FUNC(DirectionFromAngle, 1);
-	REGISTER_FUNC(CollisionSetSolidBlock, 2);
-	REGISTER_FUNC(CollisionClearSolidBlock, 1);
+	REGISTER_FUNC(CollisionSetStaticBlock, 2);
+	REGISTER_FUNC(CollisionClearStaticBlock, 1);
+	REGISTER_FUNC(CollisionSetDynamicDisk, 2);
+	REGISTER_FUNC(CollisionClearDynamicDisk, 1);
 
 #undef REGISTER_FUNC
 

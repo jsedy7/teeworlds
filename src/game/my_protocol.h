@@ -14,6 +14,7 @@ struct DukNetObjID
 		MAP_RECT_SET_SOLID,
 
 		HOOK_BLOCK,
+		DYNAMIC_DISK,
 
 		_COUNT
 	};
@@ -63,4 +64,18 @@ struct CNetObj_HookBlock
 	float m_VelY;
 	float m_Width;
 	float m_Height;
+};
+
+struct CNetObj_DynamicDisk
+{
+	enum { NET_ID = DukNetObjID::DYNAMIC_DISK };
+
+	int m_Id;
+	int m_Flags;
+	float m_PosX;
+	float m_PosY;
+	float m_VelX;
+	float m_VelY;
+	float m_Radius;
+	float m_HookForce;
 };

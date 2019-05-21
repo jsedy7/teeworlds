@@ -24,19 +24,25 @@ public:
 		vec2 m_Pos;
 		vec2 m_Vel;
 		float m_Radius;
+		float m_HookForce;
+		int16_t m_Flags;
+		int16_t m_FetchID;
 	};
 
 	enum {
-		MAX_SOLIDBLOCK_FETCH_IDS=10000
+		MAX_STATICBLOCK_FETCH_IDS=10000,
+		MAX_DYNDISK_FETCH_IDS=10000,
 	};
 
-	int16_t m_aSolidBlockDataID[MAX_SOLIDBLOCK_FETCH_IDS];
+	int16_t m_aStaticBlockDataID[MAX_STATICBLOCK_FETCH_IDS];
+	int16_t m_aDynDiskDataID[MAX_DYNDISK_FETCH_IDS];
 	array<CStaticBlock> m_aStaticBlocks;
 	array<CDynamicDisk> m_aDynamicDisks;
-	array<CDynamicDisk> m_aDynamicDisksPredicted;
 
-	void SetSolidBlock(int BlockId, CStaticBlock Block);
-	void ClearSolidBlock(int BlockId);
-	void OnPredictStart();
-	void OnPredictTick();
+	void SetStaticBlock(int BlockId, CStaticBlock Block);
+	void ClearStaticBlock(int BlockId);
+	void SetDynamicDisk(int DiskId, CDynamicDisk Disk);
+	void ClearDynamicDisk(int DiskId);
+
+	void Tick();
 };

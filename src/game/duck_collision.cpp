@@ -2,26 +2,20 @@
 #include <base/system.h>
 #include <game/mapitems.h>
 
-vec2 HookBlockPos = vec2(800, 512);
-vec2 HookBlockSize = vec2(96, 64);
-vec2 HookBlockVel = vec2(0, 0);
-
 void CDuckCollision::Init(CLayers* pLayers)
 {
 	CCollision::Init(pLayers);
 
 	m_aStaticBlocks.hint_size(1024);
 	m_aDynamicDisks.hint_size(1024);
-	m_aDynamicDisksPredicted.hint_size(1024);
-	for(int i = 0; i < MAX_SOLIDBLOCK_FETCH_IDS; i++)
+	for(int i = 0; i < MAX_STATICBLOCK_FETCH_IDS; i++)
 	{
-		m_aSolidBlockDataID[i] = -1;
+		m_aStaticBlockDataID[i] = -1;
 	}
-
-	CDynamicDisk Disk;
-	Disk.m_Pos = vec2(50, 50);
-	Disk.m_Vel = vec2(0,0);
-	Disk.m_Radius = 30;
+	for(int i = 0; i < MAX_DYNDISK_FETCH_IDS; i++)
+	{
+		m_aDynDiskDataID[i] = -1;
+	}
 }
 
 bool CDuckCollision::CheckPoint(float x, float y, int Flag) const
@@ -68,27 +62,27 @@ void CDuckCollision::SetTileCollisionFlags(int Tx, int Ty, int Flags)
 	m_pTiles[Ty*m_Width+Tx].m_Index = Flags;
 }
 
-void CDuckCollision::SetSolidBlock(int BlockId, CStaticBlock Block)
+void CDuckCollision::SetStaticBlock(int BlockId, CStaticBlock Block)
 {
-	dbg_assert(BlockId >= 0 && BlockId < MAX_SOLIDBLOCK_FETCH_IDS, "BlockId out of bounds");
+	dbg_assert(BlockId >= 0 && BlockId < MAX_STATICBLOCK_FETCH_IDS, "BlockId out of bounds");
 
 	Block.m_FetchID = BlockId;
-	int DataID = m_aSolidBlockDataID[BlockId];
+	int DataID = m_aStaticBlockDataID[BlockId];
 
 	if(DataID != -1)
 		m_aStaticBlocks[DataID] = Block;
 	else
 	{
 		DataID = m_aStaticBlocks.add(Block);
-		m_aSolidBlockDataID[BlockId] = DataID;
+		m_aStaticBlockDataID[BlockId] = DataID;
 	}
 }
 
-void CDuckCollision::ClearSolidBlock(int BlockId)
+void CDuckCollision::ClearStaticBlock(int BlockId)
 {
-	dbg_assert(BlockId >= 0 && BlockId < MAX_SOLIDBLOCK_FETCH_IDS, "BlockId out of bounds");
+	dbg_assert(BlockId >= 0 && BlockId < MAX_STATICBLOCK_FETCH_IDS, "BlockId out of bounds");
 
-	int DataID = m_aSolidBlockDataID[BlockId];
+	int DataID = m_aStaticBlockDataID[BlockId];
 	if(DataID != -1)
 	{
 		// swap remove
@@ -97,25 +91,53 @@ void CDuckCollision::ClearSolidBlock(int BlockId)
 		m_aStaticBlocks.remove_index_fast(DataID);
 
 		if(m_aStaticBlocks.size() > 0)
-			m_aSolidBlockDataID[LastFetchID] = DataID;
+			m_aStaticBlockDataID[LastFetchID] = DataID;
 
-		m_aSolidBlockDataID[BlockId] = -1;
+		m_aStaticBlockDataID[BlockId] = -1;
 	}
 }
 
-void CDuckCollision::OnPredictStart()
+void CDuckCollision::SetDynamicDisk(int DiskId, CDynamicDisk Disk)
 {
-	const int DiskCount = m_aDynamicDisks.size();
-	m_aDynamicDisksPredicted.set_size(DiskCount);
-	mem_move(m_aDynamicDisksPredicted.base_ptr(), m_aDynamicDisks.base_ptr(), sizeof(m_aDynamicDisks.base_ptr()[0]) * DiskCount);
+	dbg_assert(DiskId >= 0 && DiskId < MAX_DYNDISK_FETCH_IDS, "DiskId out of bounds");
+
+	Disk.m_FetchID = DiskId;
+	int DataID = m_aDynDiskDataID[DiskId];
+
+	if(DataID != -1)
+		m_aDynamicDisks[DataID] = Disk;
+	else
+	{
+		DataID = m_aDynamicDisks.add(Disk);
+		m_aDynDiskDataID[DiskId] = DataID;
+	}
 }
 
-void CDuckCollision::OnPredictTick()
+void CDuckCollision::ClearDynamicDisk(int DiskId)
+{
+	dbg_assert(DiskId >= 0 && DiskId < MAX_DYNDISK_FETCH_IDS, "DiskId out of bounds");
+
+	int DataID = m_aDynDiskDataID[DiskId];
+	if(DataID != -1)
+	{
+		// swap remove
+		int LastFetchID = m_aDynamicDisks[m_aDynamicDisks.size()-1].m_FetchID;
+
+		m_aDynamicDisks.remove_index_fast(DataID);
+
+		if(m_aDynamicDisks.size() > 0)
+			m_aDynDiskDataID[LastFetchID] = DataID;
+
+		m_aDynDiskDataID[DiskId] = -1;
+	}
+}
+
+void CDuckCollision::Tick()
 {
 	const int DiskCount = m_aDynamicDisks.size();
 	for(int i = 0; i < DiskCount; i++)
 	{
-		CDynamicDisk& Disk = m_aDynamicDisks[i];
+		CDuckCollision::CDynamicDisk& Disk = m_aDynamicDisks[i];
 		Disk.m_Pos += Disk.m_Vel;
 		// TODO: Disk.Move() like CCharacterCore::Move()
 	}

@@ -17,6 +17,8 @@ void CGameControllerTEST::SendDukNetObj(const T& NetObj, int CID)
 	Server()->SendMsg(&Msg, MSGFLAG_VITAL, CID);
 }
 
+//static CCharacterCore TestCore;
+
 CGameControllerTEST::CGameControllerTEST(class CGameContext *pGameServer)
 : IGameController(pGameServer)
 {
@@ -27,6 +29,8 @@ CGameControllerTEST::CGameControllerTEST(class CGameContext *pGameServer)
 	{
 		dbg_msg("server", "failed to load duck mod");
 	}
+
+	//GameServer()->m_World.m_Core.m_apCharacters[63] = &TestCore;
 }
 
 void CGameControllerTEST::Tick()
@@ -46,7 +50,15 @@ void CGameControllerTEST::Tick()
 	SolidBlock.m_Flags = CCollision::COLFLAG_SOLID;
 
 	CDuckCollision* pCollision = (CDuckCollision*)GameServer()->Collision();
-	pCollision->SetSolidBlock(0, SolidBlock);
+	pCollision->SetStaticBlock(0, SolidBlock);
+
+	CDuckCollision::CDynamicDisk Disk;
+	Disk.m_Pos = vec2(250, 250);
+	Disk.m_Vel = vec2(0, 0);
+	Disk.m_Radius = 50;
+	pCollision->SetDynamicDisk(0, Disk);
+
+	pCollision->Tick();
 
 	for(int p = 0; p < MAX_PLAYERS; p++)
 	{
@@ -74,6 +86,37 @@ void CGameControllerTEST::Tick()
 			NetHookBlock.m_Width = HookBlockSize.x;
 			NetHookBlock.m_Height = HookBlockSize.y;
 			SendDukNetObj(NetHookBlock, p);
+
+			CNetObj_DynamicDisk NetDisk;
+			NetDisk.m_Id = 0;
+			NetDisk.m_Flags = Disk.m_Flags;
+			NetDisk.m_PosX = Disk.m_Pos.x;
+			NetDisk.m_PosY = Disk.m_Pos.y;
+			NetDisk.m_VelX = Disk.m_Vel.x;
+			NetDisk.m_VelY = Disk.m_Vel.y;
+			NetDisk.m_Radius = Disk.m_Radius;
+			NetDisk.m_HookForce = Disk.m_HookForce;
+			SendDukNetObj(NetDisk, p);
 		}
 	}
+}
+
+void CGameControllerTEST::Snap(int SnappingClient)
+{
+	IGameController::Snap(SnappingClient);
+	/*CNetObj_PlayerInfo *pPlayerInfo = (CNetObj_PlayerInfo *)Server()->SnapNewItem(NETOBJTYPE_PLAYERINFO, 63, sizeof(CNetObj_PlayerInfo));
+	if(!pPlayerInfo)
+		return;
+
+	pPlayerInfo->m_PlayerFlags = PLAYERFLAG_READY;
+	pPlayerInfo->m_Latency = 0;
+	pPlayerInfo->m_Score = 0;
+
+	CNetObj_Character *pCharacter = static_cast<CNetObj_Character *>(Server()->SnapNewItem(NETOBJTYPE_CHARACTER, 63, sizeof(CNetObj_Character)));
+	if(!pCharacter)
+		return;
+
+	TestCore.m_Pos = vec2(250, 250);
+	TestCore.m_Vel = vec2(0, 0);
+	TestCore.Write(pCharacter);*/
 }
