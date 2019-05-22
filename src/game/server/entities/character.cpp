@@ -772,18 +772,18 @@ void CCharacter::Snap(int SnappingClient)
 		return;
 
 	// write down the m_Core
-	if(!m_ReckoningTick || GameServer()->m_World.m_Paused)
+	//if(!m_ReckoningTick || GameServer()->m_World.m_Paused)
 	{
 		// no dead reckoning when paused because the client doesn't know
 		// how far to perform the reckoning
 		pCharacter->m_Tick = 0;
 		m_Core.Write(pCharacter);
 	}
-	else
+	/*else
 	{
 		pCharacter->m_Tick = m_ReckoningTick;
 		m_SendCore.Write(pCharacter);
-	}
+	}*/
 
 	// set emote
 	if (m_EmoteStop < Server()->Tick())

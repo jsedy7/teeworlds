@@ -161,5 +161,5 @@ struct CDuckBridge
 	void RenderDrawSpace(DrawSpace::Enum Space);
 	void CharacterCorePreTick(CCharacterCore** apCharCores);
 	void CharacterCorePostTick(CCharacterCore** apCharCores);
-	void Predict();
+	void Predict(CWorldCore *pWorld);
 };

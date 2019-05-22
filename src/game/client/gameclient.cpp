@@ -1395,8 +1395,6 @@ void CGameClient::OnPredict()
 		m_aClients[i].m_Predicted.Read(&m_Snap.m_aCharacters[i].m_Cur);
 	}
 
-	m_pDuckJs->m_Bridge.Predict();
-
 	// predict
 	for(int Tick = Client()->GameTick()+1; Tick <= Client()->PredGameTick(); Tick++)
 	{
@@ -1445,6 +1443,8 @@ void CGameClient::OnPredict()
 			World.m_apCharacters[c]->Move();
 			World.m_apCharacters[c]->Quantize();
 		}
+
+		m_pDuckJs->m_Bridge.Predict(&World);
 
 		// check if we want to trigger effects
 		if(Tick > m_LastNewPredictedTick)

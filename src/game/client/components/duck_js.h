@@ -42,6 +42,7 @@ class CDuckJs : public CComponent
 	static duk_ret_t NativeCollisionClearStaticBlock(duk_context *ctx);
 	static duk_ret_t NativeCollisionSetDynamicDisk(duk_context *ctx);
 	static duk_ret_t NativeCollisionClearDynamicDisk(duk_context *ctx);
+	static duk_ret_t NativeCollisionGetPredictedDynamicDisks(duk_context *ctx);
 
 	template<typename IntT>
 	static duk_ret_t NativeUnpackInteger(duk_context *ctx);
@@ -84,7 +85,7 @@ public:
 	friend class CDuckBridge;
 };
 
-inline void GetIntProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, int* pOutInt)
+inline void DukGetIntProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, int* pOutInt)
 {
 	if(duk_get_prop_string(pCtx, ObjIdx, pPropName))
 	{
@@ -93,7 +94,7 @@ inline void GetIntProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropNam
 	}
 }
 
-inline void GetFloatProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, float* pOutFloat)
+inline void DukGetFloatProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, float* pOutFloat)
 {
 	if(duk_get_prop_string(pCtx, ObjIdx, pPropName))
 	{
@@ -102,13 +103,13 @@ inline void GetFloatProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropN
 	}
 }
 
-inline void SetIntProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, int Val)
+inline void DukSetIntProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, int Val)
 {
 	duk_push_int(pCtx, Val);
 	duk_put_prop_string(pCtx, ObjIdx, pPropName);
 }
 
-inline void SetFloatProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, float Val)
+inline void DukSetFloatProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, float Val)
 {
 	duk_push_number(pCtx, Val);
 	duk_put_prop_string(pCtx, ObjIdx, pPropName);

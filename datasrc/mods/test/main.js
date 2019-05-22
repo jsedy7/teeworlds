@@ -5,7 +5,9 @@ var lastClientlocalTime = 0.0;
 
 var game = {
     debugRects: [],
-    hookBlocks: []
+    staticBlocks: [],
+    dynDisks: [],
+    prevDynDisks: [],
 };
 
 OnLoad();
@@ -141,7 +143,7 @@ function DrawTeeWeapon(weapId, x, y, teeSize)
     }
 }
 
-function OnUpdate(clientLocalTime)
+function OnUpdate(clientLocalTime, intraTick)
 {
     var delta = clientLocalTime - lastClientlocalTime;
     lastClientlocalTime = clientLocalTime;
@@ -229,10 +231,23 @@ function OnUpdate(clientLocalTime)
     });
 
     // draw hook blocks
-    game.hookBlocks.forEach(function(block) {
+    game.staticBlocks.forEach(function(block) {
         TwRenderSetTexture(-1);
         TwRenderSetColorF4(1, 0.5 + (Math.sin(clientLocalTime) * 0.5 + 0.5) * 0.5, 1, 1);
         TwRenderQuad(block.pos_x, block.pos_y, block.width, block.height);
+    });
+
+    // draw dynamic disks
+    //game.prevDynDisks = TwCollisionGetPredictedDynamicDisks();
+    game.dynDisks.forEach(function(disk, diskId) {
+        var c = 0.5 + (Math.sin(clientLocalTime) * 0.5 + 0.5) * 0.5;
+        var prevDisk = game.prevDynDisks[diskId];
+        var pos_x = mix(prevDisk.pos_x, disk.pos_x, intraTick);
+        var pos_y = mix(prevDisk.pos_y, disk.pos_y, intraTick);
+
+        TwRenderSetTexture(-1);
+        TwRenderSetColorF4(c, 0, 0, 1);
+        TwRenderQuad(pos_x - disk.radius, pos_y - disk.radius, disk.radius * 2, disk.radius * 2);
     });
 }
 
@@ -264,8 +279,25 @@ function OnMessage(netObj)
             width: TwUnpackFloat(netObj),
             height: TwUnpackFloat(netObj),
         };
-        game.hookBlocks[blockId] = block;
-        TwCollisionSetSolidBlock(blockId, block);
+        game.staticBlocks[blockId] = block;
+        TwCollisionSetStaticBlock(blockId, block);
+        return;
+    }
+
+    if(netObj.netID == 0x4) { // CNetObj_DynamicDisk
+        var diskId = TwUnpackInt32(netObj);
+        var disk = {
+            flags: TwUnpackInt32(netObj),
+            pos_x: TwUnpackFloat(netObj),
+            pos_y: TwUnpackFloat(netObj),
+            vel_x: TwUnpackFloat(netObj),
+            vel_y: TwUnpackFloat(netObj),
+            radius: TwUnpackFloat(netObj),
+            hook_force: TwUnpackFloat(netObj),
+        };
+        game.prevDynDisks[diskId] = game.dynDisks[diskId];
+        game.dynDisks[diskId] = disk;
+        TwCollisionSetDynamicDisk(diskId, disk);
         return;
     }
 }

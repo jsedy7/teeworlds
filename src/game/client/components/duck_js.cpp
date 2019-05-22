@@ -666,8 +666,8 @@ duk_ret_t CDuckJs::NativeGetClientCharacterPositions(duk_context* ctx)
 			vec2 Position = mix(vec2(Prev.m_X, Prev.m_Y), vec2(Cur.m_X, Cur.m_Y), IntraTick);
 
 			duk_idx_t PosObjIdx = duk_push_object(ctx);
-			SetFloatProp(ctx, PosObjIdx, "pos_x", Position.x);
-			SetFloatProp(ctx, PosObjIdx, "pos_y", Position.y);
+			DukSetFloatProp(ctx, PosObjIdx, "pos_x", Position.x);
+			DukSetFloatProp(ctx, PosObjIdx, "pos_y", Position.y);
 		}
 		else
 			duk_push_null(ctx);
@@ -834,41 +834,19 @@ duk_ret_t CDuckJs::NativeCollisionSetDynamicDisk(duk_context *ctx)
 	CDuckCollision::CDynamicDisk Disk;
 	Disk.m_Flags = -1;
 
+
 	if(duk_get_prop_string(ctx, 1, "flags"))
 	{
 		Disk.m_Flags = (int)duk_to_int(ctx, -1);
 		duk_pop(ctx);
 	}
-	if(duk_get_prop_string(ctx, 1, "pos_x"))
-	{
-		Disk.m_Pos.x = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 1, "pos_y"))
-	{
-		Disk.m_Pos.y = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 1, "vel_x"))
-	{
-		Disk.m_Vel.x = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 1, "vel_y"))
-	{
-		Disk.m_Vel.y = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 1, "radius"))
-	{
-		Disk.m_Radius = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 1, "hook_force"))
-	{
-		Disk.m_HookForce = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
+
+	DukGetFloatProp(ctx, 1, "pos_x", &Disk.m_Pos.x);
+	DukGetFloatProp(ctx, 1, "pos_y", &Disk.m_Pos.y);
+	DukGetFloatProp(ctx, 1, "vel_x", &Disk.m_Vel.x);
+	DukGetFloatProp(ctx, 1, "vel_y", &Disk.m_Vel.y);
+	DukGetFloatProp(ctx, 1, "radius", &Disk.m_Radius);
+	DukGetFloatProp(ctx, 1, "hook_force", &Disk.m_HookForce);
 
 	if(DiskId >= 0)
 		This()->m_Bridge.m_Collision.SetDynamicDisk(DiskId, Disk);
@@ -884,6 +862,35 @@ duk_ret_t CDuckJs::NativeCollisionClearDynamicDisk(duk_context *ctx)
 	if(DiskId >= 0)
 		This()->m_Bridge.m_Collision.ClearDynamicDisk(DiskId);
 	return 0;
+}
+
+duk_ret_t CDuckJs::NativeCollisionGetPredictedDynamicDisks(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 0, "Wrong argument count");
+
+	const CDuckCollision::CDynamicDisk* pDisks = This()->m_Bridge.m_Collision.m_aDynamicDisks.base_ptr();
+	const int DiskCount = This()->m_Bridge.m_Collision.m_aDynamicDisks.size();
+
+	duk_idx_t ArrayIdx = duk_push_array(ctx);
+
+	for(int d = 0; d < DiskCount; d++)
+	{
+		const CDuckCollision::CDynamicDisk& Disk = pDisks[d];
+		duk_idx_t ObjIdx = duk_push_object(ctx);
+		DukSetIntProp(ctx, ObjIdx, "id", Disk.m_FetchID);
+		DukSetIntProp(ctx, ObjIdx, "flags", Disk.m_Flags);
+		DukSetFloatProp(ctx, ObjIdx, "pos_x", Disk.m_Pos.x);
+		DukSetFloatProp(ctx, ObjIdx, "pos_y", Disk.m_Pos.y);
+		DukSetFloatProp(ctx, ObjIdx, "vel_x", Disk.m_Vel.x);
+		DukSetFloatProp(ctx, ObjIdx, "vel_y", Disk.m_Vel.y);
+		DukSetFloatProp(ctx, ObjIdx, "radius", Disk.m_Radius);
+		DukSetFloatProp(ctx, ObjIdx, "hook_force", Disk.m_HookForce);
+
+		duk_put_prop_index(ctx, ArrayIdx, d);
+	}
+
+	return 1;
 }
 
 template<typename IntT>
@@ -1696,6 +1703,7 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(CollisionClearStaticBlock, 1);
 	REGISTER_FUNC(CollisionSetDynamicDisk, 2);
 	REGISTER_FUNC(CollisionClearDynamicDisk, 1);
+	REGISTER_FUNC(CollisionGetPredictedDynamicDisks, 0);
 
 #undef REGISTER_FUNC
 
@@ -1734,20 +1742,11 @@ void CDuckJs::OnRender()
 	if(Client()->State() != IClient::STATE_ONLINE || !IsLoaded())
 		return;
 
-	// Update Teeworlds global object
-	char aEvalBuff[256];
-	str_format(aEvalBuff, sizeof(aEvalBuff), "Teeworlds.intraTick = %g;", Client()->IntraGameTick());
-	duk_eval_string(Ctx(), aEvalBuff);
-	duk_pop(Ctx());
-
-	str_format(aEvalBuff, sizeof(aEvalBuff), "Teeworlds.mapSize = { x: %d, y: %d };", Collision()->GetWidth(), Collision()->GetHeight());
-	duk_eval_string(Ctx(), aEvalBuff);
-	duk_pop(Ctx());
-
 	// Call OnUpdate()
 	duk_get_global_string(Ctx(), "OnUpdate");
 	duk_push_number(Ctx(), Client()->LocalTime());
-	int NumArgs = 1;
+	duk_push_number(Ctx(), Client()->IntraGameTick());
+	int NumArgs = 2;
 	if(duk_pcall(Ctx(), NumArgs) != DUK_EXEC_SUCCESS)
 	{
 		if(duk_is_error(Ctx(), -1))
@@ -1886,71 +1885,71 @@ bool CDuckJs::InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int Buffer
 duk_idx_t DuktapePushCharacterCore(duk_context* pCtx, const CCharacterCore* pCharCore)
 {
 	duk_idx_t CharCoreObjIdx = duk_push_object(pCtx);
-	SetFloatProp(pCtx, CharCoreObjIdx, "pos_x", pCharCore->m_Pos.x);
-	SetFloatProp(pCtx, CharCoreObjIdx, "pos_y", pCharCore->m_Pos.y);
-	SetFloatProp(pCtx, CharCoreObjIdx, "vel_x", pCharCore->m_Vel.x);
-	SetFloatProp(pCtx, CharCoreObjIdx, "vel_y", pCharCore->m_Vel.y);
-	SetFloatProp(pCtx, CharCoreObjIdx, "hook_pos_x", pCharCore->m_HookPos.x);
-	SetFloatProp(pCtx, CharCoreObjIdx, "hook_pos_y", pCharCore->m_HookPos.y);
-	SetFloatProp(pCtx, CharCoreObjIdx, "hook_dir_x", pCharCore->m_HookDir.x);
-	SetFloatProp(pCtx, CharCoreObjIdx, "hook_dir_y", pCharCore->m_HookDir.y);
+	DukSetFloatProp(pCtx, CharCoreObjIdx, "pos_x", pCharCore->m_Pos.x);
+	DukSetFloatProp(pCtx, CharCoreObjIdx, "pos_y", pCharCore->m_Pos.y);
+	DukSetFloatProp(pCtx, CharCoreObjIdx, "vel_x", pCharCore->m_Vel.x);
+	DukSetFloatProp(pCtx, CharCoreObjIdx, "vel_y", pCharCore->m_Vel.y);
+	DukSetFloatProp(pCtx, CharCoreObjIdx, "hook_pos_x", pCharCore->m_HookPos.x);
+	DukSetFloatProp(pCtx, CharCoreObjIdx, "hook_pos_y", pCharCore->m_HookPos.y);
+	DukSetFloatProp(pCtx, CharCoreObjIdx, "hook_dir_x", pCharCore->m_HookDir.x);
+	DukSetFloatProp(pCtx, CharCoreObjIdx, "hook_dir_y", pCharCore->m_HookDir.y);
 
-	SetIntProp(pCtx, CharCoreObjIdx, "hook_tick", pCharCore->m_HookTick);
-	SetIntProp(pCtx, CharCoreObjIdx, "hook_state", pCharCore->m_HookState);
-	SetIntProp(pCtx, CharCoreObjIdx, "hooked_player", pCharCore->m_HookedPlayer);
-	SetIntProp(pCtx, CharCoreObjIdx, "jumped", pCharCore->m_Jumped);
-	SetIntProp(pCtx, CharCoreObjIdx, "direction", pCharCore->m_Direction);
-	SetIntProp(pCtx, CharCoreObjIdx, "angle", pCharCore->m_Angle);
-	SetIntProp(pCtx, CharCoreObjIdx, "triggered_events", pCharCore->m_TriggeredEvents);
+	DukSetIntProp(pCtx, CharCoreObjIdx, "hook_tick", pCharCore->m_HookTick);
+	DukSetIntProp(pCtx, CharCoreObjIdx, "hook_state", pCharCore->m_HookState);
+	DukSetIntProp(pCtx, CharCoreObjIdx, "hooked_player", pCharCore->m_HookedPlayer);
+	DukSetIntProp(pCtx, CharCoreObjIdx, "jumped", pCharCore->m_Jumped);
+	DukSetIntProp(pCtx, CharCoreObjIdx, "direction", pCharCore->m_Direction);
+	DukSetIntProp(pCtx, CharCoreObjIdx, "angle", pCharCore->m_Angle);
+	DukSetIntProp(pCtx, CharCoreObjIdx, "triggered_events", pCharCore->m_TriggeredEvents);
 	return CharCoreObjIdx;
 }
 
 duk_idx_t DuktapePushNetObjPlayerInput(duk_context* pCtx, const CNetObj_PlayerInput* pInput)
 {
 	duk_idx_t InputObjIdx = duk_push_object(pCtx);
-	SetIntProp(pCtx, InputObjIdx, "direction", pInput->m_Direction);
-	SetIntProp(pCtx, InputObjIdx, "target_x", pInput->m_TargetX);
-	SetIntProp(pCtx, InputObjIdx, "target_y", pInput->m_TargetY);
-	SetIntProp(pCtx, InputObjIdx, "jump", pInput->m_Jump);
-	SetIntProp(pCtx, InputObjIdx, "fire", pInput->m_Fire);
-	SetIntProp(pCtx, InputObjIdx, "hook", pInput->m_Hook);
-	SetIntProp(pCtx, InputObjIdx, "player_flags", pInput->m_PlayerFlags);
-	SetIntProp(pCtx, InputObjIdx, "wanted_weapon", pInput->m_WantedWeapon);
-	SetIntProp(pCtx, InputObjIdx, "next_weapon", pInput->m_NextWeapon);
-	SetIntProp(pCtx, InputObjIdx, "prev_weapon", pInput->m_PrevWeapon);
+	DukSetIntProp(pCtx, InputObjIdx, "direction", pInput->m_Direction);
+	DukSetIntProp(pCtx, InputObjIdx, "target_x", pInput->m_TargetX);
+	DukSetIntProp(pCtx, InputObjIdx, "target_y", pInput->m_TargetY);
+	DukSetIntProp(pCtx, InputObjIdx, "jump", pInput->m_Jump);
+	DukSetIntProp(pCtx, InputObjIdx, "fire", pInput->m_Fire);
+	DukSetIntProp(pCtx, InputObjIdx, "hook", pInput->m_Hook);
+	DukSetIntProp(pCtx, InputObjIdx, "player_flags", pInput->m_PlayerFlags);
+	DukSetIntProp(pCtx, InputObjIdx, "wanted_weapon", pInput->m_WantedWeapon);
+	DukSetIntProp(pCtx, InputObjIdx, "next_weapon", pInput->m_NextWeapon);
+	DukSetIntProp(pCtx, InputObjIdx, "prev_weapon", pInput->m_PrevWeapon);
 	return InputObjIdx;
 }
 
 void DuktapeReadCharacterCore(duk_context* pCtx, duk_idx_t ObjIdx, CCharacterCore* pOutCharCore)
 {
-	GetFloatProp(pCtx, ObjIdx, "pos_x", &pOutCharCore->m_Pos.x);
-	GetFloatProp(pCtx, ObjIdx, "pos_y", &pOutCharCore->m_Pos.y);
-	GetFloatProp(pCtx, ObjIdx, "vel_x", &pOutCharCore->m_Vel.x);
-	GetFloatProp(pCtx, ObjIdx, "vel_y", &pOutCharCore->m_Vel.y);
-	GetFloatProp(pCtx, ObjIdx, "hook_pos_x", &pOutCharCore->m_HookPos.x);
-	GetFloatProp(pCtx, ObjIdx, "hook_pos_y", &pOutCharCore->m_HookPos.y);
-	GetFloatProp(pCtx, ObjIdx, "hook_dir_x", &pOutCharCore->m_HookDir.x);
-	GetFloatProp(pCtx, ObjIdx, "hook_dir_y", &pOutCharCore->m_HookDir.y);
+	DukGetFloatProp(pCtx, ObjIdx, "pos_x", &pOutCharCore->m_Pos.x);
+	DukGetFloatProp(pCtx, ObjIdx, "pos_y", &pOutCharCore->m_Pos.y);
+	DukGetFloatProp(pCtx, ObjIdx, "vel_x", &pOutCharCore->m_Vel.x);
+	DukGetFloatProp(pCtx, ObjIdx, "vel_y", &pOutCharCore->m_Vel.y);
+	DukGetFloatProp(pCtx, ObjIdx, "hook_pos_x", &pOutCharCore->m_HookPos.x);
+	DukGetFloatProp(pCtx, ObjIdx, "hook_pos_y", &pOutCharCore->m_HookPos.y);
+	DukGetFloatProp(pCtx, ObjIdx, "hook_dir_x", &pOutCharCore->m_HookDir.x);
+	DukGetFloatProp(pCtx, ObjIdx, "hook_dir_y", &pOutCharCore->m_HookDir.y);
 
-	GetIntProp(pCtx, ObjIdx, "hook_tick", &pOutCharCore->m_HookTick);
-	GetIntProp(pCtx, ObjIdx, "hook_state", &pOutCharCore->m_HookState);
-	GetIntProp(pCtx, ObjIdx, "hooked_player", &pOutCharCore->m_HookedPlayer);
-	GetIntProp(pCtx, ObjIdx, "jumped", &pOutCharCore->m_Jumped);
-	GetIntProp(pCtx, ObjIdx, "direction", &pOutCharCore->m_Direction);
-	GetIntProp(pCtx, ObjIdx, "angle", &pOutCharCore->m_Angle);
-	GetIntProp(pCtx, ObjIdx, "triggered_events", &pOutCharCore->m_TriggeredEvents);
+	DukGetIntProp(pCtx, ObjIdx, "hook_tick", &pOutCharCore->m_HookTick);
+	DukGetIntProp(pCtx, ObjIdx, "hook_state", &pOutCharCore->m_HookState);
+	DukGetIntProp(pCtx, ObjIdx, "hooked_player", &pOutCharCore->m_HookedPlayer);
+	DukGetIntProp(pCtx, ObjIdx, "jumped", &pOutCharCore->m_Jumped);
+	DukGetIntProp(pCtx, ObjIdx, "direction", &pOutCharCore->m_Direction);
+	DukGetIntProp(pCtx, ObjIdx, "angle", &pOutCharCore->m_Angle);
+	DukGetIntProp(pCtx, ObjIdx, "triggered_events", &pOutCharCore->m_TriggeredEvents);
 }
 
 void DuktapeReadNetObjPlayerInput(duk_context* pCtx, duk_idx_t ObjIdx, CNetObj_PlayerInput* pOutInput)
 {
-	GetIntProp(pCtx, ObjIdx, "direction", &pOutInput->m_Direction);
-	GetIntProp(pCtx, ObjIdx, "target_x", &pOutInput->m_TargetX);
-	GetIntProp(pCtx, ObjIdx, "target_y", &pOutInput->m_TargetY);
-	GetIntProp(pCtx, ObjIdx, "jump", &pOutInput->m_Jump);
-	GetIntProp(pCtx, ObjIdx, "fire", &pOutInput->m_Fire);
-	GetIntProp(pCtx, ObjIdx, "hook", &pOutInput->m_Hook);
-	GetIntProp(pCtx, ObjIdx, "player_flags", &pOutInput->m_PlayerFlags);
-	GetIntProp(pCtx, ObjIdx, "wanted_weapon", &pOutInput->m_WantedWeapon);
-	GetIntProp(pCtx, ObjIdx, "next_weapon", &pOutInput->m_NextWeapon);
-	GetIntProp(pCtx, ObjIdx, "prev_weapon", &pOutInput->m_PrevWeapon);
+	DukGetIntProp(pCtx, ObjIdx, "direction", &pOutInput->m_Direction);
+	DukGetIntProp(pCtx, ObjIdx, "target_x", &pOutInput->m_TargetX);
+	DukGetIntProp(pCtx, ObjIdx, "target_y", &pOutInput->m_TargetY);
+	DukGetIntProp(pCtx, ObjIdx, "jump", &pOutInput->m_Jump);
+	DukGetIntProp(pCtx, ObjIdx, "fire", &pOutInput->m_Fire);
+	DukGetIntProp(pCtx, ObjIdx, "hook", &pOutInput->m_Hook);
+	DukGetIntProp(pCtx, ObjIdx, "player_flags", &pOutInput->m_PlayerFlags);
+	DukGetIntProp(pCtx, ObjIdx, "wanted_weapon", &pOutInput->m_WantedWeapon);
+	DukGetIntProp(pCtx, ObjIdx, "next_weapon", &pOutInput->m_NextWeapon);
+	DukGetIntProp(pCtx, ObjIdx, "prev_weapon", &pOutInput->m_PrevWeapon);
 }

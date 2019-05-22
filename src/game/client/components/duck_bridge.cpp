@@ -452,20 +452,15 @@ void CDuckBridge::CharacterCorePostTick(CCharacterCore** apCharCores)
 	duk_pop(pCtx);
 }
 
-void CDuckBridge::Predict()
+void CDuckBridge::Predict(CWorldCore* pWorld)
 {
-	/*
-	const int StartTick = GameClient()->Client()->GameTick()+1;
-	const int EndTick = GameClient()->Client()->PredGameTick();
-	for(int Tick = StartTick; Tick <= EndTick; Tick++)
+	const int DiskCount = m_Collision.m_aDynamicDisks.size();
+	for(int i = 0; i < DiskCount; i++)
 	{
-		const int DiskCount = m_Collision.m_aDynamicDisks.size();
-		for(int i = 0; i < DiskCount; i++)
-		{
-			CDuckCollision::CDynamicDisk& Disk = m_Collision.m_aDynamicDisks[i];
-			Disk.m_Pos += Disk.m_Vel;
-			// TODO: Disk.Move() like CCharacterCore::Move()
-		}
+		m_Collision.m_aDynamicDisks[i].Tick(&m_Collision, pWorld);
 	}
-	*/
+	for(int i = 0; i < DiskCount; i++)
+	{
+		m_Collision.m_aDynamicDisks[i].Move(&m_Collision, pWorld);
+	}
 }

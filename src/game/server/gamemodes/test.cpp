@@ -6,6 +6,8 @@
 #include <game/server/entities/character.h>
 #include <game/my_protocol.h>
 
+//#define CHARCHORE_TEST
+
 // TODO: move this
 template<typename T>
 void CGameControllerTEST::SendDukNetObj(const T& NetObj, int CID)
@@ -17,7 +19,7 @@ void CGameControllerTEST::SendDukNetObj(const T& NetObj, int CID)
 	Server()->SendMsg(&Msg, MSGFLAG_VITAL, CID);
 }
 
-//static CCharacterCore TestCore;
+static CCharacterCore TestCore;
 
 CGameControllerTEST::CGameControllerTEST(class CGameContext *pGameServer)
 : IGameController(pGameServer)
@@ -30,7 +32,19 @@ CGameControllerTEST::CGameControllerTEST(class CGameContext *pGameServer)
 		dbg_msg("server", "failed to load duck mod");
 	}
 
-	//GameServer()->m_World.m_Core.m_apCharacters[63] = &TestCore;
+	CDuckCollision* pCollision = (CDuckCollision*)GameServer()->Collision();
+
+#ifdef CHARCHORE_TEST
+	GameServer()->m_World.m_Core.m_apCharacters[63] = &TestCore;
+	TestCore.Init(&GameServer()->m_World.m_Core, pCollision);
+	TestCore.m_Pos = vec2(700, 280);
+#else
+	CDuckCollision::CDynamicDisk Disk;
+	Disk.m_Pos = vec2(700, 280);
+	Disk.m_Vel = vec2(0, 0);
+	Disk.m_Radius = 30;
+	pCollision->SetDynamicDisk(0, Disk);
+#endif
 }
 
 void CGameControllerTEST::Tick()
@@ -52,13 +66,18 @@ void CGameControllerTEST::Tick()
 	CDuckCollision* pCollision = (CDuckCollision*)GameServer()->Collision();
 	pCollision->SetStaticBlock(0, SolidBlock);
 
-	CDuckCollision::CDynamicDisk Disk;
-	Disk.m_Pos = vec2(250, 250);
-	Disk.m_Vel = vec2(0, 0);
-	Disk.m_Radius = 50;
-	pCollision->SetDynamicDisk(0, Disk);
+#ifdef CHARCHORE_TEST
+	TestCore.m_Pos.y = 280;
+	TestCore.m_Vel = vec2(sign(sin(Time)) * 10.f, 0);
+	TestCore.Tick(false);
+	TestCore.Move();
+#else
+	CDuckCollision::CDynamicDisk& Disk = *pCollision->GetDynamicDisk(0);
+	Disk.m_Vel = vec2(sign(sin(Time)) * 7.f, 0);
+	Disk.Tick(pCollision, &GameServer()->m_World.m_Core);
+	Disk.Move(pCollision, &GameServer()->m_World.m_Core);
+#endif
 
-	pCollision->Tick();
 
 	for(int p = 0; p < MAX_PLAYERS; p++)
 	{
@@ -87,6 +106,8 @@ void CGameControllerTEST::Tick()
 			NetHookBlock.m_Height = HookBlockSize.y;
 			SendDukNetObj(NetHookBlock, p);
 
+#ifdef CHARCHORE_TEST
+#else
 			CNetObj_DynamicDisk NetDisk;
 			NetDisk.m_Id = 0;
 			NetDisk.m_Flags = Disk.m_Flags;
@@ -97,6 +118,7 @@ void CGameControllerTEST::Tick()
 			NetDisk.m_Radius = Disk.m_Radius;
 			NetDisk.m_HookForce = Disk.m_HookForce;
 			SendDukNetObj(NetDisk, p);
+#endif
 		}
 	}
 }
@@ -104,7 +126,9 @@ void CGameControllerTEST::Tick()
 void CGameControllerTEST::Snap(int SnappingClient)
 {
 	IGameController::Snap(SnappingClient);
-	/*CNetObj_PlayerInfo *pPlayerInfo = (CNetObj_PlayerInfo *)Server()->SnapNewItem(NETOBJTYPE_PLAYERINFO, 63, sizeof(CNetObj_PlayerInfo));
+
+#ifdef CHARCHORE_TEST
+	CNetObj_PlayerInfo *pPlayerInfo = (CNetObj_PlayerInfo *)Server()->SnapNewItem(NETOBJTYPE_PLAYERINFO, 63, sizeof(CNetObj_PlayerInfo));
 	if(!pPlayerInfo)
 		return;
 
@@ -116,7 +140,6 @@ void CGameControllerTEST::Snap(int SnappingClient)
 	if(!pCharacter)
 		return;
 
-	TestCore.m_Pos = vec2(250, 250);
-	TestCore.m_Vel = vec2(0, 0);
-	TestCore.Write(pCharacter);*/
+	TestCore.Write(pCharacter);
+#endif
 }

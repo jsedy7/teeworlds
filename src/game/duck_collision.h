@@ -3,6 +3,8 @@
 #include <base/tl/array.h>
 #include <stdint.h>
 
+class CWorldCore;
+
 class CDuckCollision: public CCollision
 {
 public:
@@ -27,6 +29,9 @@ public:
 		float m_HookForce;
 		int16_t m_Flags;
 		int16_t m_FetchID;
+
+		void Tick(CDuckCollision* pCollision, CWorldCore* pWorld);
+		void Move(CDuckCollision* pCollision, CWorldCore* pWorld);
 	};
 
 	enum {
@@ -42,7 +47,8 @@ public:
 	void SetStaticBlock(int BlockId, CStaticBlock Block);
 	void ClearStaticBlock(int BlockId);
 	void SetDynamicDisk(int DiskId, CDynamicDisk Disk);
+	CDynamicDisk* GetDynamicDisk(int DiskId);
 	void ClearDynamicDisk(int DiskId);
 
-	void Tick();
+	void Tick(CWorldCore* pWorld);
 };
