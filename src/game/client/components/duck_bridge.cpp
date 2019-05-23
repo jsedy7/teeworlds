@@ -578,7 +578,8 @@ void CDuckBridge::CharacterCorePostTick(CCharacterCore** apCharCores)
 
 void CDuckBridge::Predict(CWorldCore* pWorld)
 {
-	const int DiskCount = m_Collision.m_aDynamicDisks.size();
+	// TODO: fix this
+	/*const int DiskCount = m_Collision.m_aDynamicDisks.size();
 	for(int i = 0; i < DiskCount; i++)
 	{
 		m_Collision.m_aDynamicDisks[i].Tick(&m_Collision, pWorld);
@@ -586,5 +587,5 @@ void CDuckBridge::Predict(CWorldCore* pWorld)
 	for(int i = 0; i < DiskCount; i++)
 	{
 		m_Collision.m_aDynamicDisks[i].Move(&m_Collision, pWorld);
-	}
+	}*/
 }

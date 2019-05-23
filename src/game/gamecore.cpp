@@ -220,6 +220,25 @@ void CCharacterCore::Tick(bool UseInput)
 			}
 		}
 
+		// TODO: if duck?
+		// check against dynamic disks
+		CDuckCollision* pDuckCollision = (CDuckCollision*)m_pCollision;
+		const int DiskCount = pDuckCollision->m_aDynamicDisks.size();
+		const CDuckCollision::CDynamicDisk* pDisks = pDuckCollision->m_aDynamicDisks.base_ptr();
+		for(int DiskId = 0; DiskId < DiskCount; DiskId++)
+		{
+			const CDuckCollision::CDynamicDisk& Disk = pDisks[DiskId];
+
+			vec2 Dir = normalize(m_Pos - Disk.m_Pos);
+			float MinDist = Disk.m_Radius + PhysSize * 0.5f;
+
+			vec2 ClosestPoint = closest_point_on_line(m_HookPos, NewPos, Disk.m_Pos);
+			if(distance(Disk.m_Pos, ClosestPoint) < MinDist+2.0f)
+			{
+				GoingToRetract = true;
+			}
+		}
+
 		if(m_HookState == HOOK_FLYING)
 		{
 			// check against ground
