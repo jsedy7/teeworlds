@@ -106,10 +106,11 @@ struct CDuckBridge
 			int m_TextureID;
 			float m_QuadSubSet[4];
 			float m_QuadRotation;
+			float m_FreeformPos[2];
 
 			struct {
-				float* m_pFreeFormQuads;
-				int m_FreeFormQuadCount;
+				const float* m_pFreeformQuads;
+				int m_FreeformQuadCount;
 			};
 
 			// TODO: this is kinda big...
@@ -134,7 +135,8 @@ struct CDuckBridge
 		float m_WantQuadRotation;
 		float m_CurrentQuadRotation;
 		CTeeSkinInfo m_CurrentTeeSkin;
-		IGraphics::CFreeformItem m_aFreeForm[FREEFORM_MAX_COUNT];
+		IGraphics::CFreeformItem m_aFreeformQuads[FREEFORM_MAX_COUNT];
+		int m_FreeformQuadCount;
 
 		CRenderSpace()
 		{
@@ -146,6 +148,7 @@ struct CDuckBridge
 			m_CurrentTextureID = 0;
 			m_WantQuadRotation = 0; // clear by default
 			m_CurrentQuadRotation = -1;
+			m_FreeformQuadCount = 0;
 
 			for(int i = 0; i < NUM_SKINPARTS; i++)
 			{
@@ -185,10 +188,12 @@ struct CDuckBridge
 	void QueueSetQuadSubSet(const float* pSubSet);
 	void QueueSetQuadRotation(float Angle);
 	void QueueSetTeeSkin(const CTeeSkinInfo& SkinInfo);
+	void QueueSetFreeform(const IGraphics::CFreeformItem* pFreeform, int FreeformCount);
 	void QueueDrawQuad(IGraphics::CQuadItem Quad);
 	void QueueDrawQuadCentered(IGraphics::CQuadItem Quad);
 	void QueueDrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo);
 	void QueueDrawTeeHand(const CTeeDrawHand& Hand);
+	void QueueDrawFreeform(vec2 Pos);
 
 	bool LoadTexture(const char* pTexturePath, const char *pTextureName);
 	IGraphics::CTextureHandle GetTexture(const char* pTextureName);

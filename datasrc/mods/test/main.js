@@ -89,6 +89,38 @@ function fmod(a, b)
 function OnLoad()
 {
     printObj(TwGetWeaponSpec(1));
+
+    var radius = 250;
+    const polys = 50;
+    
+    for(var p = 0; p < polys; p++)
+    {
+        const ca = Math.cos((p/polys) * 2*Math.PI) * radius;
+        const sa = Math.sin((p/polys) * 2*Math.PI) * radius;
+        ffCircle.push(Math.cos((p/polys) * 2*Math.PI) * radius, Math.sin((p/polys) * 2*Math.PI) * radius);
+        ffCircle.push(0, 0);
+        ffCircle.push(Math.cos(((p+1)/polys) * 2*Math.PI) * radius, Math.sin(((p+1)/polys) * 2*Math.PI) * radius);
+        ffCircle.push(0, 0);
+    }
+}
+
+function DrawCircle(pos, radius, color)
+{
+    const polys = 32;
+    var circle = [];
+    
+    for(var p = 0; p < polys; p++)
+    {
+        circle.push(Math.cos((p/polys) * 2*Math.PI) * radius, Math.sin((p/polys) * 2*Math.PI) * radius);
+        circle.push(0, 0);
+        circle.push(Math.cos(((p+1)/polys) * 2*Math.PI) * radius, Math.sin(((p+1)/polys) * 2*Math.PI) * radius);
+        circle.push(0, 0);
+    }
+
+    TwRenderSetTexture(-1);
+    TwRenderSetColorF4(color[0], color[1], color[2], color[3]);
+    TwRenderSetFreeform(circle);
+    TwRenderDrawFreeform(pos);
 }
 
 function DrawTeeWeapon(weapId, x, y, teeSize)
@@ -149,7 +181,7 @@ function OnUpdate(clientLocalTime, intraTick)
     lastClientlocalTime = clientLocalTime;
 
     //print("Hello from the dark side! " + someInt);
-    TwSetDrawSpace(Teeworlds.DRAW_SPACE_GAME);
+    TwRenderSetDrawSpace(0 /*DRAW_SPACE_GAME*/);
 
     var tee = {
         size: 64 + 64 * (Math.sin(clientLocalTime * 1.3) * 0.5 + 0.5),
@@ -263,17 +295,12 @@ function OnUpdate(clientLocalTime, intraTick)
         var pos_x = mix(prevDisk.pos_x, disk.pos_x, intraTick);
         var pos_y = mix(prevDisk.pos_y, disk.pos_y, intraTick);
 
-        TwRenderSetTexture(-1);
-        TwRenderSetColorF4(c, 0, 0, 1);
-        TwRenderQuad(pos_x - disk.radius, pos_y - disk.radius, disk.radius * 2, disk.radius * 2);
+        DrawCircle([pos_x, pos_y], disk.radius, [c, 0, 0, 1]);
     });
 
     game.predictedDynDisks.forEach(function(disk, diskId) {
         var c = 0.5 + (Math.sin(clientLocalTime) * 0.5 + 0.5) * 0.5;
-
-        TwRenderSetTexture(-1);
-        TwRenderSetColorF4(0, c, c, 1);
-        TwRenderQuad(disk.pos_x - disk.radius, disk.pos_y - disk.radius, disk.radius * 2, disk.radius * 2);
+        DrawCircle([disk.pos_x, disk.pos_y], disk.radius, [0, c, c, 1]);
     });
 }
 

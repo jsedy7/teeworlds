@@ -171,6 +171,23 @@ void CDuckBridge::QueueSetTeeSkin(const CTeeSkinInfo& SkinInfo)
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
+void CDuckBridge::QueueSetFreeform(const IGraphics::CFreeformItem *pFreeform, int FreeformCount)
+{
+	CRenderCmd Cmd;
+	Cmd.m_Type = CRenderCmd::SET_FREEFORM_VERTICES;
+	Cmd.m_pFreeformQuads = (float*)pFreeform;
+	Cmd.m_FreeformQuadCount = FreeformCount;
+	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
+}
+
+void CDuckBridge::QueueDrawFreeform(vec2 Pos)
+{
+	CRenderCmd Cmd;
+	Cmd.m_Type = CRenderCmd::DRAW_FREEFORM;
+	mem_move(Cmd.m_FreeformPos, &Pos, sizeof(float)*2);
+	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
+}
+
 void CDuckBridge::QueueDrawQuad(IGraphics::CQuadItem Quad)
 {
 	CRenderCmd Cmd;
@@ -260,10 +277,15 @@ void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 
 			case CRenderCmd::SET_QUAD_ROTATION: {
 				RenderSpace.m_WantQuadRotation = Cmd.m_QuadRotation;
-			} break
-				;
+			} break;
+
 			case CRenderCmd::SET_TEE_SKIN: {
 				RenderSpace.m_CurrentTeeSkin = Cmd.m_TeeSkinInfo;
+			} break;
+
+			case CRenderCmd::SET_FREEFORM_VERTICES: {
+				RenderSpace.m_FreeformQuadCount = min(Cmd.m_FreeformQuadCount, CRenderSpace::FREEFORM_MAX_COUNT-1);
+				mem_move(RenderSpace.m_aFreeformQuads, Cmd.m_pFreeformQuads, RenderSpace.m_FreeformQuadCount * sizeof(RenderSpace.m_aFreeformQuads[0]));
 			} break;
 
 			case CRenderCmd::DRAW_QUAD_CENTERED:
@@ -308,7 +330,27 @@ void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 				if(Cmd.m_Type == CRenderCmd::DRAW_QUAD_CENTERED)
 					Graphics()->QuadsDraw((IGraphics::CQuadItem*)&Cmd.m_Quad, 1);
 				else if(Cmd.m_Type == CRenderCmd::DRAW_FREEFORM)
-					Graphics()->QuadsDrawFreeform((IGraphics::CFreeformItem*)&Cmd.m_pFreeFormQuads, Cmd.m_FreeFormQuadCount);
+				{
+					// TODO: is the position even useful here?
+					IGraphics::CFreeformItem aTransFreeform[CRenderSpace::FREEFORM_MAX_COUNT];
+					const vec2 FfPos(Cmd.m_FreeformPos[0], Cmd.m_FreeformPos[1]);
+
+					// transform freeform object based on position
+					for(int f = 0; f < RenderSpace.m_FreeformQuadCount; f++)
+					{
+						IGraphics::CFreeformItem& ff = aTransFreeform[f];
+						IGraphics::CFreeformItem& rff = RenderSpace.m_aFreeformQuads[f];
+						ff.m_X0 = rff.m_X0 + FfPos.x;
+						ff.m_X1 = rff.m_X1 + FfPos.x;
+						ff.m_X2 = rff.m_X2 + FfPos.x;
+						ff.m_X3 = rff.m_X3 + FfPos.x;
+						ff.m_Y0 = rff.m_Y0 + FfPos.y;
+						ff.m_Y1 = rff.m_Y1 + FfPos.y;
+						ff.m_Y2 = rff.m_Y2 + FfPos.y;
+						ff.m_Y3 = rff.m_Y3 + FfPos.y;
+					}
+					Graphics()->QuadsDrawFreeform(aTransFreeform, RenderSpace.m_FreeformQuadCount);
+				}
 				else
 					Graphics()->QuadsDrawTL((IGraphics::CQuadItem*)&Cmd.m_Quad, 1);
 

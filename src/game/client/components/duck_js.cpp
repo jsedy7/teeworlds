@@ -185,7 +185,44 @@ duk_ret_t CDuckJs::NativeRenderSetTeeSkin(duk_context* ctx)
 	return 0;
 }
 
-duk_ret_t CDuckJs::NativeSetDrawSpace(duk_context *ctx)
+duk_ret_t CDuckJs::NativeRenderSetFreeform(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	IGraphics::CFreeformItem* pFreeformBuffer = (IGraphics::CFreeformItem*)This()->m_Bridge.m_FrameAllocator.Alloc(sizeof(IGraphics::CFreeformItem) * CDuckBridge::CRenderSpace::FREEFORM_MAX_COUNT );
+	int FreeformCount = 0;
+	int VertCount = 0;
+	float CurrentFreeform[sizeof(IGraphics::CFreeformItem)/sizeof(float)];
+	const int FfFloatCount = sizeof(CurrentFreeform)/sizeof(CurrentFreeform[0]);
+
+	const int ArrayLength = min((int)duk_get_length(ctx, 0), (int)CDuckBridge::CRenderSpace::FREEFORM_MAX_COUNT * FfFloatCount);
+	for(int i = 0; i < ArrayLength; i++)
+	{
+		if(duk_get_prop_index(ctx, 0, i))
+		{
+			CurrentFreeform[VertCount++] = duk_to_number(ctx, -1);
+			duk_pop(ctx);
+
+			if(VertCount >= FfFloatCount)
+			{
+				VertCount = 0;
+				pFreeformBuffer[FreeformCount++] = *(IGraphics::CFreeformItem*)CurrentFreeform;
+			}
+		}
+	}
+
+	if(VertCount > 0)
+	{
+		mem_zero(CurrentFreeform+VertCount, sizeof(CurrentFreeform)-sizeof(float)*VertCount);
+		pFreeformBuffer[FreeformCount++] = *(IGraphics::CFreeformItem*)CurrentFreeform;
+	}
+
+	This()->m_Bridge.QueueSetFreeform(pFreeformBuffer, FreeformCount);
+	return 0;
+}
+
+duk_ret_t CDuckJs::NativeRenderSetDrawSpace(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
@@ -357,6 +394,27 @@ duk_ret_t CDuckJs::NativeRenderDrawTeeHand(duk_context* ctx)
 	TeeHandInfo.m_Offset[1] = OffY;
 	//dbg_msg("duk", "NativeRenderDrawTeeHand( hand = { size: %g, angle_dir: %g, angle_off: %g, pos_x: %g, pos_y: %g, off_x: %g, off_y: %g }", Size, AngleDir, AngleOff, PosX, PosY, OffX, OffY);
 	This()->m_Bridge.QueueDrawTeeHand(TeeHandInfo);
+	return 0;
+}
+
+duk_ret_t CDuckJs::NativeRenderDrawFreeform(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	vec2 Pos;
+	if(duk_get_prop_index(ctx, 0, 0))
+	{
+		Pos.x = duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+	if(duk_get_prop_index(ctx, 0, 1))
+	{
+		Pos.y = duk_to_number(ctx, -1);
+		duk_pop(ctx);
+	}
+
+	This()->m_Bridge.QueueDrawFreeform(Pos);
 	return 0;
 }
 
@@ -1689,9 +1747,11 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(RenderSetQuadSubSet, 4);
 	REGISTER_FUNC(RenderSetQuadRotation, 1);
 	REGISTER_FUNC(RenderSetTeeSkin, 1);
+	REGISTER_FUNC(RenderSetFreeform, 1);
 	REGISTER_FUNC(RenderDrawTeeBodyAndFeet, 1);
 	REGISTER_FUNC(RenderDrawTeeHand, 1);
-	REGISTER_FUNC(SetDrawSpace, 1);
+	REGISTER_FUNC(RenderDrawFreeform, 1);
+	REGISTER_FUNC(RenderSetDrawSpace, 1);
 	REGISTER_FUNC(GetBaseTexture, 1);
 	REGISTER_FUNC(GetSpriteSubSet, 1);
 	REGISTER_FUNC(GetSpriteScale, 1);
@@ -1745,6 +1805,8 @@ void CDuckJs::OnRender()
 {
 	if(Client()->State() != IClient::STATE_ONLINE || !IsLoaded())
 		return;
+
+	m_Bridge.m_FrameAllocator.Clear(); // clear frame allocator
 
 	// Call OnUpdate()
 	duk_get_global_string(Ctx(), "OnUpdate");
