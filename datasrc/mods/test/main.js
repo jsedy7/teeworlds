@@ -213,10 +213,28 @@ function OnUpdate(clientLocalTime, intraTick)
     }
 
     TwRenderSetTeeSkin(skinInfo);
-
     DrawTeeWeapon(Math.floor(clientLocalTime) % 6, tee.pos_x, tee.pos_y, tee.size);
-    
     TwRenderDrawTeeBodyAndFeet(tee);
+
+    var charList = TwGetClientCharacterPositions();
+    charList.forEach(function(char, charId) {
+        if(char == null) return;
+        TwRenderSetTeeSkin(skinInfo);
+
+        var chartee = {
+            size: 64 + 64 * (Math.sin(clientLocalTime * 1.3) * 0.5 + 0.5),
+            angle: clientLocalTime,
+            pos_x: char.pos_x,
+            pos_y: char.pos_y,
+            is_walking: false,
+            is_grounded: false,
+            got_air_jump: true,
+            emote: Math.floor(clientLocalTime) % 6
+        }
+
+        DrawTeeWeapon(Math.floor(clientLocalTime + charId) % 6, char.pos_x, char.pos_y, chartee.size);
+        TwRenderDrawTeeBodyAndFeet(chartee);
+    });
 
     TwRenderSetColorF4(1, 1, 1, 1);
     TwRenderSetTexture(TwGetModTexture("deadtee.png"));
@@ -238,7 +256,7 @@ function OnUpdate(clientLocalTime, intraTick)
     });
 
     // draw dynamic disks
-    //game.prevDynDisks = TwCollisionGetPredictedDynamicDisks();
+    game.predictedDynDisks = TwCollisionGetPredictedDynamicDisks();
     game.dynDisks.forEach(function(disk, diskId) {
         var c = 0.5 + (Math.sin(clientLocalTime) * 0.5 + 0.5) * 0.5;
         var prevDisk = game.prevDynDisks[diskId];
@@ -248,6 +266,14 @@ function OnUpdate(clientLocalTime, intraTick)
         TwRenderSetTexture(-1);
         TwRenderSetColorF4(c, 0, 0, 1);
         TwRenderQuad(pos_x - disk.radius, pos_y - disk.radius, disk.radius * 2, disk.radius * 2);
+    });
+
+    game.predictedDynDisks.forEach(function(disk, diskId) {
+        var c = 0.5 + (Math.sin(clientLocalTime) * 0.5 + 0.5) * 0.5;
+
+        TwRenderSetTexture(-1);
+        TwRenderSetColorF4(0, c, c, 1);
+        TwRenderQuad(disk.pos_x - disk.radius, disk.pos_y - disk.radius, disk.radius * 2, disk.radius * 2);
     });
 }
 

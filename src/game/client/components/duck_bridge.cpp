@@ -317,10 +317,30 @@ void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 
 			case CRenderCmd::DRAW_TEE_BODYANDFEET:
 				DrawTeeBodyAndFeet(Cmd.m_TeeBodyAndFeet, RenderSpace.m_CurrentTeeSkin);
+
+				// TODO: do this better
+				mem_zero(RenderSpace.m_aWantColor, sizeof(RenderSpace.m_aWantColor));
+				mem_zero(RenderSpace.m_aCurrentColor, sizeof(RenderSpace.m_aCurrentColor));
+				mem_zero(RenderSpace.m_aWantQuadSubSet, sizeof(RenderSpace.m_aWantQuadSubSet));
+				mem_zero(RenderSpace.m_aCurrentQuadSubSet, sizeof(RenderSpace.m_aCurrentQuadSubSet));
+				RenderSpace.m_WantTextureID = -1; // clear by default
+				RenderSpace.m_CurrentTextureID = 0;
+				RenderSpace.m_WantQuadRotation = 0; // clear by default
+				RenderSpace.m_CurrentQuadRotation = -1;
 				break;
 
 			case CRenderCmd::DRAW_TEE_HAND:
 				DrawTeeHand(Cmd.m_TeeHand, RenderSpace.m_CurrentTeeSkin);
+
+				// TODO: do this better
+				mem_zero(RenderSpace.m_aWantColor, sizeof(RenderSpace.m_aWantColor));
+				mem_zero(RenderSpace.m_aCurrentColor, sizeof(RenderSpace.m_aCurrentColor));
+				mem_zero(RenderSpace.m_aWantQuadSubSet, sizeof(RenderSpace.m_aWantQuadSubSet));
+				mem_zero(RenderSpace.m_aCurrentQuadSubSet, sizeof(RenderSpace.m_aCurrentQuadSubSet));
+				RenderSpace.m_WantTextureID = -1; // clear by default
+				RenderSpace.m_CurrentTextureID = 0;
+				RenderSpace.m_WantQuadRotation = 0; // clear by default
+				RenderSpace.m_CurrentQuadRotation = -1;
 				break;
 
 			default:

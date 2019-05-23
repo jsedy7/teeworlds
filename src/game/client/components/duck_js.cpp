@@ -644,10 +644,13 @@ duk_ret_t CDuckJs::NativeGetClientCharacterPositions(duk_context* ctx)
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 0, "Wrong argument count");
 
-	float IntraTick = This()->Client()->IntraGameTick();
+	IClient* pClient = This()->Client();
+	CGameClient* pGameClient = This()->m_pClient;
+
+	float IntraTick = pClient->IntraGameTick();
 
 	duk_idx_t ArrayIdx = duk_push_array(ctx);
-	const CGameClient::CSnapState::CCharacterInfo* pSnapCharacters = This()->m_pClient->m_Snap.m_aCharacters;
+	const CGameClient::CSnapState::CCharacterInfo* pSnapCharacters = pGameClient->m_Snap.m_aCharacters;
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		const CGameClient::CSnapState::CCharacterInfo& CharInfo = pSnapCharacters[i];
@@ -656,12 +659,12 @@ duk_ret_t CDuckJs::NativeGetClientCharacterPositions(duk_context* ctx)
 			CNetObj_Character Prev = CharInfo.m_Prev;
 			CNetObj_Character Cur = CharInfo.m_Cur;
 
-			float IntraTick = This()->Client()->IntraGameTick();
-			if(i == This()->m_pClient->m_LocalClientID)
+			float IntraTick = pClient->IntraGameTick();
+			if(i == pGameClient->m_LocalClientID)
 			{
 				IntraTick = This()->Client()->PredIntraGameTick();
-				This()->m_pClient->m_PredictedChar.Write(&Cur);
-				This()->m_pClient->m_PredictedPrevChar.Write(&Prev);
+				pGameClient->m_PredictedChar.Write(&Cur);
+				pGameClient->m_PredictedPrevChar.Write(&Prev);
 			}
 
 			vec2 Position = mix(vec2(Prev.m_X, Prev.m_Y), vec2(Cur.m_X, Cur.m_Y), IntraTick);
