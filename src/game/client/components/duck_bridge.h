@@ -12,6 +12,28 @@ class CRenderTools;
 class CGameClient;
 class CCharacterCore;
 
+struct CMultiStackAllocator
+{
+	struct CStackBuffer
+	{
+		char* m_pBuffer;
+		int m_Cursor;
+	};
+
+	enum {
+		STACK_BUFFER_CAPACITY=1024*1024*10 // 10 KB
+	};
+
+	array<CStackBuffer> m_aStacks;
+	int m_CurrentStack;
+
+	CMultiStackAllocator();
+	~CMultiStackAllocator();
+
+	void* Alloc(int Size);
+	void Clear();
+};
+
 struct CDuckBridge
 {
 	CDuckJs* m_pDuckJs;
@@ -67,10 +89,12 @@ struct CDuckBridge
 			SET_QUAD_SUBSET,
 			SET_QUAD_ROTATION,
 			SET_TEE_SKIN,
+			SET_FREEFORM_VERTICES,
 			DRAW_QUAD,
 			DRAW_QUAD_CENTERED,
 			DRAW_TEE_BODYANDFEET,
 			DRAW_TEE_HAND,
+			DRAW_FREEFORM,
 		};
 
 		int m_Type;
@@ -83,6 +107,11 @@ struct CDuckBridge
 			float m_QuadSubSet[4];
 			float m_QuadRotation;
 
+			struct {
+				float* m_pFreeFormQuads;
+				int m_FreeFormQuadCount;
+			};
+
 			// TODO: this is kinda big...
 			CTeeDrawBodyAndFeetInfo m_TeeBodyAndFeet;
 			CTeeDrawHand m_TeeHand;
@@ -92,6 +121,10 @@ struct CDuckBridge
 
 	struct CRenderSpace
 	{
+		enum {
+			FREEFORM_MAX_COUNT=256
+		};
+
 		float m_aWantColor[4];
 		float m_aCurrentColor[4];
 		float m_aWantQuadSubSet[4];
@@ -101,6 +134,7 @@ struct CDuckBridge
 		float m_WantQuadRotation;
 		float m_CurrentQuadRotation;
 		CTeeSkinInfo m_CurrentTeeSkin;
+		IGraphics::CFreeformItem m_aFreeForm[FREEFORM_MAX_COUNT];
 
 		CRenderSpace()
 		{
@@ -123,6 +157,8 @@ struct CDuckBridge
 			}
 		}
 	};
+
+	CMultiStackAllocator m_FrameAllocator;
 
 	int m_CurrentDrawSpace;
 	array<CRenderCmd> m_aRenderCmdList[DrawSpace::_COUNT];

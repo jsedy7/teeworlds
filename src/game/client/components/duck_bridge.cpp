@@ -6,6 +6,64 @@
 #include <engine/storage.h>
 #include <base/hash.h>
 
+CMultiStackAllocator::CMultiStackAllocator()
+{
+	CStackBuffer StackBuffer;
+	StackBuffer.m_pBuffer = (char*)mem_alloc(STACK_BUFFER_CAPACITY, 1);
+	StackBuffer.m_Cursor = 0;
+
+	m_aStacks.hint_size(8);
+	m_aStacks.add(StackBuffer);
+	m_CurrentStack = 0;
+}
+
+CMultiStackAllocator::~CMultiStackAllocator()
+{
+	const int StackBufferCount = m_aStacks.size();
+	for(int s = 0; s < StackBufferCount; s++)
+	{
+		mem_free(m_aStacks[s].m_pBuffer);
+	}
+}
+
+void* CMultiStackAllocator::Alloc(int Size)
+{
+	dbg_assert(Size <= STACK_BUFFER_CAPACITY, "Trying to alloc a large buffer");
+
+	// if current stack is not full, alloc from it
+	CStackBuffer& CurrentSb = m_aStacks[m_CurrentStack];
+	if(CurrentSb.m_Cursor + Size <= STACK_BUFFER_CAPACITY)
+	{
+		int MemBlockStart = CurrentSb.m_Cursor;
+		CurrentSb.m_Cursor += Size;
+		return CurrentSb.m_pBuffer + MemBlockStart;
+	}
+
+	// else add a new stack if needed
+	if(m_CurrentStack+1 >= m_aStacks.size())
+	{
+		CStackBuffer StackBuffer;
+		StackBuffer.m_pBuffer = (char*)mem_alloc(STACK_BUFFER_CAPACITY, 1);
+		StackBuffer.m_Cursor = 0;
+		m_aStacks.add(StackBuffer);
+	}
+
+	// and try again
+	m_CurrentStack++;
+	return Alloc(Size);
+}
+
+void CMultiStackAllocator::Clear()
+{
+	const int StackBufferCount = m_aStacks.size();
+	for(int s = 0; s < StackBufferCount; s++)
+	{
+		m_aStacks[s].m_Cursor = 0;
+	}
+	m_CurrentStack = 0;
+}
+
+
 void CDuckBridge::DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo)
 {
 	CAnimState State;
@@ -209,7 +267,8 @@ void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 			} break;
 
 			case CRenderCmd::DRAW_QUAD_CENTERED:
-			case CRenderCmd::DRAW_QUAD: {
+			case CRenderCmd::DRAW_QUAD:
+			case CRenderCmd::DRAW_FREEFORM: {
 				if(RenderSpace.m_WantTextureID != RenderSpace.m_CurrentTextureID)
 				{
 					if(RenderSpace.m_WantTextureID < 0)
@@ -248,8 +307,11 @@ void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 
 				if(Cmd.m_Type == CRenderCmd::DRAW_QUAD_CENTERED)
 					Graphics()->QuadsDraw((IGraphics::CQuadItem*)&Cmd.m_Quad, 1);
+				else if(Cmd.m_Type == CRenderCmd::DRAW_FREEFORM)
+					Graphics()->QuadsDrawFreeform((IGraphics::CFreeformItem*)&Cmd.m_pFreeFormQuads, Cmd.m_FreeFormQuadCount);
 				else
 					Graphics()->QuadsDrawTL((IGraphics::CQuadItem*)&Cmd.m_Quad, 1);
+
 				Graphics()->QuadsEnd();
 			} break;
 

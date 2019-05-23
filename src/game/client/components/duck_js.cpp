@@ -647,13 +647,14 @@ duk_ret_t CDuckJs::NativeGetClientCharacterPositions(duk_context* ctx)
 	float IntraTick = This()->Client()->IntraGameTick();
 
 	duk_idx_t ArrayIdx = duk_push_array(ctx);
+	const CGameClient::CSnapState::CCharacterInfo* pSnapCharacters = This()->m_pClient->m_Snap.m_aCharacters;
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
-		const CGameClient::CClientData& ClientData = This()->m_pClient->m_aClients[i];
-		if(ClientData.m_Active)
+		const CGameClient::CSnapState::CCharacterInfo& CharInfo = pSnapCharacters[i];
+		if(CharInfo.m_Active)
 		{
-			CNetObj_Character Prev = This()->m_pClient->m_Snap.m_aCharacters[i].m_Prev;
-			CNetObj_Character Cur = This()->m_pClient->m_Snap.m_aCharacters[i].m_Cur;
+			CNetObj_Character Prev = CharInfo.m_Prev;
+			CNetObj_Character Cur = CharInfo.m_Cur;
 
 			float IntraTick = This()->Client()->IntraGameTick();
 			if(i == This()->m_pClient->m_LocalClientID)

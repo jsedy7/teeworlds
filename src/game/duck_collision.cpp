@@ -8,7 +8,10 @@ void CDuckCollision::Init(CLayers* pLayers)
 	CCollision::Init(pLayers);
 
 	m_aStaticBlocks.hint_size(1024);
+	m_aStaticBlocks.set_size(0); // clear
 	m_aDynamicDisks.hint_size(1024);
+	m_aDynamicDisks.set_size(0); // clear
+
 	for(int i = 0; i < MAX_STATICBLOCK_FETCH_IDS; i++)
 	{
 		m_aStaticBlockDataID[i] = -1;
