@@ -1,6 +1,7 @@
 #pragma once
 #include "collision.h"
 #include <base/tl/array.h>
+#include <engine/shared/protocol.h>
 #include <stdint.h>
 
 class CWorldCore;
@@ -43,6 +44,8 @@ public:
 	int16_t m_aDynDiskDataID[MAX_DYNDISK_FETCH_IDS];
 	array<CStaticBlock> m_aStaticBlocks;
 	array<CDynamicDisk> m_aDynamicDisks;
+	int16_t m_aCharacterHookDiskFetchId[MAX_CLIENTS+1];
+	vec2 m_aCharacterHookDiskOffset[MAX_CLIENTS+1];
 
 	void SetStaticBlock(int BlockId, CStaticBlock Block);
 	void ClearStaticBlock(int BlockId);

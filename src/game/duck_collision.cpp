@@ -20,6 +20,10 @@ void CDuckCollision::Init(CLayers* pLayers)
 	{
 		m_aDynDiskDataID[i] = -1;
 	}
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		m_aCharacterHookDiskFetchId[i] = -1;
+	}
 }
 
 bool CDuckCollision::CheckPoint(float x, float y, int Flag) const

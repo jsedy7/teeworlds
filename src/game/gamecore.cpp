@@ -78,6 +78,28 @@ void CCharacterCore::Reset()
 
 void CCharacterCore::Tick(bool UseInput)
 {
+	// TODO: if duck?
+	CDuckCollision* pDuckCollision = (CDuckCollision*)m_pCollision;
+	const int DiskCount = pDuckCollision->m_aDynamicDisks.size();
+	const CDuckCollision::CDynamicDisk* pDisks = pDuckCollision->m_aDynamicDisks.base_ptr();
+
+	// find char id
+	// TODO: find a better solution to do this, does id change?
+	int CharId = -1;
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		CCharacterCore *pCharCore = m_pWorld->m_apCharacters[i];
+		if(pCharCore == this)
+		{
+			CharId = i;
+			break;
+		}
+	}
+
+	// TODO: find a better solution to this?
+	if(CharId == -1)
+		CharId = MAX_CLIENTS;
+
 	float PhysSize = 28.0f;
 	m_TriggeredEvents = 0;
 
@@ -222,20 +244,31 @@ void CCharacterCore::Tick(bool UseInput)
 
 		// TODO: if duck?
 		// check against dynamic disks
-		CDuckCollision* pDuckCollision = (CDuckCollision*)m_pCollision;
-		const int DiskCount = pDuckCollision->m_aDynamicDisks.size();
-		const CDuckCollision::CDynamicDisk* pDisks = pDuckCollision->m_aDynamicDisks.base_ptr();
+		float MinHookedDist = 99999999.f;
+
+		if(m_HookState != HOOK_GRABBED)
+		{
+			pDuckCollision->m_aCharacterHookDiskFetchId[CharId] = -1;
+		}
+
 		for(int DiskId = 0; DiskId < DiskCount; DiskId++)
 		{
 			const CDuckCollision::CDynamicDisk& Disk = pDisks[DiskId];
 
-			vec2 Dir = normalize(m_Pos - Disk.m_Pos);
-			float MinDist = Disk.m_Radius + PhysSize * 0.5f;
-
+			float MinDist = Disk.m_Radius;
 			vec2 ClosestPoint = closest_point_on_line(m_HookPos, NewPos, Disk.m_Pos);
-			if(distance(Disk.m_Pos, ClosestPoint) < MinDist+2.0f)
+			float Distance = distance(Disk.m_Pos, ClosestPoint);
+			if(Distance < MinDist+2.0f)
 			{
-				GoingToRetract = true;
+				if(Distance < MinHookedDist)
+				{
+					pDuckCollision->m_aCharacterHookDiskFetchId[CharId] = Disk.m_FetchID;
+					pDuckCollision->m_aCharacterHookDiskOffset[CharId] = m_HookPos - Disk.m_Pos;
+					MinHookedDist = Distance;
+					m_TriggeredEvents |= COREEVENTFLAG_HOOK_ATTACH_PLAYER;
+					m_HookState = HOOK_GRABBED;
+					m_HookPos = Disk.m_Pos;
+				}
 			}
 		}
 
@@ -255,6 +288,14 @@ void CCharacterCore::Tick(bool UseInput)
 
 			m_HookPos = NewPos;
 		}
+	}
+
+	// duck
+	int HookedDiskId = pDuckCollision->m_aCharacterHookDiskFetchId[CharId];
+	if(m_HookState == HOOK_GRABBED && HookedDiskId != -1)
+	{
+		// TODO: take offset into account
+		m_HookPos = pDuckCollision->GetDynamicDisk(HookedDiskId)->m_Pos;
 	}
 
 	if(m_HookState == HOOK_GRABBED)
