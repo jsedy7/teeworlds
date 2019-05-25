@@ -6,8 +6,9 @@
 
 #include "duck_bridge.h"
 
-struct HttpBuffer;
 struct CGrowBuffer;
+
+bool HttpRequestPage(const char* pUrl, CGrowBuffer* pHttpBuffer);
 
 class CDuckJs : public CComponent
 {
@@ -58,7 +59,7 @@ class CDuckJs : public CComponent
 	void ObjectSetMember(const char* MemberName);
 
 	bool IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256);
-	bool ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, const SHA256_DIGEST* pModSha256);
+	bool ExtractAndInstallModZipBuffer(const CGrowBuffer* pHttpZipData, const SHA256_DIGEST* pModSha256);
 	bool ExtractAndInstallModCompressedBuffer(const void* pCompBuff, int CompBuffSize, const SHA256_DIGEST* pModSha256);
 	bool LoadJsScriptFile(const char* pJsFilePath, const char* pJsRelFilePath);
 	bool LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256);

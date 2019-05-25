@@ -1076,7 +1076,7 @@ bool CDuckJs::IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256)
 	return false;
 }
 
-bool CDuckJs::ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, const SHA256_DIGEST* pModSha256)
+bool CDuckJs::ExtractAndInstallModZipBuffer(const CGrowBuffer* pHttpZipData, const SHA256_DIGEST* pModSha256)
 {
 	dbg_msg("unzip", "EXTRACTING AND INSTALLING MOD");
 
@@ -1085,7 +1085,7 @@ bool CDuckJs::ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, cons
 	fs_makedir(aUserModsPath); // Teeworlds/mods (user storage)
 
 	// TODO: reduce folder hash string length?
-	SHA256_DIGEST Sha256 = sha256(pHttpZipData->m_pData, pHttpZipData->m_Cursor);
+	SHA256_DIGEST Sha256 = sha256(pHttpZipData->m_pData, pHttpZipData->m_Size);
 	char aSha256Str[SHA256_MAXSTRSIZE];
 	sha256_str(Sha256, aSha256Str, sizeof(aSha256Str));
 
@@ -1120,7 +1120,7 @@ bool CDuckJs::ExtractAndInstallModZipBuffer(const HttpBuffer* pHttpZipData, cons
 
 	zip_error_t ZipError;
 	zip_error_init(&ZipError);
-	zip_source_t* pZipSrc = zip_source_buffer_create(pHttpZipData->m_pData, pHttpZipData->m_Cursor, 1, &ZipError);
+	zip_source_t* pZipSrc = zip_source_buffer_create(pHttpZipData->m_pData, pHttpZipData->m_Size, 1, &ZipError);
 	if(!pZipSrc)
 	{
 		dbg_msg("unzip", "Error creating zip source [%s]", zip_error_strerror(&ZipError));
@@ -1897,7 +1897,7 @@ bool CDuckJs::StartDuckModHttpDownload(const char* pModUrl, const SHA256_DIGEST*
 {
 	dbg_assert(!IsModAlreadyInstalled(pModSha256), "mod is already installed, check it before calling this");
 
-	HttpBuffer Buff;
+	CGrowBuffer Buff;
 	HttpRequestPage(pModUrl, &Buff);
 
 	bool IsUnzipped = ExtractAndInstallModZipBuffer(&Buff, pModSha256);
