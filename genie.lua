@@ -13,10 +13,12 @@ local files_GENERATED_SERVER_SRC = { GENERATED_DIR.."/server_data.h", GENERATED_
 local files_GENERATED_CLIENT_SRC = { GENERATED_DIR.."/client_data.h", GENERATED_DIR.."/client_data.cpp" }
 local files_ENGINE_COMMON_SRC = { "src/base/**.h", "src/base/**.c", "src/engine/**.h", "src/engine/shared/**.cpp" }
 local files_ENGINE_SERVER_CPP = { "src/engine/server/*.h", "src/engine/server/*.cpp" }
-local files_ENGINE_CLIENT_CPP = { "src/engine/client/*.h", "src/engine/client/*.cpp" }
+local files_ENGINE_CLIENT_CPP = { "src/engine/client/*.h", "src/engine/client/*.cpp", "src/engine/client/*.c" }
 local files_GAME_COMMON_CPP = { "src/game/*.h", "src/game/*.cpp" }
 local files_GAME_SERVER_CPP = { "src/game/server/**.h", "src/game/server/**.cpp" }
 local files_GAME_CLIENT_CPP = { "src/game/client/**.h", "src/game/client/**.cpp", "src/game/editor/**.h", "src/game/editor/**.cpp" }
+local files_CLIENT_RC = { "other/icons/teeworlds_cl.rc" }
+local files_SERVER_RC = { "other/icons/teeworlds_srv_cl.rc" }
 
 solution "Teeworlds"
 	location "build_genie"
@@ -34,7 +36,7 @@ solution "Teeworlds"
 	
 	configuration {"Debug"}
 		flags {
-			"Symbols"
+            "Symbols",
 		}
 		defines {
 			"_DEBUG",
@@ -43,6 +45,7 @@ solution "Teeworlds"
 	
 	configuration {"Release"}
 		flags {
+            "Symbols",
 			"Optimize"
 		}
 		defines {
@@ -138,7 +141,8 @@ project "teeworlds_srv"
         files_ENGINE_COMMON_SRC,
         files_ENGINE_SERVER_CPP,
         files_GAME_COMMON_CPP,
-        files_GAME_SERVER_CPP
+        files_GAME_SERVER_CPP,
+        files_SERVER_RC
 	}
     
     links {
@@ -150,7 +154,7 @@ project "teeworlds_srv"
     targetsuffix "_dbg"
     
 project "teeworlds"
-	kind "ConsoleApp"
+	kind "WindowedApp"
 	
 	configuration {}
 	
@@ -160,12 +164,13 @@ project "teeworlds"
         files_ENGINE_COMMON_SRC,
         files_ENGINE_CLIENT_CPP,
         files_GAME_COMMON_CPP,
-        files_GAME_CLIENT_CPP
+        files_GAME_CLIENT_CPP,
+        files_CLIENT_RC
 	}
     
     includedirs {
 		SDL2_include,
-        freetype_include
+        freetype_include,
 	}
     
     links {
@@ -185,7 +190,7 @@ project "teeworlds"
     
     libdirs {
         SDL2_libdir,
-        freetype_libdir
+        freetype_libdir,
     }
     
     configuration {"Debug"}
