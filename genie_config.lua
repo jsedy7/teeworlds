@@ -1,0 +1,10 @@
+-- config
+BUILD_DIR_NAME = "build_genie"
+SDL2_libdir = "other/sdl/lib/x64"
+SDL2_include = "other/sdl/include"
+freetype_libdir = "other/freetype/lib/x64"
+freetype_include = "other/freetype/include"
+curl_libdir = "other/curl/windows/lib64"
+curl_include = "other/curl/include"
+zip_libdir = "other/libzip/windows/lib64"
+zip_include = "other/libzip/include"

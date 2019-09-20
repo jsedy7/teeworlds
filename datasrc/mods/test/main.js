@@ -89,19 +89,6 @@ function fmod(a, b)
 function OnLoad()
 {
     printObj(TwGetWeaponSpec(1));
-
-    var radius = 250;
-    const polys = 50;
-    
-    for(var p = 0; p < polys; p++)
-    {
-        const ca = Math.cos((p/polys) * 2*Math.PI) * radius;
-        const sa = Math.sin((p/polys) * 2*Math.PI) * radius;
-        ffCircle.push(Math.cos((p/polys) * 2*Math.PI) * radius, Math.sin((p/polys) * 2*Math.PI) * radius);
-        ffCircle.push(0, 0);
-        ffCircle.push(Math.cos(((p+1)/polys) * 2*Math.PI) * radius, Math.sin(((p+1)/polys) * 2*Math.PI) * radius);
-        ffCircle.push(0, 0);
-    }
 }
 
 function DrawCircle(pos, radius, color)
@@ -244,7 +231,7 @@ function OnUpdate(clientLocalTime, intraTick)
             skinInfo.textures[i] = tex[1];
     }
 
-    TwRenderSetTeeSkin(skinInfo);
+    /*TwRenderSetTeeSkin(skinInfo);
     DrawTeeWeapon(Math.floor(clientLocalTime) % 6, tee.pos_x, tee.pos_y, tee.size);
     TwRenderDrawTeeBodyAndFeet(tee);
 
@@ -266,7 +253,7 @@ function OnUpdate(clientLocalTime, intraTick)
 
         DrawTeeWeapon(Math.floor(clientLocalTime + charId) % 6, char.pos_x, char.pos_y, chartee.size);
         TwRenderDrawTeeBodyAndFeet(chartee);
-    });
+    });*/
 
     TwRenderSetColorF4(1, 1, 1, 1);
     TwRenderSetTexture(TwGetModTexture("deadtee.png"));
