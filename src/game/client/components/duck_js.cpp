@@ -1780,6 +1780,61 @@ void CDuckJs::ResetDukContext()
 	duk_pop(Ctx());
 }
 
+bool CDuckJs::GetJsFunction(const char *Name)
+{
+	duk_context* pCtx = Ctx();
+
+	if(!duk_get_global_string(pCtx, Name))
+	{
+		duk_pop(pCtx);
+		aLastCalledFunction[0] = 0;
+		return false;
+	}
+
+	str_copy(aLastCalledFunction, Name, sizeof(aLastCalledFunction));
+	return true;
+}
+
+void CDuckJs::CallJsFunction(int NumArgs)
+{
+	duk_context* pCtx = Ctx();
+
+	if(duk_pcall(pCtx, NumArgs) != DUK_EXEC_SUCCESS)
+	{
+		dbg_msg("duck", "[JS ERROR] %s() << %s >>", aLastCalledFunction, duk_safe_to_stacktrace(pCtx, -1));
+
+		/*if(duk_is_error(pCtx, -1))
+		{
+			duk_get_prop_string(pCtx, -1, "stack");
+			const char* pStack = duk_safe_to_string(pCtx, -1);
+			duk_pop(pCtx);
+
+			dbg_msg("duck", "[JS ERROR] OnCharacterCorePostTick(): %s", pStack);
+		}
+		else
+		{
+			dbg_msg("duck", "[JS ERROR] OnCharacterCorePostTick(): %s", duk_safe_to_string(pCtx, -1));
+		}*/
+
+		// TODO: exit more gracefully
+		dbg_break();
+	}
+}
+
+bool CDuckJs::HasJsFunctionReturned()
+{
+	duk_context* pCtx = Ctx();
+
+	if(duk_is_undefined(pCtx, -1))
+	{
+		dbg_msg("duck", "[JS WARNING] %s() must return a value", aLastCalledFunction);
+		duk_pop(pCtx);
+		return false;
+	}
+
+	return true;
+}
+
 CDuckJs::CDuckJs()
 {
 	s_This = this;
@@ -1809,32 +1864,14 @@ void CDuckJs::OnRender()
 	m_Bridge.m_FrameAllocator.Clear(); // clear frame allocator
 
 	// Call OnUpdate()
-	duk_get_global_string(Ctx(), "OnUpdate");
-	duk_push_number(Ctx(), Client()->LocalTime());
-	duk_push_number(Ctx(), Client()->IntraGameTick());
-	int NumArgs = 2;
-	if(duk_pcall(Ctx(), NumArgs) != DUK_EXEC_SUCCESS)
-	{
-		if(duk_is_error(Ctx(), -1))
-		{
-			// Accessing .stack might cause an error to be thrown, so wrap this
-			// access in a duk_safe_call() if it matters.
-			duk_get_prop_string(Ctx(), -1, "stack");
-			const char* pStack = duk_safe_to_string(Ctx(), -1);
-			duk_pop(Ctx());
+	if(GetJsFunction("OnUpdate")) {
+		duk_push_number(Ctx(), Client()->LocalTime());
+		duk_push_number(Ctx(), Client()->IntraGameTick());
 
-			//.stack, .fileName, and .lineNumber
-			//duk_get_prop_string(Duk(), -1, "stack");
+		CallJsFunction(2);
 
-			dbg_msg("duck", "[JS ERROR] OnUpdate(): %s", pStack);
-		}
-		else
-		{
-			dbg_msg("duck", "[JS ERROR] OnUpdate(): %s", duk_safe_to_string(Ctx(), -1));
-		}
-		dbg_break();
+		duk_pop(Ctx());
 	}
-	duk_pop(Ctx());
 
 	dbg_assert(duk_get_top(Ctx()) == 0, "stack leak");
 }
@@ -1849,22 +1886,18 @@ void CDuckJs::OnMessage(int Msg, void* pRawMsg)
 		const u8* pObjRawData = (u8*)pUnpacker->GetRaw(ObjSize);
 		//dbg_msg("duck", "DUK packed netobj, id=0x%x size=%d", ObjID, ObjSize);
 
-		duk_get_global_string(Ctx(), "OnMessage");
+		if(GetJsFunction("OnMessage")) {
+			// make netObj
+			PushObject();
+			ObjectSetMemberInt("netID", ObjID);
+			ObjectSetMemberInt("cursor", 0);
+			ObjectSetMemberRawBuffer("raw", pObjRawData, ObjSize);
 
-		// make netObj
-		PushObject();
-		ObjectSetMemberInt("netID", ObjID);
-		ObjectSetMemberInt("cursor", 0);
-		ObjectSetMemberRawBuffer("raw", pObjRawData, ObjSize);
+			// call OnMessage(netObj)
+			CallJsFunction(1);
 
-		// call OnMessage(netObj)
-		int NumArgs = 1;
-		if(duk_pcall(Ctx(), NumArgs) != 0)
-		{
-			dbg_msg("duck", "OnMessage(): Script error: %s", duk_safe_to_string(Ctx(), -1));
-			dbg_break();
+			duk_pop(Ctx());
 		}
-		duk_pop(Ctx());
 	}
 }
 

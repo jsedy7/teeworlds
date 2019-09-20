@@ -15,6 +15,8 @@ class CDuckJs : public CComponent
 	duk_context* m_pDukContext;
 	int m_CurrentPushedObjID;
 	bool m_IsModLoaded;
+	char aLastCalledFunction[256];
+
 	inline duk_context* Ctx() { return m_pDukContext; }
 
 	static duk_ret_t NativeRenderQuad(duk_context *ctx);
@@ -65,6 +67,10 @@ class CDuckJs : public CComponent
 	bool LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256);
 
 	void ResetDukContext();
+
+	bool GetJsFunction(const char* Name);
+	void CallJsFunction(int NumArgs);
+	bool HasJsFunctionReturned();
 
 public:
 	CDuckBridge m_Bridge;

@@ -401,9 +401,7 @@ void CDuckBridge::CharacterCorePreTick(CCharacterCore** apCharCores)
 
 	duk_context* pCtx = DuckJs()->Ctx();
 
-	if(!duk_get_global_string(pCtx, "OnCharacterCorePreTick"))
-	{
-		duk_pop(pCtx);
+	if(!DuckJs()->GetJsFunction("OnCharacterCorePreTick")) {
 		return;
 	}
 
@@ -428,28 +426,9 @@ void CDuckBridge::CharacterCorePreTick(CCharacterCore** apCharCores)
 		duk_put_prop_index(pCtx, ArrayInputIdx, c);
 	}
 
-	// TODO: make a function out of this? CallJsFunction(funcname, numargs)?
-	int NumArgs = 2;
-	if(duk_pcall(pCtx, NumArgs) != DUK_EXEC_SUCCESS)
-	{
-		if(duk_is_error(pCtx, -1))
-		{
-			duk_get_prop_string(pCtx, -1, "stack");
-			const char* pStack = duk_safe_to_string(pCtx, -1);
-			duk_pop(pCtx);
+	DuckJs()->CallJsFunction(2);
 
-			dbg_msg("duck", "[JS ERROR] OnCharacterCorePreTick(): %s", pStack);
-		}
-		else
-		{
-			dbg_msg("duck", "[JS ERROR] OnCharacterCorePreTick(): %s", duk_safe_to_string(pCtx, -1));
-		}
-		dbg_break();
-	}
-
-	if(duk_is_undefined(pCtx, -1))
-	{
-		dbg_msg("duck", "[JS WARNING] OnCharacterCorePreTick() must return a value");
+	if(!DuckJs()->HasJsFunctionReturned()) {
 		duk_pop(pCtx);
 		return;
 	}
@@ -492,9 +471,7 @@ void CDuckBridge::CharacterCorePostTick(CCharacterCore** apCharCores)
 
 	duk_context* pCtx = DuckJs()->Ctx();
 
-	if(!duk_get_global_string(pCtx, "OnCharacterCorePostTick"))
-	{
-		duk_pop(pCtx);
+	if(!DuckJs()->GetJsFunction("OnCharacterCorePostTick")) {
 		return;
 	}
 
@@ -519,28 +496,9 @@ void CDuckBridge::CharacterCorePostTick(CCharacterCore** apCharCores)
 		duk_put_prop_index(pCtx, ArrayInputIdx, c);
 	}
 
-	// TODO: make a function out of this? CallJsFunction(funcname, numargs)?
-	int NumArgs = 2;
-	if(duk_pcall(pCtx, NumArgs) != DUK_EXEC_SUCCESS)
-	{
-		if(duk_is_error(pCtx, -1))
-		{
-			duk_get_prop_string(pCtx, -1, "stack");
-			const char* pStack = duk_safe_to_string(pCtx, -1);
-			duk_pop(pCtx);
+	DuckJs()->CallJsFunction(2);
 
-			dbg_msg("duck", "[JS ERROR] OnCharacterCorePostTick(): %s", pStack);
-		}
-		else
-		{
-			dbg_msg("duck", "[JS ERROR] OnCharacterCorePostTick(): %s", duk_safe_to_string(pCtx, -1));
-		}
-		dbg_break();
-	}
-
-	if(duk_is_undefined(pCtx, -1))
-	{
-		dbg_msg("duck", "[JS WARNING] OnCharacterCorePostTick() must return a value");
+	if(!DuckJs()->HasJsFunctionReturned()) {
 		duk_pop(pCtx);
 		return;
 	}
