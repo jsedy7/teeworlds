@@ -1021,6 +1021,8 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 
 				SendSkinChange(pPlayer->GetCID(), i);
 			}
+
+			m_pController->OnPlayerInfoChange(pPlayer);
 		}
 	}
 	else
