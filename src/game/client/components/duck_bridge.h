@@ -183,6 +183,8 @@ struct CDuckBridge
 	void Init(CDuckJs* pDuckJs);
 	void Reset();
 
+	void OnRender();
+
 	void QueueSetColor(const float* pColor);
 	void QueueSetTexture(int TextureID);
 	void QueueSetQuadSubSet(const float* pSubSet);

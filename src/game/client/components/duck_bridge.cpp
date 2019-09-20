@@ -131,6 +131,54 @@ void CDuckBridge::Reset()
 	m_aTextures.clear();
 }
 
+void CDuckBridge::OnRender()
+{
+	m_FrameAllocator.Clear(); // clear frame allocator
+
+	duk_context* pCtx = DuckJs()->Ctx();
+
+	const float LocalTime = DuckJs()->Client()->LocalTime();
+	const float IntraGameTick = DuckJs()->Client()->IntraGameTick();
+
+	// Call OnRender(LocalTime, IntraGameTick)
+	if(DuckJs()->GetJsFunction("OnRender")) {
+		duk_push_number(pCtx, LocalTime);
+		duk_push_number(pCtx, IntraGameTick);
+
+		DuckJs()->CallJsFunction(2);
+
+		duk_pop(pCtx);
+	}
+
+	static float LastTime = LocalTime;
+	static float Accumulator = 0.0f;
+	const float UPDATE_RATE = 1.0/60.0;
+
+	Accumulator += LocalTime - LastTime;
+	LastTime = LocalTime;
+
+	int UpdateCount = 0;
+	while(Accumulator > UPDATE_RATE) {
+		// Call OnUpdate(LocalTime, IntraGameTick)
+		if(DuckJs()->GetJsFunction("OnUpdate")) {
+			duk_push_number(pCtx, LocalTime);
+			duk_push_number(pCtx, IntraGameTick);
+
+			DuckJs()->CallJsFunction(2);
+
+			duk_pop(pCtx);
+		}
+
+		Accumulator -= UPDATE_RATE;
+		UpdateCount++;
+
+		if(UpdateCount > 2) {
+			Accumulator = 0.0;
+			break;
+		}
+	}
+}
+
 void CDuckBridge::QueueSetColor(const float* pColor)
 {
 	CRenderCmd Cmd;

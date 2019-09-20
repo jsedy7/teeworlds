@@ -1861,18 +1861,9 @@ void CDuckJs::OnRender()
 	if(Client()->State() != IClient::STATE_ONLINE || !IsLoaded())
 		return;
 
-	m_Bridge.m_FrameAllocator.Clear(); // clear frame allocator
+	m_Bridge.OnRender();
 
-	// Call OnUpdate()
-	if(GetJsFunction("OnUpdate")) {
-		duk_push_number(Ctx(), Client()->LocalTime());
-		duk_push_number(Ctx(), Client()->IntraGameTick());
-
-		CallJsFunction(2);
-
-		duk_pop(Ctx());
-	}
-
+	// detect stack leak
 	dbg_assert(duk_get_top(Ctx()) == 0, "stack leak");
 }
 
