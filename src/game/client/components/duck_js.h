@@ -48,6 +48,7 @@ class CDuckJs : public CComponent
 	static duk_ret_t NativeCollisionSetDynamicDisk(duk_context *ctx);
 	static duk_ret_t NativeCollisionClearDynamicDisk(duk_context *ctx);
 	static duk_ret_t NativeCollisionGetPredictedDynamicDisks(duk_context *ctx);
+	static duk_ret_t NativeSetHudPartsShown(duk_context *ctx);
 
 	template<typename IntT>
 	static duk_ret_t NativeUnpackInteger(duk_context *ctx);

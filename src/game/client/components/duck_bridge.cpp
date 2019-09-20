@@ -129,6 +129,7 @@ void CDuckBridge::Reset()
 	}
 
 	m_aTextures.clear();
+	m_HudPartsShown = HudPartsShown();
 }
 
 void CDuckBridge::OnRender()
@@ -234,6 +235,11 @@ void CDuckBridge::QueueDrawFreeform(vec2 Pos)
 	Cmd.m_Type = CRenderCmd::DRAW_FREEFORM;
 	mem_move(Cmd.m_FreeformPos, &Pos, sizeof(float)*2);
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
+}
+
+void CDuckBridge::SetHudPartsShown(HudPartsShown hps)
+{
+	m_HudPartsShown = hps;
 }
 
 void CDuckBridge::QueueDrawQuad(IGraphics::CQuadItem Quad)

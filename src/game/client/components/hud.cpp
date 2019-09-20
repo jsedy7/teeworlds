@@ -10,6 +10,7 @@
 #include <game/client/gameclient.h>
 #include <game/client/animstate.h>
 #include <game/client/render.h>
+#include <game/client/components/duck_js.h>
 
 #include "menus.h"
 #include "controls.h"
@@ -559,6 +560,16 @@ void CHud::RenderHealthAndAmmo(const CNetObj_Character *pCharacter)
 	if(!pCharacter)
 		return;
 
+
+	bool RenderAmmo = true;
+	bool RenderHealth = true;
+	bool RenderArmor = true;
+	if(m_pClient->m_pDuckJs->IsLoaded()) {
+		RenderAmmo = m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.Ammo & 1;
+		RenderHealth = m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.Health & 1;
+		RenderArmor = m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.Armor & 1;
+	}
+
 	float x = 5;
 	float y = 5;
 	int i;
@@ -571,54 +582,62 @@ void CHud::RenderHealthAndAmmo(const CNetObj_Character *pCharacter)
 	Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
 
 	// render ammo
-	if(pCharacter->m_Weapon == WEAPON_NINJA)
-	{
-		const int Max = g_pData->m_Weapons.m_Ninja.m_Duration * Client()->GameTickSpeed() / 1000;
-		float NinjaProgress = clamp(pCharacter->m_AmmoCount-Client()->GameTick(), 0, Max) / (float)Max;
-		RenderNinjaBar(x, y+24.f, NinjaProgress);
-	}
-	else
-	{
-		RenderTools()->SelectSprite(g_pData->m_Weapons.m_aId[pCharacter->m_Weapon%NUM_WEAPONS].m_pSpriteProj);
-		if(pCharacter->m_Weapon == WEAPON_GRENADE)
+	if(RenderAmmo) {
+		if(pCharacter->m_Weapon == WEAPON_NINJA)
 		{
-			for(i = 0; i < min(pCharacter->m_AmmoCount, 10); i++)
-				Array[i] = IGraphics::CQuadItem(x+1+i*12, y+24, 10, 10);
+			const int Max = g_pData->m_Weapons.m_Ninja.m_Duration * Client()->GameTickSpeed() / 1000;
+			float NinjaProgress = clamp(pCharacter->m_AmmoCount-Client()->GameTick(), 0, Max) / (float)Max;
+			RenderNinjaBar(x, y+24.f, NinjaProgress);
 		}
 		else
 		{
-			for(i = 0; i < min(pCharacter->m_AmmoCount, 10); i++)
-				Array[i] = IGraphics::CQuadItem(x+i*12, y+24, 12, 12);
+			RenderTools()->SelectSprite(g_pData->m_Weapons.m_aId[pCharacter->m_Weapon%NUM_WEAPONS].m_pSpriteProj);
+			if(pCharacter->m_Weapon == WEAPON_GRENADE)
+			{
+				for(i = 0; i < min(pCharacter->m_AmmoCount, 10); i++)
+					Array[i] = IGraphics::CQuadItem(x+1+i*12, y+24, 10, 10);
+			}
+			else
+			{
+				for(i = 0; i < min(pCharacter->m_AmmoCount, 10); i++)
+					Array[i] = IGraphics::CQuadItem(x+i*12, y+24, 12, 12);
+			}
+			Graphics()->QuadsDrawTL(Array, i);
 		}
-		Graphics()->QuadsDrawTL(Array, i);
 	}
+
 
 	int h = 0;
 
 	// render health
-	RenderTools()->SelectSprite(SPRITE_HEALTH_FULL);
-	for(; h < min(pCharacter->m_Health, 10); h++)
-		Array[h] = IGraphics::CQuadItem(x+h*12,y,12,12);
-	Graphics()->QuadsDrawTL(Array, h);
+	if(RenderHealth) {
+		RenderTools()->SelectSprite(SPRITE_HEALTH_FULL);
+		for(; h < min(pCharacter->m_Health, 10); h++)
+			Array[h] = IGraphics::CQuadItem(x+h*12,y,12,12);
+		Graphics()->QuadsDrawTL(Array, h);
 
-	i = 0;
-	RenderTools()->SelectSprite(SPRITE_HEALTH_EMPTY);
-	for(; h < 10; h++)
-		Array[i++] = IGraphics::CQuadItem(x+h*12,y,12,12);
-	Graphics()->QuadsDrawTL(Array, i);
+		i = 0;
+		RenderTools()->SelectSprite(SPRITE_HEALTH_EMPTY);
+		for(; h < 10; h++)
+			Array[i++] = IGraphics::CQuadItem(x+h*12,y,12,12);
+		Graphics()->QuadsDrawTL(Array, i);
+	}
 
 	// render armor meter
-	h = 0;
-	RenderTools()->SelectSprite(SPRITE_ARMOR_FULL);
-	for(; h < min(pCharacter->m_Armor, 10); h++)
-		Array[h] = IGraphics::CQuadItem(x+h*12,y+12,12,12);
-	Graphics()->QuadsDrawTL(Array, h);
+	if(RenderArmor) {
+		h = 0;
+		RenderTools()->SelectSprite(SPRITE_ARMOR_FULL);
+		for(; h < min(pCharacter->m_Armor, 10); h++)
+			Array[h] = IGraphics::CQuadItem(x+h*12,y+12,12,12);
+		Graphics()->QuadsDrawTL(Array, h);
 
-	i = 0;
-	RenderTools()->SelectSprite(SPRITE_ARMOR_EMPTY);
-	for(; h < 10; h++)
-		Array[i++] = IGraphics::CQuadItem(x+h*12,y+12,12,12);
-	Graphics()->QuadsDrawTL(Array, i);
+		i = 0;
+		RenderTools()->SelectSprite(SPRITE_ARMOR_EMPTY);
+		for(; h < 10; h++)
+			Array[i++] = IGraphics::CQuadItem(x+h*12,y+12,12,12);
+		Graphics()->QuadsDrawTL(Array, i);
+	}
+
 	Graphics()->QuadsEnd();
 	Graphics()->WrapNormal();
 }
@@ -712,6 +731,13 @@ void CHud::OnRender()
 	if(m_pClient->m_pMenus->IsActive())
 		return;
 
+	bool RenderTime = true;
+	bool RenderScore = true;
+	if(m_pClient->m_pDuckJs->IsLoaded()) {
+		RenderTime = m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.Time & 1;
+		RenderScore = m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.Score & 1;
+	}
+
 	m_Width = 300.0f*Graphics()->ScreenAspect();
 	m_Height = 300.0f;
 	Graphics()->MapScreen(0.0f, 0.0f, m_Width, m_Height);
@@ -728,12 +754,16 @@ void CHud::OnRender()
 			RenderSpectatorNotification();
 		}
 
-		RenderGameTimer();
+		if(RenderTime) {
+			RenderGameTimer();
+		}
 		RenderPauseTimer();
 		RenderStartCountdown();
 		RenderDeadNotification();
 		RenderSuddenDeath();
-		RenderScoreHud();
+		if(RenderScore) {
+			RenderScoreHud();
+		}
 		RenderWarmupTimer();
 		RenderFps();
 		if(Client()->State() != IClient::STATE_DEMOPLAYBACK)

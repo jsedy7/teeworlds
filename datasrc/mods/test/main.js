@@ -164,10 +164,25 @@ function DrawTeeWeapon(weapId, x, y, teeSize)
 
 function OnUpdate(clientLocalTime, intraTick)
 {
+    var shown = {
+        health:     Math.floor(clientLocalTime) % 2,
+		armor:      Math.floor(clientLocalTime * 1.1) % 2,
+		ammo:       Math.floor(clientLocalTime * 1.2) % 2,
+		time:       Math.floor(clientLocalTime * 1.3) % 2,
+		killfeed:   Math.floor(clientLocalTime * 1.4) % 2,
+		score:      Math.floor(clientLocalTime * 1.5) % 2,
+		chat:       Math.floor(clientLocalTime * 1.6) % 2,
+    }
+    TwSetHudPartsShown(shown);
+}
+
+function OnRender(clientLocalTime, intraTick)
+{
     var delta = clientLocalTime - lastClientlocalTime;
     lastClientlocalTime = clientLocalTime;
 
-    //print("Hello from the dark side! " + someInt);
+    /*var someInt = Math.floor(clientLocalTime) % 6;
+    print("Hello from the dark side! " + someInt);*/
     TwRenderSetDrawSpace(0 /*DRAW_SPACE_GAME*/);
 
     var tee = {
@@ -260,6 +275,7 @@ function OnUpdate(clientLocalTime, intraTick)
     TwRenderSetQuadRotation(clientLocalTime * -2.0);
     TwRenderQuad(tee.pos_x, 350, 100, 100);
 
+    
     // draw debug rects
     game.debugRects.forEach(function(r) {
         TwRenderSetTexture(-1);
@@ -289,6 +305,7 @@ function OnUpdate(clientLocalTime, intraTick)
         var c = 0.5 + (Math.sin(clientLocalTime) * 0.5 + 0.5) * 0.5;
         DrawCircle([disk.pos_x, disk.pos_y], disk.radius, [0, c, c, 1]);
     });
+    
 }
 
 function OnMessage(netObj)

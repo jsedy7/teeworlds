@@ -177,6 +177,29 @@ struct CDuckBridge
 
 	CDuckCollision m_Collision;
 
+	struct HudPartsShown
+	{
+		int Health;
+		int Armor;
+		int Ammo;
+		int Time;
+		int KillFeed;
+		int Score;
+		int Chat;
+
+		HudPartsShown() {
+			Health = 1;
+			Armor = 1;
+			Ammo = 1;
+			Time = 1;
+			KillFeed = 1;
+			Score = 1;
+			Chat = 1;
+		}
+	};
+
+	HudPartsShown m_HudPartsShown;
+
 	void DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo);
 	void DrawTeeHand(const CTeeDrawHand& Hand, const CTeeSkinInfo& SkinInfo);
 
@@ -196,6 +219,8 @@ struct CDuckBridge
 	void QueueDrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo);
 	void QueueDrawTeeHand(const CTeeDrawHand& Hand);
 	void QueueDrawFreeform(vec2 Pos);
+
+	void SetHudPartsShown(HudPartsShown hps);
 
 	bool LoadTexture(const char* pTexturePath, const char *pTextureName);
 	IGraphics::CTextureHandle GetTexture(const char* pTextureName);

@@ -955,6 +955,40 @@ duk_ret_t CDuckJs::NativeCollisionGetPredictedDynamicDisks(duk_context *ctx)
 	return 1;
 }
 
+duk_ret_t CDuckJs::NativeSetHudPartsShown(duk_context *ctx)
+{
+	/*
+	var shown = {
+		health: 1,
+		armor: 1,
+		ammo: 1,
+		time: 1,
+		killfeed: 1,
+		score: 1,
+		chat: 1,
+	}
+	*/
+
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	CDuckBridge::HudPartsShown hps;
+
+	DukGetIntProp(ctx, 0, "health", &hps.Health);
+	DukGetIntProp(ctx, 0, "armor", &hps.Armor);
+	DukGetIntProp(ctx, 0, "ammo", &hps.Ammo);
+	DukGetIntProp(ctx, 0, "time", &hps.Time);
+	DukGetIntProp(ctx, 0, "killfeed", &hps.KillFeed);
+	DukGetIntProp(ctx, 0, "score", &hps.Score);
+	DukGetIntProp(ctx, 0, "chat", &hps.Chat);
+
+	dbg_msg("duck", "HudPartsShown = { %d %d %d %d %d %d %d }", hps.Health, hps.Armor, hps.Ammo, hps.Time, hps.KillFeed, hps.Score, hps.Chat);
+
+	This()->m_Bridge.SetHudPartsShown(hps);
+
+	return 0;
+}
+
 template<typename IntT>
 duk_ret_t CDuckJs::NativeUnpackInteger(duk_context *ctx)
 {
@@ -1768,6 +1802,7 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(CollisionSetDynamicDisk, 2);
 	REGISTER_FUNC(CollisionClearDynamicDisk, 1);
 	REGISTER_FUNC(CollisionGetPredictedDynamicDisks, 0);
+	REGISTER_FUNC(SetHudPartsShown, 1);
 
 #undef REGISTER_FUNC
 
