@@ -1504,6 +1504,8 @@ set_src(GAME_SERVER GLOB_RECURSE src/game/server
   gamemodes/mod.h
   gamemodes/tdm.cpp
   gamemodes/tdm.h
+  gamesmodes/zomb.cpp
+  gamemodes/zomb.h
   gameworld.cpp
   gameworld.h
   player.cpp
