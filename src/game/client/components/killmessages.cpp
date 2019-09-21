@@ -50,7 +50,7 @@ void CKillMessages::OnMessage(int MsgType, void *pRawMsg)
 
 void CKillMessages::OnRender()
 {
-	if(m_pClient->m_pDuckJs->IsLoaded() && m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.KillFeed == 0) {
+	if(m_pClient->m_pDuckJs->IsLoaded() && m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.m_KillFeed == 0) {
 		return;
 	}
 

@@ -178,30 +178,38 @@ struct CDuckBridge
 
 	CDuckCollision m_Collision;
 
-	struct HudPartsShown
+	struct CHudPartsShown
 	{
-		int Health;
-		int Armor;
-		int Ammo;
-		int Time;
-		int KillFeed;
-		int Score;
-		int Chat;
+		int m_Health;
+		int m_Armor;
+		int m_Ammo;
+		int m_Time;
+		int m_KillFeed;
+		int m_Score;
+		int m_Chat;
 
-		HudPartsShown() {
-			Health = 1;
-			Armor = 1;
-			Ammo = 1;
-			Time = 1;
-			KillFeed = 1;
-			Score = 1;
-			Chat = 1;
+		CHudPartsShown() {
+			m_Health = 1;
+			m_Armor = 1;
+			m_Ammo = 1;
+			m_Time = 1;
+			m_KillFeed = 1;
+			m_Score = 1;
+			m_Chat = 1;
 		}
 	};
 
-	HudPartsShown m_HudPartsShown;
+	CHudPartsShown m_HudPartsShown;
 	CMsgPacker m_CurrentPacket;
 	int m_CurrentPacketFlags;
+
+	struct CSkinPartName
+	{
+		char m_aName[24];
+		int m_Type;
+	};
+
+	array<CSkinPartName> m_aSkinPartsToUnload;
 
 	void DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo);
 	void DrawTeeHand(const CTeeDrawHand& Hand, const CTeeSkinInfo& SkinInfo);
@@ -225,7 +233,7 @@ struct CDuckBridge
 	void QueueDrawTeeHand(const CTeeDrawHand& Hand);
 	void QueueDrawFreeform(vec2 Pos);
 
-	void SetHudPartsShown(HudPartsShown hps);
+	void SetHudPartsShown(CHudPartsShown hps);
 
 	bool LoadTexture(const char* pTexturePath, const char *pTextureName);
 	IGraphics::CTextureHandle GetTexture(const char* pTextureName);
@@ -235,6 +243,8 @@ struct CDuckBridge
 	void PacketPackInt(int i);
 	void PacketPackString(const char* pStr, int SizeLimit);
 	void SendPacket();
+
+	void AddSkinPart(const char* pPart, const char* pName, IGraphics::CTextureHandle Handle);
 
 	// "entries"
 	void RenderDrawSpace(DrawSpace::Enum Space);

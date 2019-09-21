@@ -2,6 +2,7 @@
 #include "duck_js.h"
 #include <game/client/animstate.h>
 #include <game/client/render.h>
+#include <game/client/components/skins.h>
 #include <engine/external/pnglite/pnglite.h>
 #include <engine/storage.h>
 #include <engine/shared/network.h>
@@ -131,8 +132,19 @@ void CDuckBridge::Reset()
 	}
 
 	m_aTextures.clear();
-	m_HudPartsShown = HudPartsShown();
+	m_HudPartsShown = CHudPartsShown();
 	m_CurrentPacketFlags = -1;
+
+	// unload skin parts
+	CSkins* pSkins = DuckJs()->m_pClient->m_pSkins;
+	for(int i = 0; i < m_aSkinPartsToUnload.size(); i++)
+	{
+		const CSkinPartName& spn = m_aSkinPartsToUnload[i];
+		int Index = pSkins->FindSkinPart(spn.m_Type, spn.m_aName, false);
+		if(Index != -1)
+			pSkins->RemoveSkinPart(spn.m_Type, Index);
+	}
+	m_aSkinPartsToUnload.clear();
 }
 
 void CDuckBridge::OnRender()
@@ -145,7 +157,8 @@ void CDuckBridge::OnRender()
 	const float IntraGameTick = DuckJs()->Client()->IntraGameTick();
 
 	// Call OnRender(LocalTime, IntraGameTick)
-	if(DuckJs()->GetJsFunction("OnRender")) {
+	if(DuckJs()->GetJsFunction("OnRender"))
+	{
 		duk_push_number(pCtx, LocalTime);
 		duk_push_number(pCtx, IntraGameTick);
 
@@ -162,9 +175,11 @@ void CDuckBridge::OnRender()
 	LastTime = LocalTime;
 
 	int UpdateCount = 0;
-	while(Accumulator > UPDATE_RATE) {
+	while(Accumulator > UPDATE_RATE)
+	{
 		// Call OnUpdate(LocalTime, IntraGameTick)
-		if(DuckJs()->GetJsFunction("OnUpdate")) {
+		if(DuckJs()->GetJsFunction("OnUpdate"))
+		{
 			duk_push_number(pCtx, LocalTime);
 			duk_push_number(pCtx, IntraGameTick);
 
@@ -240,7 +255,7 @@ void CDuckBridge::QueueDrawFreeform(vec2 Pos)
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
-void CDuckBridge::SetHudPartsShown(HudPartsShown hps)
+void CDuckBridge::SetHudPartsShown(CHudPartsShown hps)
 {
 	m_HudPartsShown = hps;
 }
@@ -355,6 +370,51 @@ void CDuckBridge::SendPacket()
 	DuckJs()->Client()->SendMsg(&m_CurrentPacket, m_CurrentPacketFlags);
 	m_CurrentPacket.Reset();
 	m_CurrentPacketFlags = -1;
+}
+
+void CDuckBridge::AddSkinPart(const char *pPart, const char *pName, IGraphics::CTextureHandle Handle)
+{
+	int Type = -1;
+	if(str_comp(pPart, "body") == 0) {
+		Type = SKINPART_BODY;
+	}
+	else if(str_comp(pPart, "marking") == 0) {
+		Type = SKINPART_MARKING;
+	}
+	else if(str_comp(pPart, "decoration") == 0) {
+		Type = SKINPART_MARKING;
+	}
+	else if(str_comp(pPart, "hands") == 0) {
+		Type = SKINPART_HANDS;
+	}
+	else if(str_comp(pPart, "feet") == 0) {
+		Type = SKINPART_FEET;
+	}
+	else if(str_comp(pPart, "eyes") == 0) {
+		Type = SKINPART_EYES;
+	}
+
+	if(Type == -1) {
+		return; // part type not found
+	}
+
+	CSkins::CSkinPart SkinPart;
+	SkinPart.m_OrgTexture = Handle;
+	SkinPart.m_ColorTexture = Handle;
+	SkinPart.m_BloodColor = vec3(1.0f, 0.0f, 0.0f);
+	SkinPart.m_Flags = 0;
+
+	char aPartName[256];
+	str_truncate(aPartName, sizeof(aPartName), pName, str_length(pName) - 4);
+	str_copy(SkinPart.m_aName, aPartName, sizeof(SkinPart.m_aName));
+
+	DuckJs()->m_pClient->m_pSkins->AddSkinPart(Type, SkinPart);
+
+	CSkinPartName SkinPartName;
+	str_copy(SkinPartName.m_aName, SkinPart.m_aName, sizeof(SkinPartName.m_aName));
+	SkinPartName.m_Type = Type;
+	m_aSkinPartsToUnload.add(SkinPartName);
+	// FIXME: breaks loaded "skins" (invalidates indexes)
 }
 
 void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)

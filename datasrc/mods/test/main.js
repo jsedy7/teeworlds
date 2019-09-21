@@ -177,12 +177,12 @@ function OnUpdate(clientLocalTime, intraTick)
     }
     TwSetHudPartsShown(shown);
 
-    if(clientLocalTime - lastSendTime > 1.0) {
+    /*if(clientLocalTime - lastSendTime > 1.0) {
         TwCreatePacket({ netid: 0x1 });
         TwPacketAddString("Hello Dune", 32);
         TwSendPacket();
         lastSendTime = clientLocalTime;
-    }
+    }*/
 }
 
 function OnRender(clientLocalTime, intraTick)
@@ -269,6 +269,29 @@ function OnRender(clientLocalTime, intraTick)
     }
 
     TwRenderSetTeeSkin(skinInfo);
+    DrawTeeWeapon(Math.floor(clientLocalTime) % 6, tee.pos_x, tee.pos_y, tee.size);
+    TwRenderDrawTeeBodyAndFeet(tee);
+
+    for(var i = 0; i < 6; i++) {
+        skinInfo.colors[i].r = 1;
+        skinInfo.colors[i].g = 1;
+        skinInfo.colors[i].b = 1;
+        var tex = TwGetSkinPartTexture(i, "standard");
+        if(tex != null)
+            skinInfo.textures[i] = tex[1];
+    }
+
+    skinInfo.textures[1] = null;
+    skinInfo.textures[2] = null;
+    var tex = TwGetSkinPartTexture(0, "wartule");
+    if(tex != null)
+        skinInfo.textures[0] = tex[1];
+    tex = TwGetSkinPartTexture(5, "zombie_eyes");
+    if(tex != null)
+        skinInfo.textures[5] = tex[1];
+
+    TwRenderSetTeeSkin(skinInfo);
+    tee.pos_x += 100;
     DrawTeeWeapon(Math.floor(clientLocalTime) % 6, tee.pos_x, tee.pos_y, tee.size);
     TwRenderDrawTeeBodyAndFeet(tee);
 

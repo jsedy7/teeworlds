@@ -72,6 +72,16 @@ public:
 	vec4 GetColorV4(int v, bool UseAlpha) const;
 	int GetTeamColor(int UseCustomColors, int PartColor, int Team, int Part) const;
 
+	 // DUCK
+	inline void AddSkinPart(int PartType, CSkinPart Part) {
+		dbg_assert(PartType >= 0 && PartType < NUM_SKINPARTS, "Part out of bounds");
+		m_aaSkinParts[PartType].add(Part);
+	}
+	inline void RemoveSkinPart(int PartType, int Index) {
+		dbg_assert(PartType >= 0 && PartType < NUM_SKINPARTS, "Part out of bounds");
+		m_aaSkinParts[PartType].remove_index_fast(Index);
+	}
+
 private:
 	int m_ScanningPart;
 	sorted_array<CSkinPart> m_aaSkinParts[NUM_SKINPARTS];

@@ -565,9 +565,9 @@ void CHud::RenderHealthAndAmmo(const CNetObj_Character *pCharacter)
 	bool RenderHealth = true;
 	bool RenderArmor = true;
 	if(m_pClient->m_pDuckJs->IsLoaded()) {
-		RenderAmmo = m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.Ammo & 1;
-		RenderHealth = m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.Health & 1;
-		RenderArmor = m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.Armor & 1;
+		RenderAmmo = m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.m_Ammo & 1;
+		RenderHealth = m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.m_Health & 1;
+		RenderArmor = m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.m_Armor & 1;
 	}
 
 	float x = 5;
@@ -734,8 +734,8 @@ void CHud::OnRender()
 	bool RenderTime = true;
 	bool RenderScore = true;
 	if(m_pClient->m_pDuckJs->IsLoaded()) {
-		RenderTime = m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.Time & 1;
-		RenderScore = m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.Score & 1;
+		RenderTime = m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.m_Time & 1;
+		RenderScore = m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.m_Score & 1;
 	}
 
 	m_Width = 300.0f*Graphics()->ScreenAspect();

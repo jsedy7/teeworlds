@@ -698,7 +698,7 @@ void CChat::OnRender()
 	if(Client()->State() == Client()->STATE_LOADING)
 		return;
 
-	if(m_pClient->m_pDuckJs->IsLoaded() && m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.Chat == 0)
+	if(m_pClient->m_pDuckJs->IsLoaded() && m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.m_Chat == 0)
 		return;
 
 	// send pending chat messages

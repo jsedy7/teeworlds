@@ -141,7 +141,12 @@ duk_ret_t CDuckJs::NativeRenderSetTeeSkin(duk_context* ctx)
 		{
 			if(duk_get_prop_index(ctx, -1, i))
 			{
-				SkinInfo.m_aTextures[i] = (int)duk_to_int(ctx, -1);
+				if(duk_is_null_or_undefined(ctx, -1)) {
+					SkinInfo.m_aTextures[i] = -1;
+				}
+				else {
+					SkinInfo.m_aTextures[i] = (int)duk_to_int(ctx, -1);
+				}
 				duk_pop(ctx);
 			}
 		}
@@ -1009,15 +1014,15 @@ duk_ret_t CDuckJs::NativeSetHudPartsShown(duk_context *ctx)
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
 
-	CDuckBridge::HudPartsShown hps;
+	CDuckBridge::CHudPartsShown hps;
 
-	DukGetIntProp(ctx, 0, "health", &hps.Health);
-	DukGetIntProp(ctx, 0, "armor", &hps.Armor);
-	DukGetIntProp(ctx, 0, "ammo", &hps.Ammo);
-	DukGetIntProp(ctx, 0, "time", &hps.Time);
-	DukGetIntProp(ctx, 0, "killfeed", &hps.KillFeed);
-	DukGetIntProp(ctx, 0, "score", &hps.Score);
-	DukGetIntProp(ctx, 0, "chat", &hps.Chat);
+	DukGetIntProp(ctx, 0, "health", &hps.m_Health);
+	DukGetIntProp(ctx, 0, "armor", &hps.m_Armor);
+	DukGetIntProp(ctx, 0, "ammo", &hps.m_Ammo);
+	DukGetIntProp(ctx, 0, "time", &hps.m_Time);
+	DukGetIntProp(ctx, 0, "killfeed", &hps.m_KillFeed);
+	DukGetIntProp(ctx, 0, "score", &hps.m_Score);
+	DukGetIntProp(ctx, 0, "chat", &hps.m_Chat);
 
 	This()->m_Bridge.SetHudPartsShown(hps);
 
@@ -1846,6 +1851,17 @@ bool CDuckJs::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
 			dbg_assert(Loaded, "error loading png image");
 			dbg_msg("duck", "image loaded '%s' (%x)", pTextureName, m_Bridge.m_aTextures[m_Bridge.m_aTextures.size()-1].m_Hash);
 			// TODO: show error instead of breaking
+
+			if(str_startswith(pTextureName, "skins/")) {
+				pTextureName += 6;
+				const char* pPartEnd = str_find(pTextureName, "/");
+				if(!str_find(pPartEnd+1, "/")) {
+					dbg_msg("duck", "skin part name = '%.*s'", pPartEnd-pTextureName, pTextureName);
+					char aPart[256];
+					str_format(aPart, sizeof(aPart), "%.*s", pPartEnd-pTextureName, pTextureName);
+					m_Bridge.AddSkinPart(aPart, pPartEnd+1, m_Bridge.m_aTextures[m_Bridge.m_aTextures.size()-1].m_Handle);
+				}
+			}
 		}
 	}
 
