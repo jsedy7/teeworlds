@@ -1024,6 +1024,76 @@ duk_ret_t CDuckJs::NativeSetHudPartsShown(duk_context *ctx)
 	return 0;
 }
 
+duk_ret_t CDuckJs::NativeCreatePacket(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	/*
+	var info = {
+		netid: 0x1,
+		force_send_now: 0
+	}
+	*/
+
+	int NetID = -1;
+	int IsVital = -1;
+	int SendNow = -1;
+	DukGetIntProp(ctx, 0, "netid", &NetID);
+	DukGetIntProp(ctx, 0, "force_send_now", &SendNow);
+
+	if(NetID <= 0) {
+		dbg_msg("duck", "WARNING: TwCreatePacket() >> NetID is invalid (%d)", NetID);
+		return 0;
+	}
+
+	int Flags = 0;
+	Flags |= MSGFLAG_VITAL;
+	if(SendNow > 0) Flags |= MSGFLAG_FLUSH;
+	This()->m_Bridge.PacketCreate(NetID, Flags);
+	return 0;
+}
+
+duk_ret_t CDuckJs::NativePacketAddInt(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	int i = duk_to_int(ctx, 0);
+	This()->m_Bridge.PacketPackInt(i);
+	return 0;
+}
+
+duk_ret_t CDuckJs::NativePacketAddFloat(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	double f = duk_to_number(ctx, 0);
+	This()->m_Bridge.PacketPackFloat((float)f);
+	return 0;
+}
+
+duk_ret_t CDuckJs::NativePacketAddString(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 2, "Wrong argument count");
+
+	const char* pStr = duk_to_string(ctx, 0);
+	int SizeLimit = duk_to_int(ctx, 1);
+	This()->m_Bridge.PacketPackString(pStr, SizeLimit);
+	return 0;
+}
+
+duk_ret_t CDuckJs::NativeSendPacket(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 0, "Wrong argument count");
+
+	This()->m_Bridge.SendPacket();
+	return 0;
+}
+
 template<typename IntT>
 duk_ret_t CDuckJs::NativeUnpackInteger(duk_context *ctx)
 {
@@ -1839,6 +1909,11 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(CollisionClearDynamicDisk, 1);
 	REGISTER_FUNC(CollisionGetPredictedDynamicDisks, 0);
 	REGISTER_FUNC(SetHudPartsShown, 1);
+	REGISTER_FUNC(CreatePacket, 1);
+	REGISTER_FUNC(PacketAddInt, 1);
+	REGISTER_FUNC(PacketAddFloat, 1);
+	REGISTER_FUNC(PacketAddString, 2);
+	REGISTER_FUNC(SendPacket, 0);
 
 #undef REGISTER_FUNC
 

@@ -4,6 +4,7 @@
 #include <game/client/render.h>
 #include <engine/external/pnglite/pnglite.h>
 #include <engine/storage.h>
+#include <engine/shared/network.h>
 #include <base/hash.h>
 
 CMultiStackAllocator::CMultiStackAllocator()
@@ -119,6 +120,7 @@ void CDuckBridge::Init(CDuckJs* pDuckJs)
 	m_pRenderTools = pDuckJs->RenderTools();
 	m_pGameClient = pDuckJs->m_pClient;
 	m_CurrentDrawSpace = 0;
+	m_CurrentPacketFlags = -1;
 }
 
 void CDuckBridge::Reset()
@@ -130,6 +132,7 @@ void CDuckBridge::Reset()
 
 	m_aTextures.clear();
 	m_HudPartsShown = HudPartsShown();
+	m_CurrentPacketFlags = -1;
 }
 
 void CDuckBridge::OnRender()
@@ -297,6 +300,60 @@ IGraphics::CTextureHandle CDuckBridge::GetTexture(const char *pTextureName)
 	}
 
 	return IGraphics::CTextureHandle();
+}
+
+void CDuckBridge::PacketCreate(int NetID, int Flags)
+{
+	NetID = max(NetID, 0);
+	// manual contructor here needed
+	m_CurrentPacket.Reset();
+	m_CurrentPacket.AddInt((NETMSG_DUCK_NETOBJ + NetID) << 1 | 0);
+
+	m_CurrentPacketFlags = Flags;
+	dbg_assert(m_CurrentPacket.Size() < 16 && m_CurrentPacket.Size() > 0, "Hmm");
+}
+
+void CDuckBridge::PacketPackFloat(float f)
+{
+	if(m_CurrentPacketFlags == -1) {
+		dbg_msg("duck", "ERROR: can't add float to undefined packet");
+		return;
+	}
+
+	m_CurrentPacket.AddInt(f * 256);
+}
+
+void CDuckBridge::PacketPackInt(int i)
+{
+	if(m_CurrentPacketFlags == -1) {
+		dbg_msg("duck", "ERROR: can't add int to undefined packet");
+		return;
+	}
+
+	m_CurrentPacket.AddInt(i);
+}
+
+void CDuckBridge::PacketPackString(const char *pStr, int SizeLimit)
+{
+	if(m_CurrentPacketFlags == -1) {
+		dbg_msg("duck", "ERROR: can't add string to undefined packet");
+		return;
+	}
+
+	SizeLimit = clamp(SizeLimit, 0, 1024); // reasonable limits
+	m_CurrentPacket.AddString(pStr, SizeLimit);
+}
+
+void CDuckBridge::SendPacket()
+{
+	if(m_CurrentPacketFlags == -1) {
+		dbg_msg("duck", "ERROR: can't send undefined packet");
+		return;
+	}
+
+	DuckJs()->Client()->SendMsg(&m_CurrentPacket, m_CurrentPacketFlags);
+	m_CurrentPacket.Reset();
+	m_CurrentPacketFlags = -1;
 }
 
 void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)

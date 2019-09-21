@@ -75,9 +75,6 @@ enum
 	NETMSG_MAPLIST_ENTRY_REM,
 
 	// DUCK
-	// client and server
-	NETMSG_DUCK_NETOBJ,
-
 	// server
 	NETMSG_DUCK_MOD_INFO,
 	NETMSG_DUCK_MOD_INFO_DEV,
@@ -86,6 +83,9 @@ enum
 	// client
 	NETMSG_DUCK_MOD_READY,
 	NETMSG_DUCK_MOD_REQUEST_DATA,
+
+	// client and server
+	NETMSG_DUCK_NETOBJ,
 };
 
 // this should be revised

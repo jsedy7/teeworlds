@@ -10,6 +10,8 @@ var game = {
     prevDynDisks: [],
 };
 
+var lastSendTime = 0.0;
+
 OnLoad();
 
 
@@ -175,18 +177,12 @@ function OnUpdate(clientLocalTime, intraTick)
     }
     TwSetHudPartsShown(shown);
 
-    /*var charList = TwGetClientCharacterCores();
-    if(charList[0] != null) {
-        var cursorPos = TwGetCursorPosition();
-        cursorPos.x = cursorPos.x - charList[0].pos_x;
-        cursorPos.y = cursorPos.y - charList[0].pos_y;
-        //printObj(cursorPos);
-
-        TwRenderSetColorF4(1, 0, 1, 1);
-        TwRenderSetTexture(TwGetModTexture("deadtee.png"));
-        TwRenderSetQuadRotation(clientLocalTime * -5.0);
-        TwRenderQuadCentered(charList[0].pos_x + cursorPos.x, charList[0].pos_y + cursorPos.y, 10, 10);
-    }*/
+    if(clientLocalTime - lastSendTime > 1.0) {
+        TwCreatePacket({ netid: 0x1 });
+        TwPacketAddString("Hello Dune", 32);
+        TwSendPacket();
+        lastSendTime = clientLocalTime;
+    }
 }
 
 function OnRender(clientLocalTime, intraTick)

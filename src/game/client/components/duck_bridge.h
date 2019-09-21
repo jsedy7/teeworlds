@@ -200,9 +200,13 @@ struct CDuckBridge
 	};
 
 	HudPartsShown m_HudPartsShown;
+	CMsgPacker m_CurrentPacket;
+	int m_CurrentPacketFlags;
 
 	void DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo);
 	void DrawTeeHand(const CTeeDrawHand& Hand, const CTeeSkinInfo& SkinInfo);
+
+	CDuckBridge() : m_CurrentPacket(0, 0) {} // We have to do this, CMsgPacker can't be uninitialized apparently...
 
 	void Init(CDuckJs* pDuckJs);
 	void Reset();
@@ -225,6 +229,12 @@ struct CDuckBridge
 
 	bool LoadTexture(const char* pTexturePath, const char *pTextureName);
 	IGraphics::CTextureHandle GetTexture(const char* pTextureName);
+
+	void PacketCreate(int NetID, int Flags);
+	void PacketPackFloat(float f);
+	void PacketPackInt(int i);
+	void PacketPackString(const char* pStr, int SizeLimit);
+	void SendPacket();
 
 	// "entries"
 	void RenderDrawSpace(DrawSpace::Enum Space);
