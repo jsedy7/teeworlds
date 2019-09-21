@@ -65,6 +65,7 @@ class CDuckJs : public CComponent
 	void ObjectSetMemberInt(const char* MemberName, int Value);
 	void ObjectSetMemberFloat(const char* MemberName, float Value);
 	void ObjectSetMemberRawBuffer(const char* MemberName, const void* pRawBuffer, int RawBufferSize);
+	void ObjectSetMemberString(const char* MemberName, const char* pStr);
 	void ObjectSetMember(const char* MemberName);
 
 	bool IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256);
@@ -89,6 +90,7 @@ public:
 	virtual void OnRender();
 	virtual void OnMessage(int Msg, void *pRawMsg);
 	virtual void OnStateChange(int NewState, int OldState);
+	virtual bool OnInput(IInput::CEvent e);
 	void OnModReset();
 	void OnModUnload();
 

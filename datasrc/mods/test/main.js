@@ -381,6 +381,11 @@ function OnMessage(netObj)
     }
 }
 
+function OnInput(event)
+{
+    //printObj(event);
+}
+
 /*function OnCharacterCorePreTick(listCharCore, listInput)
 {
     //printObj(listCharCore);

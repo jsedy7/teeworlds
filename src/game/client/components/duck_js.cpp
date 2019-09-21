@@ -1190,6 +1190,12 @@ void CDuckJs::ObjectSetMemberRawBuffer(const char* MemberName, const void* pRawB
 	dbg_assert(rc == 1, "could not put raw buffer prop");
 }
 
+void CDuckJs::ObjectSetMemberString(const char *MemberName, const char *pStr)
+{
+	duk_push_string(Ctx(), pStr);
+	duk_put_prop_string(Ctx(), m_CurrentPushedObjID, MemberName);
+}
+
 void CDuckJs::ObjectSetMember(const char* MemberName)
 {
 	duk_put_prop_string(Ctx(), m_CurrentPushedObjID, MemberName);
@@ -2044,6 +2050,25 @@ void CDuckJs::OnStateChange(int NewState, int OldState)
 	{
 		OnModReset();
 	}
+}
+
+bool CDuckJs::OnInput(IInput::CEvent e)
+{
+	if(GetJsFunction("OnInput")) {
+		// make event
+		PushObject();
+		ObjectSetMemberInt("key", e.m_Key);
+		ObjectSetMemberInt("pressed", e.m_Flags&IInput::FLAG_PRESS ? 1:0);
+		ObjectSetMemberInt("released", e.m_Flags&IInput::FLAG_RELEASE ? 1:0);
+		ObjectSetMemberString("text", e.m_aText);
+
+		// call OnInput(event)
+		CallJsFunction(1);
+
+		duk_pop(Ctx());
+	}
+
+	return false;
 }
 
 void CDuckJs::OnModReset()
