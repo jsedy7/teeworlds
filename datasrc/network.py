@@ -90,7 +90,7 @@ Objects = [
 
 		NetFlag("m_PlayerFlags", PlayerFlags),
 
-		NetIntRange("m_WantedWeapon", 0, 'NUM_WEAPONS-1'),
+		NetIntRange("m_WantedWeapon", 0, 'NUM_WEAPONS_DUCK-1'),
 		NetIntAny("m_NextWeapon"),
 		NetIntAny("m_PrevWeapon"),
 	]),
@@ -171,7 +171,7 @@ Objects = [
 		NetIntRange("m_Health", 0, 10),
 		NetIntRange("m_Armor", 0, 10),
 		NetIntAny("m_AmmoCount"),
-		NetIntRange("m_Weapon", -1, 'NUM_WEAPONS-1'),
+		NetIntRange("m_Weapon", -1, 'NUM_WEAPONS_DUCK-1'),
 		NetEnum("m_Emote", Emotes),
 		NetTick("m_AttackTick"),
 		NetFlag("m_TriggeredEvents", CoreEventFlags),

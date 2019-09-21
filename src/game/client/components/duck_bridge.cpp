@@ -719,3 +719,18 @@ void CDuckBridge::Predict(CWorldCore* pWorld)
 		m_Collision.m_aDynamicDisks[i].Move(&m_Collision, pWorld);
 	}*/
 }
+
+void CDuckBridge::RenderPlayerWeapon(int WeaponID, vec2 Pos, vec2 Dir)
+{
+
+}
+
+void CDuckBridge::RenderWeaponCursor(int WeaponID, vec2 Pos)
+{
+
+}
+
+void CDuckBridge::RenderWeaponAmmo(int WeaponID, vec2 Pos)
+{
+
+}
