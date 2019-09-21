@@ -143,3 +143,12 @@ void CGameControllerTEST::Snap(int SnappingClient)
 	TestCore.Write(pCharacter);
 #endif
 }
+
+void CGameControllerTEST::OnDuckMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
+{
+	dbg_msg("duck", "DuckMessage :: NetID = 0x%x", MsgID);
+	if(MsgID == 0x1) {
+		const char* pStr = pUnpacker->GetString(0);
+		dbg_msg("duck", "'%s'", pStr);
+	}
+}

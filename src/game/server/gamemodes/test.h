@@ -11,5 +11,5 @@ public:
 	CGameControllerTEST(class CGameContext *pGameServer);
 	virtual void Tick();
 	virtual void Snap(int SnappingClient);
-	// add more virtual functions here if you wish
+	virtual void OnDuckMessage(int MsgID, CUnpacker *pUnpacker, int ClientID);
 };

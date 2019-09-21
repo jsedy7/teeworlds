@@ -1146,6 +1146,12 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 				}
 			}
 		}
+		else if(Msg == NETMSG_DUCK_NETOBJ)
+		{
+			// DUCK
+			int NetID = Unpacker.GetInt();
+			GameServer()->OnDuckMessage(NetID, &Unpacker, ClientID);
+		}
 		else
 		{
 			if(g_Config.m_Debug)

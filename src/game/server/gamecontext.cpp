@@ -1082,6 +1082,11 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 	}
 }
 
+void CGameContext::OnDuckMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
+{
+	m_pController->OnDuckMessage(MsgID, pUnpacker, ClientID);
+}
+
 void CGameContext::ConTuneParam(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameContext *pSelf = (CGameContext *)pUserData;

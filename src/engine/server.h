@@ -87,6 +87,7 @@ public:
 	virtual void OnPostSnap() = 0;
 
 	virtual void OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID) = 0;
+	virtual void OnDuckMessage(int MsgID, CUnpacker *pUnpacker, int ClientID) = 0; // DUCK
 
 	virtual void OnClientConnected(int ClientID, bool AsSpec) = 0;
 	virtual void OnClientEnter(int ClientID) = 0;

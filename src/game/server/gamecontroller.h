@@ -167,6 +167,8 @@ public:
 
 	void OnReset();
 
+	virtual void OnDuckMessage(int MsgID, CUnpacker *pUnpacker, int ClientID) {}
+
 	// game
 	enum
 	{

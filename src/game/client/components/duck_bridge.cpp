@@ -307,7 +307,8 @@ void CDuckBridge::PacketCreate(int NetID, int Flags)
 	NetID = max(NetID, 0);
 	// manual contructor here needed
 	m_CurrentPacket.Reset();
-	m_CurrentPacket.AddInt((NETMSG_DUCK_NETOBJ + NetID) << 1 | 0);
+	m_CurrentPacket.AddInt((NETMSG_DUCK_NETOBJ) << 1 | 1);
+	m_CurrentPacket.AddInt(NetID);
 
 	m_CurrentPacketFlags = Flags;
 	dbg_assert(m_CurrentPacket.Size() < 16 && m_CurrentPacket.Size() > 0, "Hmm");
