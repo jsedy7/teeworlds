@@ -174,10 +174,36 @@ function OnUpdate(clientLocalTime, intraTick)
 		chat:       Math.floor(clientLocalTime * 1.6) % 2,
     }
     TwSetHudPartsShown(shown);
+
+    /*var charList = TwGetClientCharacterCores();
+    if(charList[0] != null) {
+        var cursorPos = TwGetCursorPosition();
+        cursorPos.x = cursorPos.x - charList[0].pos_x;
+        cursorPos.y = cursorPos.y - charList[0].pos_y;
+        //printObj(cursorPos);
+
+        TwRenderSetColorF4(1, 0, 1, 1);
+        TwRenderSetTexture(TwGetModTexture("deadtee.png"));
+        TwRenderSetQuadRotation(clientLocalTime * -5.0);
+        TwRenderQuadCentered(charList[0].pos_x + cursorPos.x, charList[0].pos_y + cursorPos.y, 10, 10);
+    }*/
 }
 
 function OnRender(clientLocalTime, intraTick)
 {
+    var charList = TwGetClientCharacterCores();
+    if(charList[0] != null) {
+        var cursorPos = TwGetCursorPosition();
+        cursorPos.x = cursorPos.x - charList[0].pos_x;
+        cursorPos.y = cursorPos.y - charList[0].pos_y;
+        //printObj(cursorPos);
+
+        TwRenderSetColorF4(1, 0, 1, 1);
+        TwRenderSetTexture(TwGetModTexture("deadtee.png"));
+        TwRenderSetQuadRotation(clientLocalTime * -5.0);
+        TwRenderQuadCentered(charList[0].pos_x + cursorPos.x, charList[0].pos_y + cursorPos.y, 50, 50);
+    }
+
     var delta = clientLocalTime - lastClientlocalTime;
     lastClientlocalTime = clientLocalTime;
 
@@ -246,11 +272,11 @@ function OnRender(clientLocalTime, intraTick)
             skinInfo.textures[i] = tex[1];
     }
 
-    /*TwRenderSetTeeSkin(skinInfo);
+    TwRenderSetTeeSkin(skinInfo);
     DrawTeeWeapon(Math.floor(clientLocalTime) % 6, tee.pos_x, tee.pos_y, tee.size);
     TwRenderDrawTeeBodyAndFeet(tee);
 
-    var charList = TwGetClientCharacterPositions();
+    /*var charList = TwGetClientCharacterCores();
     charList.forEach(function(char, charId) {
         if(char == null) return;
         TwRenderSetTeeSkin(skinInfo);

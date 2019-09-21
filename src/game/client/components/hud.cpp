@@ -771,5 +771,10 @@ void CHud::OnRender()
 		RenderTeambalanceWarning();
 		RenderVoting();
 	}
+
+	if(m_pClient->m_pDuckJs->IsLoaded()) {
+		m_pClient->m_pDuckJs->m_Bridge.RenderDrawSpace(CDuckBridge::DrawSpace::HUD);
+	}
+
 	RenderCursor();
 }

@@ -50,6 +50,7 @@ struct CDuckBridge
 		enum Enum
 		{
 			GAME=0,
+			HUD=0,
 			_COUNT
 		};
 	};

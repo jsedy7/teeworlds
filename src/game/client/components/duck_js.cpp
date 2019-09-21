@@ -9,6 +9,7 @@
 #include <engine/shared/config.h>
 #include <engine/external/zlib/zlib.h>
 #include <game/client/components/skins.h>
+#include <game/client/components/controls.h>
 #include <zip.h>
 
 typedef uint8_t u8;
@@ -697,7 +698,7 @@ duk_ret_t CDuckJs::NativeGetClientSkinInfo(duk_context* ctx)
 	return 1;
 }
 
-duk_ret_t CDuckJs::NativeGetClientCharacterPositions(duk_context* ctx)
+duk_ret_t CDuckJs::NativeGetClientCharacterCores(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 0, "Wrong argument count");
@@ -725,9 +726,30 @@ duk_ret_t CDuckJs::NativeGetClientCharacterPositions(duk_context* ctx)
 				pGameClient->m_PredictedPrevChar.Write(&Prev);
 			}
 
+			if(Prev.m_Angle < pi*-128 && Cur.m_Angle > pi*128)
+				Prev.m_Angle += 2*pi*256;
+			else if(Prev.m_Angle > pi*128 && Cur.m_Angle < pi*-128)
+				Cur.m_Angle += 2*pi*256;
+			float Angle = mix((float)Prev.m_Angle, (float)Cur.m_Angle, IntraTick)/256.0f;
+
 			vec2 Position = mix(vec2(Prev.m_X, Prev.m_Y), vec2(Cur.m_X, Cur.m_Y), IntraTick);
+			vec2 Vel = mix(vec2(Prev.m_VelX/256.0f, Prev.m_VelY/256.0f), vec2(Cur.m_VelX/256.0f, Cur.m_VelY/256.0f), IntraTick);
+			vec2 HookPos = mix(vec2(Prev.m_HookX, Prev.m_HookY), vec2(Cur.m_HookX, Cur.m_HookY), IntraTick);
 
 			duk_idx_t PosObjIdx = duk_push_object(ctx);
+			DukSetIntProp(ctx, PosObjIdx, "tick", Cur.m_Tick);
+			DukSetFloatProp(ctx, PosObjIdx, "vel_x", Vel.x);
+			DukSetFloatProp(ctx, PosObjIdx, "vel_y", Vel.y);
+			DukSetFloatProp(ctx, PosObjIdx, "angle", Angle);
+			DukSetIntProp(ctx, PosObjIdx, "direction", Cur.m_Direction);
+			DukSetIntProp(ctx, PosObjIdx, "jumped", Cur.m_Jumped);
+			DukSetIntProp(ctx, PosObjIdx, "hooked_player", Cur.m_HookedPlayer);
+			DukSetIntProp(ctx, PosObjIdx, "hook_state", Cur.m_HookState);
+			DukSetIntProp(ctx, PosObjIdx, "hook_tick", Cur.m_HookTick);
+			DukSetFloatProp(ctx, PosObjIdx, "hook_x", HookPos.x);
+			DukSetFloatProp(ctx, PosObjIdx, "hook_y", HookPos.y);
+			DukSetFloatProp(ctx, PosObjIdx, "hook_dx", Cur.m_HookDx/256.f);
+			DukSetFloatProp(ctx, PosObjIdx, "hook_dy", Cur.m_HookDy/256.f);
 			DukSetFloatProp(ctx, PosObjIdx, "pos_x", Position.x);
 			DukSetFloatProp(ctx, PosObjIdx, "pos_y", Position.y);
 		}
@@ -801,6 +823,21 @@ duk_ret_t CDuckJs::NativeGetSkinPartTexture(duk_context* ctx)
 	duk_push_int(ctx, *(int*)&This()->m_pClient->m_pSkins->GetSkinPart(Part, SkinPartID)->m_ColorTexture);
 	duk_put_prop_index(ctx, ArrayIdx, 1);
 	return 1;
+}
+
+duk_ret_t CDuckJs::NativeGetCursorPosition(duk_context *ctx)
+{
+	// Get position in world space
+
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 0, "Wrong argument count");
+
+	const vec2 CursorPos = This()->m_pClient->m_pControls->m_TargetPos;
+
+	This()->PushObject();
+	DukSetFloatProp(ctx, 0, "x", CursorPos.x);
+	DukSetFloatProp(ctx, 0, "y", CursorPos.y);
+	return  1;
 }
 
 duk_ret_t CDuckJs::NativeMapSetTileCollisionFlags(duk_context *ctx)
@@ -981,8 +1018,6 @@ duk_ret_t CDuckJs::NativeSetHudPartsShown(duk_context *ctx)
 	DukGetIntProp(ctx, 0, "killfeed", &hps.KillFeed);
 	DukGetIntProp(ctx, 0, "score", &hps.Score);
 	DukGetIntProp(ctx, 0, "chat", &hps.Chat);
-
-	dbg_msg("duck", "HudPartsShown = { %d %d %d %d %d %d %d }", hps.Health, hps.Armor, hps.Ammo, hps.Time, hps.KillFeed, hps.Score, hps.Chat);
 
 	This()->m_Bridge.SetHudPartsShown(hps);
 
@@ -1792,9 +1827,10 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(GetWeaponSpec, 1);
 	REGISTER_FUNC(GetModTexture, 1);
 	REGISTER_FUNC(GetClientSkinInfo, 1);
-	REGISTER_FUNC(GetClientCharacterPositions, 0);
+	REGISTER_FUNC(GetClientCharacterCores, 0);
 	REGISTER_FUNC(GetStandardSkinInfo, 0);
 	REGISTER_FUNC(GetSkinPartTexture, 2);
+	REGISTER_FUNC(GetCursorPosition, 0);
 	REGISTER_FUNC(MapSetTileCollisionFlags, 3);
 	REGISTER_FUNC(DirectionFromAngle, 1);
 	REGISTER_FUNC(CollisionSetStaticBlock, 2);
@@ -1808,9 +1844,9 @@ void CDuckJs::ResetDukContext()
 
 	// Teeworlds global object
 	duk_eval_string(Ctx(),
-		"var Teeworlds = {"
+		"const Teeworlds = {"
 		"	DRAW_SPACE_GAME: 0,"
-		"	aClients: [],"
+		"	DRAW_SPACE_HUD: 1,"
 		"};");
 	duk_pop(Ctx());
 }
