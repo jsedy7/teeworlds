@@ -97,8 +97,9 @@ void CCharacterCore::Tick(bool UseInput)
 	}
 
 	// TODO: find a better solution to this?
-	if(CharId == -1)
-		CharId = MAX_CLIENTS;
+	if(CharId == -1) {
+		return;
+	}
 
 	float PhysSize = 28.0f;
 	m_TriggeredEvents = 0;

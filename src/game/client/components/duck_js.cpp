@@ -2070,6 +2070,10 @@ void CDuckJs::OnStateChange(int NewState, int OldState)
 
 bool CDuckJs::OnInput(IInput::CEvent e)
 {
+	if(!IsLoaded()) {
+		return false;
+	}
+
 	if(GetJsFunction("OnInput")) {
 		// make event
 		PushObject();
