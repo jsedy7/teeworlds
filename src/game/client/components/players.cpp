@@ -273,7 +273,6 @@ void CPlayers::RenderPlayer(
 	}
 
 	// draw gun
-	if(Player.m_Weapon < NUM_WEAPONS)
 	{
 		Graphics()->TextureSet(g_pData->m_aImages[IMAGE_GAME].m_Id);
 		Graphics()->QuadsBegin();
@@ -426,9 +425,6 @@ void CPlayers::RenderPlayer(
 			case WEAPON_GRENADE: RenderTools()->RenderTeeHand(&RenderInfo, p, Direction, -pi/2, vec2(-4, 7)); break;
 		}
 
-	}
-	else if(m_pClient->m_pDuckJs->IsLoaded()) {
-		m_pClient->m_pDuckJs->m_Bridge.RenderPlayerWeapon(Player.m_Weapon, Position, Direction);
 	}
 
 	// render the "shadow" tee

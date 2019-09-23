@@ -251,7 +251,4 @@ struct CDuckBridge
 	void CharacterCorePreTick(CCharacterCore** apCharCores);
 	void CharacterCorePostTick(CCharacterCore** apCharCores);
 	void Predict(CWorldCore *pWorld);
-	void RenderPlayerWeapon(int WeaponID, vec2 Pos, vec2 Dir);
-	void RenderWeaponCursor(int WeaponID, vec2 Pos);
-	void RenderWeaponAmmo(int WeaponID, vec2 Pos);
 };

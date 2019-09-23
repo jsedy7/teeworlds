@@ -476,16 +476,6 @@ void CHud::RenderCursor()
 
 	vec2 Pos = *m_pClient->m_pCamera->GetCenter();
 	RenderTools()->MapScreenToGroup(Pos.x, Pos.y, Layers()->GameGroup(), m_pClient->m_pCamera->GetZoom());
-
-	int WeaponID = m_pClient->m_Snap.m_pLocalCharacter->m_Weapon;
-	if(WeaponID >= NUM_WEAPONS)
-	{
-		if(m_pClient->m_pDuckJs->IsLoaded()) {
-			m_pClient->m_pDuckJs->m_Bridge.RenderWeaponCursor(WeaponID, Pos);
-		}
-		return;
-	}
-
 	Graphics()->TextureSet(g_pData->m_aImages[IMAGE_GAME].m_Id);
 	Graphics()->QuadsBegin();
 
@@ -601,23 +591,18 @@ void CHud::RenderHealthAndAmmo(const CNetObj_Character *pCharacter)
 		}
 		else
 		{
-			if(pCharacter->m_Weapon < NUM_WEAPONS) {
-				RenderTools()->SelectSprite(g_pData->m_Weapons.m_aId[pCharacter->m_Weapon%NUM_WEAPONS].m_pSpriteProj);
-				if(pCharacter->m_Weapon == WEAPON_GRENADE)
-				{
-					for(i = 0; i < min(pCharacter->m_AmmoCount, 10); i++)
-						Array[i] = IGraphics::CQuadItem(x+1+i*12, y+24, 10, 10);
-				}
-				else
-				{
-					for(i = 0; i < min(pCharacter->m_AmmoCount, 10); i++)
-						Array[i] = IGraphics::CQuadItem(x+i*12, y+24, 12, 12);
-				}
-				Graphics()->QuadsDrawTL(Array, i);
+			RenderTools()->SelectSprite(g_pData->m_Weapons.m_aId[pCharacter->m_Weapon%NUM_WEAPONS].m_pSpriteProj);
+			if(pCharacter->m_Weapon == WEAPON_GRENADE)
+			{
+				for(i = 0; i < min(pCharacter->m_AmmoCount, 10); i++)
+					Array[i] = IGraphics::CQuadItem(x+1+i*12, y+24, 10, 10);
 			}
-			else if(m_pClient->m_pDuckJs->IsLoaded()) {
-				m_pClient->m_pDuckJs->m_Bridge.RenderWeaponAmmo(pCharacter->m_Weapon, vec2(x, y));
+			else
+			{
+				for(i = 0; i < min(pCharacter->m_AmmoCount, 10); i++)
+					Array[i] = IGraphics::CQuadItem(x+i*12, y+24, 12, 12);
 			}
+			Graphics()->QuadsDrawTL(Array, i);
 		}
 	}
 
