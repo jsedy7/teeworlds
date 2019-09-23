@@ -474,6 +474,9 @@ void CHud::RenderCursor()
 	if(!m_pClient->m_Snap.m_pLocalCharacter || Client()->State() == IClient::STATE_DEMOPLAYBACK)
 		return;
 
+	if(m_pClient->m_Snap.m_pLocalCharacter->m_Weapon == -1)
+		return;
+
 	vec2 Pos = *m_pClient->m_pCamera->GetCenter();
 	RenderTools()->MapScreenToGroup(Pos.x, Pos.y, Layers()->GameGroup(), m_pClient->m_pCamera->GetZoom());
 	Graphics()->TextureSet(g_pData->m_aImages[IMAGE_GAME].m_Id);
@@ -582,7 +585,7 @@ void CHud::RenderHealthAndAmmo(const CNetObj_Character *pCharacter)
 	Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
 
 	// render ammo
-	if(RenderAmmo) {
+	if(RenderAmmo && pCharacter->m_Weapon != -1) {
 		if(pCharacter->m_Weapon == WEAPON_NINJA)
 		{
 			const int Max = g_pData->m_Weapons.m_Ninja.m_Duration * Client()->GameTickSpeed() / 1000;
