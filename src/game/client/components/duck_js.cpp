@@ -1122,6 +1122,10 @@ duk_ret_t CDuckJs::NativeAddWeapon(duk_context *ctx)
 	DukGetFloatProp(ctx, 0, "weapon_y", &Wc.WeaponY);
 	DukGetFloatProp(ctx, 0, "weapon_sx", &Wc.WeaponSizeX);
 	DukGetFloatProp(ctx, 0, "weapon_sy", &Wc.WeaponSizeY);
+	DukGetFloatProp(ctx, 0, "hand_x", &Wc.HandX);
+	DukGetFloatProp(ctx, 0, "hand_y", &Wc.HandY);
+	DukGetFloatProp(ctx, 0, "hand_angle", &Wc.HandAngle);
+	DukGetFloatProp(ctx, 0, "recoil", &Wc.Recoil);
 
 	This()->m_Bridge.AddWeapon(Wc);
 	return 0;

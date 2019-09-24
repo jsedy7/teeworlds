@@ -474,12 +474,13 @@ void CDuckBridge::AddWeapon(const CWeaponCustomJs &WcJs)
 
 	CWeaponCustom Wc;
 	Wc.WeaponID = WcJs.WeaponID;
-	Wc.WeaponX = WcJs.WeaponX;
-	Wc.WeaponY = WcJs.WeaponY;
-	Wc.WeaponSizeX = WcJs.WeaponSizeX;
-	Wc.WeaponSizeY = WcJs.WeaponSizeY;
+	Wc.WeaponPos = vec2(WcJs.WeaponX, WcJs.WeaponY);
+	Wc.WeaponSize = vec2(WcJs.WeaponSizeX, WcJs.WeaponSizeY);
 	Wc.TexWeaponHandle = TexWeaponHandle;
 	Wc.TexCursorHandle = TexCursorHandle;
+	Wc.HandPos = vec2(WcJs.HandX, WcJs.HandY);
+	Wc.HandAngle = WcJs.HandAngle;
+	Wc.Recoil = WcJs.Recoil;
 
 	m_aWeapons.add(Wc);
 }
@@ -798,7 +799,7 @@ void CDuckBridge::Predict(CWorldCore* pWorld)
 	}*/
 }
 
-void CDuckBridge::RenderPlayerWeapon(int WeaponID, vec2 Pos, CAnimState State, float Angle, CTeeRenderInfo* pRenderInfo)
+void CDuckBridge::RenderPlayerWeapon(int WeaponID, vec2 Pos, float AttachAngle, float Angle, CTeeRenderInfo* pRenderInfo, float RecoilAlpha)
 {
 	const CWeaponCustom* pWeap = FindWeapon(WeaponID);
 	if(!pWeap)
@@ -811,20 +812,20 @@ void CDuckBridge::RenderPlayerWeapon(int WeaponID, vec2 Pos, CAnimState State, f
 
 	Graphics()->TextureSet(pWeap->TexWeaponHandle);
 	Graphics()->QuadsBegin();
-	Graphics()->QuadsSetRotation(State.GetAttach()->m_Angle*pi*2+Angle);
+	Graphics()->QuadsSetRotation(AttachAngle + Angle);
 
 	if(Dir.x < 0)
 		Graphics()->QuadsSetSubset(0, 1, 1, 0);
 
 	vec2 p;
-	p = Pos + Dir * pWeap->WeaponX;
-	p.y += pWeap->WeaponY;
-	IGraphics::CQuadItem QuadItem(p.x, p.y, pWeap->WeaponSizeX, pWeap->WeaponSizeY);
+	p = Pos + Dir * pWeap->WeaponPos.x - Dir * RecoilAlpha * pWeap->Recoil;
+	p.y += pWeap->WeaponPos.y;
+	IGraphics::CQuadItem QuadItem(p.x, p.y, pWeap->WeaponSize.x, pWeap->WeaponSize.y);
 	Graphics()->QuadsDraw(&QuadItem, 1);
 
 	Graphics()->QuadsEnd();
 
-	RenderTools()->RenderTeeHand(pRenderInfo, p, Dir, -pi/2, vec2(-4, 7));
+	RenderTools()->RenderTeeHand(pRenderInfo, p, Dir, pWeap->HandAngle, pWeap->HandPos);
 }
 
 void CDuckBridge::RenderWeaponCursor(int WeaponID, vec2 Pos)
@@ -849,5 +850,5 @@ void CDuckBridge::RenderWeaponCursor(int WeaponID, vec2 Pos)
 
 void CDuckBridge::RenderWeaponAmmo(int WeaponID, vec2 Pos)
 {
-
+	// TODO: do ammo?
 }

@@ -428,7 +428,13 @@ void CPlayers::RenderPlayer(
 
 	}
 	else if(m_pClient->m_pDuckJs->IsLoaded()) {
-		m_pClient->m_pDuckJs->m_Bridge.RenderPlayerWeapon(Player.m_Weapon, Position, State, Angle, &RenderInfo);
+		float RecoilAlpha = 0;
+		static float s_LastIntraTick = IntraTick;
+		float a = (Client()->GameTick()-Player.m_AttackTick+s_LastIntraTick)/5.0f;
+		if(a < 1)
+			RecoilAlpha = sinf(a*pi);
+
+		m_pClient->m_pDuckJs->m_Bridge.RenderPlayerWeapon(Player.m_Weapon, Position, State.GetAttach()->m_Angle*pi*2, Angle, &RenderInfo, RecoilAlpha);
 	}
 
 	// render the "shadow" tee

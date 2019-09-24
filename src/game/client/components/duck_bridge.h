@@ -4,7 +4,6 @@
 #include <base/tl/sorted_array.h>
 #include <engine/graphics.h>
 #include <game/duck_collision.h>
-#include <game/client/animstate.h>
 #include <generated/protocol.h>
 
 // Bridge between teeworlds and duktape
@@ -223,6 +222,10 @@ struct CDuckBridge
 		float WeaponY;
 		float WeaponSizeX;
 		float WeaponSizeY;
+		float HandX;
+		float HandY;
+		float HandAngle;
+		float Recoil;
 	};
 
 	struct CWeaponCustom
@@ -230,10 +233,11 @@ struct CDuckBridge
 		int WeaponID;
 		IGraphics::CTextureHandle TexWeaponHandle;
 		IGraphics::CTextureHandle TexCursorHandle;
-		float WeaponX;
-		float WeaponY;
-		float WeaponSizeX;
-		float WeaponSizeY;
+		vec2 WeaponPos;
+		vec2 WeaponSize;
+		vec2 HandPos;
+		float HandAngle;
+		float Recoil;
 
 		bool operator < (const CWeaponCustom& other) {
 			return WeaponID < other.WeaponID;
@@ -288,7 +292,7 @@ struct CDuckBridge
 	void CharacterCorePreTick(CCharacterCore** apCharCores);
 	void CharacterCorePostTick(CCharacterCore** apCharCores);
 	void Predict(CWorldCore *pWorld);
-	void RenderPlayerWeapon(int WeaponID, vec2 Pos, CAnimState State, float Angle, CTeeRenderInfo *pRenderInfo);
+	void RenderPlayerWeapon(int WeaponID, vec2 Pos, float AttachAngle, float Angle, CTeeRenderInfo *pRenderInfo, float RecoilAlpha);
 	void RenderWeaponCursor(int WeaponID, vec2 Pos);
 	void RenderWeaponAmmo(int WeaponID, vec2 Pos);
 };

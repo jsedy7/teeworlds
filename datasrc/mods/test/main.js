@@ -91,12 +91,16 @@ function OnLoaded()
     printObj(TwGetWeaponSpec(3));
     TwAddWeapon({
         id: 123,
-        tex_weapon: "edanerg",
-        tex_cursor: "edanerg_cursor",
+        tex_weapon: "edanerg2",
+        tex_cursor: "edanerg2_cursor",
         weapon_x: 24,
         weapon_y: -2,
         weapon_sx: 92.30629897351902411655,
         weapon_sy: 26.37322827814829260473,
+        hand_x: -4,
+        hand_y: 7,
+        hand_angle: -Math.PI/2,
+        recoil: 10,
     });
 }
 
@@ -194,18 +198,17 @@ function OnUpdate(clientLocalTime, intraTick)
 
 function OnRender(clientLocalTime, intraTick)
 {
-    var charList = TwGetClientCharacterCores();
+    /*var charList = TwGetClientCharacterCores();
     if(charList[0] != null) {
         var cursorPos = TwGetCursorPosition();
         cursorPos.x = cursorPos.x - charList[0].pos_x;
         cursorPos.y = cursorPos.y - charList[0].pos_y;
-        //printObj(cursorPos);
 
         TwRenderSetColorF4(1, 0, 1, 1);
         TwRenderSetTexture(TwGetModTexture("deadtee"));
         TwRenderSetQuadRotation(clientLocalTime * -5.0);
         TwRenderQuadCentered(charList[0].pos_x + cursorPos.x, charList[0].pos_y + cursorPos.y, 50, 50);
-    }
+    }*/
 
     var delta = clientLocalTime - lastClientlocalTime;
     lastClientlocalTime = clientLocalTime;
