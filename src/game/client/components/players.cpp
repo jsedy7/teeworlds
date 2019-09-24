@@ -428,7 +428,7 @@ void CPlayers::RenderPlayer(
 
 	}
 	else if(m_pClient->m_pDuckJs->IsLoaded()) {
-		m_pClient->m_pDuckJs->m_Bridge.RenderPlayerWeapon(Player.m_Weapon, Position, Direction);
+		m_pClient->m_pDuckJs->m_Bridge.RenderPlayerWeapon(Player.m_Weapon, Position, State, Angle, &RenderInfo);
 	}
 
 	// render the "shadow" tee

@@ -12,8 +12,6 @@ var game = {
 
 var lastSendTime = 0.0;
 
-OnLoad();
-
 
 // ----  FUNCTIONS -----
 
@@ -88,9 +86,18 @@ function fmod(a, b)
     return Number((a - (Math.floor(a / b) * b)).toPrecision(8));
 }
 
-function OnLoad()
+function OnLoaded()
 {
-    printObj(TwGetWeaponSpec(1));
+    printObj(TwGetWeaponSpec(3));
+    TwAddWeapon({
+        id: 123,
+        tex_weapon: "edanerg",
+        tex_cursor: "edanerg_cursor",
+        weapon_x: 24,
+        weapon_y: -2,
+        weapon_sx: 92.30629897351902411655,
+        weapon_sy: 26.37322827814829260473,
+    });
 }
 
 function DrawCircle(pos, radius, color)
@@ -126,7 +133,7 @@ function DrawTeeWeapon(weapId, x, y, teeSize)
     var offY = spec.offset_y * teeScale
 
     var weapX = x + (dir.x * offX);
-    var weapY = y + (dir.y * offX) + dir.y * offY;
+    var weapY = y + (dir.y * offX) + offY;
 
     TwRenderSetColorF4(1, 1, 1, 1);
     TwRenderSetTexture(spec.sprite_body_texid);
@@ -195,7 +202,7 @@ function OnRender(clientLocalTime, intraTick)
         //printObj(cursorPos);
 
         TwRenderSetColorF4(1, 0, 1, 1);
-        TwRenderSetTexture(TwGetModTexture("deadtee.png"));
+        TwRenderSetTexture(TwGetModTexture("deadtee"));
         TwRenderSetQuadRotation(clientLocalTime * -5.0);
         TwRenderQuadCentered(charList[0].pos_x + cursorPos.x, charList[0].pos_y + cursorPos.y, 50, 50);
     }
@@ -316,7 +323,7 @@ function OnRender(clientLocalTime, intraTick)
     });*/
 
     TwRenderSetColorF4(1, 1, 1, 1);
-    TwRenderSetTexture(TwGetModTexture("deadtee.png"));
+    TwRenderSetTexture(TwGetModTexture("deadtee"));
     TwRenderSetQuadRotation(clientLocalTime * -2.0);
     TwRenderQuad(tee.pos_x, 350, 100, 100);
 

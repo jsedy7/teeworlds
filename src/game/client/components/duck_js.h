@@ -55,6 +55,7 @@ class CDuckJs : public CComponent
 	static duk_ret_t NativePacketAddFloat(duk_context *ctx);
 	static duk_ret_t NativePacketAddString(duk_context *ctx);
 	static duk_ret_t NativeSendPacket(duk_context *ctx);
+	static duk_ret_t NativeAddWeapon(duk_context *ctx);
 
 	template<typename IntT>
 	static duk_ret_t NativeUnpackInteger(duk_context *ctx);
@@ -119,6 +120,27 @@ inline void DukGetFloatProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPr
 		*pOutFloat = duk_to_number(pCtx, -1);
 		duk_pop(pCtx);
 	}
+}
+
+inline void DukGetStringProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, char* pOutBuff, int OutSize)
+{
+	if(duk_get_prop_string(pCtx, ObjIdx, pPropName))
+	{
+		const char* pStr = duk_to_string(pCtx, -1);
+		str_copy(pOutBuff, pStr, OutSize);
+		duk_pop(pCtx);
+	}
+}
+
+inline bool DukIsPropNull(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName)
+{
+	bool IsNull = true;
+	if(duk_get_prop_string(pCtx, ObjIdx, pPropName))
+	{
+		IsNull &= duk_is_null_or_undefined(pCtx, -1);
+		duk_pop(pCtx);
+	}
+	return IsNull;
 }
 
 inline void DukSetIntProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, int Val)

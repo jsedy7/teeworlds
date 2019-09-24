@@ -294,14 +294,18 @@ void CDuckBridge::QueueDrawTeeHand(const CDuckBridge::CTeeDrawHand& Hand)
 
 bool CDuckBridge::LoadTexture(const char *pTexturePath, const char* pTextureName)
 {
+	int Len = str_length(pTextureName);
+	if(Len < 5) // .png
+		return false;
+
 	IGraphics::CTextureHandle Handle = Graphics()->LoadTexture(pTexturePath, IStorage::TYPE_SAVE, CImageInfo::FORMAT_AUTO, 0);
-	uint32_t Hash = hash_fnv1a(pTextureName, str_length(pTextureName));
+	uint32_t Hash = hash_fnv1a(pTextureName, Len - 4);
 	CTextureHashPair Pair = { Hash, Handle };
 	m_aTextures.add(Pair);
 	return Handle.IsValid();
 }
 
-IGraphics::CTextureHandle CDuckBridge::GetTexture(const char *pTextureName)
+IGraphics::CTextureHandle CDuckBridge::GetTextureFromName(const char *pTextureName)
 {
 	const uint32_t SearchHash = hash_fnv1a(pTextureName, str_length(pTextureName));
 
@@ -415,6 +419,80 @@ void CDuckBridge::AddSkinPart(const char *pPart, const char *pName, IGraphics::C
 	SkinPartName.m_Type = Type;
 	m_aSkinPartsToUnload.add(SkinPartName);
 	// FIXME: breaks loaded "skins" (invalidates indexes)
+}
+
+void CDuckBridge::AddWeapon(const CWeaponCustomJs &WcJs)
+{
+	if(WcJs.WeaponID < NUM_WEAPONS || WcJs.WeaponID >= NUM_WEAPONS_DUCK)
+	{
+		dbg_msg("duck", "ERROR: AddWeapon() :: Weapon ID = %d out of bounds", WcJs.WeaponID);
+		return;
+	}
+
+	/*const int Count = m_aWeapons.size();
+	for(int i = 0; i < Count; i++)
+	{
+		if(m_aWeapons[i].WeaponID == WcJs.WeaponID)
+		{
+			dbg_msg("duck", "ERROR: AddWeapon() :: Weapon with ID = %d exists already", WcJs.WeaponID);
+			return;
+		}
+	}*/
+
+	CWeaponCustom WcFind;
+	WcFind.WeaponID = WcJs.WeaponID;
+	plain_range_sorted<CWeaponCustom> Found = find_binary(m_aWeapons.all(), WcFind);
+	if(!Found.empty())
+	{
+		dbg_msg("duck", "ERROR: AddWeapon() :: Weapon with ID = %d exists already", WcJs.WeaponID);
+		// TODO: generate a WARNING?
+		return;
+	}
+
+	IGraphics::CTextureHandle TexWeaponHandle, TexCursorHandle;
+
+	if(WcJs.aTexWeapon[0])
+	{
+		TexWeaponHandle = GetTextureFromName(WcJs.aTexWeapon);
+		if(!TexWeaponHandle.IsValid())
+		{
+			dbg_msg("duck", "ERROR: AddWeapon() :: Weapon texture '%s' not found", WcJs.aTexWeapon);
+			return;
+		}
+	}
+
+	if(WcJs.aTexCursor[0])
+	{
+		TexCursorHandle = GetTextureFromName(WcJs.aTexCursor);
+		if(!TexCursorHandle.IsValid())
+		{
+			dbg_msg("duck", "ERROR: AddWeapon() :: Cursor texture '%s' not found", WcJs.aTexCursor);
+			return;
+		}
+	}
+
+
+	CWeaponCustom Wc;
+	Wc.WeaponID = WcJs.WeaponID;
+	Wc.WeaponX = WcJs.WeaponX;
+	Wc.WeaponY = WcJs.WeaponY;
+	Wc.WeaponSizeX = WcJs.WeaponSizeX;
+	Wc.WeaponSizeY = WcJs.WeaponSizeY;
+	Wc.TexWeaponHandle = TexWeaponHandle;
+	Wc.TexCursorHandle = TexCursorHandle;
+
+	m_aWeapons.add(Wc);
+}
+
+CDuckBridge::CWeaponCustom *CDuckBridge::FindWeapon(int WeaponID)
+{
+	CWeaponCustom WcFind;
+	WcFind.WeaponID = WeaponID;
+	plain_range_sorted<CWeaponCustom> Found = find_binary(m_aWeapons.all(), WcFind);
+	if(Found.empty())
+		return 0;
+
+	return &Found.front();
 }
 
 void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
@@ -720,14 +798,53 @@ void CDuckBridge::Predict(CWorldCore* pWorld)
 	}*/
 }
 
-void CDuckBridge::RenderPlayerWeapon(int WeaponID, vec2 Pos, vec2 Dir)
+void CDuckBridge::RenderPlayerWeapon(int WeaponID, vec2 Pos, CAnimState State, float Angle, CTeeRenderInfo* pRenderInfo)
 {
+	const CWeaponCustom* pWeap = FindWeapon(WeaponID);
+	if(!pWeap)
+		return;
 
+	if(!pWeap->TexWeaponHandle.IsValid())
+		return;
+
+	vec2 Dir = direction(Angle);
+
+	Graphics()->TextureSet(pWeap->TexWeaponHandle);
+	Graphics()->QuadsBegin();
+	Graphics()->QuadsSetRotation(State.GetAttach()->m_Angle*pi*2+Angle);
+
+	if(Dir.x < 0)
+		Graphics()->QuadsSetSubset(0, 1, 1, 0);
+
+	vec2 p;
+	p = Pos + Dir * pWeap->WeaponX;
+	p.y += pWeap->WeaponY;
+	IGraphics::CQuadItem QuadItem(p.x, p.y, pWeap->WeaponSizeX, pWeap->WeaponSizeY);
+	Graphics()->QuadsDraw(&QuadItem, 1);
+
+	Graphics()->QuadsEnd();
+
+	RenderTools()->RenderTeeHand(pRenderInfo, p, Dir, -pi/2, vec2(-4, 7));
 }
 
 void CDuckBridge::RenderWeaponCursor(int WeaponID, vec2 Pos)
 {
+	const CWeaponCustom* pWeap = FindWeapon(WeaponID);
+	if(!pWeap)
+		return;
 
+	if(!pWeap->TexCursorHandle.IsValid())
+		return;
+
+	Graphics()->TextureSet(pWeap->TexCursorHandle);
+	Graphics()->QuadsBegin();
+
+	// render cursor
+	float CursorSize = 45.25483399593904156165;
+	IGraphics::CQuadItem QuadItem(Pos.x, Pos.y, CursorSize, CursorSize);
+	Graphics()->QuadsDraw(&QuadItem, 1);
+
+	Graphics()->QuadsEnd();
 }
 
 void CDuckBridge::RenderWeaponAmmo(int WeaponID, vec2 Pos)

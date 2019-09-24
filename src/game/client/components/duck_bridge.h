@@ -1,8 +1,10 @@
 #pragma once
 #include <stdint.h>
 #include <base/tl/array.h>
+#include <base/tl/sorted_array.h>
 #include <engine/graphics.h>
 #include <game/duck_collision.h>
+#include <game/client/animstate.h>
 #include <generated/protocol.h>
 
 // Bridge between teeworlds and duktape
@@ -11,6 +13,7 @@ class CDuckJs;
 class CRenderTools;
 class CGameClient;
 class CCharacterCore;
+class CTeeRenderInfo;
 
 struct CMultiStackAllocator
 {
@@ -211,6 +214,38 @@ struct CDuckBridge
 
 	array<CSkinPartName> m_aSkinPartsToUnload;
 
+	struct CWeaponCustomJs
+	{
+		int WeaponID;
+		char aTexWeapon[64];
+		char aTexCursor[64];
+		float WeaponX;
+		float WeaponY;
+		float WeaponSizeX;
+		float WeaponSizeY;
+	};
+
+	struct CWeaponCustom
+	{
+		int WeaponID;
+		IGraphics::CTextureHandle TexWeaponHandle;
+		IGraphics::CTextureHandle TexCursorHandle;
+		float WeaponX;
+		float WeaponY;
+		float WeaponSizeX;
+		float WeaponSizeY;
+
+		bool operator < (const CWeaponCustom& other) {
+			return WeaponID < other.WeaponID;
+		}
+
+		bool operator == (const CWeaponCustom& other) {
+			return WeaponID == other.WeaponID;
+		}
+	};
+
+	sorted_array<CWeaponCustom> m_aWeapons;
+
 	void DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo);
 	void DrawTeeHand(const CTeeDrawHand& Hand, const CTeeSkinInfo& SkinInfo);
 
@@ -236,7 +271,7 @@ struct CDuckBridge
 	void SetHudPartsShown(CHudPartsShown hps);
 
 	bool LoadTexture(const char* pTexturePath, const char *pTextureName);
-	IGraphics::CTextureHandle GetTexture(const char* pTextureName);
+	IGraphics::CTextureHandle GetTextureFromName(const char* pTextureName);
 
 	void PacketCreate(int NetID, int Flags);
 	void PacketPackFloat(float f);
@@ -245,13 +280,15 @@ struct CDuckBridge
 	void SendPacket();
 
 	void AddSkinPart(const char* pPart, const char* pName, IGraphics::CTextureHandle Handle);
+	void AddWeapon(const CWeaponCustomJs& Wc);
+	CWeaponCustom* FindWeapon(int WeaponID);
 
 	// "entries"
 	void RenderDrawSpace(DrawSpace::Enum Space);
 	void CharacterCorePreTick(CCharacterCore** apCharCores);
 	void CharacterCorePostTick(CCharacterCore** apCharCores);
 	void Predict(CWorldCore *pWorld);
-	void RenderPlayerWeapon(int WeaponID, vec2 Pos, vec2 Dir);
+	void RenderPlayerWeapon(int WeaponID, vec2 Pos, CAnimState State, float Angle, CTeeRenderInfo *pRenderInfo);
 	void RenderWeaponCursor(int WeaponID, vec2 Pos);
 	void RenderWeaponAmmo(int WeaponID, vec2 Pos);
 };

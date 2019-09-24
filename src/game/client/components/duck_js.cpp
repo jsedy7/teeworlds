@@ -653,7 +653,7 @@ duk_ret_t CDuckJs::NativeGetModTexture(duk_context *ctx)
 	dbg_assert(n == 1, "Wrong argument count");
 
 	const char* pTextureName = duk_get_string(ctx, 0);
-	IGraphics::CTextureHandle Handle = This()->m_Bridge.GetTexture(pTextureName);
+	IGraphics::CTextureHandle Handle = This()->m_Bridge.GetTextureFromName(pTextureName);
 	duk_push_int(ctx, *(int*)&Handle);
 	return 1;
 }
@@ -1096,6 +1096,34 @@ duk_ret_t CDuckJs::NativeSendPacket(duk_context *ctx)
 	dbg_assert(n == 0, "Wrong argument count");
 
 	This()->m_Bridge.SendPacket();
+	return 0;
+}
+
+duk_ret_t CDuckJs::NativeAddWeapon(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	CDuckBridge::CWeaponCustomJs Wc;
+
+	DukGetIntProp(ctx, 0, "id", &Wc.WeaponID);
+
+	if(DukIsPropNull(ctx, 0, "tex_weapon"))
+		Wc.aTexWeapon[0] = 0;
+	else
+		DukGetStringProp(ctx, 0, "tex_weapon", Wc.aTexWeapon, sizeof(Wc.aTexWeapon));
+
+	if(DukIsPropNull(ctx, 0, "tex_cursor"))
+		Wc.aTexCursor[0] = 0;
+	else
+		DukGetStringProp(ctx, 0, "tex_cursor", Wc.aTexCursor, sizeof(Wc.aTexCursor));
+
+	DukGetFloatProp(ctx, 0, "weapon_x", &Wc.WeaponX);
+	DukGetFloatProp(ctx, 0, "weapon_y", &Wc.WeaponY);
+	DukGetFloatProp(ctx, 0, "weapon_sx", &Wc.WeaponSizeX);
+	DukGetFloatProp(ctx, 0, "weapon_sy", &Wc.WeaponSizeY);
+
+	This()->m_Bridge.AddWeapon(Wc);
 	return 0;
 }
 
@@ -1730,7 +1758,7 @@ bool CDuckJs::LoadJsScriptFile(const char* pJsFilePath, const char* pJsRelFilePa
 	pFileData[FileSize] = 0;
 	io_close(ScriptFile);
 
-	char aErrFuncBuff[1024];
+	/*char aErrFuncBuff[1024];
 	str_format(aErrFuncBuff, sizeof(aErrFuncBuff),
 		"Duktape.errCreate = function(err) { \
 			try { \
@@ -1752,17 +1780,18 @@ bool CDuckJs::LoadJsScriptFile(const char* pJsFilePath, const char* pJsRelFilePa
 		dbg_msg("duck", "[JS ERROR] %s: %s", pJsRelFilePath, duk_safe_to_string(Ctx(), -1));
 		return false;
 	}
-	duk_pop(Ctx());
+	duk_pop(Ctx());*/
 
 	// eval script
 	duk_push_string(Ctx(), pFileData);
 	if(duk_peval(Ctx()) != 0)
 	{
-		dbg_msg("duck", "[JS ERROR] %s: %s", pJsFilePath, duk_safe_to_string(Ctx(), -1));
+		dbg_msg("duck", "[JS ERROR] '%s': \n   ", pJsRelFilePath, duk_safe_to_stacktrace(Ctx(), -1));
+		mem_free(pFileData);
 		return false;
 	}
-	duk_pop(Ctx());
 
+	duk_pop(Ctx());
 	dbg_msg("duck", "'%s' loaded (%d)", pJsRelFilePath, FileSize);
 	mem_free(pFileData);
 	return true;
@@ -1839,7 +1868,7 @@ bool CDuckJs::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
 		if(str_endswith(pFilePaths[i].m_aBuff, ".js"))
 		{
 			const char* pRelPath = pFilePaths[i].m_aBuff+ModRootDirLen+1;
-			const bool Loaded = LoadJsScriptFile(pFilePaths[i].m_aBuff, pRelPath);
+			bool Loaded = LoadJsScriptFile(pFilePaths[i].m_aBuff, pRelPath);
 			dbg_assert(Loaded, "error loading js script");
 			// TODO: show error instead of breaking
 		}
@@ -1866,6 +1895,12 @@ bool CDuckJs::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
 	}
 
 	m_IsModLoaded = true;
+
+	if(GetJsFunction("OnLoaded")) {
+		// call OnLoaded()
+		CallJsFunction(0);
+		duk_pop(Ctx());
+	}
 	return true;
 }
 
@@ -1936,6 +1971,7 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(PacketAddFloat, 1);
 	REGISTER_FUNC(PacketAddString, 2);
 	REGISTER_FUNC(SendPacket, 0);
+	REGISTER_FUNC(AddWeapon, 1);
 
 #undef REGISTER_FUNC
 
@@ -1969,7 +2005,7 @@ void CDuckJs::CallJsFunction(int NumArgs)
 
 	if(duk_pcall(pCtx, NumArgs) != DUK_EXEC_SUCCESS)
 	{
-		dbg_msg("duck", "[JS ERROR] %s() << %s >>", aLastCalledFunction, duk_safe_to_stacktrace(pCtx, -1));
+		dbg_msg("duck", "[JS ERROR] %s(): \n    %s", aLastCalledFunction, duk_safe_to_stacktrace(pCtx, -1));
 
 		/*if(duk_is_error(pCtx, -1))
 		{
@@ -1985,7 +2021,7 @@ void CDuckJs::CallJsFunction(int NumArgs)
 		}*/
 
 		// TODO: exit more gracefully
-		dbg_break();
+		dbg_assert(false, "CallJsFunction error");
 	}
 }
 
@@ -2037,6 +2073,10 @@ void CDuckJs::OnRender()
 
 void CDuckJs::OnMessage(int Msg, void* pRawMsg)
 {
+	if(!IsLoaded()) {
+		return;
+	}
+
 	if(Msg == NETMSG_DUCK_NETOBJ)
 	{
 		CUnpacker* pUnpacker = (CUnpacker*)pRawMsg;

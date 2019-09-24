@@ -484,7 +484,7 @@ void CHud::RenderCursor()
 	if(WeaponID >= NUM_WEAPONS)
 	{
 		if(m_pClient->m_pDuckJs->IsLoaded()) {
-			m_pClient->m_pDuckJs->m_Bridge.RenderWeaponCursor(WeaponID, Pos);
+			m_pClient->m_pDuckJs->m_Bridge.RenderWeaponCursor(WeaponID, m_pClient->m_pControls->m_TargetPos);
 		}
 		return;
 	}
