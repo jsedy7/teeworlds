@@ -6,24 +6,7 @@
 void CDuckCollision::Init(CLayers* pLayers)
 {
 	CCollision::Init(pLayers);
-
-	m_aStaticBlocks.hint_size(1024);
-	m_aStaticBlocks.set_size(0); // clear
-	m_aDynamicDisks.hint_size(1024);
-	m_aDynamicDisks.set_size(0); // clear
-
-	for(int i = 0; i < MAX_STATICBLOCK_FETCH_IDS; i++)
-	{
-		m_aStaticBlockDataID[i] = -1;
-	}
-	for(int i = 0; i < MAX_DYNDISK_FETCH_IDS; i++)
-	{
-		m_aDynDiskDataID[i] = -1;
-	}
-	for(int i = 0; i < MAX_CLIENTS; i++)
-	{
-		m_aCharacterHookDiskFetchId[i] = -1;
-	}
+	Reset();
 }
 
 bool CDuckCollision::CheckPoint(float x, float y, int Flag) const
@@ -158,6 +141,27 @@ void CDuckCollision::Tick(CWorldCore *pWorld)
 	{
 		CDuckCollision::CDynamicDisk& Disk = m_aDynamicDisks[i];
 		Disk.Move(this, pWorld);
+	}
+}
+
+void CDuckCollision::Reset()
+{
+	m_aStaticBlocks.hint_size(1024);
+	m_aStaticBlocks.set_size(0); // clear
+	m_aDynamicDisks.hint_size(1024);
+	m_aDynamicDisks.set_size(0); // clear
+
+	for(int i = 0; i < MAX_STATICBLOCK_FETCH_IDS; i++)
+	{
+		m_aStaticBlockDataID[i] = -1;
+	}
+	for(int i = 0; i < MAX_DYNDISK_FETCH_IDS; i++)
+	{
+		m_aDynDiskDataID[i] = -1;
+	}
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		m_aCharacterHookDiskFetchId[i] = -1;
 	}
 }
 

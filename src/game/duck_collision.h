@@ -54,4 +54,5 @@ public:
 	void ClearDynamicDisk(int DiskId);
 
 	void Tick(CWorldCore* pWorld);
+	void Reset();
 };

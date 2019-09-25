@@ -148,6 +148,7 @@ void CDuckBridge::Reset()
 			pSkins->RemoveSkinPart(spn.m_Type, Index);
 	}
 	m_aSkinPartsToUnload.clear();
+	m_Collision.Reset();
 }
 
 void CDuckBridge::QueueSetColor(const float* pColor)

@@ -314,7 +314,17 @@ function SharedClientFiles()
 		local client_content_source = ContentCompile("client_content_source", "generated/client_data.cpp")
 		local client_content_header = ContentCompile("client_content_header", "generated/client_data.h")
 		AddDependency(client_content_source, client_content_header)
-		shared_client_files = {client_content_source}
+		
+		-- DUCK
+		netobj_js = PathJoin(generated_src_dir, Path("generated/netobj_js.cpp"))
+		AddJob(
+			netobj_js,
+			"duck_netobj_js" .. " > " .. netobj_js,
+			Python("datasrc/netobj_js.py") ..  " > " .. netobj_js
+		)
+
+		AddDependency(client_content_source, netobj_js)
+		shared_client_files = {client_content_source, netobj_js}
 	end
 
 	return shared_client_files
