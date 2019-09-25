@@ -65,8 +65,8 @@ int CDuckCollision::GetCollisionAt(float x, float y) const
 
 void CDuckCollision::SetTileCollisionFlags(int Tx, int Ty, int Flags)
 {
-	dbg_assert(Tx >= 0 && Tx < m_Width, "Tx out of bounds");
-	dbg_assert(Ty >= 0 && Ty < m_Height, "Ty out of bounds");
+	if(!(Tx >= 0 && Tx < m_Width) || !(Ty >= 0 && Ty < m_Height))
+		return;
 	m_pTiles[Ty*m_Width+Tx].m_Index = Flags;
 }
 

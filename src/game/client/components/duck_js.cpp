@@ -1,25 +1,23 @@
 #include "duck_js.h"
+#include <stdint.h>
 #include <engine/storage.h>
+#include <engine/client/http.h>
+#include <engine/shared/config.h>
+
 #include <generated/protocol.h>
 #include <generated/client_data.h>
-#include <stdint.h>
-
-#include <engine/client/http.h>
-#include <engine/shared/growbuffer.h>
-#include <engine/shared/config.h>
-#include <engine/external/zlib/zlib.h>
 #include <game/client/components/skins.h>
 #include <game/client/components/controls.h>
-#include <zip.h>
+
+#include "duck_bridge.h"
 
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
 typedef int32_t i32;
 
-// TODO: rename?
-static CDuckJs* s_This = 0;
-inline CDuckJs* This() { return s_This; }
+static CDuckJs* s_DuckJs = 0;
+inline CDuckJs* This() { return s_DuckJs; }
 
 static duk_ret_t NativePrint(duk_context *ctx)
 {
@@ -37,7 +35,7 @@ duk_ret_t CDuckJs::NativeRenderQuad(duk_context *ctx)
 	double Height = duk_to_number(ctx, 3);
 
 	IGraphics::CQuadItem Quad(x, y, Width, Height);
-	This()->m_Bridge.QueueDrawQuad(Quad);
+	This()->Bridge()->QueueDrawQuad(Quad);
 	return 0;
 }
 
@@ -51,7 +49,7 @@ duk_ret_t CDuckJs::NativeRenderQuadCentered(duk_context* ctx)
 	double Height = duk_to_number(ctx, 3);
 
 	IGraphics::CQuadItem Quad(x, y, Width, Height);
-	This()->m_Bridge.QueueDrawQuadCentered(Quad);
+	This()->Bridge()->QueueDrawQuadCentered(Quad);
 	return 0;
 }
 
@@ -67,7 +65,7 @@ duk_ret_t CDuckJs::NativeRenderSetColorU32(duk_context *ctx)
 	aColor[2] = ((x >> 16) & 0xFF) / 255.f;
 	aColor[3] = ((x >> 24) & 0xFF) / 255.f;
 
-	This()->m_Bridge.QueueSetColor(aColor);
+	This()->Bridge()->QueueSetColor(aColor);
 	return 0;
 }
 
@@ -82,7 +80,7 @@ duk_ret_t CDuckJs::NativeRenderSetColorF4(duk_context *ctx)
 	aColor[2] = duk_to_number(ctx, 2);
 	aColor[3] = duk_to_number(ctx, 3);
 
-	This()->m_Bridge.QueueSetColor(aColor);
+	This()->Bridge()->QueueSetColor(aColor);
 	return 0;
 }
 
@@ -90,7 +88,7 @@ duk_ret_t CDuckJs::NativeRenderSetTexture(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
-	This()->m_Bridge.QueueSetTexture((int)duk_to_int(ctx, 0));
+	This()->Bridge()->QueueSetTexture((int)duk_to_int(ctx, 0));
 	return 0;
 }
 
@@ -105,7 +103,7 @@ duk_ret_t CDuckJs::NativeRenderSetQuadSubSet(duk_context* ctx)
 	aSubSet[2] = duk_to_number(ctx, 2);
 	aSubSet[3] = duk_to_number(ctx, 3);
 
-	This()->m_Bridge.QueueSetQuadSubSet(aSubSet);
+	This()->Bridge()->QueueSetQuadSubSet(aSubSet);
 	return 0;
 }
 
@@ -115,7 +113,7 @@ duk_ret_t CDuckJs::NativeRenderSetQuadRotation(duk_context* ctx)
 	dbg_assert(n == 1, "Wrong argument count");
 
 	float Angle = duk_to_number(ctx, 0);
-	This()->m_Bridge.QueueSetQuadRotation(Angle);
+	This()->Bridge()->QueueSetQuadRotation(Angle);
 	return 0;
 }
 
@@ -187,7 +185,7 @@ duk_ret_t CDuckJs::NativeRenderSetTeeSkin(duk_context* ctx)
 		duk_pop(ctx);
 	}
 
-	This()->m_Bridge.QueueSetTeeSkin(SkinInfo);
+	This()->Bridge()->QueueSetTeeSkin(SkinInfo);
 	return 0;
 }
 
@@ -196,7 +194,7 @@ duk_ret_t CDuckJs::NativeRenderSetFreeform(duk_context *ctx)
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
 
-	IGraphics::CFreeformItem* pFreeformBuffer = (IGraphics::CFreeformItem*)This()->m_Bridge.m_FrameAllocator.Alloc(sizeof(IGraphics::CFreeformItem) * CDuckBridge::CRenderSpace::FREEFORM_MAX_COUNT );
+	IGraphics::CFreeformItem* pFreeformBuffer = (IGraphics::CFreeformItem*)This()->Bridge()->m_FrameAllocator.Alloc(sizeof(IGraphics::CFreeformItem) * CDuckBridge::CRenderSpace::FREEFORM_MAX_COUNT );
 	int FreeformCount = 0;
 	int VertCount = 0;
 	float CurrentFreeform[sizeof(IGraphics::CFreeformItem)/sizeof(float)];
@@ -224,7 +222,7 @@ duk_ret_t CDuckJs::NativeRenderSetFreeform(duk_context *ctx)
 		pFreeformBuffer[FreeformCount++] = *(IGraphics::CFreeformItem*)CurrentFreeform;
 	}
 
-	This()->m_Bridge.QueueSetFreeform(pFreeformBuffer, FreeformCount);
+	This()->Bridge()->QueueSetFreeform(pFreeformBuffer, FreeformCount);
 	return 0;
 }
 
@@ -236,7 +234,7 @@ duk_ret_t CDuckJs::NativeRenderSetDrawSpace(duk_context *ctx)
 	int ds = duk_to_int(ctx, 0);
 	dbg_assert(ds >= 0 && ds < CDuckBridge::DrawSpace::_COUNT, "Draw space undefined");
 
-	This()->m_Bridge.m_CurrentDrawSpace = ds;
+	This()->Bridge()->m_CurrentDrawSpace = ds;
 
 	return 0;
 }
@@ -320,7 +318,7 @@ duk_ret_t CDuckJs::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 	TeeDrawInfo.m_GotAirJump = GotAirJump;
 	TeeDrawInfo.m_Emote = Emote;
 	//dbg_msg("duk", "DrawTeeBodyAndFeet( tee = { size: %g, pos_x: %g, pos_y: %g }", Size, PosX, PosY);
-	This()->m_Bridge.QueueDrawTeeBodyAndFeet(TeeDrawInfo);
+	This()->Bridge()->QueueDrawTeeBodyAndFeet(TeeDrawInfo);
 	return 0;
 }
 
@@ -399,7 +397,7 @@ duk_ret_t CDuckJs::NativeRenderDrawTeeHand(duk_context* ctx)
 	TeeHandInfo.m_Offset[0] = OffX;
 	TeeHandInfo.m_Offset[1] = OffY;
 	//dbg_msg("duk", "NativeRenderDrawTeeHand( hand = { size: %g, angle_dir: %g, angle_off: %g, pos_x: %g, pos_y: %g, off_x: %g, off_y: %g }", Size, AngleDir, AngleOff, PosX, PosY, OffX, OffY);
-	This()->m_Bridge.QueueDrawTeeHand(TeeHandInfo);
+	This()->Bridge()->QueueDrawTeeHand(TeeHandInfo);
 	return 0;
 }
 
@@ -420,7 +418,7 @@ duk_ret_t CDuckJs::NativeRenderDrawFreeform(duk_context *ctx)
 		duk_pop(ctx);
 	}
 
-	This()->m_Bridge.QueueDrawFreeform(Pos);
+	This()->Bridge()->QueueDrawFreeform(Pos);
 	return 0;
 }
 
@@ -653,7 +651,7 @@ duk_ret_t CDuckJs::NativeGetModTexture(duk_context *ctx)
 	dbg_assert(n == 1, "Wrong argument count");
 
 	const char* pTextureName = duk_get_string(ctx, 0);
-	IGraphics::CTextureHandle Handle = This()->m_Bridge.GetTextureFromName(pTextureName);
+	IGraphics::CTextureHandle Handle = This()->Bridge()->GetTextureFromName(pTextureName);
 	duk_push_int(ctx, *(int*)&Handle);
 	return 1;
 }
@@ -664,13 +662,13 @@ duk_ret_t CDuckJs::NativeGetClientSkinInfo(duk_context* ctx)
 	dbg_assert(n == 1, "Wrong argument count");
 
 	const int ClientID = clamp((int)duk_to_int(ctx, 0), 0, MAX_CLIENTS-1);
-	if(!This()->m_pClient->m_aClients[ClientID].m_Active)
+	if(!This()->Bridge()->m_pClient->m_aClients[ClientID].m_Active)
 	{
 		duk_push_null(ctx);
 		return 1; // client not active, return null
 	}
 
-	const CTeeRenderInfo& RenderInfo = This()->m_pClient->m_aClients[ClientID].m_RenderInfo;
+	const CTeeRenderInfo& RenderInfo = This()->Bridge()->m_pClient->m_aClients[ClientID].m_RenderInfo;
 
 	This()->PushObject();
 
@@ -708,8 +706,8 @@ duk_ret_t CDuckJs::NativeGetClientCharacterCores(duk_context* ctx)
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 0, "Wrong argument count");
 
-	IClient* pClient = This()->Client();
-	CGameClient* pGameClient = This()->m_pClient;
+	IClient* pClient = This()->Bridge()->Client();
+	CGameClient* pGameClient = This()->Bridge()->m_pClient;
 
 	float IntraTick = pClient->IntraGameTick();
 
@@ -726,7 +724,7 @@ duk_ret_t CDuckJs::NativeGetClientCharacterCores(duk_context* ctx)
 			float IntraTick = pClient->IntraGameTick();
 			if(i == pGameClient->m_LocalClientID)
 			{
-				IntraTick = This()->Client()->PredIntraGameTick();
+				IntraTick = This()->Bridge()->Client()->PredIntraGameTick();
 				pGameClient->m_PredictedChar.Write(&Cur);
 				pGameClient->m_PredictedPrevChar.Write(&Prev);
 			}
@@ -772,7 +770,7 @@ duk_ret_t CDuckJs::NativeGetStandardSkinInfo(duk_context* ctx)
 	dbg_assert(n == 0, "Wrong argument count");
 
 	// TODO: make an actual standard skin info
-	const CTeeRenderInfo& RenderInfo = This()->m_pClient->m_aClients[This()->m_pClient->m_LocalClientID].m_RenderInfo;
+	const CTeeRenderInfo& RenderInfo = This()->Bridge()->m_pClient->m_aClients[This()->Bridge()->m_pClient->m_LocalClientID].m_RenderInfo;
 
 	This()->PushObject();
 
@@ -814,7 +812,7 @@ duk_ret_t CDuckJs::NativeGetSkinPartTexture(duk_context* ctx)
 	int Part = clamp((int)duk_to_int(ctx, 0), 0, NUM_SKINPARTS-1);
 	const char* PartName = duk_to_string(ctx, 1);
 
-	int SkinPartID = This()->m_pClient->m_pSkins->FindSkinPart(Part, PartName, true);
+	int SkinPartID = This()->Bridge()->m_pClient->m_pSkins->FindSkinPart(Part, PartName, true);
 	if(SkinPartID < 0)
 	{
 		duk_push_null(ctx);
@@ -823,9 +821,9 @@ duk_ret_t CDuckJs::NativeGetSkinPartTexture(duk_context* ctx)
 
 	duk_idx_t ArrayIdx = duk_push_array(ctx);
 
-	duk_push_int(ctx, *(int*)&This()->m_pClient->m_pSkins->GetSkinPart(Part, SkinPartID)->m_OrgTexture);
+	duk_push_int(ctx, *(int*)&This()->Bridge()->m_pClient->m_pSkins->GetSkinPart(Part, SkinPartID)->m_OrgTexture);
 	duk_put_prop_index(ctx, ArrayIdx, 0);
-	duk_push_int(ctx, *(int*)&This()->m_pClient->m_pSkins->GetSkinPart(Part, SkinPartID)->m_ColorTexture);
+	duk_push_int(ctx, *(int*)&This()->Bridge()->m_pClient->m_pSkins->GetSkinPart(Part, SkinPartID)->m_ColorTexture);
 	duk_put_prop_index(ctx, ArrayIdx, 1);
 	return 1;
 }
@@ -837,7 +835,7 @@ duk_ret_t CDuckJs::NativeGetCursorPosition(duk_context *ctx)
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 0, "Wrong argument count");
 
-	const vec2 CursorPos = This()->m_pClient->m_pControls->m_TargetPos;
+	const vec2 CursorPos = This()->Bridge()->m_pClient->m_pControls->m_TargetPos;
 
 	This()->PushObject();
 	DukSetFloatProp(ctx, 0, "x", CursorPos.x);
@@ -850,12 +848,11 @@ duk_ret_t CDuckJs::NativeMapSetTileCollisionFlags(duk_context *ctx)
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 3, "Wrong argument count");
 
-	// TODO: bound check
 	int Tx = duk_to_int(ctx, 0);
 	int Ty = duk_to_int(ctx, 1);
 	int Flags = duk_to_int(ctx, 2);
 
-	This()->m_Bridge.m_Collision.SetTileCollisionFlags(Tx, Ty, Flags);
+	This()->Bridge()->m_Collision.SetTileCollisionFlags(Tx, Ty, Flags);
 
 	return 0;
 }
@@ -913,7 +910,7 @@ duk_ret_t CDuckJs::NativeCollisionSetStaticBlock(duk_context* ctx)
 	}
 
 	if(BlockId >= 0)
-		This()->m_Bridge.m_Collision.SetStaticBlock(BlockId, SolidBlock);
+		This()->Bridge()->m_Collision.SetStaticBlock(BlockId, SolidBlock);
 	return 0;
 }
 
@@ -924,7 +921,7 @@ duk_ret_t CDuckJs::NativeCollisionClearStaticBlock(duk_context* ctx)
 
 	int BlockId = duk_to_int(ctx, 0);
 	if(BlockId >= 0)
-		This()->m_Bridge.m_Collision.ClearStaticBlock(BlockId);
+		This()->Bridge()->m_Collision.ClearStaticBlock(BlockId);
 	return 0;
 }
 
@@ -953,7 +950,7 @@ duk_ret_t CDuckJs::NativeCollisionSetDynamicDisk(duk_context *ctx)
 	DukGetFloatProp(ctx, 1, "hook_force", &Disk.m_HookForce);
 
 	if(DiskId >= 0)
-		This()->m_Bridge.m_Collision.SetDynamicDisk(DiskId, Disk);
+		This()->Bridge()->m_Collision.SetDynamicDisk(DiskId, Disk);
 	return 0;
 }
 
@@ -964,7 +961,7 @@ duk_ret_t CDuckJs::NativeCollisionClearDynamicDisk(duk_context *ctx)
 
 	int DiskId = duk_to_int(ctx, 0);
 	if(DiskId >= 0)
-		This()->m_Bridge.m_Collision.ClearDynamicDisk(DiskId);
+		This()->Bridge()->m_Collision.ClearDynamicDisk(DiskId);
 	return 0;
 }
 
@@ -973,8 +970,8 @@ duk_ret_t CDuckJs::NativeCollisionGetPredictedDynamicDisks(duk_context *ctx)
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 0, "Wrong argument count");
 
-	const CDuckCollision::CDynamicDisk* pDisks = This()->m_Bridge.m_Collision.m_aDynamicDisks.base_ptr();
-	const int DiskCount = This()->m_Bridge.m_Collision.m_aDynamicDisks.size();
+	const CDuckCollision::CDynamicDisk* pDisks = This()->Bridge()->m_Collision.m_aDynamicDisks.base_ptr();
+	const int DiskCount = This()->Bridge()->m_Collision.m_aDynamicDisks.size();
 
 	duk_idx_t ArrayIdx = duk_push_array(ctx);
 
@@ -1024,7 +1021,7 @@ duk_ret_t CDuckJs::NativeSetHudPartsShown(duk_context *ctx)
 	DukGetIntProp(ctx, 0, "score", &hps.m_Score);
 	DukGetIntProp(ctx, 0, "chat", &hps.m_Chat);
 
-	This()->m_Bridge.SetHudPartsShown(hps);
+	This()->Bridge()->SetHudPartsShown(hps);
 
 	return 0;
 }
@@ -1055,7 +1052,7 @@ duk_ret_t CDuckJs::NativeCreatePacket(duk_context *ctx)
 	int Flags = 0;
 	Flags |= MSGFLAG_VITAL;
 	if(SendNow > 0) Flags |= MSGFLAG_FLUSH;
-	This()->m_Bridge.PacketCreate(NetID, Flags);
+	This()->Bridge()->PacketCreate(NetID, Flags);
 	return 0;
 }
 
@@ -1065,7 +1062,7 @@ duk_ret_t CDuckJs::NativePacketAddInt(duk_context *ctx)
 	dbg_assert(n == 1, "Wrong argument count");
 
 	int i = duk_to_int(ctx, 0);
-	This()->m_Bridge.PacketPackInt(i);
+	This()->Bridge()->PacketPackInt(i);
 	return 0;
 }
 
@@ -1075,7 +1072,7 @@ duk_ret_t CDuckJs::NativePacketAddFloat(duk_context *ctx)
 	dbg_assert(n == 1, "Wrong argument count");
 
 	double f = duk_to_number(ctx, 0);
-	This()->m_Bridge.PacketPackFloat((float)f);
+	This()->Bridge()->PacketPackFloat((float)f);
 	return 0;
 }
 
@@ -1086,7 +1083,7 @@ duk_ret_t CDuckJs::NativePacketAddString(duk_context *ctx)
 
 	const char* pStr = duk_to_string(ctx, 0);
 	int SizeLimit = duk_to_int(ctx, 1);
-	This()->m_Bridge.PacketPackString(pStr, SizeLimit);
+	This()->Bridge()->PacketPackString(pStr, SizeLimit);
 	return 0;
 }
 
@@ -1095,7 +1092,7 @@ duk_ret_t CDuckJs::NativeSendPacket(duk_context *ctx)
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 0, "Wrong argument count");
 
-	This()->m_Bridge.SendPacket();
+	This()->Bridge()->SendPacket();
 	return 0;
 }
 
@@ -1127,7 +1124,7 @@ duk_ret_t CDuckJs::NativeAddWeapon(duk_context *ctx)
 	DukGetFloatProp(ctx, 0, "hand_angle", &Wc.HandAngle);
 	DukGetFloatProp(ctx, 0, "recoil", &Wc.Recoil);
 
-	This()->m_Bridge.AddWeapon(Wc);
+	This()->Bridge()->AddWeapon(Wc);
 	return 0;
 }
 
@@ -1238,515 +1235,6 @@ void CDuckJs::ObjectSetMember(const char* MemberName)
 	duk_put_prop_string(Ctx(), m_CurrentPushedObjID, MemberName);
 }
 
-bool CDuckJs::IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256)
-{
-	char aSha256Str[SHA256_MAXSTRSIZE];
-	sha256_str(*pModSha256, aSha256Str, sizeof(aSha256Str));
-
-	char aModMainJsPath[512];
-	str_copy(aModMainJsPath, "mods/", sizeof(aModMainJsPath));
-	str_append(aModMainJsPath, aSha256Str, sizeof(aModMainJsPath));
-	str_append(aModMainJsPath, "/main.js", sizeof(aModMainJsPath));
-
-	IOHANDLE ModMainJs = Storage()->OpenFile(aModMainJsPath, IOFLAG_READ, IStorage::TYPE_SAVE);
-	if(ModMainJs)
-	{
-		io_close(ModMainJs);
-		dbg_msg("duck", "mod is already installed on disk");
-		return true;
-	}
-	return false;
-}
-
-bool CDuckJs::ExtractAndInstallModZipBuffer(const CGrowBuffer* pHttpZipData, const SHA256_DIGEST* pModSha256)
-{
-	dbg_msg("unzip", "EXTRACTING AND INSTALLING MOD");
-
-	char aUserModsPath[512];
-	Storage()->GetCompletePath(IStorage::TYPE_SAVE, "mods", aUserModsPath, sizeof(aUserModsPath));
-	fs_makedir(aUserModsPath); // Teeworlds/mods (user storage)
-
-	// TODO: reduce folder hash string length?
-	SHA256_DIGEST Sha256 = sha256(pHttpZipData->m_pData, pHttpZipData->m_Size);
-	char aSha256Str[SHA256_MAXSTRSIZE];
-	sha256_str(Sha256, aSha256Str, sizeof(aSha256Str));
-
-	if(Sha256 != *pModSha256)
-	{
-		dbg_msg("duck", "mod url sha256 and server sent mod sha256 mismatch, received sha256=%s", aSha256Str);
-		// TODO: display error message
-		return false;
-	}
-
-	char aModRootPath[512];
-	str_copy(aModRootPath, aUserModsPath, sizeof(aModRootPath));
-	str_append(aModRootPath, "/", sizeof(aModRootPath));
-	str_append(aModRootPath, aSha256Str, sizeof(aModRootPath));
-
-
-	// FIXME: remove this
-	/*
-	str_append(aUserModsPath, "/temp.zip", sizeof(aUserModsPath));
-	IOHANDLE File = io_open(aUserMoodsPath, IOFLAG_WRITE);
-	io_write(File, pHttpZipData->m_pData, pHttpZipData->m_Size);
-	io_close(File);
-
-	zip *pZipArchive = zip_open(aUserMoodsPath, 0, &Error);
-	if(pZipArchive == NULL)
-	{
-		char aErrorBuff[512];
-		zip_error_to_str(aErrorBuff, sizeof(aErrorBuff), Error, errno);
-		dbg_msg("unzip", "Error opening '%s' [%s]", aUserMoodsPath, aErrorBuff);
-		return false;
-	}*/
-
-	zip_error_t ZipError;
-	zip_error_init(&ZipError);
-	zip_source_t* pZipSrc = zip_source_buffer_create(pHttpZipData->m_pData, pHttpZipData->m_Size, 1, &ZipError);
-	if(!pZipSrc)
-	{
-		dbg_msg("unzip", "Error creating zip source [%s]", zip_error_strerror(&ZipError));
-		zip_error_fini(&ZipError);
-		return false;
-	}
-
-	dbg_msg("unzip", "OPENING zip source %s", aSha256Str);
-
-	// int Error = 0;
-	zip *pZipArchive = zip_open_from_source(pZipSrc, 0, &ZipError);
-	if(pZipArchive == NULL)
-	{
-		dbg_msg("unzip", "Error opening source [%s]", zip_error_strerror(&ZipError));
-		zip_source_free(pZipSrc);
-		zip_error_fini(&ZipError);
-		return false;
-	}
-	zip_error_fini(&ZipError);
-
-	dbg_msg("unzip", "CREATE directory '%s'", aModRootPath);
-	if(fs_makedir(aModRootPath) != 0)
-	{
-		dbg_msg("unzip", "Failed to create directory '%s'", aModRootPath);
-		return false;
-	}
-
-	const int EntryCount = zip_get_num_entries(pZipArchive, 0);
-
-	// find required files
-	const char* aRequiredFiles[] = {
-		"main.js",
-		"mod_info.json"
-	};
-	const int RequiredFilesCount = sizeof(aRequiredFiles)/sizeof(aRequiredFiles[0]);
-
-	int FoundRequiredFilesCount = 0;
-	for(int i = 0; i < EntryCount && FoundRequiredFilesCount < RequiredFilesCount; i++)
-	{
-		zip_stat_t EntryStat;
-		if(zip_stat_index(pZipArchive, i, 0, &EntryStat) != 0)
-			continue;
-    
-		const int NameLen = str_length(EntryStat.name);
-		if(EntryStat.name[NameLen-1] != '/')
-		{
-			for(int r = 0; r < RequiredFilesCount; r++)
-			{
-				 // TODO: can 2 files have the same name?
-				if(str_comp(EntryStat.name, aRequiredFiles[r]) == 0)
-					FoundRequiredFilesCount++;
-			}
-		}
-	}
-
-	if(FoundRequiredFilesCount != RequiredFilesCount)
-	{
-		dbg_msg("duck", "mod is missing a required file, required files are: ");
-		for(int r = 0; r < RequiredFilesCount; r++)
-		{
-			dbg_msg("duck", "    - %s", aRequiredFiles[r]);
-		}
-		return false;
-	}
-
-	// walk zip file tree and extract
-	for(int i = 0; i < EntryCount; i++)
-	{
-		zip_stat_t EntryStat;
-		if(zip_stat_index(pZipArchive, i, 0, &EntryStat) != 0)
-			continue;
-
-		// TODO: remove
-		dbg_msg("unzip", "- name: %s, size: %llu, mtime: [%u]", EntryStat.name, EntryStat.size, (unsigned int)EntryStat.mtime);
-
-		// TODO: sanitize folder name
-		const int NameLen = str_length(EntryStat.name);
-		if(EntryStat.name[NameLen-1] == '/')
-		{
-			// create sub directory
-			char aSubFolder[512];
-			str_copy(aSubFolder, aModRootPath, sizeof(aSubFolder));
-			str_append(aSubFolder, "/", sizeof(aSubFolder));
-			str_append(aSubFolder, EntryStat.name, sizeof(aSubFolder));
-
-			dbg_msg("unzip", "CREATE SUB directory '%s'", aSubFolder);
-			if(fs_makedir(aSubFolder) != 0)
-			{
-				dbg_msg("unzip", "Failed to create directory '%s'", aSubFolder);
-				return false;
-			}
-		}
-		else
-		{
-			// filter by extension
-			if(!(str_endswith(EntryStat.name, ".js") || str_endswith(EntryStat.name, ".json") || str_endswith(EntryStat.name, ".png") || str_endswith(EntryStat.name, ".wv")))
-				continue;
-
-			// TODO: verify file type? Might be very expensive to do so.
-			zip_file_t* pFileZip = zip_fopen_index(pZipArchive, i, 0);
-			if(!pFileZip)
-			{
-				dbg_msg("unzip", "Error reading file '%s'", EntryStat.name);
-				return false;
-			}
-
-			// create file on disk
-			char aFilePath[256];
-			str_copy(aFilePath, aModRootPath, sizeof(aFilePath));
-			str_append(aFilePath, "/", sizeof(aFilePath));
-			str_append(aFilePath, EntryStat.name, sizeof(aFilePath));
-
-			IOHANDLE FileExtracted = io_open(aFilePath, IOFLAG_WRITE);
-			if(!FileExtracted)
-			{
-				dbg_msg("unzip", "Error creating file '%s'", aFilePath);
-				return false;
-			}
-
-			// read zip file data and write to file on disk
-			char aReadBuff[1024];
-			unsigned ReadCurrentSize = 0;
-			while(ReadCurrentSize != EntryStat.size)
-			{
-				const int ReadLen = zip_fread(pFileZip, aReadBuff, sizeof(aReadBuff));
-				if(ReadLen < 0)
-				{
-					dbg_msg("unzip", "Error reading file '%s'", EntryStat.name);
-					return false;
-				}
-				io_write(FileExtracted, aReadBuff, ReadLen);
-				ReadCurrentSize += ReadLen;
-			}
-
-			io_close(FileExtracted);
-			zip_fclose(pFileZip);
-		}
-	}
-
-	zip_source_close(pZipSrc);
-	// NOTE: no need to call zip_source_free(pZipSrc), HttpBuffer::Release() already frees up the buffer
-
-	//zip_close(pZipArchive);
-
-#if 0
-	unzFile ZipFile = unzOpen64(aPath);
-	unz_global_info GlobalInfo;
-	int r = unzGetGlobalInfo(ZipFile, &GlobalInfo);
-	if(r != UNZ_OK)
-	{
-		dbg_msg("unzip", "could not read file global info (%d)", r);
-		unzClose(ZipFile);
-		dbg_break();
-		return false;
-	}
-
-	for(int i = 0; i < GlobalInfo.number_entry; i++)
-	{
-		// Get info about current file.
-		unz_file_info file_info;
-		char filename[256];
-		if(unzGetCurrentFileInfo(ZipFile, &file_info, filename, sizeof(filename), NULL, 0, NULL, 0) != UNZ_OK)
-		{
-			dbg_msg("unzip", "could not read file info");
-			unzClose(ZipFile);
-			return false;
-		}
-
-		dbg_msg("unzip", "FILE_ENTRY %s", filename);
-
-		/*// Check if this entry is a directory or file.
-		const size_t filename_length = str_length(filename);
-		if(filename[ filename_length-1 ] == '/')
-		{
-			// Entry is a directory, so create it.
-			printf("dir:%s\n", filename);
-			//mkdir(filename);
-		}
-		else
-		{
-			// Entry is a file, so extract it.
-			printf("file:%s\n", filename);
-			if(unzOpenCurrentFile(ZipFile) != UNZ_OK)
-			{
-				dbg_msg("unzip", "could not open file");
-				unzClose(ZipFile);
-				return false;
-			}
-
-			// Open a file to write out the data.
-			FILE *out = fopen(filename, "wb");
-			if(out == NULL)
-			{
-				dbg_msg("unzip", "could not open destination file");
-				unzCloseCurrentFile(ZipFile);
-				unzClose(ZipFile);
-				return false;
-			}
-
-			int error = UNZ_OK;
-			do
-			{
-			error = unzReadCurrentFile(zipfile, read_buffer, READ_SIZE);
-			if(error < 0)
-			{
-			printf("error %d\n", error);
-			unzCloseCurrentFile(zipfile);
-			unzClose(zipfile);
-			return -1;
-			}
-
-			// Write data to file.
-			if(error > 0)
-			{
-			fwrite(read_buffer, error, 1, out); // You should check return of fwrite...
-			}
-			} while (error > 0);
-
-			fclose(out);
-		}*/
-
-		unzCloseCurrentFile(ZipFile);
-
-		// Go the the next entry listed in the zip file.
-		if((i+1) < GlobalInfo.number_entry)
-		{
-			if(unzGoToNextFile(ZipFile) != UNZ_OK)
-			{
-				dbg_msg("unzip", "cound not read next file");
-				unzClose(ZipFile);
-				return false;
-			}
-		}
-	}
-
-	unzClose(ZipFile);
-#endif
-
-	return true;
-}
-
-bool CDuckJs::ExtractAndInstallModCompressedBuffer(const void* pCompBuff, int CompBuffSize, const SHA256_DIGEST* pModSha256)
-{
-	const bool IsConfigDebug = g_Config.m_Debug;
-
-	if(IsConfigDebug)
-		dbg_msg("unzip", "EXTRACTING AND INSTALLING *COMRPESSED* MOD");
-
-	char aUserModsPath[512];
-	Storage()->GetCompletePath(IStorage::TYPE_SAVE, "mods", aUserModsPath, sizeof(aUserModsPath));
-	fs_makedir(aUserModsPath); // Teeworlds/mods (user storage)
-
-	// TODO: reduce folder hash string length?
-	SHA256_DIGEST Sha256 = sha256(pCompBuff, CompBuffSize);
-	char aSha256Str[SHA256_MAXSTRSIZE];
-	sha256_str(Sha256, aSha256Str, sizeof(aSha256Str));
-
-	if(Sha256 != *pModSha256)
-	{
-		dbg_msg("duck", "mod url sha256 and server sent mod sha256 mismatch, received sha256=%s", aSha256Str);
-		// TODO: display error message
-		return false;
-	}
-
-	// mod folder where we're going to extract the files
-	char aModRootPath[512];
-	str_copy(aModRootPath, aUserModsPath, sizeof(aModRootPath));
-	str_append(aModRootPath, "/", sizeof(aModRootPath));
-	str_append(aModRootPath, aSha256Str, sizeof(aModRootPath));
-
-	// uncompress
-	CGrowBuffer FilePackBuff;
-	FilePackBuff.Grow(CompBuffSize * 3);
-
-	uLongf DestSize = FilePackBuff.m_Capacity;
-	int UncompRet = uncompress((Bytef*)FilePackBuff.m_pData, &DestSize, (const Bytef*)pCompBuff, CompBuffSize);
-	FilePackBuff.m_Size = DestSize;
-
-	int GrowAttempts = 4;
-	while(UncompRet == Z_BUF_ERROR && GrowAttempts--)
-	{
-		FilePackBuff.Grow(FilePackBuff.m_Capacity * 2);
-		DestSize = FilePackBuff.m_Capacity;
-		UncompRet = uncompress((Bytef*)FilePackBuff.m_pData, &DestSize, (const Bytef*)pCompBuff, CompBuffSize);
-		FilePackBuff.m_Size = DestSize;
-	}
-
-	if(UncompRet != Z_OK)
-	{
-		switch(UncompRet)
-		{
-			case Z_MEM_ERROR:
-				dbg_msg("duck", "DecompressMod: Error, not enough memory");
-				break;
-			case Z_BUF_ERROR:
-				dbg_msg("duck", "DecompressMod: Error, not enough room in the output buffer");
-				break;
-			case Z_DATA_ERROR:
-				dbg_msg("duck", "DecompressMod: Error, data incomplete or corrupted");
-				break;
-			default:
-				dbg_break(); // should never be reached
-		}
-		return false;
-	}
-
-	// read decompressed pack file
-
-	// header
-	const char* pFilePack = FilePackBuff.m_pData;
-	const int FilePackSize = FilePackBuff.m_Size;
-	const char* const pFilePackEnd = pFilePack + FilePackSize;
-
-	if(str_comp_num(pFilePack, "DUCK", 4) != 0)
-	{
-		dbg_msg("duck", "DecompressMod: Error, invalid pack file");
-		return false;
-	}
-
-	pFilePack += 4;
-
-	// find required files
-	const char* aRequiredFiles[] = {
-		"main.js",
-		"mod_info.json"
-	};
-	const int RequiredFilesCount = sizeof(aRequiredFiles)/sizeof(aRequiredFiles[0]);
-	int FoundRequiredFilesCount = 0;
-
-	// TODO: use packer
-	const char* pCursor = pFilePack;
-	while(pCursor < pFilePackEnd)
-	{
-		const int FilePathLen = *(int*)pCursor;
-		pCursor += 4;
-		const char* pFilePath = pCursor;
-		pCursor += FilePathLen;
-		const int FileSize = *(int*)pCursor;
-		pCursor += 4;
-		const char* pFileData = pCursor;
-		pCursor += FileSize;
-
-		char aFilePath[512];
-		dbg_assert(FilePathLen < sizeof(aFilePath)-1, "FilePathLen too large");
-		mem_move(aFilePath, pFilePath, FilePathLen);
-		aFilePath[FilePathLen] = 0;
-
-		if(IsConfigDebug)
-			dbg_msg("duck", "file path=%s size=%d", aFilePath, FileSize);
-
-		for(int r = 0; r < RequiredFilesCount; r++)
-		{
-			// TODO: can 2 files have the same name?
-			// TODO: not very efficient, but oh well
-			const char* pFind = str_find(aFilePath, aRequiredFiles[r]);
-			if(pFind && FilePathLen-(pFind-aFilePath) == str_length(aRequiredFiles[r]))
-				FoundRequiredFilesCount++;
-		}
-	}
-
-	if(FoundRequiredFilesCount != RequiredFilesCount)
-	{
-		dbg_msg("duck", "mod is missing a required file, required files are: ");
-		for(int r = 0; r < RequiredFilesCount; r++)
-		{
-			dbg_msg("duck", "    - %s", aRequiredFiles[r]);
-		}
-		return false;
-	}
-
-	if(IsConfigDebug)
-		dbg_msg("duck", "CREATE directory '%s'", aModRootPath);
-	if(fs_makedir(aModRootPath) != 0)
-	{
-		dbg_msg("duck", "DecompressMod: Error, failed to create directory '%s'", aModRootPath);
-		return false;
-	}
-
-	pCursor = pFilePack;
-	while(pCursor < pFilePackEnd)
-	{
-		const int FilePathLen = *(int*)pCursor;
-		pCursor += 4;
-		const char* pFilePath = pCursor;
-		pCursor += FilePathLen;
-		const int FileSize = *(int*)pCursor;
-		pCursor += 4;
-		const char* pFileData = pCursor;
-		pCursor += FileSize;
-
-		char aFilePath[512];
-		dbg_assert(FilePathLen < sizeof(aFilePath)-1, "FilePathLen too large");
-		mem_move(aFilePath, pFilePath, FilePathLen);
-		aFilePath[FilePathLen] = 0;
-
-		// create directory to hold the file (if needed)
-		const char* pSlashFound = aFilePath;
-		do
-		{
-			pSlashFound = str_find(pSlashFound, "/");
-			if(pSlashFound)
-			{
-				char aDir[512];
-				str_format(aDir, sizeof(aDir), "%.*s", pSlashFound-aFilePath, aFilePath);
-
-				if(IsConfigDebug)
-					dbg_msg("duck", "CREATE SUBDIR dir=%s", aDir);
-
-				char aDirPath[512];
-				str_copy(aDirPath, aModRootPath, sizeof(aDirPath));
-				str_append(aDirPath, "/", sizeof(aDirPath));
-				str_append(aDirPath, aDir, sizeof(aDirPath));
-
-				if(fs_makedir(aDirPath) != 0)
-				{
-					dbg_msg("duck", "DecompressMod: Error, failed to create directory '%s'", aDirPath);
-					return false;
-				}
-
-				pSlashFound++;
-			}
-		}
-		while(pSlashFound);
-
-		// create file on disk
-		char aDiskFilePath[256];
-		str_copy(aDiskFilePath, aModRootPath, sizeof(aDiskFilePath));
-		str_append(aDiskFilePath, "/", sizeof(aDiskFilePath));
-		str_append(aDiskFilePath, aFilePath, sizeof(aDiskFilePath));
-
-		IOHANDLE FileExtracted = io_open(aDiskFilePath, IOFLAG_WRITE);
-		if(!FileExtracted)
-		{
-			dbg_msg("duck", "Error creating file '%s'", aDiskFilePath);
-			return false;
-		}
-
-		io_write(FileExtracted, pFileData, FileSize);
-		io_close(FileExtracted);
-	}
-
-	return true;
-}
-
 bool CDuckJs::LoadJsScriptFile(const char* pJsFilePath, const char* pJsRelFilePath)
 {
 	IOHANDLE ScriptFile = io_open(pJsFilePath, IOFLAG_READ);
@@ -1798,113 +1286,6 @@ bool CDuckJs::LoadJsScriptFile(const char* pJsFilePath, const char* pJsRelFilePa
 	duk_pop(Ctx());
 	dbg_msg("duck", "'%s' loaded (%d)", pJsRelFilePath, FileSize);
 	mem_free(pFileData);
-	return true;
-}
-
-struct CPath
-{
-	char m_aBuff[512];
-};
-
-struct CFileSearch
-{
-	CPath m_BaseBath;
-	array<CPath>* m_paFilePathList;
-};
-
-static int ListDirCallback(const char* pName, int IsDir, int Type, void *pUser)
-{
-	CFileSearch FileSearch = *(CFileSearch*)pUser; // copy
-
-	if(IsDir)
-	{
-		if(pName[0] != '.')
-		{
-			//dbg_msg("duck", "ListDirCallback dir='%s'", pName);
-			str_append(FileSearch.m_BaseBath.m_aBuff, "/", sizeof(FileSearch.m_BaseBath.m_aBuff));
-			str_append(FileSearch.m_BaseBath.m_aBuff, pName, sizeof(FileSearch.m_BaseBath.m_aBuff));
-			//dbg_msg("duck", "recursing... dir='%s'", DirPath.m_aBuff);
-			fs_listdir(FileSearch.m_BaseBath.m_aBuff, ListDirCallback, Type + 1, &FileSearch);
-		}
-	}
-	else
-	{
-		CPath FileStr;
-		str_copy(FileStr.m_aBuff, pName, sizeof(FileStr.m_aBuff));
-
-		CPath FilePath = FileSearch.m_BaseBath;
-		str_append(FilePath.m_aBuff, "/", sizeof(FilePath.m_aBuff));
-		str_append(FilePath.m_aBuff, pName, sizeof(FilePath.m_aBuff));
-		FileSearch.m_paFilePathList->add(FilePath);
-		//dbg_msg("duck", "ListDirCallback file='%s'", pName);
-	}
-
-	return 0;
-}
-
-bool CDuckJs::LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256)
-{
-	char aModRootPath[512];
-	char aSha256Str[SHA256_MAXSTRSIZE];
-	Storage()->GetCompletePath(IStorage::TYPE_SAVE, "mods", aModRootPath, sizeof(aModRootPath));
-	const int SaveDirPathLen = str_length(aModRootPath)-4;
-	sha256_str(*pModSha256, aSha256Str, sizeof(aSha256Str));
-	str_append(aModRootPath, "/", sizeof(aModRootPath));
-	str_append(aModRootPath, aSha256Str, sizeof(aModRootPath));
-	const int ModRootDirLen = str_length(aModRootPath);
-
-	// get files recursively on disk
-	array<CPath> aFilePathList;
-	CFileSearch FileSearch;
-	str_copy(FileSearch.m_BaseBath.m_aBuff, aModRootPath, sizeof(FileSearch.m_BaseBath.m_aBuff));
-	FileSearch.m_paFilePathList = &aFilePathList;
-
-	fs_listdir(aModRootPath, ListDirCallback, 1, &FileSearch);
-
-	// reset mod
-	OnModReset();
-
-	const int FileCount = aFilePathList.size();
-	const CPath* pFilePaths = aFilePathList.base_ptr();
-	for(int i = 0; i < FileCount; i++)
-	{
-		//dbg_msg("duck", "file='%s'", pFilePaths[i].m_aBuff);
-		if(str_endswith(pFilePaths[i].m_aBuff, ".js"))
-		{
-			const char* pRelPath = pFilePaths[i].m_aBuff+ModRootDirLen+1;
-			bool Loaded = LoadJsScriptFile(pFilePaths[i].m_aBuff, pRelPath);
-			dbg_assert(Loaded, "error loading js script");
-			// TODO: show error instead of breaking
-		}
-		else if(str_endswith(pFilePaths[i].m_aBuff, ".png"))
-		{
-			const char* pTextureName = pFilePaths[i].m_aBuff+ModRootDirLen+1;
-			const char* pTextureRelPath = pFilePaths[i].m_aBuff+SaveDirPathLen;
-			const bool Loaded = m_Bridge.LoadTexture(pTextureRelPath, pTextureName);
-			dbg_assert(Loaded, "error loading png image");
-			dbg_msg("duck", "image loaded '%s' (%x)", pTextureName, m_Bridge.m_aTextures[m_Bridge.m_aTextures.size()-1].m_Hash);
-			// TODO: show error instead of breaking
-
-			if(str_startswith(pTextureName, "skins/")) {
-				pTextureName += 6;
-				const char* pPartEnd = str_find(pTextureName, "/");
-				if(!str_find(pPartEnd+1, "/")) {
-					dbg_msg("duck", "skin part name = '%.*s'", pPartEnd-pTextureName, pTextureName);
-					char aPart[256];
-					str_format(aPart, sizeof(aPart), "%.*s", pPartEnd-pTextureName, pTextureName);
-					m_Bridge.AddSkinPart(aPart, pPartEnd+1, m_Bridge.m_aTextures[m_Bridge.m_aTextures.size()-1].m_Handle);
-				}
-			}
-		}
-	}
-
-	m_IsModLoaded = true;
-
-	if(GetJsFunction("OnLoaded")) {
-		// call OnLoaded()
-		CallJsFunction(0);
-		duk_pop(Ctx());
-	}
 	return true;
 }
 
@@ -2045,17 +1426,11 @@ bool CDuckJs::HasJsFunctionReturned()
 
 CDuckJs::CDuckJs()
 {
-	s_This = this;
+	s_DuckJs = this;
 	m_pDukContext = 0;
-	m_IsModLoaded = false;
 }
 
-void CDuckJs::OnInit()
-{
-	m_Bridge.Init(this);
-}
-
-void CDuckJs::OnShutdown()
+void CDuckJs::Shutdown()
 {
 	if(m_pDukContext)
 	{
@@ -2064,23 +1439,8 @@ void CDuckJs::OnShutdown()
 	}
 }
 
-void CDuckJs::OnRender()
-{
-	if(Client()->State() != IClient::STATE_ONLINE || !IsLoaded())
-		return;
-
-	m_Bridge.OnRender();
-
-	// detect stack leak
-	dbg_assert(duk_get_top(Ctx()) == 0, "stack leak");
-}
-
 void CDuckJs::OnMessage(int Msg, void* pRawMsg)
 {
-	if(!IsLoaded()) {
-		return;
-	}
-
 	if(Msg == NETMSG_DUCK_NETOBJ)
 	{
 		CUnpacker* pUnpacker = (CUnpacker*)pRawMsg;
@@ -2104,20 +1464,8 @@ void CDuckJs::OnMessage(int Msg, void* pRawMsg)
 	}
 }
 
-void CDuckJs::OnStateChange(int NewState, int OldState)
+void CDuckJs::OnInput(IInput::CEvent e)
 {
-	if(OldState != IClient::STATE_OFFLINE && NewState == IClient::STATE_OFFLINE)
-	{
-		OnModReset();
-	}
-}
-
-bool CDuckJs::OnInput(IInput::CEvent e)
-{
-	if(!IsLoaded()) {
-		return false;
-	}
-
 	if(GetJsFunction("OnInput")) {
 		// make event
 		PushObject();
@@ -2131,80 +1479,15 @@ bool CDuckJs::OnInput(IInput::CEvent e)
 
 		duk_pop(Ctx());
 	}
-
-	return false;
 }
 
-void CDuckJs::OnModReset()
+void CDuckJs::OnModLoaded()
 {
-	ResetDukContext();
-	m_Bridge.Reset();
-	m_IsModLoaded = false;
-}
-
-void CDuckJs::OnModUnload()
-{
-	if(m_pDukContext)
-		duk_destroy_heap(m_pDukContext);
-	m_pDukContext = 0;
-
-	m_Bridge.Reset();
-	m_IsModLoaded = false;
-}
-
-bool CDuckJs::StartDuckModHttpDownload(const char* pModUrl, const SHA256_DIGEST* pModSha256)
-{
-	dbg_assert(!IsModAlreadyInstalled(pModSha256), "mod is already installed, check it before calling this");
-
-	CGrowBuffer Buff;
-	HttpRequestPage(pModUrl, &Buff);
-
-	bool IsUnzipped = ExtractAndInstallModZipBuffer(&Buff, pModSha256);
-	dbg_assert(IsUnzipped, "Unzipped to disk: rip in peace");
-
-	Buff.Release();
-
-	if(!IsUnzipped)
-		return false;
-
-	bool IsLoaded = LoadModFilesFromDisk(pModSha256);
-	dbg_assert(IsLoaded, "Loaded from disk: rip in peace");
-
-	dbg_msg("duck", "mod loaded url='%s'", pModUrl);
-	return IsLoaded;
-}
-
-bool CDuckJs::TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256)
-{
-	if(!IsModAlreadyInstalled(pModSha256))
-		return false;
-
-	bool IsLoaded = LoadModFilesFromDisk(pModSha256);
-	dbg_assert(IsLoaded, "Loaded from disk: rip in peace");
-
-	char aSha256Str[SHA256_MAXSTRSIZE];
-	sha256_str(*pModSha256, aSha256Str, sizeof(aSha256Str));
-	dbg_msg("duck", "mod loaded (already installed) sha256='%s'", aSha256Str);
-	return IsLoaded;
-}
-
-bool CDuckJs::InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256)
-{
-	dbg_assert(!IsModAlreadyInstalled(pModSha256), "mod is already installed, check it before calling this");
-
-	bool IsUnzipped = ExtractAndInstallModCompressedBuffer(pBuffer, BufferSize, pModSha256);
-	dbg_assert(IsUnzipped, "Unzipped to disk: rip in peace");
-
-	if(!IsUnzipped)
-		return false;
-
-	bool IsLoaded = LoadModFilesFromDisk(pModSha256);
-	dbg_assert(IsLoaded, "Loaded from disk: rip in peace");
-
-	char aSha256Str[SHA256_MAXSTRSIZE];
-	sha256_str(*pModSha256, aSha256Str, sizeof(aSha256Str));
-	dbg_msg("duck", "mod loaded from zip buffer sha256='%s'", aSha256Str);
-	return IsLoaded;
+	if(GetJsFunction("OnLoaded")) {
+		// call OnLoaded()
+		CallJsFunction(0);
+		duk_pop(Ctx());
+	}
 }
 
 duk_idx_t DuktapePushCharacterCore(duk_context* pCtx, const CCharacterCore* pCharCore)

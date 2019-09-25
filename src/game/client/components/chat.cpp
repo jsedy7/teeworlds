@@ -16,7 +16,7 @@
 
 #include <game/client/components/scoreboard.h>
 #include <game/client/components/sounds.h>
-#include <game/client/components/duck_js.h>
+#include <game/client/components/duck_bridge.h>
 
 #include "menus.h"
 #include "chat.h"
@@ -698,7 +698,7 @@ void CChat::OnRender()
 	if(Client()->State() == Client()->STATE_LOADING)
 		return;
 
-	if(m_pClient->m_pDuckJs->IsLoaded() && m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.m_Chat == 0)
+	if(m_pClient->m_pDuckBridge->IsLoaded() && m_pClient->m_pDuckBridge->m_HudPartsShown.m_Chat == 0)
 		return;
 
 	// send pending chat messages

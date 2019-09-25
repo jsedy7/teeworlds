@@ -18,7 +18,7 @@
 #include <game/client/components/sounds.h>
 #include <game/client/components/controls.h>
 
-#include <game/client/components/duck_js.h>
+#include <game/client/components/duck_bridge.h>
 
 #include "players.h"
 
@@ -427,14 +427,14 @@ void CPlayers::RenderPlayer(
 		}
 
 	}
-	else if(m_pClient->m_pDuckJs->IsLoaded()) {
+	else if(m_pClient->m_pDuckBridge->IsLoaded()) {
 		float RecoilAlpha = 0;
 		static float s_LastIntraTick = IntraTick;
 		float a = (Client()->GameTick()-Player.m_AttackTick+s_LastIntraTick)/5.0f;
 		if(a < 1)
 			RecoilAlpha = sinf(a*pi);
 
-		m_pClient->m_pDuckJs->m_Bridge.RenderPlayerWeapon(Player.m_Weapon, Position, State.GetAttach()->m_Angle*pi*2, Angle, &RenderInfo, RecoilAlpha);
+		m_pClient->m_pDuckBridge->RenderPlayerWeapon(Player.m_Weapon, Position, State.GetAttach()->m_Angle*pi*2, Angle, &RenderInfo, RecoilAlpha);
 	}
 
 	// render the "shadow" tee
@@ -573,7 +573,7 @@ void CPlayers::OnRender()
 	}
 
 	// TODO: Move? Make a component for each draw space?
-	if(m_pClient->m_pDuckJs->IsLoaded()) {
-		m_pClient->m_pDuckJs->m_Bridge.RenderDrawSpace(CDuckBridge::DrawSpace::GAME);
+	if(m_pClient->m_pDuckBridge->IsLoaded()) {
+		m_pClient->m_pDuckBridge->RenderDrawSpace(CDuckBridge::DrawSpace::GAME);
 	}
 }

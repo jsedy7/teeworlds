@@ -4,11 +4,13 @@
 #include <base/tl/sorted_array.h>
 #include <engine/graphics.h>
 #include <game/duck_collision.h>
+#include <game/client/component.h>
 #include <generated/protocol.h>
+
+#include "duck_js.h"
 
 // Bridge between teeworlds and duktape
 
-class CDuckJs;
 class CRenderTools;
 class CGameClient;
 class CCharacterCore;
@@ -36,16 +38,9 @@ struct CMultiStackAllocator
 	void Clear();
 };
 
-struct CDuckBridge
+struct CDuckBridge : public CComponent
 {
-	CDuckJs* m_pDuckJs;
-	IGraphics* m_pGraphics;
-	CRenderTools* m_pRenderTools;
-	CGameClient* m_pGameClient;
-	inline CDuckJs* DuckJs() { return m_pDuckJs; }
-	inline IGraphics* Graphics() { return m_pGraphics; }
-	inline CRenderTools* RenderTools() { return m_pRenderTools; }
-	inline CGameClient* GameClient() { return m_pGameClient; }
+	CDuckJs m_Js;
 
 	struct DrawSpace
 	{
@@ -164,6 +159,7 @@ struct CDuckBridge
 		}
 	};
 
+	bool m_IsModLoaded;
 	CMultiStackAllocator m_FrameAllocator;
 
 	int m_CurrentDrawSpace;
@@ -258,8 +254,6 @@ struct CDuckBridge
 	void Init(CDuckJs* pDuckJs);
 	void Reset();
 
-	void OnRender();
-
 	void QueueSetColor(const float* pColor);
 	void QueueSetTexture(int TextureID);
 	void QueueSetQuadSubSet(const float* pSubSet);
@@ -295,4 +289,26 @@ struct CDuckBridge
 	void RenderPlayerWeapon(int WeaponID, vec2 Pos, float AttachAngle, float Angle, CTeeRenderInfo *pRenderInfo, float RecoilAlpha);
 	void RenderWeaponCursor(int WeaponID, vec2 Pos);
 	void RenderWeaponAmmo(int WeaponID, vec2 Pos);
+
+	// mod installation
+	bool IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256);
+	bool ExtractAndInstallModZipBuffer(const CGrowBuffer* pHttpZipData, const SHA256_DIGEST* pModSha256);
+	bool ExtractAndInstallModCompressedBuffer(const void* pCompBuff, int CompBuffSize, const SHA256_DIGEST* pModSha256);
+	bool LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256);
+	bool StartDuckModHttpDownload(const char* pModUrl, const SHA256_DIGEST* pModSha256);
+	bool TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256);
+	bool InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256);
+
+	virtual void OnInit();
+	virtual void OnShutdown();
+	virtual void OnRender();
+	virtual void OnMessage(int Msg, void *pRawMsg);
+	virtual void OnStateChange(int NewState, int OldState);
+	virtual bool OnInput(IInput::CEvent e);
+	void OnModReset();
+	void OnModUnload();
+
+	inline bool IsLoaded() const { return m_Js.m_pDukContext != 0 && m_IsModLoaded; }
+
+	friend class CDuckJs;
 };

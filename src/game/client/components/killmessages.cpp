@@ -8,7 +8,7 @@
 
 #include <game/client/gameclient.h>
 #include <game/client/animstate.h>
-#include <game/client/components/duck_js.h>
+#include <game/client/components/duck_bridge.h>
 #include "killmessages.h"
 
 void CKillMessages::OnReset()
@@ -50,7 +50,7 @@ void CKillMessages::OnMessage(int MsgType, void *pRawMsg)
 
 void CKillMessages::OnRender()
 {
-	if(m_pClient->m_pDuckJs->IsLoaded() && m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.m_KillFeed == 0) {
+	if(m_pClient->m_pDuckBridge->IsLoaded() && m_pClient->m_pDuckBridge->m_HudPartsShown.m_KillFeed == 0) {
 		return;
 	}
 

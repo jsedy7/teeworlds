@@ -10,7 +10,7 @@
 #include <game/client/gameclient.h>
 #include <game/client/animstate.h>
 #include <game/client/render.h>
-#include <game/client/components/duck_js.h>
+#include <game/client/components/duck_bridge.h>
 
 #include "menus.h"
 #include "controls.h"
@@ -483,8 +483,8 @@ void CHud::RenderCursor()
 	int WeaponID = m_pClient->m_Snap.m_pLocalCharacter->m_Weapon;
 	if(WeaponID >= NUM_WEAPONS)
 	{
-		if(m_pClient->m_pDuckJs->IsLoaded()) {
-			m_pClient->m_pDuckJs->m_Bridge.RenderWeaponCursor(WeaponID, m_pClient->m_pControls->m_TargetPos);
+		if(m_pClient->m_pDuckBridge->IsLoaded()) {
+			m_pClient->m_pDuckBridge->RenderWeaponCursor(WeaponID, m_pClient->m_pControls->m_TargetPos);
 		}
 		return;
 	}
@@ -577,10 +577,10 @@ void CHud::RenderHealthAndAmmo(const CNetObj_Character *pCharacter)
 	bool RenderAmmo = true;
 	bool RenderHealth = true;
 	bool RenderArmor = true;
-	if(m_pClient->m_pDuckJs->IsLoaded()) {
-		RenderAmmo = m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.m_Ammo & 1;
-		RenderHealth = m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.m_Health & 1;
-		RenderArmor = m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.m_Armor & 1;
+	if(m_pClient->m_pDuckBridge->IsLoaded()) {
+		RenderAmmo = m_pClient->m_pDuckBridge->m_HudPartsShown.m_Ammo & 1;
+		RenderHealth = m_pClient->m_pDuckBridge->m_HudPartsShown.m_Health & 1;
+		RenderArmor = m_pClient->m_pDuckBridge->m_HudPartsShown.m_Armor & 1;
 	}
 
 	float x = 5;
@@ -618,8 +618,8 @@ void CHud::RenderHealthAndAmmo(const CNetObj_Character *pCharacter)
 				}
 				Graphics()->QuadsDrawTL(Array, i);
 			}
-			else if(m_pClient->m_pDuckJs->IsLoaded()) {
-				m_pClient->m_pDuckJs->m_Bridge.RenderWeaponAmmo(pCharacter->m_Weapon, vec2(x, y));
+			else if(m_pClient->m_pDuckBridge->IsLoaded()) {
+				m_pClient->m_pDuckBridge->RenderWeaponAmmo(pCharacter->m_Weapon, vec2(x, y));
 			}
 		}
 	}
@@ -751,9 +751,9 @@ void CHud::OnRender()
 
 	bool RenderTime = true;
 	bool RenderScore = true;
-	if(m_pClient->m_pDuckJs->IsLoaded()) {
-		RenderTime = m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.m_Time & 1;
-		RenderScore = m_pClient->m_pDuckJs->m_Bridge.m_HudPartsShown.m_Score & 1;
+	if(m_pClient->m_pDuckBridge->IsLoaded()) {
+		RenderTime = m_pClient->m_pDuckBridge->m_HudPartsShown.m_Time & 1;
+		RenderScore = m_pClient->m_pDuckBridge->m_HudPartsShown.m_Score & 1;
 	}
 
 	m_Width = 300.0f*Graphics()->ScreenAspect();
@@ -790,8 +790,8 @@ void CHud::OnRender()
 		RenderVoting();
 	}
 
-	if(m_pClient->m_pDuckJs->IsLoaded()) {
-		m_pClient->m_pDuckJs->m_Bridge.RenderDrawSpace(CDuckBridge::DrawSpace::HUD);
+	if(m_pClient->m_pDuckBridge->IsLoaded()) {
+		m_pClient->m_pDuckBridge->RenderDrawSpace(CDuckBridge::DrawSpace::HUD);
 	}
 
 	RenderCursor();

@@ -1,23 +1,24 @@
 #pragma once
 #include <base/tl/array.h>
 #include <engine/client/duktape.h>
-#include <game/client/component.h>
-#include <engine/graphics.h>
-
-#include "duck_bridge.h"
+#include <engine/input.h>
+#include <generated/protocol.h>
+#include <game/gamecore.h>
 
 struct CGrowBuffer;
+struct CDuckBridge;
 
 bool HttpRequestPage(const char* pUrl, CGrowBuffer* pHttpBuffer);
 
-class CDuckJs : public CComponent
+class CDuckJs
 {
+	CDuckBridge* m_pBridge;
 	duk_context* m_pDukContext;
 	int m_CurrentPushedObjID;
-	bool m_IsModLoaded;
 	char aLastCalledFunction[256];
 
 	inline duk_context* Ctx() { return m_pDukContext; }
+	inline CDuckBridge* Bridge() { return m_pBridge; }
 
 	static duk_ret_t NativeRenderQuad(duk_context *ctx);
 	static duk_ret_t NativeRenderQuadCentered(duk_context *ctx);
@@ -69,11 +70,7 @@ class CDuckJs : public CComponent
 	void ObjectSetMemberString(const char* MemberName, const char* pStr);
 	void ObjectSetMember(const char* MemberName);
 
-	bool IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256);
-	bool ExtractAndInstallModZipBuffer(const CGrowBuffer* pHttpZipData, const SHA256_DIGEST* pModSha256);
-	bool ExtractAndInstallModCompressedBuffer(const void* pCompBuff, int CompBuffSize, const SHA256_DIGEST* pModSha256);
 	bool LoadJsScriptFile(const char* pJsFilePath, const char* pJsRelFilePath);
-	bool LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256);
 
 	void ResetDukContext();
 
@@ -82,24 +79,11 @@ class CDuckJs : public CComponent
 	bool HasJsFunctionReturned();
 
 public:
-	CDuckBridge m_Bridge;
-
 	CDuckJs();
-
-	virtual void OnInit();
-	virtual void OnShutdown();
-	virtual void OnRender();
-	virtual void OnMessage(int Msg, void *pRawMsg);
-	virtual void OnStateChange(int NewState, int OldState);
-	virtual bool OnInput(IInput::CEvent e);
-	void OnModReset();
-	void OnModUnload();
-
-	bool StartDuckModHttpDownload(const char* pModUrl, const SHA256_DIGEST* pModSha256);
-	bool TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256);
-	bool InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256);
-
-	inline bool IsLoaded() const { return m_pDukContext != 0 && m_IsModLoaded; }
+	void Shutdown();
+	void OnMessage(int Msg, void* pRawMsg);
+	void OnInput(IInput::CEvent e);
+	void OnModLoaded();
 
 	friend class CDuckBridge;
 };
