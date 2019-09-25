@@ -55,6 +55,10 @@ generate_source('server_content_header', 'server_data.h')
 generate_source('client_content_source', 'client_data.cpp')
 generate_source('client_content_header', 'client_data.h')
 
+# DUCK
+print('******* netobj_js : ' + os.path.join(generated_dir, 'netobj_js.cpp'))
+os.system('python datasrc/netobj_js.py > ' + os.path.join(generated_dir, 'netobj_js.cpp'))
+
 def c_hash(list, output):
     os.system('python scripts/cmd5.py ' + ' '.join(list) + ' > ' + os.path.join(generated_dir, output))
 

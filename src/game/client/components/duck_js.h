@@ -68,6 +68,7 @@ class CDuckJs
 	void ObjectSetMemberFloat(const char* MemberName, float Value);
 	void ObjectSetMemberRawBuffer(const char* MemberName, const void* pRawBuffer, int RawBufferSize);
 	void ObjectSetMemberString(const char* MemberName, const char* pStr);
+	void ObjectSetMemberBool(const char *MemberName, bool Val);
 	void ObjectSetMember(const char* MemberName);
 
 	bool LoadJsScriptFile(const char* pJsFilePath, const char* pJsRelFilePath);
@@ -77,6 +78,8 @@ class CDuckJs
 	bool GetJsFunction(const char* Name);
 	void CallJsFunction(int NumArgs);
 	bool HasJsFunctionReturned();
+
+	bool MakeVanillaJsNetObj(int MsgID, void* pRawMsg);
 
 public:
 	CDuckJs();

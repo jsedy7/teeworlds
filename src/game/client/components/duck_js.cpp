@@ -1230,6 +1230,12 @@ void CDuckJs::ObjectSetMemberString(const char *MemberName, const char *pStr)
 	duk_put_prop_string(Ctx(), m_CurrentPushedObjID, MemberName);
 }
 
+void CDuckJs::ObjectSetMemberBool(const char *MemberName, bool Val)
+{
+	duk_push_boolean(Ctx(), Val);
+	duk_put_prop_string(Ctx(), m_CurrentPushedObjID, MemberName);
+}
+
 void CDuckJs::ObjectSetMember(const char* MemberName)
 {
 	duk_put_prop_string(Ctx(), m_CurrentPushedObjID, MemberName);
@@ -1441,26 +1447,29 @@ void CDuckJs::Shutdown()
 
 void CDuckJs::OnMessage(int Msg, void* pRawMsg)
 {
-	if(Msg == NETMSG_DUCK_NETOBJ)
+	if(GetJsFunction("OnMessage"))
 	{
-		CUnpacker* pUnpacker = (CUnpacker*)pRawMsg;
-		const int ObjID = pUnpacker->GetInt();
-		const int ObjSize = pUnpacker->GetInt();
-		const u8* pObjRawData = (u8*)pUnpacker->GetRaw(ObjSize);
-		//dbg_msg("duck", "DUK packed netobj, id=0x%x size=%d", ObjID, ObjSize);
+		if(MakeVanillaJsNetObj(Msg, pRawMsg))
+		{
+		}
+		else if(Msg == NETMSG_DUCK_NETOBJ)
+		{
+			CUnpacker* pUnpacker = (CUnpacker*)pRawMsg;
+			const int ObjID = pUnpacker->GetInt();
+			const int ObjSize = pUnpacker->GetInt();
+			const u8* pObjRawData = (u8*)pUnpacker->GetRaw(ObjSize);
+			//dbg_msg("duck", "DUK packed netobj, id=0x%x size=%d", ObjID, ObjSize);
 
-		if(GetJsFunction("OnMessage")) {
 			// make netObj
 			PushObject();
 			ObjectSetMemberInt("netID", ObjID);
 			ObjectSetMemberInt("cursor", 0);
 			ObjectSetMemberRawBuffer("raw", pObjRawData, ObjSize);
-
-			// call OnMessage(netObj)
-			CallJsFunction(1);
-
-			duk_pop(Ctx());
 		}
+
+		// call OnMessage(netObj)
+		CallJsFunction(1);
+		duk_pop(Ctx());
 	}
 }
 
