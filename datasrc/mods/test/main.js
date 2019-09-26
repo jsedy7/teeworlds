@@ -11,6 +11,7 @@ var game = {
 };
 
 var lastSendTime = 0.0;
+var lastSoundTime = 0.0;
 
 
 // ----  FUNCTIONS -----
@@ -194,6 +195,10 @@ function OnUpdate(clientLocalTime, intraTick)
         TwSendPacket();
         lastSendTime = clientLocalTime;
     }*/
+    if(clientLocalTime - lastSoundTime > 3.0) {
+        TwPlaySoundGlobal("weird-0" + TwRandomInt(1, 4))
+        lastSoundTime = clientLocalTime;
+    }
 }
 
 function OnRender(clientLocalTime, intraTick)

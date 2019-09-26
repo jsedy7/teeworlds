@@ -5,10 +5,12 @@
 #include <game/client/render.h>
 #include <game/client/components/skins.h>
 #include <game/client/components/controls.h>
+#include <game/client/components/sounds.h>
 
 #include <engine/external/zlib/zlib.h>
 #include <engine/external/pnglite/pnglite.h>
 #include <engine/storage.h>
+#include <engine/sound.h>
 #include <engine/shared/network.h>
 #include <engine/shared/growbuffer.h>
 #include <engine/shared/config.h>
@@ -149,6 +151,9 @@ void CDuckBridge::Reset()
 	}
 	m_aSkinPartsToUnload.clear();
 	m_Collision.Reset();
+
+	// FIXME: unload sounds
+	m_aSounds.clear();
 }
 
 void CDuckBridge::QueueSetColor(const float* pColor)
@@ -447,6 +452,81 @@ CDuckBridge::CWeaponCustom *CDuckBridge::FindWeapon(int WeaponID)
 		return 0;
 
 	return &Found.front();
+}
+
+void CDuckBridge::PlaySoundAt(const char *pSoundName, float x, float y)
+{
+	int Len = str_length(pSoundName);
+	const uint32_t Hash = hash_fnv1a(pSoundName, Len);
+	const int SoundCount = m_aSounds.size();
+
+	int ID = -1;
+	for(int i = 0; i < SoundCount; i++)
+	{
+		if(m_aSounds[i].m_Hash == Hash)
+		{
+			ID = i;
+			break;
+		}
+	}
+
+	if(ID == -1)
+	{
+		dbg_msg("duck", "WARNING: PlaySoundAt('%s'), sound not found", pSoundName);
+		return;
+	}
+
+	Sound()->PlayAt(CSounds::CHN_WORLD, m_aSounds[ID].m_Handle, 0, x, y);
+}
+
+void CDuckBridge::PlaySoundGlobal(const char *pSoundName)
+{
+	int Len = str_length(pSoundName);
+	const uint32_t Hash = hash_fnv1a(pSoundName, Len);
+	const int SoundCount = m_aSounds.size();
+
+	int ID = -1;
+	for(int i = 0; i < SoundCount; i++)
+	{
+		if(m_aSounds[i].m_Hash == Hash)
+		{
+			ID = i;
+			break;
+		}
+	}
+
+	if(ID == -1)
+	{
+		dbg_msg("duck", "WARNING: PlaySoundGlobal('%s'), sound not found", pSoundName);
+		return;
+	}
+
+	Sound()->Play(CSounds::CHN_WORLD, m_aSounds[ID].m_Handle, 0);
+}
+
+void CDuckBridge::PlayMusic(const char *pSoundName)
+{
+	int Len = str_length(pSoundName);
+	const uint32_t Hash = hash_fnv1a(pSoundName, Len);
+	const int SoundCount = m_aSounds.size();
+
+	int ID = -1;
+	for(int i = 0; i < SoundCount; i++)
+	{
+		if(m_aSounds[i].m_Hash == Hash)
+		{
+			ID = i;
+			break;
+		}
+	}
+
+	if(ID == -1)
+	{
+		dbg_msg("duck", "WARNING: PlayMusic('%s'), sound not found", pSoundName);
+		return;
+	}
+
+	Sound()->Play(CSounds::CHN_MUSIC, m_aSounds[ID].m_Handle, ISound::FLAG_LOOP);
 }
 
 void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
@@ -1409,6 +1489,28 @@ bool CDuckBridge::LoadModFilesFromDisk(const SHA256_DIGEST *pModSha256)
 					AddSkinPart(aPart, pPartEnd+1, m_aTextures[m_aTextures.size()-1].m_Handle);
 				}
 			}
+		}
+		else if(str_endswith(pFilePaths[i].m_aBuff, ".wv"))
+		{
+			const char* pSoundName = pFilePaths[i].m_aBuff+ModRootDirLen+1;
+			const char* pSoundRelPath = pFilePaths[i].m_aBuff+SaveDirPathLen;
+			ISound::CSampleHandle SoundId = m_pClient->Sound()->LoadWV(pSoundRelPath);
+
+
+			const int Len = str_length(pSoundName);
+			if(Len < 4 || !SoundId.IsValid()) // .wv
+			{
+				dbg_msg("duck", "ERROR loading sound '%s'", pSoundName);
+				continue;
+			}
+
+			uint32_t Hash = hash_fnv1a(pSoundName, Len-3);
+			dbg_msg("duck", "sound loaded '%s' (%x)", pSoundName, Hash);
+
+			CSoundHashPair Pair;
+			Pair.m_Hash = Hash;
+			Pair.m_Handle = SoundId;
+			m_aSounds.add(Pair);
 		}
 	}
 

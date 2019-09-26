@@ -1128,6 +1128,64 @@ duk_ret_t CDuckJs::NativeAddWeapon(duk_context *ctx)
 	return 0;
 }
 
+duk_ret_t CDuckJs::NativePlaySoundAt(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 3, "Wrong argument count");
+
+	const char* pStr = duk_to_string(ctx, 0);
+	float x = duk_to_number(ctx, 1);
+	float y = duk_to_number(ctx, 2);
+
+	This()->Bridge()->PlaySoundAt(pStr, x, y);
+	return 0;
+}
+
+duk_ret_t CDuckJs::NativePlaySoundGlobal(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	const char* pStr = duk_to_string(ctx, 0);
+
+	This()->Bridge()->PlaySoundGlobal(pStr);
+	return 0;
+}
+
+duk_ret_t CDuckJs::NativePlayMusic(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 1, "Wrong argument count");
+
+	const char* pStr = duk_to_string(ctx, 0);
+
+	This()->Bridge()->PlayMusic(pStr);
+	return 0;
+}
+
+duk_ret_t CDuckJs::NativeRandomInt(duk_context *ctx)
+{
+	int n = duk_get_top(ctx);  /* #args */
+	dbg_assert(n == 2, "Wrong argument count");
+
+	int Min = duk_to_int(ctx, 0);
+	int Max = duk_to_int(ctx, 1);
+	if(Min > Max)
+		tl_swap(Min, Max);
+
+	// xor shift random
+	static uint32_t XorShiftState = time(0);
+	uint32_t x = XorShiftState;
+	x ^= x << 13;
+	x ^= x >> 17;
+	x ^= x << 5;
+	XorShiftState = x;
+
+	int Val = x % (Max - Min + 1) + Min;
+	duk_push_int(ctx, Val);
+	return 1;
+}
+
 template<typename IntT>
 duk_ret_t CDuckJs::NativeUnpackInteger(duk_context *ctx)
 {
@@ -1363,6 +1421,10 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(PacketAddString, 2);
 	REGISTER_FUNC(SendPacket, 0);
 	REGISTER_FUNC(AddWeapon, 1);
+	REGISTER_FUNC(PlaySoundAt, 3);
+	REGISTER_FUNC(PlaySoundGlobal, 1);
+	REGISTER_FUNC(PlayMusic, 1);
+	REGISTER_FUNC(RandomInt, 2);
 
 #undef REGISTER_FUNC
 

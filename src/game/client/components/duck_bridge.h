@@ -3,6 +3,7 @@
 #include <base/tl/array.h>
 #include <base/tl/sorted_array.h>
 #include <engine/graphics.h>
+#include <engine/sound.h>
 #include <game/duck_collision.h>
 #include <game/client/component.h>
 #include <generated/protocol.h>
@@ -246,6 +247,14 @@ struct CDuckBridge : public CComponent
 
 	sorted_array<CWeaponCustom> m_aWeapons;
 
+	struct CSoundHashPair
+	{
+		uint32_t m_Hash;
+		ISound::CSampleHandle m_Handle;
+	};
+
+	array<CSoundHashPair> m_aSounds;
+
 	void DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo);
 	void DrawTeeHand(const CTeeDrawHand& Hand, const CTeeSkinInfo& SkinInfo);
 
@@ -280,6 +289,10 @@ struct CDuckBridge : public CComponent
 	void AddSkinPart(const char* pPart, const char* pName, IGraphics::CTextureHandle Handle);
 	void AddWeapon(const CWeaponCustomJs& Wc);
 	CWeaponCustom* FindWeapon(int WeaponID);
+
+	void PlaySoundAt(const char* pSoundName, float x, float y);
+	void PlaySoundGlobal(const char* pSoundName);
+	void PlayMusic(const char* pSoundName);
 
 	// "entries"
 	void RenderDrawSpace(DrawSpace::Enum Space);

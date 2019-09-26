@@ -57,6 +57,10 @@ class CDuckJs
 	static duk_ret_t NativePacketAddString(duk_context *ctx);
 	static duk_ret_t NativeSendPacket(duk_context *ctx);
 	static duk_ret_t NativeAddWeapon(duk_context *ctx);
+	static duk_ret_t NativePlaySoundAt(duk_context *ctx);
+	static duk_ret_t NativePlaySoundGlobal(duk_context *ctx);
+	static duk_ret_t NativePlayMusic(duk_context *ctx);
+	static duk_ret_t NativeRandomInt(duk_context *ctx);
 
 	template<typename IntT>
 	static duk_ret_t NativeUnpackInteger(duk_context *ctx);
