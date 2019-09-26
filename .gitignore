@@ -68,3 +68,4 @@ install_manifest.txt
 pack_*/
 rules.ninja
 /ignore
+/sphinx/build
