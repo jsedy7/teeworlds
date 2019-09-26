@@ -1005,6 +1005,7 @@ duk_ret_t CDuckJs::NativeSetHudPartsShown(duk_context *ctx)
 		killfeed: 1,
 		score: 1,
 		chat: 1,
+		scoreboard: 1,
 	}
 	*/
 
@@ -1020,6 +1021,7 @@ duk_ret_t CDuckJs::NativeSetHudPartsShown(duk_context *ctx)
 	DukGetIntProp(ctx, 0, "killfeed", &hps.m_KillFeed);
 	DukGetIntProp(ctx, 0, "score", &hps.m_Score);
 	DukGetIntProp(ctx, 0, "chat", &hps.m_Chat);
+	DukGetIntProp(ctx, 0, "scoreboard", &hps.m_Scoreboard);
 
 	This()->Bridge()->SetHudPartsShown(hps);
 

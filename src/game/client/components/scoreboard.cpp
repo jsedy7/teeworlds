@@ -16,6 +16,7 @@
 #include <game/client/components/countryflags.h>
 #include <game/client/components/motd.h>
 #include <game/client/components/stats.h>
+#include <game/client/components/duck_bridge.h>
 
 #include "menus.h"
 #include "stats.h"
@@ -640,6 +641,10 @@ void CScoreboard::RenderRecordingNotification(float x)
 void CScoreboard::OnRender()
 {
 	if(m_pClient->m_pStats->IsActive())
+		return;
+
+	CDuckBridge* pBridge = m_pClient->m_pDuckBridge;
+	if(pBridge->IsLoaded() && pBridge->m_HudPartsShown.m_Scoreboard == 0)
 		return;
 
 	// postpone the active state till the render area gets updated during the rendering

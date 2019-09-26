@@ -179,6 +179,7 @@ struct CDuckBridge : public CComponent
 
 	struct CHudPartsShown
 	{
+		// TODO: make those bools?
 		int m_Health;
 		int m_Armor;
 		int m_Ammo;
@@ -186,6 +187,7 @@ struct CDuckBridge : public CComponent
 		int m_KillFeed;
 		int m_Score;
 		int m_Chat;
+		int m_Scoreboard;
 
 		CHudPartsShown() {
 			m_Health = 1;
@@ -195,6 +197,7 @@ struct CDuckBridge : public CComponent
 			m_KillFeed = 1;
 			m_Score = 1;
 			m_Chat = 1;
+			m_Scoreboard = 1;
 		}
 	};
 
