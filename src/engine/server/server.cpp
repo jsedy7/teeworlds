@@ -867,30 +867,7 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 				m_aClients[ClientID].m_State = CClient::STATE_CONNECTING;
 
 				// DUCK
-				// try to get duck version
-				const int DuckVersion = Unpacker.GetInt();
-				if(!Unpacker.Error())
-				{
-					m_aClients[ClientID].m_DuckVersion = DuckVersion;
-
-					// dev mode
-					if(IsDuckDevMode())
-					{
-						// TODO: oh god, do this elsewhere / cache it
-						if(CompressDuckModFolder(m_aDuckDevModFolderPath))
-							SendDuckModChunks(ClientID);
-						else
-						{
-							dbg_msg("duck", "[dev mode] failed to load and compress duck mod (sv_duck_dev_mod_dir). dir='%s'", m_aDuckDevModFolderPath);
-							m_NetServer.Drop(ClientID, "Server local mod is invalid");
-							return;
-						}
-					}
-					else
-						SendDuckModHttp(ClientID);
-					// send map after mod
-				}
-				else
+				if(!HandleDuckClientInfo(ClientID, &Unpacker))
 				{
 					m_aClients[ClientID].m_DuckVersion = 0;
 					SendMap(ClientID);
@@ -1114,37 +1091,7 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 		}
 		else if(Msg == NETMSG_DUCK_MOD_REQUEST_DATA)
 		{
-			if((pPacket->m_Flags&NET_CHUNKFLAG_VITAL) != 0 && (m_aClients[ClientID].m_State == CClient::STATE_CONNECTING || m_aClients[ClientID].m_State == CClient::STATE_CONNECTING_AS_SPEC))
-			{
-				int ChunkSize = MAP_CHUNK_SIZE;
-
-				// send map chunks
-				for(int i = 0; i < m_MapChunksPerRequest && m_aClients[ClientID].m_DuckModChunk >= 0; ++i)
-				{
-					int Chunk = m_aClients[ClientID].m_DuckModChunk;
-					int Offset = Chunk * ChunkSize;
-
-					// check for last part
-					if(Offset+ChunkSize >= m_DuckModFileBuffer.m_Size)
-					{
-						ChunkSize = m_DuckModFileBuffer.m_Size-Offset;
-						m_aClients[ClientID].m_DuckModChunk = -1;
-					}
-					else
-						m_aClients[ClientID].m_DuckModChunk++;
-
-					CMsgPacker Msg(NETMSG_DUCK_MOD_DATA, true);
-					Msg.AddRaw(&m_DuckModFileBuffer.m_pData[Offset], ChunkSize);
-					SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH, ClientID);
-
-					if(g_Config.m_Debug)
-					{
-						char aBuf[64];
-						str_format(aBuf, sizeof(aBuf), "sending mod chunk chunk %d with size %d", Chunk, ChunkSize);
-						Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "server", aBuf);
-					}
-				}
-			}
+			SendDuckModChunks(ClientID);
 		}
 		else if(Msg == NETMSG_DUCK_NETOBJ)
 		{
@@ -1860,7 +1807,7 @@ void CServer::ResetDuckMod()
 }
 
 // DUCK
-void CServer::SendDuckModHttp(int ClientID)
+void CServer::SendDuckModHttpInfo(int ClientID)
 {
 	CMsgPacker Msg(NETMSG_DUCK_MOD_INFO, true);
 	Msg.AddString("Mod description", 128); // TODO: add mod description, preview image?
@@ -1869,7 +1816,7 @@ void CServer::SendDuckModHttp(int ClientID)
 	SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH, ClientID);
 }
 
-void CServer::SendDuckModChunks(int ClientID)
+void CServer::SendDuckModChunkInfo(int ClientID)
 {
 	CMsgPacker Msg(NETMSG_DUCK_MOD_INFO_DEV, true);
 	Msg.AddInt(m_DuckModFileBuffer.m_Size);
@@ -2107,6 +2054,70 @@ bool CServer::CompressDuckModFolder(const char* pModPath)
 	dbg_msg("duck", "done creating mod file pack size=%d comp_ratio=%g sha256=%s", DestSize, FilePackBuff.m_Size/(double)DestSize, aModSha256Str);
 
 	return true;
+}
+
+void CServer::SendDuckModChunks(int ClientID)
+{
+	if((m_aClients[ClientID].m_State == CClient::STATE_CONNECTING || m_aClients[ClientID].m_State == CClient::STATE_CONNECTING_AS_SPEC))
+	{
+		int ChunkSize = MAP_CHUNK_SIZE;
+
+		// send map chunks
+		for(int i = 0; i < m_MapChunksPerRequest && m_aClients[ClientID].m_DuckModChunk >= 0; ++i)
+		{
+			int Chunk = m_aClients[ClientID].m_DuckModChunk;
+			int Offset = Chunk * ChunkSize;
+
+			// check for last part
+			if(Offset+ChunkSize >= m_DuckModFileBuffer.m_Size)
+			{
+				ChunkSize = m_DuckModFileBuffer.m_Size-Offset;
+				m_aClients[ClientID].m_DuckModChunk = -1;
+			}
+			else
+				m_aClients[ClientID].m_DuckModChunk++;
+
+			CMsgPacker Msg(NETMSG_DUCK_MOD_DATA, true);
+			Msg.AddRaw(&m_DuckModFileBuffer.m_pData[Offset], ChunkSize);
+			SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH, ClientID);
+
+			if(g_Config.m_Debug)
+			{
+				char aBuf[64];
+				str_format(aBuf, sizeof(aBuf), "sending mod chunk chunk %d with size %d", Chunk, ChunkSize);
+				Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "server", aBuf);
+			}
+		}
+	}
+}
+
+bool CServer::HandleDuckClientInfo(int ClientID, CUnpacker *pUnpacker)
+{
+	// try to get duck version
+	const int DuckVersion = pUnpacker->GetInt();
+	if(!pUnpacker->Error())
+	{
+		m_aClients[ClientID].m_DuckVersion = DuckVersion;
+
+		// dev mode
+		if(IsDuckDevMode())
+		{
+			// TODO: oh god, do this elsewhere / cache it
+			if(CompressDuckModFolder(m_aDuckDevModFolderPath))
+				SendDuckModChunkInfo(ClientID);
+			else
+			{
+				dbg_msg("duck", "[dev mode] failed to load and compress duck mod (sv_duck_dev_mod_dir). dir='%s'", m_aDuckDevModFolderPath);
+				m_NetServer.Drop(ClientID, "Server local mod is invalid");
+				return false;
+			}
+		}
+		else
+			SendDuckModHttpInfo(ClientID);
+		// send map after mod
+		return true;
+	}
+	return false; // send map immediatly
 }
 
 bool CServer::LoadDuckMod(const char* pReleaseUrl, const char* pReleaseZipPath, const char* pDevFolderPath)

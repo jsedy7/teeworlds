@@ -296,10 +296,12 @@ public:
 
 	bool IsDuckDevMode() const;
 	void ResetDuckMod();
-	void SendDuckModHttp(int ClientID);
-	void SendDuckModChunks(int ClientID);
+	void SendDuckModHttpInfo(int ClientID);
+	void SendDuckModChunkInfo(int ClientID);
 	bool LoadDuckModZipFile(const char *pModPath);
 	bool CompressDuckModFolder(const char* pModPath);
+	void SendDuckModChunks(int ClientID);
+	bool HandleDuckClientInfo(int ClientID, CUnpacker* pUnpacker);
 
 	bool LoadDuckMod(const char* pReleaseUrl, const char* pReleaseZipPath, const char* pDevFolderPath);
 };

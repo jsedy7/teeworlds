@@ -2,7 +2,6 @@
 #define BASE_HASH_H
 
 #include <stddef.h>
-#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,16 +39,5 @@ inline bool operator!=(const SHA256_DIGEST &that, const SHA256_DIGEST &other)
 	return !(that == other);
 }
 #endif
-
-inline uint32_t hash_fnv1a(const void* pData, int DataSize)
-{
-	uint32_t Hash = 0x811c9dc5;
-	for(int i = 0; i < DataSize; i++)
-	{
-		Hash ^= ((uint8_t*)pData)[i];
-		Hash *= 16777619;
-	}
-	return Hash;
-}
 
 #endif // BASE_HASH_H
