@@ -64,3 +64,25 @@ for obj in network.Objects + network.Messages:
 
 print("\treturn false;")
 print("}\n")
+
+print("")
+print("const char* CDuckJs::GetContentEnumsAsJs()\n{")
+print("\tstatic const char* str = \"\\")
+
+i = 0
+for img in content.container.images.items:
+    print("\t\tIMAGE_%s: %d,\\" % (img.name.value.upper(), i))
+    i += 1
+
+print("\t\tNUM_IMAGES: %d,\\" % (i))
+
+i = 0
+for img in content.container.sprites.items:
+    print("\t\tSPRITE_%s: %d,\\" % (img.name.value.upper(), i))
+    i += 1
+
+print("\t\tNUM_SPRITES: %d,\\" % (i))
+
+print("\t\";")
+print("\treturn str;")
+print("}\n")

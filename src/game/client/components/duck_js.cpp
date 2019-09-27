@@ -21,7 +21,12 @@ inline CDuckJs* This() { return s_DuckJs; }
 
 static duk_ret_t NativePrint(duk_context *ctx)
 {
-	dbg_msg("duck", "%s", duk_to_string(ctx, 0));
+	const char* pStr = duk_to_string(ctx, 0);
+	const int Len = str_length(pStr);
+	const int MaxLen = 2048;
+
+	for(int i = 0; i < (Len/MaxLen + 1); i++)
+		dbg_msg("duck", "%.*s", MaxLen, pStr + i * MaxLen);
 	return 0;  /* no return value (= undefined) */
 }
 
@@ -2295,12 +2300,21 @@ void CDuckJs::ResetDukContext()
 #undef REGISTER_FUNC
 
 	// Teeworlds global object
-	duk_eval_string(Ctx(),
+	char* aBuff = (char*)mem_alloc(1024*1024, 1);
+
+	str_format(aBuff, 1024*1024,
 		"const Teeworlds = {"
 		"	DRAW_SPACE_GAME: 0,"
 		"	DRAW_SPACE_HUD: 1,"
-		"};");
+		"%s"
+		"};", GetContentEnumsAsJs());
+
+	//dbg_msg("duck", aBuff);
+
+	duk_eval_string(Ctx(), aBuff);
 	duk_pop(Ctx());
+
+	mem_free(aBuff);
 }
 
 bool CDuckJs::GetJsFunction(const char *Name)

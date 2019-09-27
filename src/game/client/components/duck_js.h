@@ -78,6 +78,7 @@ class CDuckJs
 	bool HasJsFunctionReturned();
 
 	bool MakeVanillaJsNetObj(int MsgID, void* pRawMsg);
+	const char* GetContentEnumsAsJs();
 
 public:
 	CDuckJs();
