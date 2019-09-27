@@ -121,7 +121,7 @@ function DrawCircle(pos, radius, color)
     TwRenderSetTexture(-1);
     TwRenderSetColorF4(color[0], color[1], color[2], color[3]);
     TwRenderSetFreeform(circle);
-    TwRenderDrawFreeform(pos);
+    TwRenderDrawFreeform(pos[0], pos[1]);
 }
 
 function DrawTeeWeapon(weapId, x, y, teeSize)
@@ -374,45 +374,46 @@ function OnMessage(netObj)
     //printObj(netObj);
     
     if(netObj.netID == 0x1) { // DEBUG_RECT
-        var rectId = TwUnpackInt32(netObj);
-        var rect = {
-            x: TwUnpackFloat(netObj),
-            y: TwUnpackFloat(netObj),
-            w: TwUnpackFloat(netObj),
-            h: TwUnpackFloat(netObj),
-            color: TwUnpackUint32(netObj),
-        };
-        game.debugRects[rectId] = rect;
+        var rect = TwNetPacketUnpack(netObj, {
+            i32_rectID: 0,
+            float_x: 0,
+            float_y: 0,
+            float_w: 0,
+            float_h: 0,
+            i32_color: 0
+        });
+        game.debugRects[rect.rectID] = rect;
         return;
     }
 
     if(netObj.netID == 0x3) { // CNetObj_HookBlock
-        var blockId = TwUnpackInt32(netObj);
-        var block = {
-            flags: TwUnpackInt32(netObj),
-            pos_x: TwUnpackFloat(netObj),
-            pos_y: TwUnpackFloat(netObj),
-            vel_x: TwUnpackFloat(netObj),
-            vel_y: TwUnpackFloat(netObj),
-            width: TwUnpackFloat(netObj),
-            height: TwUnpackFloat(netObj),
-        };
-        game.staticBlocks[blockId] = block;
-        TwCollisionSetStaticBlock(blockId, block);
+        var block = TwNetPacketUnpack(netObj, {
+            i32_blockID: 0,
+            i32_flags:   0,
+            float_pos_x: 0,
+            float_pos_y: 0,
+            float_vel_x: 0,
+            float_vel_y: 0,
+            float_width: 0,
+            float_height:0,
+        });
+        game.staticBlocks[block.blockID] = block;
+        TwCollisionSetStaticBlock(block.blockID, block);
         return;
     }
 
     if(netObj.netID == 0x4) { // CNetObj_DynamicDisk
-        var diskId = TwUnpackInt32(netObj);
-        var disk = {
-            flags: TwUnpackInt32(netObj),
-            pos_x: TwUnpackFloat(netObj),
-            pos_y: TwUnpackFloat(netObj),
-            vel_x: TwUnpackFloat(netObj),
-            vel_y: TwUnpackFloat(netObj),
-            radius: TwUnpackFloat(netObj),
-            hook_force: TwUnpackFloat(netObj),
-        };
+        var disk = TwNetPacketUnpack(netObj, {
+            i32_diskID: 0,
+            i32_flags:   0,
+            float_pos_x: 0,
+            float_pos_y: 0,
+            float_vel_x: 0,
+            float_vel_y: 0,
+            float_radius: 0,
+            float_hook_force:0,
+        });
+        var diskId = disk.diskID;
         game.prevDynDisks[diskId] = game.dynDisks[diskId];
         game.dynDisks[diskId] = disk;
         TwCollisionSetDynamicDisk(diskId, disk);

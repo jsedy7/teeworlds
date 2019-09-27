@@ -56,6 +56,7 @@ class CDuckJs
 	static duk_ret_t NativeNetPacketAddFloat(duk_context *ctx);
 	static duk_ret_t NativeNetPacketAddString(duk_context *ctx);
 	static duk_ret_t NativeNetSendPacket(duk_context *ctx);
+	static duk_ret_t NativeNetPacketUnpack(duk_context *ctx);
 	static duk_ret_t NativeAddWeapon(duk_context *ctx);
 	static duk_ret_t NativePlaySoundAt(duk_context *ctx);
 	static duk_ret_t NativePlaySoundGlobal(duk_context *ctx);

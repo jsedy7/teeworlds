@@ -25,6 +25,29 @@ static duk_ret_t NativePrint(duk_context *ctx)
 	return 0;  /* no return value (= undefined) */
 }
 
+bool _CheckArgumentCountImp(duk_context* pCtx, int NumArgs, const char* pFuncName)
+{
+	int n = duk_get_top(pCtx);
+	if(n != NumArgs)
+	{
+		dbg_msg("duck", "ERROR: Tw%s() wrong argument count, expected %d", pFuncName, NumArgs);
+		return false;
+	}
+
+	for(int i = 0; i < n; i++)
+	{
+		if(duk_is_undefined(pCtx, i))
+		{
+			dbg_msg("duck", "ERROR: Tw%s() wrong argument count, expected %d", pFuncName, NumArgs);
+			return false;
+		}
+	}
+
+	return true;
+}
+
+#define CheckArgumentCount(ctx, num) if(!_CheckArgumentCountImp(ctx, num, __FUNCTION__ + 15)) { return 0; }
+
 /*#
 `TwRenderQuad(x, y, width, height)`
 
@@ -43,8 +66,8 @@ Draws a quad.
 #*/
 duk_ret_t CDuckJs::NativeRenderQuad(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 4, "Wrong argument count");
+	CheckArgumentCount(ctx, 4);
+
 	double x = duk_to_number(ctx, 0);
 	double y = duk_to_number(ctx, 1);
 	double Width = duk_to_number(ctx, 2);
@@ -73,8 +96,8 @@ Draws a quad centered.
 #*/
 duk_ret_t CDuckJs::NativeRenderQuadCentered(duk_context* ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 4, "Wrong argument count");
+	CheckArgumentCount(ctx, 4);
+
 	double x = duk_to_number(ctx, 0);
 	double y = duk_to_number(ctx, 1);
 	double Width = duk_to_number(ctx, 2);
@@ -101,8 +124,8 @@ duk_ret_t CDuckJs::NativeRenderQuadCentered(duk_context* ctx)
 #*/
 duk_ret_t CDuckJs::NativeRenderSetColorU32(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
+
 	int x = duk_to_int(ctx, 0);
 
 	float aColor[4];
@@ -133,8 +156,7 @@ duk_ret_t CDuckJs::NativeRenderSetColorU32(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeRenderSetColorF4(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 4, "Wrong argument count");
+	CheckArgumentCount(ctx, 4);
 
 	float aColor[4];
 	aColor[0] = duk_to_number(ctx, 0);
@@ -162,8 +184,8 @@ duk_ret_t CDuckJs::NativeRenderSetColorF4(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeRenderSetTexture(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
+
 	This()->Bridge()->QueueSetTexture((int)duk_to_int(ctx, 0));
 	return 0;
 }
@@ -186,8 +208,7 @@ duk_ret_t CDuckJs::NativeRenderSetTexture(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeRenderSetQuadSubSet(duk_context* ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 4, "Wrong argument count");
+	CheckArgumentCount(ctx, 4);
 
 	float aSubSet[4];
 	aSubSet[0] = duk_to_number(ctx, 0);
@@ -214,8 +235,7 @@ duk_ret_t CDuckJs::NativeRenderSetQuadSubSet(duk_context* ctx)
 #*/
 duk_ret_t CDuckJs::NativeRenderSetQuadRotation(duk_context* ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	float Angle = duk_to_number(ctx, 0);
 	This()->Bridge()->QueueSetQuadRotation(Angle);
@@ -263,8 +283,7 @@ duk_ret_t CDuckJs::NativeRenderSetQuadRotation(duk_context* ctx)
 #*/
 duk_ret_t CDuckJs::NativeRenderSetTeeSkin(duk_context* ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	CDuckBridge::CTeeSkinInfo SkinInfo;
 
@@ -350,8 +369,7 @@ duk_ret_t CDuckJs::NativeRenderSetTeeSkin(duk_context* ctx)
 #*/
 duk_ret_t CDuckJs::NativeRenderSetFreeform(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	IGraphics::CFreeformItem* pFreeformBuffer = (IGraphics::CFreeformItem*)This()->Bridge()->m_FrameAllocator.Alloc(sizeof(IGraphics::CFreeformItem) * CDuckBridge::CRenderSpace::FREEFORM_MAX_COUNT );
 	int FreeformCount = 0;
@@ -401,8 +419,7 @@ duk_ret_t CDuckJs::NativeRenderSetFreeform(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeRenderSetDrawSpace(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	int ds = duk_to_int(ctx, 0);
 	dbg_assert(ds >= 0 && ds < CDuckBridge::DrawSpace::_COUNT, "Draw space undefined");
@@ -440,8 +457,7 @@ duk_ret_t CDuckJs::NativeRenderSetDrawSpace(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	/*
 	 * tee = {
@@ -548,8 +564,7 @@ duk_ret_t CDuckJs::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeRenderDrawTeeHand(duk_context* ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	/*
 	 * hand = {
@@ -641,8 +656,7 @@ duk_ret_t CDuckJs::NativeRenderDrawTeeHand(duk_context* ctx)
 #*/
 duk_ret_t CDuckJs::NativeRenderDrawFreeform(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 2, "Wrong argument count");
+	CheckArgumentCount(ctx, 2);
 
 	vec2 Pos;
 	Pos.x = duk_to_number(ctx, 0);
@@ -668,8 +682,7 @@ duk_ret_t CDuckJs::NativeRenderDrawFreeform(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeGetBaseTexture(duk_context* ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	int ImgID = duk_to_int(ctx, 0);
 
@@ -722,8 +735,7 @@ static void GetSpriteSubSet(const CDataSprite& Spr, float* pOutSubSet)
 #*/
 duk_ret_t CDuckJs::NativeGetSpriteSubSet(duk_context* ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	int SpriteID = duk_to_int(ctx, 0);
 
@@ -755,8 +767,7 @@ duk_ret_t CDuckJs::NativeGetSpriteSubSet(duk_context* ctx)
 #*/
 duk_ret_t CDuckJs::NativeGetSpriteScale(duk_context* ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	int SpriteID = duk_to_int(ctx, 0);
 
@@ -792,8 +803,7 @@ duk_ret_t CDuckJs::NativeGetSpriteScale(duk_context* ctx)
 #*/
 duk_ret_t CDuckJs::NativeGetWeaponSpec(duk_context* ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	int WeaponID = clamp((int)duk_to_int(ctx, 0), 0, NUM_WEAPONS-1);
 	const CDataWeaponspec BaseSpec = g_pData->m_Weapons.m_aId[WeaponID];
@@ -956,8 +966,7 @@ duk_ret_t CDuckJs::NativeGetWeaponSpec(duk_context* ctx)
 #*/
 duk_ret_t CDuckJs::NativeGetModTexture(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	const char* pTextureName = duk_get_string(ctx, 0);
 	IGraphics::CTextureHandle Handle = This()->Bridge()->GetTextureFromName(pTextureName);
@@ -1002,8 +1011,7 @@ duk_ret_t CDuckJs::NativeGetModTexture(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeGetClientSkinInfo(duk_context* ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	const int ClientID = clamp((int)duk_to_int(ctx, 0), 0, MAX_CLIENTS-1);
 	if(!This()->Bridge()->m_pClient->m_aClients[ClientID].m_Active)
@@ -1084,8 +1092,7 @@ duk_ret_t CDuckJs::NativeGetClientSkinInfo(duk_context* ctx)
 #*/
 duk_ret_t CDuckJs::NativeGetClientCharacterCores(duk_context* ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 0, "Wrong argument count");
+	CheckArgumentCount(ctx, 0);
 
 	IClient* pClient = This()->Bridge()->Client();
 	CGameClient* pGameClient = This()->Bridge()->m_pClient;
@@ -1183,8 +1190,7 @@ duk_ret_t CDuckJs::NativeGetClientCharacterCores(duk_context* ctx)
 #*/
 duk_ret_t CDuckJs::NativeGetStandardSkinInfo(duk_context* ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 0, "Wrong argument count");
+	CheckArgumentCount(ctx, 0);
 
 	// TODO: make an actual standard skin info
 	const CTeeRenderInfo& RenderInfo = This()->Bridge()->m_pClient->m_aClients[This()->Bridge()->m_pClient->m_LocalClientID].m_RenderInfo;
@@ -1238,8 +1244,7 @@ duk_ret_t CDuckJs::NativeGetStandardSkinInfo(duk_context* ctx)
 #*/
 duk_ret_t CDuckJs::NativeGetSkinPartTexture(duk_context* ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 2, "Wrong argument count");
+	CheckArgumentCount(ctx, 2);
 
 	// TODO: bound check
 	int Part = clamp((int)duk_to_int(ctx, 0), 0, NUM_SKINPARTS-1);
@@ -1277,10 +1282,7 @@ duk_ret_t CDuckJs::NativeGetSkinPartTexture(duk_context* ctx)
 #*/
 duk_ret_t CDuckJs::NativeGetCursorPosition(duk_context *ctx)
 {
-	// Get position in world space
-
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 0, "Wrong argument count");
+	CheckArgumentCount(ctx, 0);
 
 	const vec2 CursorPos = This()->Bridge()->m_pClient->m_pControls->m_TargetPos;
 
@@ -1311,8 +1313,7 @@ duk_ret_t CDuckJs::NativeGetCursorPosition(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeMapSetTileCollisionFlags(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 3, "Wrong argument count");
+	CheckArgumentCount(ctx, 3);
 
 	int Tx = duk_to_int(ctx, 0);
 	int Ty = duk_to_int(ctx, 1);
@@ -1339,8 +1340,7 @@ duk_ret_t CDuckJs::NativeMapSetTileCollisionFlags(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeDirectionFromAngle(duk_context* ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	float Angle = (float)duk_to_number(ctx, 0);
 	vec2 Dir = direction(Angle);
@@ -1381,8 +1381,7 @@ duk_ret_t CDuckJs::NativeDirectionFromAngle(duk_context* ctx)
 #*/
 duk_ret_t CDuckJs::NativeCollisionSetStaticBlock(duk_context* ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 2, "Wrong argument count");
+	CheckArgumentCount(ctx, 2);
 
 	int BlockId = duk_to_int(ctx, 0);
 
@@ -1436,8 +1435,7 @@ duk_ret_t CDuckJs::NativeCollisionSetStaticBlock(duk_context* ctx)
 #*/
 duk_ret_t CDuckJs::NativeCollisionClearStaticBlock(duk_context* ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	int BlockId = duk_to_int(ctx, 0);
 	if(BlockId >= 0)
@@ -1474,15 +1472,13 @@ duk_ret_t CDuckJs::NativeCollisionClearStaticBlock(duk_context* ctx)
 #*/
 duk_ret_t CDuckJs::NativeCollisionSetDynamicDisk(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 2, "Wrong argument count");
+	CheckArgumentCount(ctx, 2);
 
 	int DiskId = duk_to_int(ctx, 0);
 
 	CDuckCollision::CDynamicDisk Disk;
-	Disk.m_Flags = -1;
 
-	int Flags;
+	int Flags = -1;
 	DukGetIntProp(ctx, 1, "flags", &Flags);
 	Disk.m_Flags = Flags;
 	DukGetFloatProp(ctx, 1, "pos_x", &Disk.m_Pos.x);
@@ -1513,8 +1509,7 @@ duk_ret_t CDuckJs::NativeCollisionSetDynamicDisk(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeCollisionClearDynamicDisk(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	int DiskId = duk_to_int(ctx, 0);
 	if(DiskId >= 0)
@@ -1555,8 +1550,7 @@ duk_ret_t CDuckJs::NativeCollisionClearDynamicDisk(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeCollisionGetPredictedDynamicDisks(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 0, "Wrong argument count");
+	CheckArgumentCount(ctx, 0);
 
 	const CDuckCollision::CDynamicDisk* pDisks = This()->Bridge()->m_Collision.m_aDynamicDisks.base_ptr();
 	const int DiskCount = This()->Bridge()->m_Collision.m_aDynamicDisks.size();
@@ -1640,8 +1634,7 @@ duk_ret_t CDuckJs::NativeSetHudPartsShown(duk_context *ctx)
 	}
 	*/
 
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	CDuckBridge::CHudPartsShown hps;
 
@@ -1682,8 +1675,7 @@ duk_ret_t CDuckJs::NativeSetHudPartsShown(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeNetCreatePacket(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	/*
 	var info = {
@@ -1726,8 +1718,7 @@ duk_ret_t CDuckJs::NativeNetCreatePacket(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeNetPacketAddInt(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	int i = duk_to_int(ctx, 0);
 	This()->Bridge()->PacketPackInt(i);
@@ -1750,8 +1741,7 @@ duk_ret_t CDuckJs::NativeNetPacketAddInt(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeNetPacketAddFloat(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	double f = duk_to_number(ctx, 0);
 	This()->Bridge()->PacketPackFloat((float)f);
@@ -1776,8 +1766,7 @@ duk_ret_t CDuckJs::NativeNetPacketAddFloat(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeNetPacketAddString(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 2, "Wrong argument count");
+	CheckArgumentCount(ctx, 2);
 
 	const char* pStr = duk_to_string(ctx, 0);
 	int SizeLimit = duk_to_int(ctx, 1);
@@ -1801,11 +1790,124 @@ duk_ret_t CDuckJs::NativeNetPacketAddString(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeNetSendPacket(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 0, "Wrong argument count");
+	CheckArgumentCount(ctx, 0);
 
 	This()->Bridge()->SendPacket();
 	return 0;
+}
+
+duk_ret_t CDuckJs::NativeNetPacketUnpack(duk_context *ctx)
+{
+	CheckArgumentCount(ctx, 2);
+
+	if(!duk_is_object(ctx, 0))
+	{
+		dbg_msg("duck", "ERROR: TwNetPacketUnpack(net_obj, template) net_obj is not an object");
+		return 0;
+	}
+
+	if(!duk_is_object(ctx, 1))
+	{
+		dbg_msg("duck", "ERROR: TwNetPacketUnpack(net_obj, template) template is not an object");
+		return 0;
+	}
+
+	duk_get_prop_string(ctx, 0, "raw");
+	duk_size_t RawBufferSize;
+	const u8* pRawBuffer = (u8*)duk_get_buffer(ctx, -1, &RawBufferSize);
+	duk_pop(ctx);
+
+	int Cursor = 0;
+
+	enum {
+		T_INT32=0,
+		T_FLOAT,
+		T_STRING
+	};
+
+	struct CKeyValuePair {
+		char aKey[64];
+		const void* pValue;
+		int Type;
+		int Size;
+	};
+
+	array<CKeyValuePair> aProperties;
+
+#define ADD_PROP(NAMEOFF, TYPE, SIZE) CKeyValuePair vp;\
+	str_copy(vp.aKey, pKey + NAMEOFF, sizeof(vp.aKey));\
+	vp.pValue = pRawBuffer + Cursor;\
+	vp.Type = TYPE;\
+	vp.Size = SIZE;\
+	Cursor += SIZE;\
+	if(Cursor > RawBufferSize) {\
+		dbg_msg("duck", "ERROR: TwNetPacketUnpack(net_obj, template) template is too large (%d > %d)", Cursor, RawBufferSize);\
+		return 0;\
+	}\
+	aProperties.add(vp)
+
+	// list properties
+	duk_enum(ctx, 1, DUK_ENUM_OWN_PROPERTIES_ONLY);
+
+	while(duk_next(ctx, -1 /*enum_idx*/, 0 /*get_value*/))
+	{
+		/* [ ... enum key ] */
+		const char* pKey = duk_get_string(ctx, -1);
+
+		if(str_startswith(pKey, "i32_"))
+		{
+			ADD_PROP(4, T_INT32, 4);
+		}
+		else if(str_startswith(pKey, "float_"))
+		{
+			ADD_PROP(6, T_FLOAT, 4);
+		}
+		else if(str_startswith(pKey, "str"))
+		{
+			int Size;
+			if(sscanf(pKey+3, "%d_", &Size) == 1)
+			{
+				int Offset = str_find(pKey, "_") - pKey + 1;
+				ADD_PROP(Offset, T_STRING, Size);
+			}
+		}
+
+		duk_pop(ctx);  /* pop_key */
+	}
+
+#undef ADD_PROP
+	duk_pop(ctx);  /* pop enum object */
+
+	This()->PushObject();
+	for(int i = 0; i < aProperties.size(); i++)
+	{
+		const CKeyValuePair& vp = aProperties[i];
+		//dbg_msg("duck", "type=%d size=%d key='%s'", aProperties[i].Type, aProperties[i].Size, aProperties[i].aKey);
+
+		switch(vp.Type)
+		{
+			case T_INT32:
+				This()->ObjectSetMemberInt(vp.aKey, *(int32_t*)vp.pValue);
+				break;
+
+			case T_FLOAT:
+				This()->ObjectSetMemberFloat(vp.aKey, *(float*)vp.pValue);
+				break;
+
+			case T_STRING:
+			{
+				char aString[2048];
+				str_copy(aString, (const char*)vp.pValue, sizeof(aString));
+				This()->ObjectSetMemberString(vp.aKey, aString);
+			} break;
+
+			default:
+				dbg_assert(0, "Type not handled");
+				break;
+		}
+	}
+
+	return 1;
 }
 
 /*#
@@ -1838,8 +1940,7 @@ duk_ret_t CDuckJs::NativeNetSendPacket(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeAddWeapon(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	CDuckBridge::CWeaponCustomJs Wc;
 
@@ -1886,8 +1987,7 @@ duk_ret_t CDuckJs::NativeAddWeapon(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativePlaySoundAt(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 3, "Wrong argument count");
+	CheckArgumentCount(ctx, 3);
 
 	const char* pStr = duk_to_string(ctx, 0);
 	float x = duk_to_number(ctx, 1);
@@ -1913,8 +2013,7 @@ duk_ret_t CDuckJs::NativePlaySoundAt(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativePlaySoundGlobal(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	const char* pStr = duk_to_string(ctx, 0);
 
@@ -1938,8 +2037,7 @@ duk_ret_t CDuckJs::NativePlaySoundGlobal(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativePlayMusic(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	const char* pStr = duk_to_string(ctx, 0);
 
@@ -1965,8 +2063,7 @@ duk_ret_t CDuckJs::NativePlayMusic(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeRandomInt(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 2, "Wrong argument count");
+	CheckArgumentCount(ctx, 2);
 
 	int Min = duk_to_int(ctx, 0);
 	int Max = duk_to_int(ctx, 1);
@@ -1989,8 +2086,7 @@ duk_ret_t CDuckJs::NativeRandomInt(duk_context *ctx)
 template<typename IntT>
 duk_ret_t CDuckJs::NativeUnpackInteger(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	// get cursor, raw buffer
 	duk_get_prop_string(ctx, 0, "cursor");
@@ -2023,8 +2119,7 @@ duk_ret_t CDuckJs::NativeUnpackInteger(duk_context *ctx)
 
 duk_ret_t CDuckJs::NativeUnpackFloat(duk_context *ctx)
 {
-	int n = duk_get_top(ctx);  /* #args */
-	dbg_assert(n == 1, "Wrong argument count");
+	CheckArgumentCount(ctx, 1);
 
 	// get cursor, raw buffer
 	duk_get_prop_string(ctx, 0, "cursor");
@@ -2220,6 +2315,7 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(NetPacketAddFloat, 1);
 	REGISTER_FUNC(NetPacketAddString, 2);
 	REGISTER_FUNC(NetSendPacket, 0);
+	REGISTER_FUNC(NetPacketUnpack, 2);
 	REGISTER_FUNC(AddWeapon, 1);
 	REGISTER_FUNC(PlaySoundAt, 3);
 	REGISTER_FUNC(PlaySoundGlobal, 1);
@@ -2327,6 +2423,13 @@ void CDuckJs::OnMessage(int Msg, void* pRawMsg)
 			ObjectSetMemberInt("netID", ObjID);
 			ObjectSetMemberInt("cursor", 0);
 			ObjectSetMemberRawBuffer("raw", pObjRawData, ObjSize);
+		}
+		else
+		{
+			// make netObj
+			PushObject();
+			ObjectSetMemberInt("tw_id", Msg);
+			ObjectSetMemberString("error", "Unknown message type");
 		}
 
 		// call OnMessage(netObj)

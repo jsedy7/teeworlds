@@ -142,6 +142,18 @@ void CGameControllerTEST::Snap(int SnappingClient)
 
 	TestCore.Write(pCharacter);
 #endif
+
+	// this gets invalidated
+	/*
+	CNetObj_DebugRect* pRect2 = (CNetObj_DebugRect*)Server()->SnapNewItem(NUM_NETOBJTYPES + CNetObj_DebugRect::NET_ID, 0, sizeof(CNetObj_DebugRect));
+
+	pRect2->id = 0;
+	pRect2->x = 0;
+	pRect2->y = 0;
+	pRect2->w = 1000;
+	pRect2->h = 1000;
+	pRect2->color = 0xff0000ff;
+	*/
 }
 
 void CGameControllerTEST::OnDuckMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
