@@ -63,13 +63,10 @@ class CDuckJs
 	static duk_ret_t NativePlayMusic(duk_context *ctx);
 	static duk_ret_t NativeRandomInt(duk_context *ctx);
 
-	template<typename IntT>
-	static duk_ret_t NativeUnpackInteger(duk_context *ctx);
-	static duk_ret_t NativeUnpackFloat(duk_context *ctx);
-
 	// TODO: not great if we want to do nested objects
 	void PushObject();
 	void ObjectSetMemberInt(const char* MemberName, int Value);
+	void ObjectSetMemberUint(const char* MemberName, uint32_t Value);
 	void ObjectSetMemberFloat(const char* MemberName, float Value);
 	void ObjectSetMemberRawBuffer(const char* MemberName, const void* pRawBuffer, int RawBufferSize);
 	void ObjectSetMemberString(const char* MemberName, const char* pStr);

@@ -1,8 +1,6 @@
 #pragma once
 #include <stdint.h>
 
-typedef uint8_t u8;
-typedef uint16_t u16;
 typedef uint32_t u32;
 typedef int32_t i32;
 
@@ -24,7 +22,7 @@ struct CNetObj_Test
 {
 	enum { NET_ID = DukNetObjID::TEST };
 
-	u16 ClientID;
+	i32 ClientID;
 	float Value1;
 };
 
@@ -44,12 +42,12 @@ struct CNetObj_MapRectSetSolid
 {
 	enum { NET_ID = DukNetObjID::MAP_RECT_SET_SOLID };
 
-	u8 solid;
-	u8 hookable;
-	u16 x;
-	u16 y;
-	u16 w;
-	u16 h;
+	i32 solid;
+	i32 hookable;
+	i32 x;
+	i32 y;
+	i32 w;
+	i32 h;
 };
 
 struct CNetObj_HookBlock

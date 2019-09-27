@@ -1821,6 +1821,7 @@ duk_ret_t CDuckJs::NativeNetPacketUnpack(duk_context *ctx)
 
 	enum {
 		T_INT32=0,
+		T_UINT32,
 		T_FLOAT,
 		T_STRING
 	};
@@ -1858,6 +1859,10 @@ duk_ret_t CDuckJs::NativeNetPacketUnpack(duk_context *ctx)
 		{
 			ADD_PROP(4, T_INT32, 4);
 		}
+		else if(str_startswith(pKey, "u32_"))
+		{
+			ADD_PROP(4, T_UINT32, 4);
+		}
 		else if(str_startswith(pKey, "float_"))
 		{
 			ADD_PROP(6, T_FLOAT, 4);
@@ -1888,6 +1893,10 @@ duk_ret_t CDuckJs::NativeNetPacketUnpack(duk_context *ctx)
 		{
 			case T_INT32:
 				This()->ObjectSetMemberInt(vp.aKey, *(int32_t*)vp.pValue);
+				break;
+
+			case T_UINT32:
+				This()->ObjectSetMemberUint(vp.aKey, *(uint32_t*)vp.pValue);
 				break;
 
 			case T_FLOAT:
@@ -2083,69 +2092,6 @@ duk_ret_t CDuckJs::NativeRandomInt(duk_context *ctx)
 	return 1;
 }
 
-template<typename IntT>
-duk_ret_t CDuckJs::NativeUnpackInteger(duk_context *ctx)
-{
-	CheckArgumentCount(ctx, 1);
-
-	// get cursor, raw buffer
-	duk_get_prop_string(ctx, 0, "cursor");
-	int Cursor = (int)duk_to_int(ctx, -1);
-	duk_pop(ctx);
-
-	duk_get_prop_string(ctx, 0, "raw");
-	duk_size_t RawBufferSize;
-	const u8* pRawBuffer = (u8*)duk_get_buffer(ctx, -1, &RawBufferSize);
-	duk_pop(ctx);
-
-	/*dbg_msg("duck", "netObj.cursor = %d", Cursor);
-	dbg_msg("duck", "netObj.raw = %llx", pRawBuffer);
-	dbg_msg("duck", "netObj.raw.length = %d", RawBufferSize);*/
-
-	dbg_assert(Cursor + sizeof(IntT) <= RawBufferSize, "unpack: buffer overflow");
-
-	IntT OutInt;
-	mem_copy(&OutInt, pRawBuffer + Cursor, sizeof(IntT));
-	Cursor += sizeof(IntT);
-
-	// set new cursor
-	duk_push_int(ctx, Cursor);
-	duk_put_prop_string(ctx, 0, "cursor");
-
-	// return int
-	duk_push_int(ctx, (int)OutInt);
-	return 1;
-}
-
-duk_ret_t CDuckJs::NativeUnpackFloat(duk_context *ctx)
-{
-	CheckArgumentCount(ctx, 1);
-
-	// get cursor, raw buffer
-	duk_get_prop_string(ctx, 0, "cursor");
-	int Cursor = (int)duk_to_int(ctx, -1);
-	duk_pop(ctx);
-
-	duk_get_prop_string(ctx, 0, "raw");
-	duk_size_t RawBufferSize;
-	const u8* pRawBuffer = (u8*)duk_get_buffer(ctx, -1, &RawBufferSize);
-	duk_pop(ctx);
-
-	dbg_assert(Cursor + sizeof(float) <= RawBufferSize, "unpack: buffer overflow");
-
-	float OutFloat;
-	mem_copy(&OutFloat, pRawBuffer + Cursor, sizeof(float));
-	Cursor += sizeof(float);
-
-	// set new cursor
-	duk_push_int(ctx, Cursor);
-	duk_put_prop_string(ctx, 0, "cursor");
-
-	// return float
-	duk_push_number(ctx, OutFloat);
-	return 1;
-}
-
 void CDuckJs::PushObject()
 {
 	m_CurrentPushedObjID = duk_push_object(Ctx());
@@ -2154,6 +2100,12 @@ void CDuckJs::PushObject()
 void CDuckJs::ObjectSetMemberInt(const char* MemberName, int Value)
 {
 	duk_push_int(Ctx(), Value);
+	duk_put_prop_string(Ctx(), m_CurrentPushedObjID, MemberName);
+}
+
+void CDuckJs::ObjectSetMemberUint(const char* MemberName, uint32_t Value)
+{
+	duk_push_uint(Ctx(), Value);
 	duk_put_prop_string(Ctx(), m_CurrentPushedObjID, MemberName);
 }
 
@@ -2261,23 +2213,9 @@ void CDuckJs::ResetDukContext()
 	duk_push_c_function(Ctx(), NativePrint, 1);
 	duk_put_global_string(Ctx(), "print");
 
-	duk_push_c_function(Ctx(), NativeUnpackInteger<i32>, 1);
-	duk_put_global_string(Ctx(), "TwUnpackInt32");
-
-	duk_push_c_function(Ctx(), NativeUnpackInteger<u8>, 1);
-	duk_put_global_string(Ctx(), "TwUnpackUint8");
-
-	duk_push_c_function(Ctx(), NativeUnpackInteger<u16>, 1);
-	duk_put_global_string(Ctx(), "TwUnpackUint16");
-
-	duk_push_c_function(Ctx(), NativeUnpackInteger<u32>, 1);
-	duk_put_global_string(Ctx(), "TwUnpackUint32");
-
 #define REGISTER_FUNC(fname, arg_count) \
 	duk_push_c_function(Ctx(), Native##fname, arg_count);\
 	duk_put_global_string(Ctx(), "Tw" #fname)
-
-	REGISTER_FUNC(UnpackFloat, 1);
 
 	REGISTER_FUNC(RenderQuad, 4);
 	REGISTER_FUNC(RenderQuadCentered, 4);
@@ -2421,7 +2359,6 @@ void CDuckJs::OnMessage(int Msg, void* pRawMsg)
 			// make netObj
 			PushObject();
 			ObjectSetMemberInt("netID", ObjID);
-			ObjectSetMemberInt("cursor", 0);
 			ObjectSetMemberRawBuffer("raw", pObjRawData, ObjSize);
 		}
 		else
