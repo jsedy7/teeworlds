@@ -947,6 +947,64 @@ TwNetSendPacket
 
 |
 
+TwNetPacketUnpack
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwNetPacketUnpack(packet, template)
+
+
+| Unpack packet based on template.
+| Each template field will be filled based on the specified type, for example this code:
+
+.. code-block:: js
+
+	var block = TwNetPacketUnpack(packet, {
+		i32_blockID: 0,
+		i32_flags:   0,
+		float_pos_x: 0,
+		float_pos_y: 0,
+		float_vel_x: 0,
+		float_vel_y: 0,
+		float_width: 0,
+		float_height:0,
+	});
+
+| Will fill the first field (blockID) with the first int in the packet. Same with flags, pos_x will get a float and so on.
+| The type is removed on return, so the resulting object looks like this:
+
+.. code-block:: js
+
+	var block = {
+		blockID: int,
+		flags: int,
+		pos_x: float,
+		pos_y: float,
+		vel_x: float,
+		vel_y: float,
+		width: float,
+		height:float,
+	};
+
+| Suported types are:
+
+* i32
+* u32
+* float
+* str* (str32_something is a 32 length string)
+
+**Parameters**
+
+* **packet**: Packet from OnMessage(packet)
+* **template**: user object
+
+**Returns**
+
+* **unpacked**: object
+
+
+|
+
 TwAddWeapon
 ---------------------------------------------------------------------
 .. code-block:: js

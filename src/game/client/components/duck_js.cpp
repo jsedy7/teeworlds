@@ -1796,19 +1796,71 @@ duk_ret_t CDuckJs::NativeNetSendPacket(duk_context *ctx)
 	return 0;
 }
 
+/*#
+`TwNetPacketUnpack(packet, template)`
+
+| Unpack packet based on template.
+| Each template field will be filled based on the specified type, for example this code:
+
+.. code-block:: js
+
+	var block = TwNetPacketUnpack(packet, {
+		i32_blockID: 0,
+		i32_flags:   0,
+		float_pos_x: 0,
+		float_pos_y: 0,
+		float_vel_x: 0,
+		float_vel_y: 0,
+		float_width: 0,
+		float_height:0,
+	});
+
+| Will fill the first field (blockID) with the first int in the packet. Same with flags, pos_x will get a float and so on.
+| The type is removed on return, so the resulting object looks like this:
+
+.. code-block:: js
+
+	var block = {
+		blockID: int,
+		flags: int,
+		pos_x: float,
+		pos_y: float,
+		vel_x: float,
+		vel_y: float,
+		width: float,
+		height:float,
+	};
+
+| Supported types are:
+
+* i32
+* u32
+* float
+* str* (str32_something is a 32 length string)
+
+**Parameters**
+
+* **packet**: Packet from OnMessage(packet)
+* **template**: user object
+
+**Returns**
+
+* **unpacked**: object
+
+#*/
 duk_ret_t CDuckJs::NativeNetPacketUnpack(duk_context *ctx)
 {
 	CheckArgumentCount(ctx, 2);
 
 	if(!duk_is_object(ctx, 0))
 	{
-		dbg_msg("duck", "ERROR: TwNetPacketUnpack(net_obj, template) net_obj is not an object");
+		dbg_msg("duck", "ERROR: TwNetPacketUnpack(packet, template) packet is not an object");
 		return 0;
 	}
 
 	if(!duk_is_object(ctx, 1))
 	{
-		dbg_msg("duck", "ERROR: TwNetPacketUnpack(net_obj, template) template is not an object");
+		dbg_msg("duck", "ERROR: TwNetPacketUnpack(packet, template) template is not an object");
 		return 0;
 	}
 
@@ -2358,7 +2410,7 @@ void CDuckJs::OnMessage(int Msg, void* pRawMsg)
 
 			// make netObj
 			PushObject();
-			ObjectSetMemberInt("netID", ObjID);
+			ObjectSetMemberInt("mod_id", ObjID);
 			ObjectSetMemberRawBuffer("raw", pObjRawData, ObjSize);
 		}
 		else
