@@ -190,12 +190,14 @@ function OnUpdate(clientLocalTime, intraTick)
     }
     TwSetHudPartsShown(shown);
 
-    /*if(clientLocalTime - lastSendTime > 1.0) {
-        TwNetCreatePacket({ netid: 0x1 });
-        TwNetPacketAddString("Hello Dune", 32);
-        TwNetSendPacket();
+    if(clientLocalTime - lastSendTime > 1.0) {
+        TwNetSendPacket({
+            net_id: 0x1,
+            str32_msg: "Hello Dune"
+        });
         lastSendTime = clientLocalTime;
-    }*/
+    }
+
     if(clientLocalTime - lastSoundTime > 3.0) {
         TwPlaySoundGlobal("weird-0" + TwRandomInt(1, 4))
         lastSoundTime = clientLocalTime;
@@ -369,25 +371,25 @@ function OnRender(clientLocalTime, intraTick)
     
 }
 
-function OnMessage(netObj)
+function OnMessage(packet)
 {
-    //printObj(netObj);
+    //printObj(packet);
     
-    if(netObj.netID == 0x1) { // DEBUG_RECT
-        var rect = TwNetPacketUnpack(netObj, {
+    if(packet.mod_id == 0x1) { // DEBUG_RECT
+        var rect = TwNetPacketUnpack(packet, {
             i32_rectID: 0,
             float_x: 0,
             float_y: 0,
             float_w: 0,
             float_h: 0,
-            i32_color: 0
+            u32_color: 0
         });
         game.debugRects[rect.rectID] = rect;
         return;
     }
 
-    if(netObj.netID == 0x3) { // CNetObj_HookBlock
-        var block = TwNetPacketUnpack(netObj, {
+    if(packet.mod_id == 0x3) { // CNetObj_HookBlock
+        var block = TwNetPacketUnpack(packet, {
             i32_blockID: 0,
             i32_flags:   0,
             float_pos_x: 0,
@@ -402,8 +404,8 @@ function OnMessage(netObj)
         return;
     }
 
-    if(netObj.netID == 0x4) { // CNetObj_DynamicDisk
-        var disk = TwNetPacketUnpack(netObj, {
+    if(packet.mod_id == 0x4) { // CNetObj_DynamicDisk
+        var disk = TwNetPacketUnpack(packet, {
             i32_diskID: 0,
             i32_flags:   0,
             float_pos_x: 0,

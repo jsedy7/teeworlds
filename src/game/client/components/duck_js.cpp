@@ -1653,135 +1653,47 @@ duk_ret_t CDuckJs::NativeSetHudPartsShown(duk_context *ctx)
 }
 
 /*#
-`TwNetCreatePacket(packet)`
+`TwNetSendPacket(packet)`
 
-| Network, create a custom packet.
-
-**Parameters**
-
-* **packet**
+| Send a packet.
+| Packet object needs to be formatted to add type information, example:
 
 .. code-block:: js
 
 	var packet = {
-		netid: int,
-		force_send_now: int,
-	};
+		net_id: 1478,
+		force_send_now: 0,
 
-**Returns**
+		i32_blockID: 1,
+		i32_flags:   5,
+		float_pos_x: 180,
+		float_pos_y: 20,
+		float_vel_x: 0,
+		float_vel_y: 0,
+		float_width: 1000,
+		float_height:200,
+	});
 
-* **None**
 
-#*/
-duk_ret_t CDuckJs::NativeNetCreatePacket(duk_context *ctx)
-{
-	CheckArgumentCount(ctx, 1);
+| The first 2 fields are required, the rest are in the form type_name: value.
+| Supported types are:
 
-	/*
-	var info = {
-		netid: 0x1,
-		force_send_now: 0
-	}
-	*/
-
-	int NetID = -1;
-	int IsVital = -1;
-	int SendNow = -1;
-	DukGetIntProp(ctx, 0, "netid", &NetID);
-	DukGetIntProp(ctx, 0, "force_send_now", &SendNow);
-
-	if(NetID <= 0) {
-		dbg_msg("duck", "WARNING: TwCreatePacket() >> NetID is invalid (%d)", NetID);
-		return 0;
-	}
-
-	int Flags = 0;
-	Flags |= MSGFLAG_VITAL;
-	if(SendNow > 0) Flags |= MSGFLAG_FLUSH;
-	This()->Bridge()->PacketCreate(NetID, Flags);
-	return 0;
-}
-
-/*#
-`TwNetPacketAddInt(var_int)`
-
-| Add an int to the current packet.
+* i32
+* u32
+* float
+* str* (str32_something is a 32 length string)
 
 **Parameters**
 
-* **var_int**: int
+* **packet**: user edited object based on:
 
-**Returns**
+.. code-block:: js
 
-* **None**
-
-#*/
-duk_ret_t CDuckJs::NativeNetPacketAddInt(duk_context *ctx)
-{
-	CheckArgumentCount(ctx, 1);
-
-	int i = duk_to_int(ctx, 0);
-	This()->Bridge()->PacketPackInt(i);
-	return 0;
-}
-
-/*#
-`TwNetPacketAddFloat(var_float)`
-
-| Add a float to the current packet.
-
-**Parameters**
-
-* **var_float**: float
-
-**Returns**
-
-* **None**
-
-#*/
-duk_ret_t CDuckJs::NativeNetPacketAddFloat(duk_context *ctx)
-{
-	CheckArgumentCount(ctx, 1);
-
-	double f = duk_to_number(ctx, 0);
-	This()->Bridge()->PacketPackFloat((float)f);
-	return 0;
-}
-
-/*#
-`TwNetPacketAddString(str, size_limit)`
-
-| Add a string to the current packet, with a size limit.
-| Example: ``TwNetPacketAddString("Dune likes cheese", 32)``
-
-**Parameters**
-
-* **str**: string
-* **size_limit**: int
-
-**Returns**
-
-* **None**
-
-#*/
-duk_ret_t CDuckJs::NativeNetPacketAddString(duk_context *ctx)
-{
-	CheckArgumentCount(ctx, 2);
-
-	const char* pStr = duk_to_string(ctx, 0);
-	int SizeLimit = duk_to_int(ctx, 1);
-	This()->Bridge()->PacketPackString(pStr, SizeLimit);
-	return 0;
-}
-
-/*#
-`TwNetSendPacket()`
-
-| Send current packet.
-
-**Parameters**
-
-* **None**
+	var packet = {
+		net_id: int,
+		force_send_now: int (0 or 1),
+		...
+	});
 
 **Returns**
 
@@ -1790,7 +1702,79 @@ duk_ret_t CDuckJs::NativeNetPacketAddString(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeNetSendPacket(duk_context *ctx)
 {
-	CheckArgumentCount(ctx, 0);
+	CheckArgumentCount(ctx, 1);
+
+	if(!duk_is_object(ctx, 0))
+	{
+		dbg_msg("duck", "ERROR: TwNetSendPacket(packet) packet is not an object");
+		return 0;
+	}
+
+	int NetID = -1;
+	int SendNow = 0;
+	DukGetIntProp(ctx, 0, "net_id", &NetID);
+	DukGetIntProp(ctx, 0, "force_send_now", &SendNow);
+
+	if(NetID <= 0)
+	{
+		dbg_msg("duck", "ERROR: TwNetSendPacket(packet) net_id is invalid (%d)", NetID);
+		return 0;
+	}
+
+	int Flags = 0;
+	Flags |= MSGFLAG_VITAL;
+	if(SendNow > 0) Flags |= MSGFLAG_FLUSH;
+	This()->Bridge()->PacketCreate(NetID, Flags);
+
+	// list properties
+	duk_enum(ctx, 0, DUK_ENUM_OWN_PROPERTIES_ONLY);
+
+	while(duk_next(ctx, -1 /*enum_idx*/, 0 /*get_value*/))
+	{
+		/* [ ... enum key ] */
+		const char* pKey = duk_get_string(ctx, -1);
+
+		if(str_startswith(pKey, "i32_"))
+		{
+			int Val;
+			DukGetIntProp(ctx, 0, pKey, &Val);
+			This()->Bridge()->PacketPackInt(Val);
+		}
+		else if(str_startswith(pKey, "u32_"))
+		{
+			int Val;
+			DukGetIntProp(ctx, 0, pKey, &Val);
+			This()->Bridge()->PacketPackInt(Val);
+		}
+		else if(str_startswith(pKey, "float_"))
+		{
+			float Val;
+			DukGetFloatProp(ctx, 0, pKey, &Val);
+			This()->Bridge()->PacketPackFloat(Val);
+		}
+		else if(str_startswith(pKey, "str"))
+		{
+			int Size;
+			if(sscanf(pKey+3, "%d_", &Size) == 1)
+			{
+				char aStr[2048];
+
+				if(Size > sizeof(aStr))
+				{
+					dbg_msg("duck", "ERROR: TwNetSendPacket(packet) string is too large (%d)", Size);
+					return 0;
+				}
+
+				DukGetStringProp(ctx, 0, pKey, aStr, sizeof(aStr));
+				This()->Bridge()->PacketPackString(aStr, Size);
+			}
+		}
+
+		duk_pop(ctx);  /* pop_key */
+	}
+
+#undef ADD_PROP
+	duk_pop(ctx);  /* pop enum object */
 
 	This()->Bridge()->SendPacket();
 	return 0;
@@ -2300,11 +2284,7 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(CollisionClearDynamicDisk, 1);
 	REGISTER_FUNC(CollisionGetPredictedDynamicDisks, 0);
 	REGISTER_FUNC(SetHudPartsShown, 1);
-	REGISTER_FUNC(NetCreatePacket, 1);
-	REGISTER_FUNC(NetPacketAddInt, 1);
-	REGISTER_FUNC(NetPacketAddFloat, 1);
-	REGISTER_FUNC(NetPacketAddString, 2);
-	REGISTER_FUNC(NetSendPacket, 0);
+	REGISTER_FUNC(NetSendPacket, 1);
 	REGISTER_FUNC(NetPacketUnpack, 2);
 	REGISTER_FUNC(AddWeapon, 1);
 	REGISTER_FUNC(PlaySoundAt, 3);

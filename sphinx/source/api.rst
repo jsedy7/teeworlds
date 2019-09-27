@@ -838,107 +838,52 @@ TwSetHudPartsShown
 
 |
 
-TwNetCreatePacket
----------------------------------------------------------------------
-.. code-block:: js
-   
-   function TwNetCreatePacket(packet)
-
-
-| Network, create a custom packet.
-
-**Parameters**
-
-* **packet**
-
-.. code-block:: js
-
-	var packet = {
-		netid: int,
-		force_send_now: int,
-	};
-
-**Returns**
-
-* **None**
-
-
-|
-
-TwNetPacketAddInt
----------------------------------------------------------------------
-.. code-block:: js
-   
-   function TwNetPacketAddInt(var_int)
-
-
-| Add an int to the current packet.
-
-**Parameters**
-
-* **var_int**: int
-
-**Returns**
-
-* **None**
-
-
-|
-
-TwNetPacketAddFloat
----------------------------------------------------------------------
-.. code-block:: js
-   
-   function TwNetPacketAddFloat(var_float)
-
-
-| Add a float to the current packet.
-
-**Parameters**
-
-* **var_float**: float
-
-**Returns**
-
-* **None**
-
-
-|
-
-TwNetPacketAddString
----------------------------------------------------------------------
-.. code-block:: js
-   
-   function TwNetPacketAddString(str, size_limit)
-
-
-| Add a string to the current packet, with a size limit.
-| Example: ``TwNetPacketAddString("Dune likes cheese", 32)``
-
-**Parameters**
-
-* **str**: string
-* **size_limit**: int
-
-**Returns**
-
-* **None**
-
-
-|
-
 TwNetSendPacket
 ---------------------------------------------------------------------
 .. code-block:: js
    
-   function TwNetSendPacket()
+   function TwNetSendPacket(packet)
 
 
-| Send current packet.
+| Send a packet.
+| Packet object needs to be formatted to add type information, example:
+
+.. code-block:: js
+
+	var packet = {
+		net_id: 1478,
+		force_send_now: 0,
+
+		i32_blockID: 1,
+		i32_flags:   5,
+		float_pos_x: 180,
+		float_pos_y: 20,
+		float_vel_x: 0,
+		float_vel_y: 0,
+		float_width: 1000,
+		float_height:200,
+	});
+
+
+| The first 2 fields are required, the rest are in the form type_name: value.
+| Supported types are:
+
+* i32
+* u32
+* float
+* str* (str32_something is a 32 length string)
 
 **Parameters**
 
-* **None**
+* **packet**: user edited object based on:
+
+.. code-block:: js
+
+	var packet = {
+		net_id: int,
+		force_send_now: int (0 or 1),
+		...
+	});
 
 **Returns**
 
@@ -986,7 +931,7 @@ TwNetPacketUnpack
 		height:float,
 	};
 
-| Suported types are:
+| Supported types are:
 
 * i32
 * u32
