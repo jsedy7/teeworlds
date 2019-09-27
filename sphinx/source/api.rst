@@ -168,7 +168,7 @@ TwRenderSetTeeSkin
 
 **Parameters**
 
-* **skin**:
+* **skin**
 
 .. code-block:: js
 
@@ -449,7 +449,7 @@ TwGetClientSkinInfo
 
 **Returns**
 
-* **skin**:
+* **skin**
 
 .. code-block:: js
 
@@ -472,6 +472,596 @@ TwGetClientSkinInfo
 			color_eyes
 		]
 	};
+
+|
+
+TwGetClientCharacterCores
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwGetClientCharacterCores()
+
+
+| Get interpolated player character cores.
+
+**Parameters**
+
+* None
+
+**Returns**
+
+* **cores**
+
+.. code-block:: js
+
+	var cores = [
+		{
+			tick: int,
+			vel_x: float,
+			vel_y: float,
+			angle: float,
+			direction: int,
+			jumped: int,
+			hooked_player: int,
+			hook_state: int,
+			hook_tick: int,
+			hook_x: float,
+			hook_y: float,
+			hook_dx: float,
+			hook_dy: float,
+			pos_x: float,
+			pos_y: float,
+		},
+		...
+	];
+
+
+|
+
+TwGetStandardSkinInfo
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwGetStandardSkinInfo()
+
+
+| Get the standard skin info.
+
+**Parameters**
+
+* None
+
+**Returns**
+
+* **skin**
+
+.. code-block:: js
+
+	var skin = {
+		textures: [
+			texid_body: int,
+			texid_marking: int,
+			texid_decoration: int,
+			texid_hands: int,
+			texid_feet: int,
+			texid_eyes: int
+		],
+
+		colors: [
+			color_body: {r, g, b ,a},
+			color_marking: {r, g, b ,a},
+			color_decoration: {r, g, b ,a},
+			color_hands: {r, g, b ,a},
+			color_feet: {r, g, b ,a},
+			color_eyes
+		]
+	};
+
+
+|
+
+TwGetSkinPartTexture
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwGetSkinPartTexture(part_id, part_name)
+
+
+| Get a skin part texture. Vanilla and mod skin parts both work here.
+| Example: ``TwGetSkinPartTexture(Teeworlds.SKINPART_BODY, "zombie")``
+
+**Parameters**
+
+* **part_id**: int
+* **part_name**: string
+
+**Returns**
+
+* **texture_id**: int
+
+
+|
+
+TwGetCursorPosition
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwGetCursorPosition()
+
+
+| Get weapon cursor position in world space.
+
+**Parameters**
+
+* **None**
+
+**Returns**
+
+* **cursor_pos**: { x: float, y: float }
+
+
+|
+
+TwMapSetTileCollisionFlags
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwMapSetTileCollisionFlags(tile_x, tile_y, flags)
+
+
+| Modify a map tile's collision flags.
+| Example: ``TwMapSetTileCollisionFlags(tx, ty, 0); // air``
+| See collision.h for flags.
+| TODO: give easy access to flags?
+
+**Parameters**
+
+* **tile_x**: int
+* **tile_y**: int
+* **flags**: int
+
+**Returns**
+
+* **None**
+
+
+|
+
+TwDirectionFromAngle
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwDirectionFromAngle(angle)
+
+
+| Get direction vector from angle.
+
+**Parameters**
+
+* **angle**: float
+
+**Returns**
+
+* **dir**: { x: float, y: float }
+
+
+|
+
+TwCollisionSetStaticBlock
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwCollisionSetStaticBlock(block_id, block)
+
+
+| Creates or modify a collision block (rectangle).
+| Note: these are supposed to stay the same size and not move much, if at all.
+
+**Parameters**
+
+* **block_id**: int
+* **block**
+
+.. code-block:: js
+
+	var block = {
+		flags: int, // collision flags
+		pos_x, float,
+		pos_y, float,
+		width, float,
+		height, float,
+	};
+
+**Returns**
+
+* **None**
+
+
+|
+
+TwCollisionClearStaticBlock
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwCollisionClearStaticBlock(block_id)
+
+
+| Removes a collision block.
+
+**Parameters**
+
+* **block_id**: int
+
+**Returns**
+
+* **None**
+
+
+|
+
+TwCollisionSetDynamicDisk
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwCollisionSetDynamicDisk(disk_id, disk)
+
+
+| Creates or modify a dynamic disk.
+
+**Parameters**
+
+* **disk_id**: int
+* **disk**
+
+.. code-block:: js
+
+	var disk = {
+		flags: int, // unused at the moment
+		pos_x, float,
+		pos_y, float,
+		vel_x, float,
+		vel_y, float,
+		radius, float,
+		hook_force, float,
+	};
+
+**Returns**
+
+* **None**
+
+
+|
+
+TwCollisionClearDynamicDisk
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwCollisionClearDynamicDisk(block_id)
+
+
+| Removes a dynamic disk.
+
+**Parameters**
+
+* **disk_id**: int
+
+**Returns**
+
+* **None**
+
+
+|
+
+TwCollisionGetPredictedDynamicDisks
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwCollisionGetPredictedDynamicDisks()
+
+
+| Get predicted dynamic disks.
+
+**Parameters**
+
+* **None**
+
+**Returns**
+
+* **disks**
+
+.. code-block:: js
+
+	var disks = [
+		{
+			id: int,
+			flags: int, // unused at the moment
+			pos_x, float,
+			pos_y, float,
+			vel_x, float,
+			vel_y, float,
+			radius, float,
+			hook_force, float,
+		},
+		...
+	];
+
+
+
+|
+
+TwSetHudPartsShown
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwSetHudPartsShown(hud)
+
+
+| Show/hide parts of the hud.
+| Example:
+
+.. code-block:: js
+
+	var hud = {
+		health: 0,
+		armor: 0,
+		ammo: 1,
+		time: 0,
+		killfeed: 1,
+		score: 1,
+		chat: 1,
+		scoreboard: 1,
+	};
+
+	TwSetHudPartsShown(hud);
+
+**Parameters**
+
+* **hud**
+
+.. code-block:: js
+
+	var hud = {
+		health: int,
+		armor: int,
+		ammo: int,
+		time: int,
+		killfeed: int,
+		score: int,
+		chat: int,
+		scoreboard: int,
+	};
+
+**Returns**
+
+* **None**
+
+
+|
+
+TwNetCreatePacket
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwNetCreatePacket(packet)
+
+
+| Network, create a custom packet.
+
+**Parameters**
+
+* **packet**
+
+.. code-block:: js
+
+	var packet = {
+		netid: int,
+		force_send_now: int,
+	};
+
+**Returns**
+
+* **None**
+
+
+|
+
+TwNetPacketAddInt
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwNetPacketAddInt(var_int)
+
+
+| Add an int to the current packet.
+
+**Parameters**
+
+* **var_int**: int
+
+**Returns**
+
+* **None**
+
+
+|
+
+TwNetPacketAddFloat
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwNetPacketAddFloat(var_float)
+
+
+| Add a float to the current packet.
+
+**Parameters**
+
+* **var_float**: float
+
+**Returns**
+
+* **None**
+
+
+|
+
+TwNetPacketAddString
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwNetPacketAddString(str, size_limit)
+
+
+| Add a string to the current packet, with a size limit.
+| Example: ``TwNetPacketAddString("Dune likes cheese", 32)``
+
+**Parameters**
+
+* **str**: string
+* **size_limit**: int
+
+**Returns**
+
+* **None**
+
+
+|
+
+TwNetSendPacket
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwNetSendPacket()
+
+
+| Send current packet.
+
+**Parameters**
+
+* **None**
+
+**Returns**
+
+* **None**
+
+
+|
+
+TwAddWeapon
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwAddWeapon(weapon)
+
+
+| Simple helper to add a custom weapon.
+
+**Parameters**
+
+* **weapon**
+
+.. code-block:: js
+
+	var weapon = {
+		id: int,
+		tex_weapon: int, // can be null
+		tex_cursor: int, // can be null
+		weapon_x: float,
+		weapon_y: float,
+		hand_x,: float,
+		hand_y,: float,
+		hand_angle,: float,
+		recoil,: float,
+	};
+
+**Returns**
+
+* **None**
+
+
+|
+
+TwPlaySoundAt
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwPlaySoundAt(sound_name, x, y)
+
+
+| Play a mod sound at position x,y.
+
+**Parameters**
+
+* **sound_name**: string
+* **x**: float
+* **y**: float
+
+**Returns**
+
+* **None**
+
+
+|
+
+TwPlaySoundGlobal
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwPlaySoundGlobal(sound_name)
+
+
+| Play a mod sound globally.
+
+**Parameters**
+
+* **sound_name**: string
+
+**Returns**
+
+* **None**
+
+
+|
+
+TwPlayMusic
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwPlayMusic(sound_name)
+
+
+| Play a mod music (will loop).
+
+**Parameters**
+
+* **sound_name**: string
+
+**Returns**
+
+* **None**
+
+
+|
+
+TwRandomInt
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwRandomInt(min, max)
+
+
+| Get a random int between min and max, included.
+| Example for getting a float instead: ``TwRandomInt(0, 1000000)/1000000.0``
+
+**Parameters**
+
+* **min**: int
+* **max**: int
+
+**Returns**
+
+* **rand_int**: int
+
 
 |
 

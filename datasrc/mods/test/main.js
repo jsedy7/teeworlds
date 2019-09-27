@@ -186,13 +186,14 @@ function OnUpdate(clientLocalTime, intraTick)
 		killfeed:   Math.floor(clientLocalTime * 1.4) % 2,
 		score:      Math.floor(clientLocalTime * 1.5) % 2,
 		chat:       Math.floor(clientLocalTime * 1.6) % 2,
+		scoreboard: Math.floor(clientLocalTime * 1.7) % 2,
     }
     TwSetHudPartsShown(shown);
 
     /*if(clientLocalTime - lastSendTime > 1.0) {
-        TwCreatePacket({ netid: 0x1 });
-        TwPacketAddString("Hello Dune", 32);
-        TwSendPacket();
+        TwNetCreatePacket({ netid: 0x1 });
+        TwNetPacketAddString("Hello Dune", 32);
+        TwNetSendPacket();
         lastSendTime = clientLocalTime;
     }*/
     if(clientLocalTime - lastSoundTime > 3.0) {

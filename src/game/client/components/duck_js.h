@@ -51,11 +51,11 @@ class CDuckJs
 	static duk_ret_t NativeCollisionClearDynamicDisk(duk_context *ctx);
 	static duk_ret_t NativeCollisionGetPredictedDynamicDisks(duk_context *ctx);
 	static duk_ret_t NativeSetHudPartsShown(duk_context *ctx);
-	static duk_ret_t NativeCreatePacket(duk_context *ctx);
-	static duk_ret_t NativePacketAddInt(duk_context *ctx);
-	static duk_ret_t NativePacketAddFloat(duk_context *ctx);
-	static duk_ret_t NativePacketAddString(duk_context *ctx);
-	static duk_ret_t NativeSendPacket(duk_context *ctx);
+	static duk_ret_t NativeNetCreatePacket(duk_context *ctx);
+	static duk_ret_t NativeNetPacketAddInt(duk_context *ctx);
+	static duk_ret_t NativeNetPacketAddFloat(duk_context *ctx);
+	static duk_ret_t NativeNetPacketAddString(duk_context *ctx);
+	static duk_ret_t NativeNetSendPacket(duk_context *ctx);
 	static duk_ret_t NativeAddWeapon(duk_context *ctx);
 	static duk_ret_t NativePlaySoundAt(duk_context *ctx);
 	static duk_ret_t NativePlaySoundGlobal(duk_context *ctx);

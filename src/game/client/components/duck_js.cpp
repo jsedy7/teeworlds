@@ -230,7 +230,7 @@ duk_ret_t CDuckJs::NativeRenderSetQuadRotation(duk_context* ctx)
 
 **Parameters**
 
-* **skin**:
+* **skin**
 
 .. code-block:: js
 
@@ -976,7 +976,7 @@ duk_ret_t CDuckJs::NativeGetModTexture(duk_context *ctx)
 
 **Returns**
 
-* **skin**:
+* **skin**
 
 .. code-block:: js
 
@@ -1045,6 +1045,43 @@ duk_ret_t CDuckJs::NativeGetClientSkinInfo(duk_context* ctx)
 	return 1;
 }
 
+/*#
+`TwGetClientCharacterCores()`
+
+| Get interpolated player character cores.
+
+**Parameters**
+
+* None
+
+**Returns**
+
+* **cores**
+
+.. code-block:: js
+
+	var cores = [
+		{
+			tick: int,
+			vel_x: float,
+			vel_y: float,
+			angle: float,
+			direction: int,
+			jumped: int,
+			hooked_player: int,
+			hook_state: int,
+			hook_tick: int,
+			hook_x: float,
+			hook_y: float,
+			hook_dx: float,
+			hook_dy: float,
+			pos_x: float,
+			pos_y: float,
+		},
+		...
+	];
+
+#*/
 duk_ret_t CDuckJs::NativeGetClientCharacterCores(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -1083,22 +1120,22 @@ duk_ret_t CDuckJs::NativeGetClientCharacterCores(duk_context* ctx)
 			vec2 Vel = mix(vec2(Prev.m_VelX/256.0f, Prev.m_VelY/256.0f), vec2(Cur.m_VelX/256.0f, Cur.m_VelY/256.0f), IntraTick);
 			vec2 HookPos = mix(vec2(Prev.m_HookX, Prev.m_HookY), vec2(Cur.m_HookX, Cur.m_HookY), IntraTick);
 
-			duk_idx_t PosObjIdx = duk_push_object(ctx);
-			DukSetIntProp(ctx, PosObjIdx, "tick", Cur.m_Tick);
-			DukSetFloatProp(ctx, PosObjIdx, "vel_x", Vel.x);
-			DukSetFloatProp(ctx, PosObjIdx, "vel_y", Vel.y);
-			DukSetFloatProp(ctx, PosObjIdx, "angle", Angle);
-			DukSetIntProp(ctx, PosObjIdx, "direction", Cur.m_Direction);
-			DukSetIntProp(ctx, PosObjIdx, "jumped", Cur.m_Jumped);
-			DukSetIntProp(ctx, PosObjIdx, "hooked_player", Cur.m_HookedPlayer);
-			DukSetIntProp(ctx, PosObjIdx, "hook_state", Cur.m_HookState);
-			DukSetIntProp(ctx, PosObjIdx, "hook_tick", Cur.m_HookTick);
-			DukSetFloatProp(ctx, PosObjIdx, "hook_x", HookPos.x);
-			DukSetFloatProp(ctx, PosObjIdx, "hook_y", HookPos.y);
-			DukSetFloatProp(ctx, PosObjIdx, "hook_dx", Cur.m_HookDx/256.f);
-			DukSetFloatProp(ctx, PosObjIdx, "hook_dy", Cur.m_HookDy/256.f);
-			DukSetFloatProp(ctx, PosObjIdx, "pos_x", Position.x);
-			DukSetFloatProp(ctx, PosObjIdx, "pos_y", Position.y);
+			duk_idx_t ObjIdx = duk_push_object(ctx);
+			DukSetIntProp(ctx, ObjIdx, "tick", Cur.m_Tick);
+			DukSetFloatProp(ctx, ObjIdx, "vel_x", Vel.x);
+			DukSetFloatProp(ctx, ObjIdx, "vel_y", Vel.y);
+			DukSetFloatProp(ctx, ObjIdx, "angle", Angle);
+			DukSetIntProp(ctx, ObjIdx, "direction", Cur.m_Direction);
+			DukSetIntProp(ctx, ObjIdx, "jumped", Cur.m_Jumped);
+			DukSetIntProp(ctx, ObjIdx, "hooked_player", Cur.m_HookedPlayer);
+			DukSetIntProp(ctx, ObjIdx, "hook_state", Cur.m_HookState);
+			DukSetIntProp(ctx, ObjIdx, "hook_tick", Cur.m_HookTick);
+			DukSetFloatProp(ctx, ObjIdx, "hook_x", HookPos.x);
+			DukSetFloatProp(ctx, ObjIdx, "hook_y", HookPos.y);
+			DukSetFloatProp(ctx, ObjIdx, "hook_dx", Cur.m_HookDx/256.f);
+			DukSetFloatProp(ctx, ObjIdx, "hook_dy", Cur.m_HookDy/256.f);
+			DukSetFloatProp(ctx, ObjIdx, "pos_x", Position.x);
+			DukSetFloatProp(ctx, ObjIdx, "pos_y", Position.y);
 		}
 		else
 			duk_push_null(ctx);
@@ -1108,6 +1145,42 @@ duk_ret_t CDuckJs::NativeGetClientCharacterCores(duk_context* ctx)
 	return 1;
 }
 
+/*#
+`TwGetStandardSkinInfo()`
+
+| Get the standard skin info.
+
+**Parameters**
+
+* None
+
+**Returns**
+
+* **skin**
+
+.. code-block:: js
+
+	var skin = {
+		textures: [
+			texid_body: int,
+			texid_marking: int,
+			texid_decoration: int,
+			texid_hands: int,
+			texid_feet: int,
+			texid_eyes: int
+		],
+
+		colors: [
+			color_body: {r, g, b ,a},
+			color_marking: {r, g, b ,a},
+			color_decoration: {r, g, b ,a},
+			color_hands: {r, g, b ,a},
+			color_feet: {r, g, b ,a},
+			color_eyes
+		]
+	};
+
+#*/
 duk_ret_t CDuckJs::NativeGetStandardSkinInfo(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -1147,6 +1220,22 @@ duk_ret_t CDuckJs::NativeGetStandardSkinInfo(duk_context* ctx)
 	return 1;
 }
 
+/*#
+`TwGetSkinPartTexture(part_id, part_name)`
+
+| Get a skin part texture. Vanilla and mod skin parts both work here.
+| Example: ``TwGetSkinPartTexture(Teeworlds.SKINPART_BODY, "zombie")``
+
+**Parameters**
+
+* **part_id**: int
+* **part_name**: string
+
+**Returns**
+
+* **texture_id**: int
+
+#*/
 duk_ret_t CDuckJs::NativeGetSkinPartTexture(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -1172,6 +1261,20 @@ duk_ret_t CDuckJs::NativeGetSkinPartTexture(duk_context* ctx)
 	return 1;
 }
 
+/*#
+`TwGetCursorPosition()`
+
+| Get weapon cursor position in world space.
+
+**Parameters**
+
+* **None**
+
+**Returns**
+
+* **cursor_pos**: { x: float, y: float }
+
+#*/
 duk_ret_t CDuckJs::NativeGetCursorPosition(duk_context *ctx)
 {
 	// Get position in world space
@@ -1187,6 +1290,25 @@ duk_ret_t CDuckJs::NativeGetCursorPosition(duk_context *ctx)
 	return  1;
 }
 
+/*#
+`TwMapSetTileCollisionFlags(tile_x, tile_y, flags)`
+
+| Modify a map tile's collision flags.
+| Example: ``TwMapSetTileCollisionFlags(tx, ty, 0); // air``
+| See collision.h for flags.
+| TODO: give easy access to flags?
+
+**Parameters**
+
+* **tile_x**: int
+* **tile_y**: int
+* **flags**: int
+
+**Returns**
+
+* **None**
+
+#*/
 duk_ret_t CDuckJs::NativeMapSetTileCollisionFlags(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -1201,6 +1323,20 @@ duk_ret_t CDuckJs::NativeMapSetTileCollisionFlags(duk_context *ctx)
 	return 0;
 }
 
+/*#
+`TwDirectionFromAngle(angle)`
+
+| Get direction vector from angle.
+
+**Parameters**
+
+* **angle**: float
+
+**Returns**
+
+* **dir**: { x: float, y: float }
+
+#*/
 duk_ret_t CDuckJs::NativeDirectionFromAngle(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -1217,6 +1353,32 @@ duk_ret_t CDuckJs::NativeDirectionFromAngle(duk_context* ctx)
 		return 1;
 }
 
+/*#
+`TwCollisionSetStaticBlock(block_id, block)`
+
+| Creates or modify a collision block (rectangle).
+| Note: these are supposed to stay the same size and not move much, if at all.
+
+**Parameters**
+
+* **block_id**: int
+* **block**
+
+.. code-block:: js
+
+	var block = {
+		flags: int, // collision flags
+		pos_x, float,
+		pos_y, float,
+		width, float,
+		height, float,
+	};
+
+**Returns**
+
+* **None**
+
+#*/
 duk_ret_t CDuckJs::NativeCollisionSetStaticBlock(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -1258,6 +1420,20 @@ duk_ret_t CDuckJs::NativeCollisionSetStaticBlock(duk_context* ctx)
 	return 0;
 }
 
+/*#
+`TwCollisionClearStaticBlock(block_id)`
+
+| Removes a collision block.
+
+**Parameters**
+
+* **block_id**: int
+
+**Returns**
+
+* **None**
+
+#*/
 duk_ret_t CDuckJs::NativeCollisionClearStaticBlock(duk_context* ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -1269,6 +1445,33 @@ duk_ret_t CDuckJs::NativeCollisionClearStaticBlock(duk_context* ctx)
 	return 0;
 }
 
+/*#
+`TwCollisionSetDynamicDisk(disk_id, disk)`
+
+| Creates or modify a dynamic disk.
+
+**Parameters**
+
+* **disk_id**: int
+* **disk**
+
+.. code-block:: js
+
+	var disk = {
+		flags: int, // unused at the moment
+		pos_x, float,
+		pos_y, float,
+		vel_x, float,
+		vel_y, float,
+		radius, float,
+		hook_force, float,
+	};
+
+**Returns**
+
+* **None**
+
+#*/
 duk_ret_t CDuckJs::NativeCollisionSetDynamicDisk(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -1279,13 +1482,9 @@ duk_ret_t CDuckJs::NativeCollisionSetDynamicDisk(duk_context *ctx)
 	CDuckCollision::CDynamicDisk Disk;
 	Disk.m_Flags = -1;
 
-
-	if(duk_get_prop_string(ctx, 1, "flags"))
-	{
-		Disk.m_Flags = (int)duk_to_int(ctx, -1);
-		duk_pop(ctx);
-	}
-
+	int Flags;
+	DukGetIntProp(ctx, 1, "flags", &Flags);
+	Disk.m_Flags = Flags;
 	DukGetFloatProp(ctx, 1, "pos_x", &Disk.m_Pos.x);
 	DukGetFloatProp(ctx, 1, "pos_y", &Disk.m_Pos.y);
 	DukGetFloatProp(ctx, 1, "vel_x", &Disk.m_Vel.x);
@@ -1298,6 +1497,20 @@ duk_ret_t CDuckJs::NativeCollisionSetDynamicDisk(duk_context *ctx)
 	return 0;
 }
 
+/*#
+`TwCollisionClearDynamicDisk(block_id)`
+
+| Removes a dynamic disk.
+
+**Parameters**
+
+* **disk_id**: int
+
+**Returns**
+
+* **None**
+
+#*/
 duk_ret_t CDuckJs::NativeCollisionClearDynamicDisk(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -1309,6 +1522,37 @@ duk_ret_t CDuckJs::NativeCollisionClearDynamicDisk(duk_context *ctx)
 	return 0;
 }
 
+/*#
+`TwCollisionGetPredictedDynamicDisks()`
+
+| Get predicted dynamic disks.
+
+**Parameters**
+
+* **None**
+
+**Returns**
+
+* **disks**
+
+.. code-block:: js
+
+	var disks = [
+		{
+			id: int,
+			flags: int, // unused at the moment
+			pos_x, float,
+			pos_y, float,
+			vel_x, float,
+			vel_y, float,
+			radius, float,
+			hook_force, float,
+		},
+		...
+	];
+
+
+#*/
 duk_ret_t CDuckJs::NativeCollisionGetPredictedDynamicDisks(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -1338,6 +1582,49 @@ duk_ret_t CDuckJs::NativeCollisionGetPredictedDynamicDisks(duk_context *ctx)
 	return 1;
 }
 
+/*#
+`TwSetHudPartsShown(hud)`
+
+| Show/hide parts of the hud.
+| Example:
+
+.. code-block:: js
+
+	var hud = {
+		health: 0,
+		armor: 0,
+		ammo: 1,
+		time: 0,
+		killfeed: 1,
+		score: 1,
+		chat: 1,
+		scoreboard: 1,
+	};
+
+	TwSetHudPartsShown(hud);
+
+**Parameters**
+
+* **hud**
+
+.. code-block:: js
+
+	var hud = {
+		health: int,
+		armor: int,
+		ammo: int,
+		time: int,
+		killfeed: int,
+		score: int,
+		chat: int,
+		scoreboard: int,
+	};
+
+**Returns**
+
+* **None**
+
+#*/
 duk_ret_t CDuckJs::NativeSetHudPartsShown(duk_context *ctx)
 {
 	/*
@@ -1372,7 +1659,28 @@ duk_ret_t CDuckJs::NativeSetHudPartsShown(duk_context *ctx)
 	return 0;
 }
 
-duk_ret_t CDuckJs::NativeCreatePacket(duk_context *ctx)
+/*#
+`TwNetCreatePacket(packet)`
+
+| Network, create a custom packet.
+
+**Parameters**
+
+* **packet**
+
+.. code-block:: js
+
+	var packet = {
+		netid: int,
+		force_send_now: int,
+	};
+
+**Returns**
+
+* **None**
+
+#*/
+duk_ret_t CDuckJs::NativeNetCreatePacket(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
@@ -1402,7 +1710,21 @@ duk_ret_t CDuckJs::NativeCreatePacket(duk_context *ctx)
 	return 0;
 }
 
-duk_ret_t CDuckJs::NativePacketAddInt(duk_context *ctx)
+/*#
+`TwNetPacketAddInt(var_int)`
+
+| Add an int to the current packet.
+
+**Parameters**
+
+* **var_int**: int
+
+**Returns**
+
+* **None**
+
+#*/
+duk_ret_t CDuckJs::NativeNetPacketAddInt(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
@@ -1412,7 +1734,21 @@ duk_ret_t CDuckJs::NativePacketAddInt(duk_context *ctx)
 	return 0;
 }
 
-duk_ret_t CDuckJs::NativePacketAddFloat(duk_context *ctx)
+/*#
+`TwNetPacketAddFloat(var_float)`
+
+| Add a float to the current packet.
+
+**Parameters**
+
+* **var_float**: float
+
+**Returns**
+
+* **None**
+
+#*/
+duk_ret_t CDuckJs::NativeNetPacketAddFloat(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 1, "Wrong argument count");
@@ -1422,7 +1758,23 @@ duk_ret_t CDuckJs::NativePacketAddFloat(duk_context *ctx)
 	return 0;
 }
 
-duk_ret_t CDuckJs::NativePacketAddString(duk_context *ctx)
+/*#
+`TwNetPacketAddString(str, size_limit)`
+
+| Add a string to the current packet, with a size limit.
+| Example: ``TwNetPacketAddString("Dune likes cheese", 32)``
+
+**Parameters**
+
+* **str**: string
+* **size_limit**: int
+
+**Returns**
+
+* **None**
+
+#*/
+duk_ret_t CDuckJs::NativeNetPacketAddString(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 2, "Wrong argument count");
@@ -1433,7 +1785,21 @@ duk_ret_t CDuckJs::NativePacketAddString(duk_context *ctx)
 	return 0;
 }
 
-duk_ret_t CDuckJs::NativeSendPacket(duk_context *ctx)
+/*#
+`TwNetSendPacket()`
+
+| Send current packet.
+
+**Parameters**
+
+* **None**
+
+**Returns**
+
+* **None**
+
+#*/
+duk_ret_t CDuckJs::NativeNetSendPacket(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
 	dbg_assert(n == 0, "Wrong argument count");
@@ -1442,6 +1808,34 @@ duk_ret_t CDuckJs::NativeSendPacket(duk_context *ctx)
 	return 0;
 }
 
+/*#
+`TwAddWeapon(weapon)`
+
+| Simple helper to add a custom weapon.
+
+**Parameters**
+
+* **weapon**
+
+.. code-block:: js
+
+	var weapon = {
+		id: int,
+		tex_weapon: int, // can be null
+		tex_cursor: int, // can be null
+		weapon_x: float,
+		weapon_y: float,
+		hand_x,: float,
+		hand_y,: float,
+		hand_angle,: float,
+		recoil,: float,
+	};
+
+**Returns**
+
+* **None**
+
+#*/
 duk_ret_t CDuckJs::NativeAddWeapon(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -1474,6 +1868,22 @@ duk_ret_t CDuckJs::NativeAddWeapon(duk_context *ctx)
 	return 0;
 }
 
+/*#
+`TwPlaySoundAt(sound_name, x, y)`
+
+| Play a mod sound at position x,y.
+
+**Parameters**
+
+* **sound_name**: string
+* **x**: float
+* **y**: float
+
+**Returns**
+
+* **None**
+
+#*/
 duk_ret_t CDuckJs::NativePlaySoundAt(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -1487,6 +1897,20 @@ duk_ret_t CDuckJs::NativePlaySoundAt(duk_context *ctx)
 	return 0;
 }
 
+/*#
+`TwPlaySoundGlobal(sound_name)`
+
+| Play a mod sound globally.
+
+**Parameters**
+
+* **sound_name**: string
+
+**Returns**
+
+* **None**
+
+#*/
 duk_ret_t CDuckJs::NativePlaySoundGlobal(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -1498,6 +1922,20 @@ duk_ret_t CDuckJs::NativePlaySoundGlobal(duk_context *ctx)
 	return 0;
 }
 
+/*#
+`TwPlayMusic(sound_name)`
+
+| Play a mod music (will loop).
+
+**Parameters**
+
+* **sound_name**: string
+
+**Returns**
+
+* **None**
+
+#*/
 duk_ret_t CDuckJs::NativePlayMusic(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -1509,6 +1947,22 @@ duk_ret_t CDuckJs::NativePlayMusic(duk_context *ctx)
 	return 0;
 }
 
+/*#
+`TwRandomInt(min, max)`
+
+| Get a random int between min and max, included.
+| Example for getting a float instead: ``TwRandomInt(0, 1000000)/1000000.0``
+
+**Parameters**
+
+* **min**: int
+* **max**: int
+
+**Returns**
+
+* **rand_int**: int
+
+#*/
 duk_ret_t CDuckJs::NativeRandomInt(duk_context *ctx)
 {
 	int n = duk_get_top(ctx);  /* #args */
@@ -1761,11 +2215,11 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(CollisionClearDynamicDisk, 1);
 	REGISTER_FUNC(CollisionGetPredictedDynamicDisks, 0);
 	REGISTER_FUNC(SetHudPartsShown, 1);
-	REGISTER_FUNC(CreatePacket, 1);
-	REGISTER_FUNC(PacketAddInt, 1);
-	REGISTER_FUNC(PacketAddFloat, 1);
-	REGISTER_FUNC(PacketAddString, 2);
-	REGISTER_FUNC(SendPacket, 0);
+	REGISTER_FUNC(NetCreatePacket, 1);
+	REGISTER_FUNC(NetPacketAddInt, 1);
+	REGISTER_FUNC(NetPacketAddFloat, 1);
+	REGISTER_FUNC(NetPacketAddString, 2);
+	REGISTER_FUNC(NetSendPacket, 0);
 	REGISTER_FUNC(AddWeapon, 1);
 	REGISTER_FUNC(PlaySoundAt, 3);
 	REGISTER_FUNC(PlaySoundGlobal, 1);
