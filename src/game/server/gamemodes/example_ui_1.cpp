@@ -154,6 +154,7 @@ CGameControllerExampleUI1::CGameControllerExampleUI1(class CGameContext *pGameSe
 : IGameController(pGameServer)
 {
 	m_pGameType = "EXUI1";
+	ChangeMap("dm1"); // force dm1
 
 	// load duck mod
 	if(!Server()->LoadDuckMod("", "", "data/mods/example_ui_1"))
@@ -164,7 +165,9 @@ CGameControllerExampleUI1::CGameControllerExampleUI1(class CGameContext *pGameSe
 	TestNpc.Init(MAX_CLIENTS-g_Config.m_DbgDummies-1, "Dune the wise", GameServer());
 	TestNpc.m_Core.m_Pos = vec2(1056, 800);
 	TestNpc.m_aDialogLines.add("Hello adventurer!\nCome closer my dear.");
-	TestNpc.m_aDialogLines.add("I must tell you about him, the DEMON.");
+	TestNpc.m_aDialogLines.add("What I must tell you is of utmost importance.");
+	TestNpc.m_aDialogLines.add("But first, take this powerful item with you.");
+	TestNpc.m_aDialogLines.add("...");
 }
 
 void CGameControllerExampleUI1::OnPlayerConnect(CPlayer* pPlayer)

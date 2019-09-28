@@ -226,9 +226,10 @@ void CGameClient::OnConsoleInit()
 	m_All.Add(&gs_MapLayersBackGround); // first to render
 	m_All.Add(&m_pParticles->m_RenderTrail);
 	m_All.Add(m_pItems);
+	m_All.Add(&m_pDuckBridge->m_RgGame); // DUCK
 	m_All.Add(&gs_Players);
+	m_All.Add(&m_pDuckBridge->m_RgGameForeGround); // DUCK
 	m_All.Add(&gs_MapLayersForeGround);
-	m_All.Add(&m_pDuckBridge->m_RenderGroupGameForeGround); // DUCK
 	m_All.Add(&m_pParticles->m_RenderExplosions);
 	m_All.Add(&gs_NamePlates);
 	m_All.Add(&m_pParticles->m_RenderGeneral);
@@ -242,6 +243,7 @@ void CGameClient::OnConsoleInit()
 	m_All.Add(&gs_DebugHud);
 	m_All.Add(&gs_Notifications);
 	m_All.Add(&gs_Scoreboard);
+	m_All.Add(&m_pDuckBridge->m_RgHud); // DUCK
 	m_All.Add(m_pStats);
 	m_All.Add(m_pMotd);
 	m_All.Add(m_pMenus);

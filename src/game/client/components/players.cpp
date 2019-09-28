@@ -571,8 +571,4 @@ void CPlayers::OnRender()
 			}
 		}
 	}
-
-	if(m_pClient->m_pDuckBridge->IsLoaded()) {
-		m_pClient->m_pDuckBridge->RenderDrawSpace(CDuckBridge::DrawSpace::GAME);
-	}
 }

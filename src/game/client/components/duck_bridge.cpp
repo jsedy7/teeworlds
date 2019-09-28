@@ -138,7 +138,9 @@ void CDuckBridge::DrawTeeHand(const CDuckBridge::CTeeDrawHand& Hand, const CTeeS
 
 CDuckBridge::CDuckBridge() : m_CurrentPacket(0, 0) // We have to do this, CMsgPacker can't be uninitialized apparently...
 {
-	m_RenderGroupGameForeGround.Init(this);
+	m_RgGame.Init(this, DrawSpace::GAME);
+	m_RgGameForeGround.Init(this, DrawSpace::GAME_FOREGROUND);
+	m_RgHud.Init(this, DrawSpace::HUD);
 }
 
 void CDuckBridge::Reset()
@@ -637,10 +639,10 @@ void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 
 				Graphics()->QuadsBegin();
 
-				if(pWantColor[0] != pCurrentColor[0] ||
+				/*if(pWantColor[0] != pCurrentColor[0] ||
 				   pWantColor[1] != pCurrentColor[1] ||
 				   pWantColor[2] != pCurrentColor[2] ||
-				   pWantColor[3] != pCurrentColor[3])
+				   pWantColor[3] != pCurrentColor[3])*/
 				{
 					Graphics()->SetColor(pWantColor[0] * pWantColor[3], pWantColor[1] * pWantColor[3], pWantColor[2] * pWantColor[3], pWantColor[3]);
 					mem_move(pCurrentColor, pWantColor, sizeof(float)*4);
@@ -1663,6 +1665,11 @@ void CDuckBridge::OnInit()
 	m_Js.m_pBridge = this;
 	m_CurrentDrawSpace = 0;
 	m_CurrentPacketFlags = -1;
+}
+
+void CDuckBridge::OnReset()
+{
+	Reset();
 }
 
 void CDuckBridge::OnShutdown()

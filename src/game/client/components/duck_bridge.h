@@ -269,21 +269,42 @@ struct CDuckBridge : public CComponent
 
 	array<CSoundHashPair> m_aSounds;
 
-	// TODO: use this for all draw spaces?
-	class CRenderGroupGameForeground : public CComponent
+	class CRenderGroup : public CComponent
 	{
+	protected:
 		CDuckBridge* m_pBridge;
+		DrawSpace::Enum m_DrawSpace;
+
 	public:
-		void Init(CDuckBridge* pBridge) { m_pBridge = pBridge; }
+		void Init(CDuckBridge* pBridge, DrawSpace::Enum DrawSpace)
+		{
+			m_pBridge = pBridge;
+			m_DrawSpace = DrawSpace;
+		}
 		virtual void OnRender()
 		{
 			if(m_pBridge->IsLoaded()) {
-				m_pBridge->RenderDrawSpace(CDuckBridge::DrawSpace::GAME_FOREGROUND);
+				m_pBridge->RenderDrawSpace(m_DrawSpace);
 			}
 		}
 	};
 
-	CRenderGroupGameForeground m_RenderGroupGameForeGround;
+	class CRenderGroupHud : public CRenderGroup
+	{
+	public:
+		virtual void OnRender()
+		{
+			if(m_pBridge->IsLoaded()) {
+				CUIRect Rect = *UI()->Screen();
+				Graphics()->MapScreen(0.0f, 0.0f, Rect.w, Rect.h);
+				m_pBridge->RenderDrawSpace(m_DrawSpace);
+			}
+		}
+	};
+
+	CRenderGroup m_RgGame;
+	CRenderGroup m_RgGameForeGround;
+	CRenderGroupHud m_RgHud;
 
 	void DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo);
 	void DrawTeeHand(const CTeeDrawHand& Hand, const CTeeSkinInfo& SkinInfo);
@@ -348,6 +369,7 @@ struct CDuckBridge : public CComponent
 	bool InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256);
 
 	virtual void OnInit();
+	virtual void OnReset();
 	virtual void OnShutdown();
 	virtual void OnRender();
 	virtual void OnMessage(int Msg, void *pRawMsg);

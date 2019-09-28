@@ -58,11 +58,11 @@ function OnRender(clientLocalTime, intraTick)
     const screenSize = TwGetScreenSize();
     const camera = TwGetCamera();
     var worldPoints = GetWorldViewRect(camera.x, camera.y, screenSize.w/screenSize.h, camera.zoom);
-    TwRenderSetDrawSpace(Teeworlds.DRAW_SPACE_GAME);
+    /*TwRenderSetDrawSpace(Teeworlds.DRAW_SPACE_GAME);
     TwRenderSetColorF4(1, 0, 0, 0.5);
-    TwRenderQuad(worldPoints.x, worldPoints.y, worldPoints.w, worldPoints.h);
+    TwRenderQuad(worldPoints.x, worldPoints.y, worldPoints.w, worldPoints.h);*/
 
-    TwRenderSetDrawSpace(Teeworlds.DRAW_SPACE_GAME_FOREGROUND);
+    TwRenderSetDrawSpace(Teeworlds.DRAW_SPACE_HUD);
 
     ui.dialog_lines.forEach(function(line) {
         const npcCore = charCores[line.npc_cid];
@@ -75,13 +75,33 @@ function OnRender(clientLocalTime, intraTick)
         var bubbleX = clamp(npcCore.pos_x - bubbleW/2, worldPoints.x, worldPoints.x + worldPoints.w - bubbleW);
         var bubbleY = clamp(npcCore.pos_y - bubbleH - 100, 0, worldPoints.y + worldPoints.h - bubbleH);
 
+        bubbleX = (bubbleX-worldPoints.x)/worldPoints.w * uiRect.w;
+        bubbleY = (bubbleY-worldPoints.y)/worldPoints.h * uiRect.h;
+        bubbleW = bubbleW/worldPoints.w * uiRect.w;
+        bubbleH = bubbleH/worldPoints.h * uiRect.h;
+
         TwRenderSetColorF4(0, 0, 0, 1);
         TwRenderQuad(bubbleX, bubbleY, bubbleW, bubbleH);
+
+        const npcUiX = (npcCore.pos_x - worldPoints.x) / worldPoints.w * uiRect.w;
+        const npcUiY = (npcCore.pos_y - worldPoints.y) / worldPoints.h * uiRect.h;
+        var tailTopX1 = clamp(npcUiX - 5, 20 - 5, uiRect.w - 20 - 5);
+        var tailTopX2 = clamp(npcUiX + 5, 20 + 5, uiRect.w - 20 + 5);
+        var tailX = npcUiX;
+        var tailY = npcUiY - 50;
+
+        TwRenderSetFreeform([
+            tailTopX1, bubbleY + bubbleH,
+            tailTopX2, bubbleY + bubbleH,
+            tailX, tailY,
+            tailX, tailY,
+        ]);
+        TwRenderDrawFreeform(0, 0);
 
         const Margin = 10;
         TwRenderDrawText({
             str: line.text,
-            font_size: 20,
+            font_size: 13,
             colors: [1, 1, 1, 1],
             rect: [bubbleX+Margin, bubbleY+Margin, bubbleW-Margin, bubbleH-Margin]
         });

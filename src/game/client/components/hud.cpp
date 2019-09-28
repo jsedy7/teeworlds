@@ -790,11 +790,5 @@ void CHud::OnRender()
 		RenderVoting();
 	}
 
-	if(m_pClient->m_pDuckBridge->IsLoaded()) {
-		CUIRect Rect = *UI()->Screen();
-		Graphics()->MapScreen(0.0f, 0.0f, Rect.w, Rect.h);
-		m_pClient->m_pDuckBridge->RenderDrawSpace(CDuckBridge::DrawSpace::HUD);
-	}
-
 	RenderCursor();
 }
