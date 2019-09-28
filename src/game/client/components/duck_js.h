@@ -62,6 +62,7 @@ class CDuckJs
 	static duk_ret_t NativePlaySoundGlobal(duk_context *ctx);
 	static duk_ret_t NativePlayMusic(duk_context *ctx);
 	static duk_ret_t NativeRandomInt(duk_context *ctx);
+	static duk_ret_t NativeCalculateTextSize(duk_context *ctx);
 
 	// TODO: not great if we want to do nested objects
 	void PushObject();

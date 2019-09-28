@@ -350,6 +350,8 @@ struct CDuckBridge : public CComponent
 	vec2 GetCameraPos();
 	float GetCameraZoom();
 
+	vec2 CalculateTextSize(const char* pStr, float FontSize, float LineWidth);
+
 	// "entries"
 	void RenderDrawSpace(DrawSpace::Enum Space);
 	void CharacterCorePreTick(CCharacterCore** apCharCores);

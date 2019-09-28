@@ -581,6 +581,51 @@ float CDuckBridge::GetCameraZoom()
 	return m_pClient->m_pCamera->GetZoom();
 }
 
+vec2 CDuckBridge::CalculateTextSize(const char *pStr, float FontSize, float LineWidth)
+{
+	float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
+	Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
+
+	switch(m_CurrentDrawSpace)
+	{
+		case DrawSpace::GAME:
+		case DrawSpace::GAME_FOREGROUND:
+		{
+			CMapItemGroup Group;
+			Group.m_OffsetX = 0;
+			Group.m_OffsetY = 0;
+			Group.m_ParallaxX = 100;
+			Group.m_ParallaxY = 100;
+			Group.m_UseClipping = false;
+			RenderTools()->MapScreenToGroup(0, 0, &Group, GetCameraZoom());
+		} break;
+
+		case DrawSpace::HUD:
+		{
+			CUIRect Rect = *UI()->Screen();
+			Graphics()->MapScreen(0.0f, 0.0f, Rect.w, Rect.h);
+		} break;
+
+		default:
+			dbg_assert(0, "case not handled");
+			break;
+	}
+
+	CTextCursor Cursor;
+	TextRender()->SetCursor(&Cursor, 0, 0, FontSize, TEXTFLAG_ALLOW_NEWLINE);
+	Cursor.m_LineWidth = LineWidth;
+	TextRender()->TextEx(&Cursor, pStr, -1);
+
+	// TODO: is this even useful at all?
+	Graphics()->MapScreen(ScreenX0, ScreenY0, ScreenX1, ScreenY1); // restore screen
+
+	float y = Cursor.m_Y;
+	if(Cursor.m_X != 0)
+		y += FontSize;
+
+	return vec2(Cursor.m_X, y);
+}
+
 void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 {
 	const int CmdCount = m_aRenderCmdList[Space].size();
@@ -639,23 +684,9 @@ void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 
 				Graphics()->QuadsBegin();
 
-				/*if(pWantColor[0] != pCurrentColor[0] ||
-				   pWantColor[1] != pCurrentColor[1] ||
-				   pWantColor[2] != pCurrentColor[2] ||
-				   pWantColor[3] != pCurrentColor[3])*/
-				{
-					Graphics()->SetColor(pWantColor[0] * pWantColor[3], pWantColor[1] * pWantColor[3], pWantColor[2] * pWantColor[3], pWantColor[3]);
-					mem_move(pCurrentColor, pWantColor, sizeof(float)*4);
-				}
+				Graphics()->SetColor(pWantColor[0] * pWantColor[3], pWantColor[1] * pWantColor[3], pWantColor[2] * pWantColor[3], pWantColor[3]);
 
-				if(pWantQuadSubSet[0] != pCurrentQuadSubSet[0] ||
-				   pWantQuadSubSet[1] != pCurrentQuadSubSet[1] ||
-				   pWantQuadSubSet[2] != pCurrentQuadSubSet[2] ||
-				   pWantQuadSubSet[3] != pCurrentQuadSubSet[3])
-				{
-					Graphics()->QuadsSetSubset(pWantQuadSubSet[0], pWantQuadSubSet[1], pWantQuadSubSet[2], pWantQuadSubSet[3]);
-					mem_move(pCurrentQuadSubSet, pWantQuadSubSet, sizeof(float)*4);
-				}
+				Graphics()->QuadsSetSubset(pWantQuadSubSet[0], pWantQuadSubSet[1], pWantQuadSubSet[2], pWantQuadSubSet[3]);
 
 				if(RenderSpace.m_WantQuadRotation != RenderSpace.m_CurrentQuadRotation)
 				{
@@ -1669,7 +1700,7 @@ void CDuckBridge::OnInit()
 
 void CDuckBridge::OnReset()
 {
-	Reset();
+	//Reset();
 }
 
 void CDuckBridge::OnShutdown()

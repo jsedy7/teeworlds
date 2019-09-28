@@ -4,7 +4,7 @@
 
 class CGameControllerExampleUI1 : public IGameController
 {
-
+	bool HasEnoughPlayers() const { return true; }
 public:
 	CGameControllerExampleUI1(class CGameContext *pGameServer);
 

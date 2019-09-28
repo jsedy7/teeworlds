@@ -2304,6 +2304,70 @@ duk_ret_t CDuckJs::NativeRandomInt(duk_context *ctx)
 	return 1;
 }
 
+/*#
+`TwCalculateTextSize(text)`
+
+| Calculate text size for the current draw space.
+| Example:
+
+.. code-block:: js
+
+	var size = TwCalculateTextSize({
+		str: "Some text",
+		font_size: 13,
+		line_width: 240
+	});
+
+**Parameters**
+
+* **text**:
+
+.. code-block:: js
+
+	var text = {
+		str: string,
+		font_size: float,
+		line_width: float
+	};
+
+**Returns**
+
+* **size**: { x: float, y: float }
+
+#*/
+duk_ret_t CDuckJs::NativeCalculateTextSize(duk_context *ctx)
+{
+	CheckArgumentCount(ctx, 1);
+
+	if(!duk_is_object(ctx, 0))
+	{
+		dbg_msg("duck", "ERROR: TwRenderDrawText(text) text is not an object");
+		return 0;
+	}
+
+	const char* aStr;
+	float FontSize = 10.0f;
+	float LineWidth = -1;
+
+	DukGetStringPropNoCopy(ctx, 0, "str", &aStr);
+
+	if(!aStr)
+	{
+		dbg_msg("duck", "ERROR: TwRenderDrawText(text) text.str is null");
+		return 0;
+	}
+
+	DukGetFloatProp(ctx, 0, "font_size", &FontSize);
+	DukGetFloatProp(ctx, 0, "line_width", &LineWidth);
+
+	vec2 Size = This()->Bridge()->CalculateTextSize(aStr, FontSize, LineWidth);
+
+	This()->PushObject();
+	This()->ObjectSetMemberFloat("w", Size.x);
+	This()->ObjectSetMemberFloat("h", Size.y);
+	return 1;
+}
+
 void CDuckJs::PushObject()
 {
 	m_CurrentPushedObjID = duk_push_object(Ctx());
@@ -2471,6 +2535,7 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(PlaySoundGlobal, 1);
 	REGISTER_FUNC(PlayMusic, 1);
 	REGISTER_FUNC(RandomInt, 2);
+	REGISTER_FUNC(CalculateTextSize, 1);
 
 #undef REGISTER_FUNC
 

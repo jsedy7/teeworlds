@@ -1166,3 +1166,40 @@ TwRandomInt
 
 |
 
+TwCalculateTextSize
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwCalculateTextSize(text)
+
+
+| Calculate text size for the current draw space.
+| Example:
+
+.. code-block:: js
+
+	var size = TwCalculateTextSize({
+		str: "Some text",
+		font_size: 13,
+		line_width: 240
+	});
+
+**Parameters**
+
+* **text**:
+
+.. code-block:: js
+
+	var text = {
+		str: string,
+		font_size: float,
+		line_width: float
+	};
+
+**Returns**
+
+* **size**: { x: float, y: float }
+
+
+|
+

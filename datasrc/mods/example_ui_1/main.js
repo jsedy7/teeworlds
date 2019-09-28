@@ -57,34 +57,46 @@ function OnRender(clientLocalTime, intraTick)
 
     const screenSize = TwGetScreenSize();
     const camera = TwGetCamera();
-    var worldPoints = GetWorldViewRect(camera.x, camera.y, screenSize.w/screenSize.h, camera.zoom);
+    var worldViewRect = GetWorldViewRect(camera.x, camera.y, screenSize.w/screenSize.h, camera.zoom);
     /*TwRenderSetDrawSpace(Teeworlds.DRAW_SPACE_GAME);
     TwRenderSetColorF4(1, 0, 0, 0.5);
-    TwRenderQuad(worldPoints.x, worldPoints.y, worldPoints.w, worldPoints.h);*/
+    TwRenderQuad(worldViewRect.x, worldViewRect.y, worldViewRect.w, worldViewRect.h);*/
 
     TwRenderSetDrawSpace(Teeworlds.DRAW_SPACE_HUD);
 
+    // draw dialog bubbles
     ui.dialog_lines.forEach(function(line) {
         const npcCore = charCores[line.npc_cid];
         if(!npcCore) {
             return;
         }
 
-        const bubbleW = 240;
-        const bubbleH = 65;
-        var bubbleX = clamp(npcCore.pos_x - bubbleW/2, worldPoints.x, worldPoints.x + worldPoints.w - bubbleW);
-        var bubbleY = clamp(npcCore.pos_y - bubbleH - 100, 0, worldPoints.y + worldPoints.h - bubbleH);
+        const Margin = 10;
+        var bubbleW = 160;
 
-        bubbleX = (bubbleX-worldPoints.x)/worldPoints.w * uiRect.w;
-        bubbleY = (bubbleY-worldPoints.y)/worldPoints.h * uiRect.h;
-        bubbleW = bubbleW/worldPoints.w * uiRect.w;
-        bubbleH = bubbleH/worldPoints.h * uiRect.h;
+        // calculate text size
+        const textSize = TwCalculateTextSize({
+            str: line.text,
+            font_size: 13,
+            line_width: bubbleW
+        });
 
+        var bubbleH = textSize.h + 2 + Margin*2;
+        bubbleW += Margin*2;
+
+        // get npc pos in hud space
+        const npcUiX = (npcCore.pos_x - worldViewRect.x) / worldViewRect.w * uiRect.w;
+        const npcUiY = (npcCore.pos_y - worldViewRect.y) / worldViewRect.h * uiRect.h;
+
+        // clamp bubble position inside view
+        var bubbleX = clamp(npcUiX - bubbleW/2, 0, uiRect.w - bubbleW);
+        var bubbleY = clamp(npcUiY - bubbleH - 70, 0, uiRect.h - bubbleH);
+
+        // draw rect background
         TwRenderSetColorF4(0, 0, 0, 1);
         TwRenderQuad(bubbleX, bubbleY, bubbleW, bubbleH);
-
-        const npcUiX = (npcCore.pos_x - worldPoints.x) / worldPoints.w * uiRect.w;
-        const npcUiY = (npcCore.pos_y - worldPoints.y) / worldPoints.h * uiRect.h;
+        
+        // draw tail
         var tailTopX1 = clamp(npcUiX - 5, 20 - 5, uiRect.w - 20 - 5);
         var tailTopX2 = clamp(npcUiX + 5, 20 + 5, uiRect.w - 20 + 5);
         var tailX = npcUiX;
@@ -97,8 +109,8 @@ function OnRender(clientLocalTime, intraTick)
             tailX, tailY,
         ]);
         TwRenderDrawFreeform(0, 0);
-
-        const Margin = 10;
+        
+        // draw text
         TwRenderDrawText({
             str: line.text,
             font_size: 13,

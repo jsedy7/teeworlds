@@ -154,7 +154,7 @@ CGameControllerExampleUI1::CGameControllerExampleUI1(class CGameContext *pGameSe
 : IGameController(pGameServer)
 {
 	m_pGameType = "EXUI1";
-	ChangeMap("dm1"); // force dm1
+	str_copy(g_Config.m_SvMap, "dm1", sizeof(g_Config.m_SvMap)); // force dm1
 
 	// load duck mod
 	if(!Server()->LoadDuckMod("", "", "data/mods/example_ui_1"))
