@@ -1076,7 +1076,7 @@ void CGameClient::OnNewSnapshot()
 		{
 			IClient::CSnapItem Item;
 			const void *pData = Client()->SnapGetItem(IClient::SNAP_CURRENT, i, &Item);
-			m_pDuckBridge->OnMessage(Item.m_Type, (void*)pData); // DUCK
+			m_pDuckBridge->OnSnapItem(Item.m_Type, (void*)pData); // DUCK
 
 			// demo items
 			if(Client()->State() == IClient::STATE_DEMOPLAYBACK)

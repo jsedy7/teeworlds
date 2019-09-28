@@ -1391,6 +1391,33 @@ duk_ret_t CDuckJs::NativeGetCursorPosition(duk_context *ctx)
 }
 
 /*#
+`TwGetUiScreenRect()`
+
+| Get UI screen rect. Useful to draw in UI space.
+
+**Parameters**
+
+* None
+
+**Returns**
+
+* **rect**: { x: float, y: float, w: float, h: float }
+
+#*/
+duk_ret_t CDuckJs::NativeGetUiScreenRect(duk_context *ctx)
+{
+	CheckArgumentCount(ctx, 0);
+	CUIRect Rect = This()->Bridge()->GetUiScreenRect();
+
+	This()->PushObject();
+	This()->ObjectSetMemberFloat("x", Rect.x);
+	This()->ObjectSetMemberFloat("y", Rect.y);
+	This()->ObjectSetMemberFloat("w", Rect.w);
+	This()->ObjectSetMemberFloat("h", Rect.h);
+	return 1;
+}
+
+/*#
 `TwMapSetTileCollisionFlags(tile_x, tile_y, flags)`
 
 | Modify a map tile's collision flags.
@@ -2375,6 +2402,7 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(GetStandardSkinInfo, 0);
 	REGISTER_FUNC(GetSkinPartTexture, 2);
 	REGISTER_FUNC(GetCursorPosition, 0);
+	REGISTER_FUNC(GetUiScreenRect, 0);
 	REGISTER_FUNC(MapSetTileCollisionFlags, 3);
 	REGISTER_FUNC(DirectionFromAngle, 1);
 	REGISTER_FUNC(CollisionSetStaticBlock, 2);
@@ -2485,7 +2513,7 @@ void CDuckJs::OnMessage(int Msg, void* pRawMsg)
 {
 	if(GetJsFunction("OnMessage"))
 	{
-		if(MakeVanillaJsNetObj(Msg, pRawMsg))
+		if(MakeVanillaJsNetMessage(Msg, pRawMsg))
 		{
 		}
 		else if(Msg == NETMSG_DUCK_NETOBJ)
@@ -2512,6 +2540,18 @@ void CDuckJs::OnMessage(int Msg, void* pRawMsg)
 		// call OnMessage(netObj)
 		CallJsFunction(1);
 		duk_pop(Ctx());
+	}
+}
+
+void CDuckJs::OnSnapItem(int Msg, void *pRawMsg)
+{
+	if(GetJsFunction("OnMessage"))
+	{
+		if(MakeVanillaJsNetObj(Msg, pRawMsg))
+		{
+			CallJsFunction(1);
+			duk_pop(Ctx());
+		}
 	}
 }
 

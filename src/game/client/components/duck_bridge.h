@@ -308,6 +308,8 @@ struct CDuckBridge : public CComponent
 	void PlaySoundGlobal(const char* pSoundName);
 	void PlayMusic(const char* pSoundName);
 
+	CUIRect GetUiScreenRect();
+
 	// "entries"
 	void RenderDrawSpace(DrawSpace::Enum Space);
 	void CharacterCorePreTick(CCharacterCore** apCharCores);
@@ -330,6 +332,7 @@ struct CDuckBridge : public CComponent
 	virtual void OnShutdown();
 	virtual void OnRender();
 	virtual void OnMessage(int Msg, void *pRawMsg);
+	void OnSnapItem(int Msg, void *pRawMsg);
 	virtual void OnStateChange(int NewState, int OldState);
 	virtual bool OnInput(IInput::CEvent e);
 	void OnModReset();

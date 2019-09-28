@@ -44,6 +44,7 @@ class CDuckJs
 	static duk_ret_t NativeGetStandardSkinInfo(duk_context *ctx);
 	static duk_ret_t NativeGetSkinPartTexture(duk_context *ctx);
 	static duk_ret_t NativeGetCursorPosition(duk_context *ctx);
+	static duk_ret_t NativeGetUiScreenRect(duk_context *ctx);
 	static duk_ret_t NativeMapSetTileCollisionFlags(duk_context *ctx);
 	static duk_ret_t NativeDirectionFromAngle(duk_context *ctx);
 	static duk_ret_t NativeCollisionSetStaticBlock(duk_context *ctx);
@@ -78,6 +79,7 @@ class CDuckJs
 	void CallJsFunction(int NumArgs);
 	bool HasJsFunctionReturned();
 
+	bool MakeVanillaJsNetMessage(int MsgID, void* pRawMsg);
 	bool MakeVanillaJsNetObj(int MsgID, void* pRawMsg);
 	const char* GetContentEnumsAsJs();
 
@@ -85,6 +87,7 @@ public:
 	CDuckJs();
 	void Shutdown();
 	void OnMessage(int Msg, void* pRawMsg);
+	void OnSnapItem(int Msg, void* pRawMsg);
 	void OnInput(IInput::CEvent e);
 	void OnModLoaded();
 

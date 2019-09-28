@@ -640,6 +640,26 @@ TwGetCursorPosition
 
 |
 
+TwGetUiScreenRect
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwGetUiScreenRect()
+
+
+| Get UI screen rect. Useful to draw in UI space.
+
+**Parameters**
+
+* None
+
+**Returns**
+
+* **rect**: { x: float, y: float, w: float, h: float }
+
+
+|
+
 TwMapSetTileCollisionFlags
 ---------------------------------------------------------------------
 .. code-block:: js

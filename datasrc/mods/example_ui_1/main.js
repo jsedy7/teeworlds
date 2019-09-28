@@ -8,6 +8,8 @@ var ui = {
     dialog_lines: []
 };
 
+var localClientID = 0;
+
 function DrawInventory()
 {
 
@@ -26,6 +28,8 @@ function OnLoaded()
         chat: 0,
         scoreboard: 1,
     });
+
+    //printObj(Teeworlds);
 }
 
 function OnUpdate(clientLocalTime, intraTick)
@@ -39,8 +43,14 @@ function OnRender(clientLocalTime, intraTick)
         DrawInventory();
     }
 
+    const uiRect = TwGetUiScreenRect();
+    const charCores = TwGetClientCharacterCores();
+    const localCore = charCores[localClientID];
+
+    TwRenderSetDrawSpace(1 /*DRAW_SPACE_HUD*/);
+
     ui.dialog_lines.forEach(function(line) {
-        TwRenderSetDrawSpace(1 /*DRAW_SPACE_HUD*/);
+        
         TwRenderDrawText({
             str: line.text,
             font_size: 10,
@@ -52,7 +62,16 @@ function OnRender(clientLocalTime, intraTick)
 
 function OnMessage(packet)
 {
-    if(packet.mod_id == 0x1) {
+    //printObj(packet);
+    
+    if(packet.tw_msg_id == Teeworlds.NETMSGTYPE_SV_CLIENTINFO)
+    {
+        if(packet.m_Local == 1) {
+            localClientID = packet.m_ClientID; // get the local ID
+            // TODO: this is inconvenient...
+        }
+    }
+    else if(packet.mod_id == 0x1) {
         var line = TwNetPacketUnpack(packet, {
             i32_npc_cid: 0,
             str128_text: 0

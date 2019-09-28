@@ -558,6 +558,11 @@ void CDuckBridge::PlayMusic(const char *pSoundName)
 	Sound()->Play(CSounds::CHN_MUSIC, m_aSounds[ID].m_Handle, ISound::FLAG_LOOP);
 }
 
+CUIRect CDuckBridge::GetUiScreenRect()
+{
+	return *UI()->Screen();
+}
+
 void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 {
 	const int CmdCount = m_aRenderCmdList[Space].size();
@@ -1713,6 +1718,15 @@ void CDuckBridge::OnMessage(int Msg, void *pRawMsg)
 	}
 
 	m_Js.OnMessage(Msg, pRawMsg);
+}
+
+void CDuckBridge::OnSnapItem(int Msg, void *pRawMsg)
+{
+	if(!IsLoaded()) {
+		return;
+	}
+
+	m_Js.OnSnapItem(Msg, pRawMsg);
 }
 
 void CDuckBridge::OnStateChange(int NewState, int OldState)
