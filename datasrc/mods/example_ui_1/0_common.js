@@ -70,3 +70,22 @@ function fmod(a, b)
 {
     return Number((a - (Math.floor(a / b) * b)).toPrecision(8));
 }
+
+function min(a, b)
+{
+    if(a < b) return a;
+    return b;
+}
+
+function max(a, b)
+{
+    if(a > b) return a;
+    return b;
+}
+
+function clamp(val, min, max)
+{
+    if(val < min) return min;
+    if(val > max) return max;
+    return val;
+}

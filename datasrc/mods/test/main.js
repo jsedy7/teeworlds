@@ -206,6 +206,8 @@ function OnUpdate(clientLocalTime, intraTick)
 
 function OnRender(clientLocalTime, intraTick)
 {
+    TwRenderSetDrawSpace(0 /*DRAW_SPACE_GAME*/);
+    
     var charList = TwGetClientCharacterCores();
     if(charList[0] != null) {
         var cursorPos = TwGetCursorPosition();
@@ -230,7 +232,6 @@ function OnRender(clientLocalTime, intraTick)
 
     /*var someInt = Math.floor(clientLocalTime) % 6;
     print("Hello from the dark side! " + someInt);*/
-    TwRenderSetDrawSpace(0 /*DRAW_SPACE_GAME*/);
 
     var tee = {
         size: 64 + 64 * (Math.sin(clientLocalTime * 1.3) * 0.5 + 0.5),

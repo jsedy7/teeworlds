@@ -46,16 +46,42 @@ function OnRender(clientLocalTime, intraTick)
     const uiRect = TwGetUiScreenRect();
     const charCores = TwGetClientCharacterCores();
     const localCore = charCores[localClientID];
+    if(!localCore) {
+        return;
+    }
 
-    TwRenderSetDrawSpace(1 /*DRAW_SPACE_HUD*/);
+    var cursorPos = TwGetCursorPosition();
+    cursorPos.x -= localCore.pos_x;
+    cursorPos.y -= localCore.pos_y;
+    //printObj(cursorPos);
+
+    var worldPoints = GetWorldViewRect(localCore.pos_x, localCore.pos_y, 1920/1080, 1.0);
+    TwRenderSetDrawSpace(Teeworlds.DRAW_SPACE_GAME);
+    TwRenderSetColorF4(1, 0, 0, 0.5);
+    TwRenderQuad(worldPoints.x, worldPoints.y, worldPoints.w, worldPoints.h);
+
+    //TwRenderSetDrawSpace(Teeworlds.DRAW_SPACE_HUD);
 
     ui.dialog_lines.forEach(function(line) {
-        
+        const npcCore = charCores[line.npc_cid];
+        if(!npcCore) {
+            return;
+        }
+
+        const bubbleW = 240;
+        const bubbleH = 65;
+        var bubbleX = clamp(npcCore.pos_x - bubbleW/2, worldPoints.x, worldPoints.x + worldPoints.w - bubbleW);
+        var bubbleY = clamp(npcCore.pos_y - bubbleH - 100, 0, worldPoints.y + worldPoints.h - bubbleH);
+
+        TwRenderSetColorF4(0, 0, 0, 1);
+        TwRenderQuad(bubbleX, bubbleY, bubbleW, bubbleH);
+
+        const Margin = 10;
         TwRenderDrawText({
             str: line.text,
-            font_size: 10,
+            font_size: 20,
             colors: [1, 1, 1, 1],
-            rect: [0, 0, 400, 250]
+            rect: [bubbleX+Margin, bubbleY+Margin, bubbleW-Margin, bubbleH-Margin]
         });
     });
 }

@@ -2350,7 +2350,7 @@ bool CDuckJs::LoadJsScriptFile(const char* pJsFilePath, const char* pJsRelFilePa
 	duk_push_string(Ctx(), pFileData);
 	if(duk_peval(Ctx()) != 0)
 	{
-		dbg_msg("duck", "[JS ERROR] '%s': \n   ", pJsRelFilePath, duk_safe_to_stacktrace(Ctx(), -1));
+		dbg_msg("duck", "[JS ERROR] '%s': \n   %s", pJsRelFilePath, duk_safe_to_stacktrace(Ctx(), -1));
 		mem_free(pFileData);
 		return false;
 	}

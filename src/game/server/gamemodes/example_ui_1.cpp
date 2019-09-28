@@ -163,7 +163,7 @@ CGameControllerExampleUI1::CGameControllerExampleUI1(class CGameContext *pGameSe
 
 	TestNpc.Init(MAX_CLIENTS-g_Config.m_DbgDummies-1, "Dune the wise", GameServer());
 	TestNpc.m_Core.m_Pos = vec2(1056, 800);
-	TestNpc.m_aDialogLines.add("Hello dear adventurer! Come closer.");
+	TestNpc.m_aDialogLines.add("Hello adventurer!\nCome closer my dear.");
 	TestNpc.m_aDialogLines.add("I must tell you about him, the DEMON.");
 }
 
