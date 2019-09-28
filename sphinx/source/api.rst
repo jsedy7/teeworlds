@@ -660,6 +660,46 @@ TwGetUiScreenRect
 
 |
 
+TwGetScreenSize
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwGetScreenSize()
+
+
+| Get screen size.
+
+**Parameters**
+
+* None
+
+**Returns**
+
+* **size**: { w: float, h: float }
+
+
+|
+
+TwGetCamera
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwGetCamera()
+
+
+| Get camera position and zoom.
+
+**Parameters**
+
+* None
+
+**Returns**
+
+* **camera**: { x: float, y: float, zoom: float }
+
+
+|
+
 TwMapSetTileCollisionFlags
 ---------------------------------------------------------------------
 .. code-block:: js

@@ -1418,6 +1418,57 @@ duk_ret_t CDuckJs::NativeGetUiScreenRect(duk_context *ctx)
 }
 
 /*#
+`TwGetScreenSize()`
+
+| Get screen size.
+
+**Parameters**
+
+* None
+
+**Returns**
+
+* **size**: { w: float, h: float }
+
+#*/
+duk_ret_t CDuckJs::NativeGetScreenSize(duk_context *ctx)
+{
+	CheckArgumentCount(ctx, 0);
+	vec2 Size = This()->Bridge()->GetScreenSize();
+
+	This()->PushObject();
+	This()->ObjectSetMemberFloat("w", Size.x);
+	This()->ObjectSetMemberFloat("h", Size.y);
+	return 1;
+}
+
+/*#
+`TwGetCamera()`
+
+| Get camera position and zoom.
+
+**Parameters**
+
+* None
+
+**Returns**
+
+* **camera**: { x: float, y: float, zoom: float }
+
+#*/
+duk_ret_t CDuckJs::NativeGetCamera(duk_context *ctx)
+{
+	CheckArgumentCount(ctx, 0);
+	vec2 Pos = This()->Bridge()->GetCameraPos();
+
+	This()->PushObject();
+	This()->ObjectSetMemberFloat("x", Pos.x);
+	This()->ObjectSetMemberFloat("y", Pos.y);
+	This()->ObjectSetMemberFloat("zoom", This()->Bridge()->GetCameraZoom());
+	return 1;
+}
+
+/*#
 `TwMapSetTileCollisionFlags(tile_x, tile_y, flags)`
 
 | Modify a map tile's collision flags.
@@ -2403,6 +2454,8 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(GetSkinPartTexture, 2);
 	REGISTER_FUNC(GetCursorPosition, 0);
 	REGISTER_FUNC(GetUiScreenRect, 0);
+	REGISTER_FUNC(GetScreenSize, 0);
+	REGISTER_FUNC(GetCamera, 0);
 	REGISTER_FUNC(MapSetTileCollisionFlags, 3);
 	REGISTER_FUNC(DirectionFromAngle, 1);
 	REGISTER_FUNC(CollisionSetStaticBlock, 2);
@@ -2427,7 +2480,8 @@ void CDuckJs::ResetDukContext()
 	str_format(aBuff, 1024*1024,
 		"const Teeworlds = {"
 		"	DRAW_SPACE_GAME: 0,"
-		"	DRAW_SPACE_HUD: 1,"
+		"	DRAW_SPACE_GAME_FOREGROUND: 1,"
+		"	DRAW_SPACE_HUD: 2,"
 		"%s"
 		"};", GetContentEnumsAsJs());
 

@@ -228,6 +228,7 @@ void CGameClient::OnConsoleInit()
 	m_All.Add(m_pItems);
 	m_All.Add(&gs_Players);
 	m_All.Add(&gs_MapLayersForeGround);
+	m_All.Add(&m_pDuckBridge->m_RenderGroupGameForeGround); // DUCK
 	m_All.Add(&m_pParticles->m_RenderExplosions);
 	m_All.Add(&gs_NamePlates);
 	m_All.Add(&m_pParticles->m_RenderGeneral);

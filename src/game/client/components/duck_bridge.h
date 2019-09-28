@@ -48,6 +48,7 @@ struct CDuckBridge : public CComponent
 		enum Enum
 		{
 			GAME=0,
+			GAME_FOREGROUND,
 			HUD,
 			_COUNT
 		};
@@ -268,12 +269,27 @@ struct CDuckBridge : public CComponent
 
 	array<CSoundHashPair> m_aSounds;
 
+	// TODO: use this for all draw spaces?
+	class CRenderGroupGameForeground : public CComponent
+	{
+		CDuckBridge* m_pBridge;
+	public:
+		void Init(CDuckBridge* pBridge) { m_pBridge = pBridge; }
+		virtual void OnRender()
+		{
+			if(m_pBridge->IsLoaded()) {
+				m_pBridge->RenderDrawSpace(CDuckBridge::DrawSpace::GAME_FOREGROUND);
+			}
+		}
+	};
+
+	CRenderGroupGameForeground m_RenderGroupGameForeGround;
+
 	void DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo);
 	void DrawTeeHand(const CTeeDrawHand& Hand, const CTeeSkinInfo& SkinInfo);
 
-	CDuckBridge() : m_CurrentPacket(0, 0) {} // We have to do this, CMsgPacker can't be uninitialized apparently...
+	CDuckBridge();
 
-	void Init(CDuckJs* pDuckJs);
 	void Reset();
 
 	void QueueSetColor(const float* pColor);
@@ -309,6 +325,9 @@ struct CDuckBridge : public CComponent
 	void PlayMusic(const char* pSoundName);
 
 	CUIRect GetUiScreenRect();
+	vec2 GetScreenSize();
+	vec2 GetCameraPos();
+	float GetCameraZoom();
 
 	// "entries"
 	void RenderDrawSpace(DrawSpace::Enum Space);

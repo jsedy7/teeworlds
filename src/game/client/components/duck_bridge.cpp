@@ -6,6 +6,7 @@
 #include <game/client/components/skins.h>
 #include <game/client/components/controls.h>
 #include <game/client/components/sounds.h>
+#include <game/client/components/camera.h>
 
 #include <engine/external/zlib/zlib.h>
 #include <engine/external/pnglite/pnglite.h>
@@ -135,9 +136,9 @@ void CDuckBridge::DrawTeeHand(const CDuckBridge::CTeeDrawHand& Hand, const CTeeS
 	RenderTools()->RenderTeeHand(&RenderInfo, Pos, Dir, Hand.m_AngleOff, Offset);
 }
 
-void CDuckBridge::Init(CDuckJs* pDuckJs)
+CDuckBridge::CDuckBridge() : m_CurrentPacket(0, 0) // We have to do this, CMsgPacker can't be uninitialized apparently...
 {
-
+	m_RenderGroupGameForeGround.Init(this);
 }
 
 void CDuckBridge::Reset()
@@ -561,6 +562,21 @@ void CDuckBridge::PlayMusic(const char *pSoundName)
 CUIRect CDuckBridge::GetUiScreenRect()
 {
 	return *UI()->Screen();
+}
+
+vec2 CDuckBridge::GetScreenSize()
+{
+	return vec2(Graphics()->ScreenWidth(), Graphics()->ScreenHeight());
+}
+
+vec2 CDuckBridge::GetCameraPos()
+{
+	return *m_pClient->m_pCamera->GetCenter();
+}
+
+float CDuckBridge::GetCameraZoom()
+{
+	return m_pClient->m_pCamera->GetZoom();
 }
 
 void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)

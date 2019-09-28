@@ -55,12 +55,14 @@ function OnRender(clientLocalTime, intraTick)
     cursorPos.y -= localCore.pos_y;
     //printObj(cursorPos);
 
-    var worldPoints = GetWorldViewRect(localCore.pos_x, localCore.pos_y, 1920/1080, 1.0);
+    const screenSize = TwGetScreenSize();
+    const camera = TwGetCamera();
+    var worldPoints = GetWorldViewRect(camera.x, camera.y, screenSize.w/screenSize.h, camera.zoom);
     TwRenderSetDrawSpace(Teeworlds.DRAW_SPACE_GAME);
     TwRenderSetColorF4(1, 0, 0, 0.5);
     TwRenderQuad(worldPoints.x, worldPoints.y, worldPoints.w, worldPoints.h);
 
-    //TwRenderSetDrawSpace(Teeworlds.DRAW_SPACE_HUD);
+    TwRenderSetDrawSpace(Teeworlds.DRAW_SPACE_GAME_FOREGROUND);
 
     ui.dialog_lines.forEach(function(line) {
         const npcCore = charCores[line.npc_cid];

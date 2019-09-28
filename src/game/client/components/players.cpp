@@ -572,7 +572,6 @@ void CPlayers::OnRender()
 		}
 	}
 
-	// TODO: Move? Make a component for each draw space?
 	if(m_pClient->m_pDuckBridge->IsLoaded()) {
 		m_pClient->m_pDuckBridge->RenderDrawSpace(CDuckBridge::DrawSpace::GAME);
 	}
