@@ -30,7 +30,7 @@ static duk_ret_t NativePrint(duk_context *ctx)
 	return 0;  /* no return value (= undefined) */
 }
 
-bool _CheckArgumentCountImp(duk_context* pCtx, int NumArgs, const char* pFuncName)
+static bool _CheckArgumentCountImp(duk_context* pCtx, int NumArgs, const char* pFuncName)
 {
 	int n = duk_get_top(pCtx);
 	if(n != NumArgs)
@@ -672,6 +672,100 @@ duk_ret_t CDuckJs::NativeRenderDrawFreeform(duk_context *ctx)
 }
 
 /*#
+`TwRenderDrawText(text)`
+
+| Draw text.
+| Example:
+
+.. code-block:: js
+
+	TwRenderDrawText({
+		str: "This a text",
+		font_size: 10,
+		colors: [1, 0, 1, 1], // rgba (0.0 - 1.0)
+		rect: [100, 25, 200, 100], // x y width height
+	});
+
+**Parameters**
+
+* **text**:
+
+.. code-block:: js
+
+	var text = {
+		str: string,
+		font_size: float,
+		colors: float[4],
+		rect: float[4],
+	};
+
+**Returns**
+
+* None
+#*/
+duk_ret_t CDuckJs::NativeRenderDrawText(duk_context *ctx)
+{
+	CheckArgumentCount(ctx, 1);
+
+	if(!duk_is_object(ctx, 0))
+	{
+		dbg_msg("duck", "ERROR: TwRenderDrawText(text) text is not an object");
+		return 0;
+	}
+
+	const char* aStr;
+	float FontSize = 10.0f;
+	float aColors[4] = {1, 1, 1, 1};
+	float aRect[4];
+
+	DukGetStringPropNoCopy(ctx, 0, "str", &aStr);
+
+	if(!aStr)
+	{
+		dbg_msg("duck", "ERROR: TwRenderDrawText(text) text.str is null");
+		return 0;
+	}
+
+	DukGetFloatProp(ctx, 0, "font_size", &FontSize);
+
+	// get colors
+	if(duk_get_prop_string(ctx, 0, "colors"))
+	{
+		for(int i = 0; i < 4; i++)
+		{
+			if(duk_get_prop_index(ctx, -1, i))
+			{
+				aColors[i] = duk_to_number(ctx, -1);
+				duk_pop(ctx);
+			}
+		}
+		duk_pop(ctx);
+	}
+
+	// get rect
+	if(duk_get_prop_string(ctx, 0, "rect"))
+	{
+		for(int i = 0; i < 4; i++)
+		{
+			if(duk_get_prop_index(ctx, -1, i))
+			{
+				aRect[i] = duk_to_number(ctx, -1);
+				duk_pop(ctx);
+			}
+		}
+		duk_pop(ctx);
+	}
+	else
+	{
+		dbg_msg("duck", "ERROR: TwRenderDrawText(text) text.rect is undefined");
+		return 0;
+	}
+
+	This()->Bridge()->QueueDrawText(aStr, FontSize, aRect, aColors);
+	return 0;
+}
+
+/*#
 `TwGetBaseTexture(image_id)`
 
 | Get vanilla teeworlds texture id.
@@ -1251,7 +1345,6 @@ duk_ret_t CDuckJs::NativeGetSkinPartTexture(duk_context* ctx)
 {
 	CheckArgumentCount(ctx, 2);
 
-	// TODO: bound check
 	int Part = clamp((int)duk_to_int(ctx, 0), 0, NUM_SKINPARTS-1);
 	const char* PartName = duk_to_string(ctx, 1);
 
@@ -1278,7 +1371,7 @@ duk_ret_t CDuckJs::NativeGetSkinPartTexture(duk_context* ctx)
 
 **Parameters**
 
-* **None**
+* None
 
 **Returns**
 
@@ -1313,7 +1406,7 @@ duk_ret_t CDuckJs::NativeGetCursorPosition(duk_context *ctx)
 
 **Returns**
 
-* **None**
+* None
 
 #*/
 duk_ret_t CDuckJs::NativeMapSetTileCollisionFlags(duk_context *ctx)
@@ -1381,7 +1474,7 @@ duk_ret_t CDuckJs::NativeDirectionFromAngle(duk_context* ctx)
 
 **Returns**
 
-* **None**
+* None
 
 #*/
 duk_ret_t CDuckJs::NativeCollisionSetStaticBlock(duk_context* ctx)
@@ -1435,7 +1528,7 @@ duk_ret_t CDuckJs::NativeCollisionSetStaticBlock(duk_context* ctx)
 
 **Returns**
 
-* **None**
+* None
 
 #*/
 duk_ret_t CDuckJs::NativeCollisionClearStaticBlock(duk_context* ctx)
@@ -1472,7 +1565,7 @@ duk_ret_t CDuckJs::NativeCollisionClearStaticBlock(duk_context* ctx)
 
 **Returns**
 
-* **None**
+* None
 
 #*/
 duk_ret_t CDuckJs::NativeCollisionSetDynamicDisk(duk_context *ctx)
@@ -1509,7 +1602,7 @@ duk_ret_t CDuckJs::NativeCollisionSetDynamicDisk(duk_context *ctx)
 
 **Returns**
 
-* **None**
+* None
 
 #*/
 duk_ret_t CDuckJs::NativeCollisionClearDynamicDisk(duk_context *ctx)
@@ -1529,7 +1622,7 @@ duk_ret_t CDuckJs::NativeCollisionClearDynamicDisk(duk_context *ctx)
 
 **Parameters**
 
-* **None**
+* None
 
 **Returns**
 
@@ -1621,7 +1714,7 @@ duk_ret_t CDuckJs::NativeCollisionGetPredictedDynamicDisks(duk_context *ctx)
 
 **Returns**
 
-* **None**
+* None
 
 #*/
 duk_ret_t CDuckJs::NativeSetHudPartsShown(duk_context *ctx)
@@ -1702,7 +1795,7 @@ duk_ret_t CDuckJs::NativeSetHudPartsShown(duk_context *ctx)
 
 **Returns**
 
-* **None**
+* None
 
 #*/
 duk_ret_t CDuckJs::NativeNetSendPacket(duk_context *ctx)
@@ -1985,7 +2078,7 @@ duk_ret_t CDuckJs::NativeNetPacketUnpack(duk_context *ctx)
 
 **Returns**
 
-* **None**
+* None
 
 #*/
 duk_ret_t CDuckJs::NativeAddWeapon(duk_context *ctx)
@@ -2032,7 +2125,7 @@ duk_ret_t CDuckJs::NativeAddWeapon(duk_context *ctx)
 
 **Returns**
 
-* **None**
+* None
 
 #*/
 duk_ret_t CDuckJs::NativePlaySoundAt(duk_context *ctx)
@@ -2058,7 +2151,7 @@ duk_ret_t CDuckJs::NativePlaySoundAt(duk_context *ctx)
 
 **Returns**
 
-* **None**
+* None
 
 #*/
 duk_ret_t CDuckJs::NativePlaySoundGlobal(duk_context *ctx)
@@ -2082,7 +2175,7 @@ duk_ret_t CDuckJs::NativePlaySoundGlobal(duk_context *ctx)
 
 **Returns**
 
-* **None**
+* None
 
 #*/
 duk_ret_t CDuckJs::NativePlayMusic(duk_context *ctx)
@@ -2270,6 +2363,7 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(RenderDrawTeeBodyAndFeet, 1);
 	REGISTER_FUNC(RenderDrawTeeHand, 1);
 	REGISTER_FUNC(RenderDrawFreeform, 2);
+	REGISTER_FUNC(RenderDrawText, 1);
 	REGISTER_FUNC(RenderSetDrawSpace, 1);
 	REGISTER_FUNC(GetBaseTexture, 1);
 	REGISTER_FUNC(GetSpriteSubSet, 1);

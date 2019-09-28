@@ -79,6 +79,14 @@ struct CDuckBridge : public CComponent
 		float m_aColors[NUM_SKINPARTS][4];
 	};
 
+	struct CTextInfo
+	{
+		const char* m_pStr;
+		float m_aColors[4];
+		float m_FontSize;
+		float m_aRect[4];
+	};
+
 	struct CRenderCmd
 	{
 		enum TypeEnum
@@ -94,6 +102,7 @@ struct CDuckBridge : public CComponent
 			DRAW_TEE_BODYANDFEET,
 			DRAW_TEE_HAND,
 			DRAW_FREEFORM,
+			DRAW_TEXT,
 		};
 
 		int m_Type;
@@ -116,6 +125,7 @@ struct CDuckBridge : public CComponent
 			CTeeDrawBodyAndFeetInfo m_TeeBodyAndFeet;
 			CTeeDrawHand m_TeeHand;
 			CTeeSkinInfo m_TeeSkinInfo;
+			CTextInfo m_Text;
 		};
 	};
 
@@ -161,7 +171,7 @@ struct CDuckBridge : public CComponent
 	};
 
 	bool m_IsModLoaded;
-	CMultiStackAllocator m_FrameAllocator;
+	CMultiStackAllocator m_FrameAllocator; // holds data for a frame
 
 	int m_CurrentDrawSpace;
 	array<CRenderCmd> m_aRenderCmdList[DrawSpace::_COUNT];
@@ -277,6 +287,7 @@ struct CDuckBridge : public CComponent
 	void QueueDrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo);
 	void QueueDrawTeeHand(const CTeeDrawHand& Hand);
 	void QueueDrawFreeform(vec2 Pos);
+	void QueueDrawText(const char* pStr, float FontSize, float *pRect, float *pColors);
 
 	void SetHudPartsShown(CHudPartsShown hps);
 

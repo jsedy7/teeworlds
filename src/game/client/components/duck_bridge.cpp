@@ -11,6 +11,7 @@
 #include <engine/external/pnglite/pnglite.h>
 #include <engine/storage.h>
 #include <engine/sound.h>
+#include <engine/textrender.h>
 #include <engine/shared/network.h>
 #include <engine/shared/growbuffer.h>
 #include <engine/shared/config.h>
@@ -220,6 +221,24 @@ void CDuckBridge::QueueDrawFreeform(vec2 Pos)
 	CRenderCmd Cmd;
 	Cmd.m_Type = CRenderCmd::DRAW_FREEFORM;
 	mem_move(Cmd.m_FreeformPos, &Pos, sizeof(float)*2);
+	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
+}
+
+void CDuckBridge::QueueDrawText(const char *pStr, float FontSize, float* pRect, float* pColors)
+{
+	CRenderCmd Cmd;
+	Cmd.m_Type = CRenderCmd::DRAW_TEXT;
+
+	// save string on frame allocator
+	int Len = min(str_length(pStr), 4096); // reasonable limit
+	char* pCopy = (char*)m_FrameAllocator.Alloc(Len+1);
+	str_copy(pCopy, pStr, 4096);
+
+	Cmd.m_Text.m_pStr = pCopy;
+	Cmd.m_Text.m_FontSize = FontSize;
+	mem_move(Cmd.m_Text.m_aColors, pColors, sizeof(float)*4);
+	mem_move(Cmd.m_Text.m_aRect, pRect, sizeof(float)*4);
+
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
@@ -678,6 +697,40 @@ void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 				RenderSpace.m_WantQuadRotation = 0; // clear by default
 				RenderSpace.m_CurrentQuadRotation = -1;
 				break;
+
+			case CRenderCmd::DRAW_TEXT:
+			{
+				const CTextInfo& Text = Cmd.m_Text;
+
+				// clip
+				float Points[4];
+				Graphics()->GetScreen(&Points[0], &Points[1], &Points[2], &Points[3]);
+				float x0 = (Text.m_aRect[0] - Points[0]) / (Points[2]-Points[0]);
+				float y0 = (Text.m_aRect[1] - Points[1]) / (Points[3]-Points[1]);
+				float x1 = ((Text.m_aRect[0]+Text.m_aRect[2]) - Points[0]) / (Points[2]-Points[0]);
+				float y1 = ((Text.m_aRect[1]+Text.m_aRect[3]) - Points[1]) / (Points[3]-Points[1]);
+
+				if(x1 < 0.0f || x0 > 1.0f || y1 < 0.0f || y0 > 1.0f)
+					continue;
+
+				Graphics()->ClipEnable((int)(x0*Graphics()->ScreenWidth()), (int)(y0*Graphics()->ScreenHeight()),
+					(int)((x1-x0)*Graphics()->ScreenWidth()), (int)((y1-y0)*Graphics()->ScreenHeight()));
+				// ---
+
+
+				float PosX = Text.m_aRect[0];
+				float PosY = Text.m_aRect[1];
+
+				CTextCursor Cursor;
+				TextRender()->SetCursor(&Cursor, PosX, PosY, Text.m_FontSize, TEXTFLAG_RENDER|TEXTFLAG_ALLOW_NEWLINE);
+				Cursor.m_LineWidth = Text.m_aRect[2];
+
+				vec4 TextColor(Text.m_aColors[0], Text.m_aColors[1], Text.m_aColors[2], Text.m_aColors[3]);
+				vec4 ShadowColor(0, 0, 0, 0);
+				TextRender()->TextShadowed(&Cursor, Text.m_pStr, -1, vec2(0,0), ShadowColor, TextColor);
+
+				Graphics()->ClipDisable();
+			} break;
 
 			default:
 				dbg_assert(0, "Render command type not handled");

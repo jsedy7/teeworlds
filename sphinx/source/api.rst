@@ -325,6 +325,44 @@ TwRenderDrawFreeform
 
 |
 
+TwRenderDrawText
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwRenderDrawText(text)
+
+
+| Draw text.
+| Example:
+
+.. code-block:: js
+
+	TwRenderDrawText({
+		str: "This a text",
+		font_size: 10,
+		colors: [1, 0, 1, 1], // rgba (0.0 - 1.0)
+		rect: [100, 25, 200, 100], // x y width height
+	});
+
+**Parameters**
+
+* **text**:
+
+.. code-block:: js
+
+	var text = {
+		str: string,
+		font_size: float,
+		colors: float[4],
+		rect: float[4],
+	};
+
+**Returns**
+
+* None
+
+|
+
 TwGetBaseTexture
 ---------------------------------------------------------------------
 .. code-block:: js
@@ -593,7 +631,7 @@ TwGetCursorPosition
 
 **Parameters**
 
-* **None**
+* None
 
 **Returns**
 
@@ -622,7 +660,7 @@ TwMapSetTileCollisionFlags
 
 **Returns**
 
-* **None**
+* None
 
 
 |
@@ -674,7 +712,7 @@ TwCollisionSetStaticBlock
 
 **Returns**
 
-* **None**
+* None
 
 
 |
@@ -694,7 +732,7 @@ TwCollisionClearStaticBlock
 
 **Returns**
 
-* **None**
+* None
 
 
 |
@@ -727,7 +765,7 @@ TwCollisionSetDynamicDisk
 
 **Returns**
 
-* **None**
+* None
 
 
 |
@@ -747,7 +785,7 @@ TwCollisionClearDynamicDisk
 
 **Returns**
 
-* **None**
+* None
 
 
 |
@@ -763,7 +801,7 @@ TwCollisionGetPredictedDynamicDisks
 
 **Parameters**
 
-* **None**
+* None
 
 **Returns**
 
@@ -833,7 +871,7 @@ TwSetHudPartsShown
 
 **Returns**
 
-* **None**
+* None
 
 
 |
@@ -887,7 +925,7 @@ TwNetSendPacket
 
 **Returns**
 
-* **None**
+* None
 
 
 |
@@ -979,7 +1017,7 @@ TwAddWeapon
 
 **Returns**
 
-* **None**
+* None
 
 
 |
@@ -1001,7 +1039,7 @@ TwPlaySoundAt
 
 **Returns**
 
-* **None**
+* None
 
 
 |
@@ -1021,7 +1059,7 @@ TwPlaySoundGlobal
 
 **Returns**
 
-* **None**
+* None
 
 
 |
@@ -1041,7 +1079,7 @@ TwPlayMusic
 
 **Returns**
 
-* **None**
+* None
 
 
 |

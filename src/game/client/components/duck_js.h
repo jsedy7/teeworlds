@@ -33,6 +33,7 @@ class CDuckJs
 	static duk_ret_t NativeRenderDrawTeeBodyAndFeet(duk_context *ctx);
 	static duk_ret_t NativeRenderDrawTeeHand(duk_context *ctx);
 	static duk_ret_t NativeRenderDrawFreeform(duk_context *ctx);
+	static duk_ret_t NativeRenderDrawText(duk_context *ctx);
 	static duk_ret_t NativeGetBaseTexture(duk_context *ctx);
 	static duk_ret_t NativeGetSpriteSubSet(duk_context *ctx);
 	static duk_ret_t NativeGetSpriteScale(duk_context *ctx);
@@ -116,6 +117,17 @@ inline void DukGetStringProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pP
 		str_copy(pOutBuff, pStr, OutSize);
 		duk_pop(pCtx);
 	}
+}
+
+inline void DukGetStringPropNoCopy(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, const char** pOutStr)
+{
+	if(duk_get_prop_string(pCtx, ObjIdx, pPropName))
+	{
+		*pOutStr = duk_to_string(pCtx, -1);
+		duk_pop(pCtx);
+		return;
+	}
+	*pOutStr = 0;
 }
 
 inline bool DukIsPropNull(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName)
