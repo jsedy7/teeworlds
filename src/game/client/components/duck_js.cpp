@@ -26,7 +26,7 @@ static duk_ret_t NativePrint(duk_context *ctx)
 	const int MaxLen = 2048;
 
 	for(int i = 0; i < (Len/MaxLen + 1); i++)
-		dbg_msg("duck", "%.*s", MaxLen, pStr + i * MaxLen);
+		dbg_msg("mod", "%.*s", MaxLen, pStr + i * MaxLen);
 	return 0;  /* no return value (= undefined) */
 }
 

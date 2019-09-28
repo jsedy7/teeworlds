@@ -2,11 +2,13 @@
 #include <game/server/gamecontroller.h>
 #include <game/gamecore.h>
 
-class CGameControllerTEST : public IGameController
+class CGameControllerExampleUI1 : public IGameController
 {
 
 public:
-	CGameControllerTEST(class CGameContext *pGameServer);
+	CGameControllerExampleUI1(class CGameContext *pGameServer);
+
+	virtual void OnPlayerConnect(CPlayer* pPlayer);
 	virtual void Tick();
 	virtual void Snap(int SnappingClient);
 	virtual void OnDuckMessage(int MsgID, CUnpacker *pUnpacker, int ClientID);

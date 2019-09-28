@@ -186,6 +186,17 @@ public:
 	virtual const char *NetVersion() const;
 	virtual const char *NetVersionHashUsed() const;
 	virtual const char *NetVersionHashReal() const;
+
+	// DUCK
+	template<typename T>
+	void SendDuckNetObj(const T &NetObj, int CID)
+	{
+		CMsgPacker Msg(NETMSG_DUCK_NETOBJ, false);
+		Msg.AddInt((int)T::NET_ID);
+		Msg.AddInt((int)sizeof(NetObj));
+		Msg.AddRaw(&NetObj, sizeof(NetObj));
+		Server()->SendMsg(&Msg, MSGFLAG_VITAL, CID);
+	}
 };
 
 inline int64 CmaskAll() { return -1; }

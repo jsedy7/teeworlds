@@ -11,16 +11,6 @@ inline bool IsInsideRect(vec2 Pos, vec2 RectPos, vec2 RectSize)
 			Pos.y >= RectPos.y && Pos.y < (RectPos.y+RectSize.y));
 }
 
-template<typename T>
-void CGameControllerDUCK::SendDukNetObj(const T& NetObj, int CID)
-{
-	CMsgPacker Msg(NETMSG_DUCK_NETOBJ, false);
-	Msg.AddInt((int)T::NET_ID);
-	Msg.AddInt((int)sizeof(NetObj));
-	Msg.AddRaw(&NetObj, sizeof(NetObj));
-	Server()->SendMsg(&Msg, MSGFLAG_VITAL, CID);
-}
-
 void CGameControllerDUCK::FlipSolidRect(float Rx, float Ry, float Rw, float Rh, bool Solid, bool IsHookable)
 {
 	CNetObj_MapRectSetSolid Flip;
@@ -58,7 +48,7 @@ void CGameControllerDUCK::FlipSolidRect(float Rx, float Ry, float Rw, float Rh, 
 	{
 		if(GameServer()->m_apPlayers[i])
 		{
-			SendDukNetObj(Flip, i);
+			GameServer()->SendDuckNetObj(Flip, i);
 		}
 	}
 }
@@ -192,7 +182,7 @@ void CGameControllerDUCK::Tick()
 				Rect.w = Pair.m_ButtonSize.x * 32;
 				Rect.h = Pair.m_ButtonSize.y * 32;
 				Rect.color = Pair.m_IsButtonActive ? 0x7f00ff00 : 0x7f0000ff;
-				SendDukNetObj(Rect, p);
+				GameServer()->SendDuckNetObj(Rect, p);
 			}
 		}
 	}

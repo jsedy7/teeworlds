@@ -48,7 +48,7 @@ struct CDuckBridge : public CComponent
 		enum Enum
 		{
 			GAME=0,
-			HUD=0,
+			HUD,
 			_COUNT
 		};
 	};

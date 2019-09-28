@@ -8,17 +8,6 @@
 
 //#define CHARCHORE_TEST
 
-// TODO: move this
-template<typename T>
-void CGameControllerTEST::SendDukNetObj(const T& NetObj, int CID)
-{
-	CMsgPacker Msg(NETMSG_DUCK_NETOBJ, false);
-	Msg.AddInt((int)T::NET_ID);
-	Msg.AddInt((int)sizeof(NetObj));
-	Msg.AddRaw(&NetObj, sizeof(NetObj));
-	Server()->SendMsg(&Msg, MSGFLAG_VITAL, CID);
-}
-
 static CCharacterCore TestCore;
 
 CGameControllerTEST::CGameControllerTEST(class CGameContext *pGameServer)
@@ -93,7 +82,7 @@ void CGameControllerTEST::Tick()
 			Rect.w = HookBlockSize.x;
 			Rect.h = HookBlockSize.y;
 			Rect.color = 0xffff00ff;
-			SendDukNetObj(Rect, p);
+			GameServer()->SendDuckNetObj(Rect, p);
 
 			CNetObj_HookBlock NetHookBlock;
 			NetHookBlock.m_Id = 0;
@@ -104,7 +93,7 @@ void CGameControllerTEST::Tick()
 			NetHookBlock.m_VelY = HookBlockVel.y;
 			NetHookBlock.m_Width = HookBlockSize.x;
 			NetHookBlock.m_Height = HookBlockSize.y;
-			SendDukNetObj(NetHookBlock, p);
+			GameServer()->SendDuckNetObj(NetHookBlock, p);
 
 #ifdef CHARCHORE_TEST
 #else
@@ -117,7 +106,7 @@ void CGameControllerTEST::Tick()
 			NetDisk.m_VelY = Disk.m_Vel.y;
 			NetDisk.m_Radius = Disk.m_Radius;
 			NetDisk.m_HookForce = Disk.m_HookForce;
-			SendDukNetObj(NetDisk, p);
+			GameServer()->SendDuckNetObj(NetDisk, p);
 #endif
 		}
 	}

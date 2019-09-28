@@ -3,9 +3,6 @@
 
 class CGameControllerDUCK : public IGameController
 {
-	template<typename T>
-	void SendDukNetObj(const T& NetObj, int CID);
-
 	void FlipSolidRect(float Rx, float Ry, float Rw, float Rh, bool Solid, bool IsHookable);
 
 	struct ButtonLaserLinePair
