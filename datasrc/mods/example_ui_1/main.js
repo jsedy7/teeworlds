@@ -1,11 +1,14 @@
 // main mod file
 
 var game = {
+    localTime:0
 };
 
 var ui = {
     show_inventory: false,
     dialog_lines: [],
+    fkey_was_released: true,
+    receivedItemTime: -1
 };
 
 var localClientID = 0;
@@ -64,6 +67,32 @@ function DrawInteractPrompt(clientLocalTime, posX, posY, width)
     });*/
 }
 
+function DrawItemNotification(posX, posY, startTime, clientLocalTime)
+{
+    if(startTime < 0)
+        return;
+
+    const a = (clientLocalTime - startTime) / 3.0;
+    if(a < 0.0 || a > 1.0)
+        return;
+
+    const fontSize = 12;
+    const text = "+ Item received";
+
+    const size = TwCalculateTextSize({
+        str: text,
+        font_size: fontSize,
+        line_width: -1
+    });
+
+    TwRenderDrawText({
+        str: text,
+        font_size: fontSize,
+        colors: [1, 1, 1, 1.0 - a * 0.5],
+        rect: [posX - size.w/2, posY - a * 50 - 30, 10000, 500]
+    });
+}
+
 function OnLoaded()
 {
     print("Example UI 1");
@@ -88,6 +117,8 @@ function OnUpdate(clientLocalTime, intraTick)
 
 function OnRender(clientLocalTime, intraTick)
 {
+    game.localTime = clientLocalTime;
+
     if(ui.show_inventory) {
         DrawInventory();
     }
@@ -176,10 +207,15 @@ function OnRender(clientLocalTime, intraTick)
         });
 
         // close enough to npc to interact, display prompt
-        if(distance({ x: localCore.pos_x, y: localCore.pos_y }, { x: npcCore.pos_x, y: npcCore.pos_x }) < 400) {
+        if(distance({ x: localCore.pos_x, y: localCore.pos_y }, { x: npcCore.pos_x, y: npcCore.pos_y }) < 400) {
             DrawInteractPrompt(clientLocalTime, npcUiX, tailTopY + 10, 30);
         }
     });
+
+    // get npc pos in hud space
+    const localCoreUiX = (localCore.pos_x - worldViewRect.x) / worldViewRect.w * uiRect.w;
+    const localCoreUiY = (localCore.pos_y - worldViewRect.y) / worldViewRect.h * uiRect.h;
+    DrawItemNotification(localCoreUiX, localCoreUiY, ui.receivedItemTime, clientLocalTime);
 }
 
 function OnMessage(packet)
@@ -202,9 +238,26 @@ function OnMessage(packet)
         printObj(line);
         ui.dialog_lines[line.npc_cid] = line;
     }
+    else if(packet.mod_id == 0x2) {
+        print("received item");
+        ui.receivedItemTime = game.localTime;
+    }
 }
 
 function OnInput(event)
 {
     //printObj(event);
+
+    if(event.pressed && event.key == 102) {
+        if(ui.fkey_was_released) {
+            TwNetSendPacket({
+                net_id: 1,
+                force_send_now: 1,
+            });
+            ui.fkey_was_released = false;
+        }
+    }
+    if(event.released && event.key == 102) {
+        ui.fkey_was_released = true;
+    }
 }

@@ -4,7 +4,10 @@
 
 class CGameControllerExampleUI1 : public IGameController
 {
+	bool m_aInteractKeyPressed[MAX_CLIENTS];
+
 	bool HasEnoughPlayers() const { return true; }
+
 public:
 	CGameControllerExampleUI1(class CGameContext *pGameServer);
 

@@ -10,7 +10,7 @@ struct ModNetID
 {
 	enum Enum {
 		NPC_DIALOG_LINE=0x1,
-
+		NPC_GIVE_ITEM=0x2,
 	};
 };
 
@@ -22,18 +22,28 @@ struct CModNetObj_NPCDialogLine
 	char m_aDialogLine[128];
 };
 
+struct CModNetObj_NPCGiveItem
+{
+	enum { NET_ID = ModNetID::NPC_GIVE_ITEM };
+};
+
 struct CNPC
 {
 	int m_ClientID;
 	char m_aName[32];
 	CCharacterCore m_Core;
 	int m_aDialogLineID[MAX_PLAYERS];
+	bool m_aItemSent[MAX_PLAYERS];
+	CGameContext* m_pGameServer;
 
 	struct CDialogLine
 	{
 		char aLine[128];
 
-		CDialogLine() {}
+		CDialogLine()
+		{
+		}
+
 		CDialogLine(const char* pStr)
 		{
 			str_copy(aLine, pStr, sizeof(aLine));
@@ -42,9 +52,15 @@ struct CNPC
 
 	array<CDialogLine> m_aDialogLines;
 
+	CNPC()
+	{
+		mem_zero(m_aItemSent, sizeof(m_aItemSent));
+	}
+
 	void Init(int ClientID, const char* pName, CGameContext* pGameServer)
 	{
 		m_ClientID = ClientID;
+		m_pGameServer = pGameServer;
 		str_copy(m_aName, pName, sizeof(m_aName));
 		m_Core.Reset();
 		m_Core.Init(&pGameServer->m_World.m_Core, pGameServer->Collision());
@@ -77,7 +93,7 @@ struct CNPC
 		return Info;
 	}
 
-	void Tick(int CurTick, CGameContext* pGameServer)
+	void Tick(int CurTick)
 	{
 		m_Core.Tick(false);
 		m_Core.Move();
@@ -101,16 +117,17 @@ struct CNPC
 
 		for(int i = 0; i < MAX_PLAYERS; i++)
 		{
-			if(pGameServer->m_apPlayers[i])
+			if(m_pGameServer->m_apPlayers[i])
 			{
-				pGameServer->Server()->SendPackMsg(&Drop, MSGFLAG_VITAL|MSGFLAG_NORECORD, i);
-				pGameServer->Server()->SendPackMsg(&Info, MSGFLAG_VITAL|MSGFLAG_NORECORD, i);
+				m_pGameServer->Server()->SendPackMsg(&Drop, MSGFLAG_VITAL|MSGFLAG_NORECORD, i);
+				m_pGameServer->Server()->SendPackMsg(&Info, MSGFLAG_VITAL|MSGFLAG_NORECORD, i);
 			}
 		}
 	}
 
-	void Snap(int SnappingClient, IServer* pServer)
+	void Snap(int SnappingClient)
 	{
+		IServer* pServer = m_pGameServer->Server();
 		CNetObj_PlayerInfo *pPlayerInfo = (CNetObj_PlayerInfo *)pServer->SnapNewItem(NETOBJTYPE_PLAYERINFO, m_ClientID, sizeof(CNetObj_PlayerInfo));
 		if(!pPlayerInfo) {
 			return;
@@ -127,8 +144,10 @@ struct CNPC
 		pCharacter->m_Tick = 0;
 		m_Core.Write(pCharacter);
 
-		// set emote
 		pCharacter->m_Emote = EMOTE_NORMAL;
+		if(pServer->Tick() % 250 < 6)
+			pCharacter->m_Emote = EMOTE_BLINK;
+
 		pCharacter->m_AmmoCount = 0;
 		pCharacter->m_Health = 0;
 		pCharacter->m_Armor = 0;
@@ -137,14 +156,33 @@ struct CNPC
 		pCharacter->m_Weapon = WEAPON_HAMMER;
 		pCharacter->m_AttackTick = 0;
 		pCharacter->m_Direction = 0;
+		pCharacter->m_Angle = 0;
+
+		// look at client
+		CCharacter* pChar = m_pGameServer->GetPlayerChar(SnappingClient);
+		if(pChar) {
+			pCharacter->m_Angle = angle(pChar->GetPos() - m_Core.m_Pos) * 256;
+		}
 	}
 
-	void SendDialogLineTo(int ClientID, CGameContext* pGameServer)
+	void SendDialogLineTo(int ClientID)
 	{
 		CModNetObj_NPCDialogLine Line;
 		Line.m_NpcClientID = m_ClientID;
 		str_copy(Line.m_aDialogLine, m_aDialogLines[m_aDialogLineID[ClientID] % m_aDialogLines.size()].aLine, sizeof(Line.m_aDialogLine));
-		pGameServer->SendDuckNetObj(Line, ClientID);
+		m_pGameServer->SendDuckNetObj(Line, ClientID);
+	}
+
+	void NextLine(int ClientID)
+	{
+		int OldLineID = m_aDialogLineID[ClientID];
+		m_aDialogLineID[ClientID] = min(m_aDialogLineID[ClientID]+1, m_aDialogLines.size()-1);
+
+		if(OldLineID != m_aDialogLineID[ClientID] && m_aDialogLineID[ClientID] == 3)
+		{
+			CModNetObj_NPCGiveItem Item;
+			m_pGameServer->SendDuckNetObj(Item, ClientID);
+		}
 	}
 };
 
@@ -168,6 +206,8 @@ CGameControllerExampleUI1::CGameControllerExampleUI1(class CGameContext *pGameSe
 	TestNpc.m_aDialogLines.add("What I must tell you is of utmost importance.");
 	TestNpc.m_aDialogLines.add("But first, take this powerful item with you.");
 	TestNpc.m_aDialogLines.add("...");
+
+	mem_zero(m_aInteractKeyPressed, sizeof(m_aInteractKeyPressed));
 }
 
 void CGameControllerExampleUI1::OnPlayerConnect(CPlayer* pPlayer)
@@ -180,26 +220,46 @@ void CGameControllerExampleUI1::OnPlayerConnect(CPlayer* pPlayer)
 	Server()->SendPackMsg(&Info, MSGFLAG_VITAL|MSGFLAG_NORECORD, ClientID);
 
 	// send dialog line
-	TestNpc.SendDialogLineTo(ClientID, GameServer());
+	TestNpc.m_aDialogLineID[ClientID] = 0;
+	TestNpc.SendDialogLineTo(ClientID);
 }
 
 void CGameControllerExampleUI1::Tick()
 {
 	IGameController::Tick();
-	TestNpc.Tick(Server()->Tick(), GameServer());
+	TestNpc.Tick(Server()->Tick());
+
+	for(int ClientID = 0; ClientID < MAX_PLAYERS; ClientID++)
+	{
+		if(GameServer()->m_apPlayers[ClientID] && m_aInteractKeyPressed[ClientID])
+		{
+			CCharacter* pChar = GameServer()->GetPlayerChar(ClientID);
+			if(pChar)
+			{
+				float dist = distance(TestNpc.m_Core.m_Pos, pChar->GetPos());
+				if(dist < 400)
+				{
+					TestNpc.NextLine(ClientID);
+					TestNpc.SendDialogLineTo(ClientID);
+				}
+			}
+
+			m_aInteractKeyPressed[ClientID] = false;
+		}
+	}
 }
 
 void CGameControllerExampleUI1::Snap(int SnappingClient)
 {
 	IGameController::Snap(SnappingClient);
-	TestNpc.Snap(SnappingClient, Server());
+	TestNpc.Snap(SnappingClient);
 }
 
 void CGameControllerExampleUI1::OnDuckMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 {
 	dbg_msg("duck", "DuckMessage :: NetID = 0x%x", MsgID);
-	if(MsgID == 0x1) {
-		const char* pStr = pUnpacker->GetString(0);
-		dbg_msg("duck", "'%s'", pStr);
+	if(MsgID == 0x1)
+	{
+		m_aInteractKeyPressed[ClientID] = true;
 	}
 }
