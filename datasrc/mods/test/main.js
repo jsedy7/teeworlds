@@ -208,7 +208,7 @@ function OnUpdate(clientLocalTime, intraTick)
 
 function OnRender(clientLocalTime, intraTick)
 {
-    TwRenderSetDrawSpace(0 /*DRAW_SPACE_GAME*/);
+    TwRenderSetDrawSpace(1 /*DRAW_SPACE_GAME*/);
     
     var charList = TwGetClientCharacterCores();
     if(charList[0] != null) {
@@ -221,12 +221,12 @@ function OnRender(clientLocalTime, intraTick)
         TwRenderSetQuadRotation(clientLocalTime * -5.0);
         TwRenderQuadCentered(charList[0].pos_x + cursorPos.x, charList[0].pos_y + cursorPos.y, 50, 50);
 
-        /*TwRenderDrawText({
+        TwRenderDrawText({
             str: "This a text yes",
             font_size: 50,
             colors: [0, 1, 1, 1],
             rect: [charList[0].pos_x + cursorPos.x, charList[0].pos_y + cursorPos.y, 400, 250]
-        });*/
+        });
     }
 
     var delta = clientLocalTime - lastClientlocalTime;

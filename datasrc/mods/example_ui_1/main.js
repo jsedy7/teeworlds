@@ -85,11 +85,21 @@ function DrawItemNotification(posX, posY, startTime, clientLocalTime)
         line_width: -1
     });
 
+    const alpha = 1.0 - 0.5 * max(a - 0.5, 0) * 2.0;
+    const Margin = 5.0;
+    const bgW = size.w + Margin * 2;
+    const bgH = size.h + Margin * 2;
+    const bgY = posY - a * 50 - 30 - bgH/2;
+
+    TwRenderSetTexture(-1);
+    TwRenderSetColorF4(0.95, 0.25, 0.08, alpha);
+    TwRenderQuad(posX - bgW/2, bgY, bgW, bgH);
+
     TwRenderDrawText({
         str: text,
         font_size: fontSize,
-        colors: [1, 1, 1, 1.0 - a * 0.5],
-        rect: [posX - size.w/2, posY - a * 50 - 30, 10000, 500]
+        colors: [1, 1, 1, alpha],
+        rect: [posX - size.w/2, bgY + Margin - 2, 10000, 500]
     });
 }
 
@@ -103,8 +113,8 @@ function OnLoaded()
         time: 0,
         killfeed: 0,
         score: 0,
-        chat: 0,
-        scoreboard: 1,
+        chat: 1,
+        scoreboard: 0,
     });
 
     //printObj(Teeworlds);
