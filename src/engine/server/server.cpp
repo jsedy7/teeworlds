@@ -382,6 +382,8 @@ int CServer::Init()
 
 	m_CurrentGameTick = 0;
 
+	ResetDuckMod(); // DUCK
+
 	return 0;
 }
 
@@ -2099,21 +2101,29 @@ bool CServer::HandleDuckClientInfo(int ClientID, CUnpacker *pUnpacker)
 	{
 		m_aClients[ClientID].m_DuckVersion = DuckVersion;
 
-		// dev mode
-		if(IsDuckDevMode())
+		if(m_aDuckDevModFolderPath[0] != 0) // there is a duck mod
 		{
-			// TODO: oh god, do this elsewhere / cache it
-			if(CompressDuckModFolder(m_aDuckDevModFolderPath))
-				SendDuckModChunkInfo(ClientID);
-			else
+			// dev mode
+			if(IsDuckDevMode())
 			{
-				dbg_msg("duck", "[dev mode] failed to load and compress duck mod (sv_duck_dev_mod_dir). dir='%s'", m_aDuckDevModFolderPath);
-				m_NetServer.Drop(ClientID, "Server local mod is invalid");
-				return false;
+				// TODO: oh god, do this elsewhere / cache it
+				if(CompressDuckModFolder(m_aDuckDevModFolderPath))
+					SendDuckModChunkInfo(ClientID);
+				else
+				{
+					dbg_msg("duck", "[dev mode] failed to load and compress duck mod. dir='%s'", m_aDuckDevModFolderPath);
+					m_NetServer.Drop(ClientID, "Server local mod is invalid");
+					return false;
+				}
 			}
+			else
+				SendDuckModHttpInfo(ClientID);
 		}
 		else
-			SendDuckModHttpInfo(ClientID);
+		{
+			SendMap(ClientID);
+		}
+
 		// send map after mod
 		return true;
 	}
@@ -2131,7 +2141,7 @@ bool CServer::LoadDuckMod(const char* pReleaseUrl, const char* pReleaseZipPath, 
 		dbg_msg("duck", "[dev mode] loading duck mod...");
 		if(!CompressDuckModFolder(pDevFolderPath))
 		{
-			dbg_msg("duck", "[dev mode] failed to load and compress duck mod (sv_duck_dev_mod_dir). dir='%s'", pDevFolderPath);
+			dbg_msg("duck", "[dev mode] failed to load and compress duck mod. dir='%s'", pDevFolderPath);
 			return false;
 		}
 	}
@@ -2140,7 +2150,7 @@ bool CServer::LoadDuckMod(const char* pReleaseUrl, const char* pReleaseZipPath, 
 		dbg_msg("duck", "[release mode] loading duck mod...");
 		if(!LoadDuckModZipFile(pReleaseZipPath))
 		{
-			dbg_msg("duck", "[release mode] failed to load duck mod (sv_duck_mod_path). path='%s'", pReleaseZipPath);
+			dbg_msg("duck", "[release mode] failed to load duck mod. path='%s'", pReleaseZipPath);
 			return false;
 		}
 	}

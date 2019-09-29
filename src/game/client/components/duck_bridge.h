@@ -137,13 +137,9 @@ struct CDuckBridge : public CComponent
 		};
 
 		float m_aWantColor[4];
-		float m_aCurrentColor[4];
 		float m_aWantQuadSubSet[4];
-		float m_aCurrentQuadSubSet[4];
 		int m_WantTextureID;
-		int m_CurrentTextureID;
 		float m_WantQuadRotation;
-		float m_CurrentQuadRotation;
 		CTeeSkinInfo m_CurrentTeeSkin;
 		IGraphics::CFreeformItem m_aFreeformQuads[FREEFORM_MAX_COUNT];
 		int m_FreeformQuadCount;
@@ -151,14 +147,13 @@ struct CDuckBridge : public CComponent
 		CRenderSpace()
 		{
 			mem_zero(m_aWantColor, sizeof(m_aWantColor));
-			mem_zero(m_aCurrentColor, sizeof(m_aCurrentColor));
-			mem_zero(m_aWantQuadSubSet, sizeof(m_aWantQuadSubSet));
-			mem_zero(m_aCurrentQuadSubSet, sizeof(m_aCurrentQuadSubSet));
 			m_WantTextureID = -1; // clear by default
-			m_CurrentTextureID = 0;
 			m_WantQuadRotation = 0; // clear by default
-			m_CurrentQuadRotation = -1;
 			m_FreeformQuadCount = 0;
+			m_aWantQuadSubSet[0] = 0;
+			m_aWantQuadSubSet[1] = 0;
+			m_aWantQuadSubSet[2] = 1;
+			m_aWantQuadSubSet[3] = 1;
 
 			for(int i = 0; i < NUM_SKINPARTS; i++)
 			{

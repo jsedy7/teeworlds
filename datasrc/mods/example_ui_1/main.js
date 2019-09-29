@@ -5,7 +5,7 @@ var game = {
 
 var ui = {
     show_inventory: false,
-    dialog_lines: []
+    dialog_lines: [],
 };
 
 var localClientID = 0;
@@ -13,6 +13,55 @@ var localClientID = 0;
 function DrawInventory()
 {
 
+}
+
+function DrawInteractPrompt(clientLocalTime, posX, posY, width)
+{
+    const promptBack = TwGetModTexture("key_prompt_back");
+    const promptFront = TwGetModTexture("key_prompt_front");
+
+    const rect = {
+        x: posX - width/2,
+        y: posY - width/2,
+        w: width,
+        h: width,
+    };
+
+    TwRenderSetTexture(promptBack);
+    TwRenderSetColorF4(1, 1, 1, 1);
+    TwRenderQuad(rect.x, rect.y, rect.w, rect.h);
+
+    const frontRectWidth = width - (Math.sin(clientLocalTime * 5) + 1.0)/2 * 8;
+    //const frontRectWidth = width;
+    const frontRect = {
+        x: rect.x + (width-frontRectWidth)/2,
+        y: rect.y + (width-frontRectWidth)/2,
+        w: frontRectWidth,
+        h: frontRectWidth
+    };
+
+    TwRenderSetTexture(promptFront);
+    TwRenderSetColorF4(0.5, 1, 0.7, 1);
+    TwRenderQuad(frontRect.x, frontRect.y, frontRect.w, frontRect.h);
+
+    /*const fontSize = frontRectWidth - 25;
+    const fRect = {
+        x: rect.x + rect.w/2 - fontSize/3,
+        y: rect.y + rect.h/2 - fontSize/1.5,
+        w: rect.w,
+        h: rect.h
+    };
+
+    TwRenderSetTexture(-1);
+    TwRenderSetColorF4(1, 0, 0, 0.5);
+    TwRenderQuad(fRect.x, fRect.y, fRect.w, fRect.h);
+
+    TwRenderDrawText({
+        str: "F",
+        font_size: fontSize,
+        colors: [0, 0, 0, 1],
+        rect: [fRect.x, fRect.y, fRect.w, fRect.h]
+    });*/
 }
 
 function OnLoaded()
@@ -64,11 +113,18 @@ function OnRender(clientLocalTime, intraTick)
 
     TwRenderSetDrawSpace(Teeworlds.DRAW_SPACE_HUD);
 
+    var displayInteract = false;
+
     // draw dialog bubbles
     ui.dialog_lines.forEach(function(line) {
         const npcCore = charCores[line.npc_cid];
         if(!npcCore) {
             return;
+        }
+
+        // close enough to npc to interact, display prompt
+        if(distance({ x: localCore.pos_x, y: localCore.pos_y }, { x: npcCore.pos_x, y: npcCore.pos_x }) < 400) {
+            displayInteract = true;
         }
 
         const Margin = 10;
@@ -99,12 +155,13 @@ function OnRender(clientLocalTime, intraTick)
         // draw tail
         var tailTopX1 = clamp(npcUiX - 5, 20 - 5, uiRect.w - 20 - 5);
         var tailTopX2 = clamp(npcUiX + 5, 20 + 5, uiRect.w - 20 + 5);
+        var tailTopY = bubbleY + bubbleH;
         var tailX = npcUiX;
         var tailY = npcUiY - 50;
 
         TwRenderSetFreeform([
-            tailTopX1, bubbleY + bubbleH,
-            tailTopX2, bubbleY + bubbleH,
+            tailTopX1, tailTopY,
+            tailTopX2, tailTopY,
             tailX, tailY,
             tailX, tailY,
         ]);
@@ -117,6 +174,11 @@ function OnRender(clientLocalTime, intraTick)
             colors: [1, 1, 1, 1],
             rect: [bubbleX+Margin, bubbleY+Margin, bubbleW-Margin, bubbleH-Margin]
         });
+
+        // close enough to npc to interact, display prompt
+        if(distance({ x: localCore.pos_x, y: localCore.pos_y }, { x: npcCore.pos_x, y: npcCore.pos_x }) < 400) {
+            DrawInteractPrompt(clientLocalTime, npcUiX, tailTopY + 10, 30);
+        }
     });
 }
 

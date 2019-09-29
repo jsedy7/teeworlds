@@ -89,3 +89,10 @@ function clamp(val, min, max)
     if(val > max) return max;
     return val;
 }
+
+function distance(pos1, pos2)
+{
+    var deltaX = pos2.x - pos1.x;
+    var deltaY = pos2.y - pos1.y;
+    return Math.sqrt(deltaX*deltaX + deltaY*deltaY);
+}
