@@ -236,6 +236,7 @@ void CDuckBridge::QueueDrawText(const char *pStr, float FontSize, float* pRect, 
 	int Len = min(str_length(pStr), 4096); // reasonable limit
 	char* pCopy = (char*)m_FrameAllocator.Alloc(Len+1);
 	str_copy(pCopy, pStr, 4096);
+	pCopy[Len] = 0;
 
 	Cmd.m_Text.m_pStr = pCopy;
 	Cmd.m_Text.m_FontSize = FontSize;

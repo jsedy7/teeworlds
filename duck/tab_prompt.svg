@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="512"
+   height="256"
+   viewBox="0 0 135.46666 67.733338"
+   version="1.1"
+   id="svg8"
+   sodipodi:docname="tab_prompt.svg"
+   inkscape:export-filename="C:\Prog\Projets\teeworlds\build_genie\data\mods\example_ui_1\tab_prompt_front.png"
+   inkscape:export-xdpi="24.000002"
+   inkscape:export-ydpi="24.000002"
+   inkscape:version="0.92.4 (5da689c313, 2019-01-14)">
+  <defs
+     id="defs2" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="2.8"
+     inkscape:cx="286.21118"
+     inkscape:cy="155.29884"
+     inkscape:document-units="mm"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     units="px"
+     inkscape:pagecheckerboard="true"
+     inkscape:window-width="2560"
+     inkscape:window-height="1377"
+     inkscape:window-x="1912"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1" />
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(0,-229.26665)">
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:2.54814982;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect815"
+       width="87.592651"
+       height="59.380993"
+       x="22.616026"
+       y="233.27388"
+       ry="11.982363" />
+    <path
+       sodipodi:type="inkscape:offset"
+       inkscape:radius="-4.8139715"
+       inkscape:original="M 28.726562 208.93164 C 20.455316 208.93164 13.796875 215.59008 13.796875 223.86133 L 13.796875 267.99023 C 13.796875 276.26148 20.455315 282.91992 28.726562 282.91992 L 108.00586 282.91992 C 116.27711 282.91992 122.9375 276.26148 122.9375 267.99023 L 122.9375 223.86133 C 122.9375 215.59008 116.27711 208.93164 108.00586 208.93164 L 28.726562 208.93164 z "
+       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:3.17499995;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect821"
+       d="m 28.726562,213.74609 c -5.687714,0 -10.115234,4.42752 -10.115234,10.11524 v 44.1289 c 0,5.68772 4.427519,10.11524 10.115234,10.11524 h 79.279298 c 5.68772,0 10.11719,-4.42827 10.11719,-10.11524 v -44.1289 c 0,-5.68696 -4.42947,-10.11524 -10.11719,-10.11524 z"
+       transform="matrix(0.80256693,0,0,0.80256693,11.543706,65.592345)" />
+    <path
+       sodipodi:type="inkscape:offset"
+       inkscape:radius="-3.8017187"
+       inkscape:original="M 28.726562 213.74609 C 23.038849 213.74609 18.611328 218.17361 18.611328 223.86133 L 18.611328 267.99023 C 18.611328 273.67795 23.038847 278.10547 28.726562 278.10547 L 108.00586 278.10547 C 113.69358 278.10547 118.12305 273.6772 118.12305 267.99023 L 118.12305 223.86133 C 118.12305 218.17437 113.69358 213.74609 108.00586 213.74609 L 28.726562 213.74609 z "
+       style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:3.17499995;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="path826"
+       d="m 28.726562,217.54688 c -3.714783,0 -6.314453,2.59966 -6.314453,6.31445 v 44.1289 c 0,3.7148 2.599667,6.31446 6.314453,6.31446 h 79.279298 c 3.71446,0 6.31641,-2.60154 6.31641,-6.31446 v -44.1289 c 0,-3.7129 -2.60196,-6.31445 -6.31641,-6.31445 z"
+       transform="matrix(0.80256693,0,0,0.80256693,11.543706,65.592345)" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:31.47296906px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.78682417"
+       x="35.879128"
+       y="274.18427"
+       id="text832"><tspan
+         sodipodi:role="line"
+         id="tspan830"
+         x="35.879128"
+         y="274.18427"
+         style="stroke-width:0.78682417">TAB</tspan></text>
+  </g>
+</svg>

@@ -1,21 +1,98 @@
 // main mod file
 
 var game = {
-    localTime:0
+    localTime: 0,
+    newItems: 0,
+    gotItem: false
 };
 
 var ui = {
     show_inventory: false,
     dialog_lines: [],
     fkey_was_released: true,
-    receivedItemTime: -1
+    receivedItemTime: -1,
+    backpackIsOpen: false
 };
+
+var keyWasReleased = [];
 
 var localClientID = 0;
 
-function DrawInventory()
+function DrawBackpackIcon(itemsNotSeenCount)
 {
+    const texBackpack = TwGetModTexture("backpack");
 
+    const width = 40;
+    TwRenderSetTexture(texBackpack);
+    TwRenderSetColorF4(1, 1, 1, 1);
+    TwRenderQuadCentered(25, 25, width, width);
+
+    if(itemsNotSeenCount) {
+        const fontSize = 11;
+        const text = "" + itemsNotSeenCount;
+
+        const size = TwCalculateTextSize({
+            str: text,
+            font_size: fontSize,
+            line_width: -1
+        });
+
+        const Margin = 3;
+        const notifW = size.w + Margin * 2;
+        const notifH = size.h + Margin * 2;
+        const notifX = 5 + width - notifW;
+        const notifY = 8 + width - notifH;
+
+        TwRenderSetTexture(-1);
+        TwRenderSetColorF4(0.9, 0, 0, 1);
+        TwRenderQuad(notifX, notifY, notifW, notifH);
+
+        TwRenderDrawText({
+            str: text,
+            font_size: fontSize,
+            colors: [1, 1, 1, 1],
+            rect: [notifX+Margin, notifY+Margin-2, size.w+10, size.h+10]
+        });
+
+        const promtX = 28;
+        const promtY = 68;
+        TwRenderSetTexture(TwGetModTexture("tab_prompt_back"));
+        TwRenderSetColorF4(1, 1, 1, 1);
+        TwRenderQuadCentered(promtX, promtY, 64, 32);
+
+        TwRenderSetTexture(TwGetModTexture("tab_prompt_front"));
+        TwRenderSetColorF4(0.5, 1, 0.7, 1);
+        TwRenderQuadCentered(promtX, promtY, 64 - (Math.sin(game.localTime * 5) + 1.0)/2 * 8, 32 - (Math.sin(game.localTime * 5) + 1.0)/2 * 4);
+    }
+}
+
+function DrawBackpackInventory()
+{
+    const itemsPerLine = 8;
+    const itemsPerColumn = 5;
+    const itemWidth = 50;
+    const itemSpacing = 8;
+    const panelWidth = itemsPerColumn * itemWidth + itemSpacing * (itemsPerColumn+1);
+    const panelHeight = itemsPerLine * itemWidth + itemSpacing * (itemsPerLine+1);
+    const panelX = 0;
+    const panelY = 50;
+
+    TwRenderSetTexture(-1);
+    TwRenderSetColorF4(0, 0, 0, 1);
+    TwRenderQuad(panelX, panelY, panelWidth, panelHeight);
+
+    for(var c = 0; c < itemsPerColumn; c++) {
+        for(var l = 0; l < itemsPerLine; l++) {
+            TwRenderSetColorF4(1, 0, 0, 1);
+            TwRenderQuad(panelX + itemSpacing + (itemWidth + itemSpacing) * c, panelY + itemSpacing + (itemWidth + itemSpacing) * l, itemWidth, itemWidth);
+        }
+    }
+
+    if(game.gotItem) {
+        TwRenderSetTexture(TwGetModTexture("potato"));
+        TwRenderSetColorF4(1, 1, 1, 1);
+        TwRenderQuadCentered(panelX + itemSpacing + itemWidth/2, panelY + itemSpacing + itemWidth/2, itemWidth-10, itemWidth-10);
+    }
 }
 
 function DrawInteractPrompt(clientLocalTime, posX, posY, width)
@@ -35,7 +112,6 @@ function DrawInteractPrompt(clientLocalTime, posX, posY, width)
     TwRenderQuad(rect.x, rect.y, rect.w, rect.h);
 
     const frontRectWidth = width - (Math.sin(clientLocalTime * 5) + 1.0)/2 * 8;
-    //const frontRectWidth = width;
     const frontRect = {
         x: rect.x + (width-frontRectWidth)/2,
         y: rect.y + (width-frontRectWidth)/2,
@@ -46,25 +122,6 @@ function DrawInteractPrompt(clientLocalTime, posX, posY, width)
     TwRenderSetTexture(promptFront);
     TwRenderSetColorF4(0.5, 1, 0.7, 1);
     TwRenderQuad(frontRect.x, frontRect.y, frontRect.w, frontRect.h);
-
-    /*const fontSize = frontRectWidth - 25;
-    const fRect = {
-        x: rect.x + rect.w/2 - fontSize/3,
-        y: rect.y + rect.h/2 - fontSize/1.5,
-        w: rect.w,
-        h: rect.h
-    };
-
-    TwRenderSetTexture(-1);
-    TwRenderSetColorF4(1, 0, 0, 0.5);
-    TwRenderQuad(fRect.x, fRect.y, fRect.w, fRect.h);
-
-    TwRenderDrawText({
-        str: "F",
-        font_size: fontSize,
-        colors: [0, 0, 0, 1],
-        rect: [fRect.x, fRect.y, fRect.w, fRect.h]
-    });*/
 }
 
 function DrawItemNotification(posX, posY, startTime, clientLocalTime)
@@ -101,6 +158,17 @@ function DrawItemNotification(posX, posY, startTime, clientLocalTime)
         colors: [1, 1, 1, alpha],
         rect: [posX - size.w/2, bgY + Margin - 2, 10000, 500]
     });
+}
+
+function OpenOrCloseBackpack()
+{
+    if(ui.backpackIsOpen) {
+        ui.backpackIsOpen = false;
+    }
+    else {
+        ui.backpackIsOpen = true;
+        game.newItems = 0;
+    }
 }
 
 function OnLoaded()
@@ -226,6 +294,12 @@ function OnRender(clientLocalTime, intraTick)
     const localCoreUiX = (localCore.pos_x - worldViewRect.x) / worldViewRect.w * uiRect.w;
     const localCoreUiY = (localCore.pos_y - worldViewRect.y) / worldViewRect.h * uiRect.h;
     DrawItemNotification(localCoreUiX, localCoreUiY, ui.receivedItemTime, clientLocalTime);
+
+    DrawBackpackIcon(game.newItems);
+
+    if(ui.backpackIsOpen) {
+        DrawBackpackInventory();
+    }
 }
 
 function OnMessage(packet)
@@ -251,23 +325,35 @@ function OnMessage(packet)
     else if(packet.mod_id == 0x2) {
         print("received item");
         ui.receivedItemTime = game.localTime;
+        game.newItems = 1;
+        game.gotItem = true;
     }
 }
 
+function GotKeyPress(event, key)
+{
+    if(event.pressed && event.key == key) {
+        if(keyWasReleased[key] === undefined || keyWasReleased[key]) {
+            keyWasReleased[key] = false;
+            return true;
+        }
+    }
+    if(event.released && event.key == key) {
+        keyWasReleased[key] = true;
+    }
+    return false;
+}
 function OnInput(event)
 {
     //printObj(event);
 
-    if(event.pressed && event.key == 102) {
-        if(ui.fkey_was_released) {
-            TwNetSendPacket({
-                net_id: 1,
-                force_send_now: 1,
-            });
-            ui.fkey_was_released = false;
-        }
+    if(GotKeyPress(event, 102)) {
+        TwNetSendPacket({
+            net_id: 1,
+            force_send_now: 1,
+        });
     }
-    if(event.released && event.key == 102) {
-        ui.fkey_was_released = true;
+    if(GotKeyPress(event, 9)) {
+        OpenOrCloseBackpack();
     }
 }
