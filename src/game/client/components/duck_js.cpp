@@ -131,7 +131,7 @@ duk_ret_t CDuckJs::NativeRenderSetColorU32(duk_context *ctx)
 {
 	CheckArgumentCount(ctx, 1);
 
-	int x = duk_to_int(ctx, 0);
+	uint32_t x = duk_to_uint(ctx, 0);
 
 	float aColor[4];
 	aColor[0] = (x & 0xFF) / 255.f;
@@ -163,7 +163,7 @@ duk_ret_t CDuckJs::NativeRenderSetColorF4(duk_context *ctx)
 {
 	CheckArgumentCount(ctx, 4);
 
-	float aColor[4];
+	float aColor[4] = {1, 1, 1, 1};
 	aColor[0] = duk_to_number(ctx, 0);
 	aColor[1] = duk_to_number(ctx, 1);
 	aColor[2] = duk_to_number(ctx, 2);
@@ -313,11 +313,11 @@ duk_ret_t CDuckJs::NativeRenderSetTeeSkin(duk_context* ctx)
 				else {
 					SkinInfo.m_aTextures[i] = (int)duk_to_int(ctx, -1);
 				}
-				duk_pop(ctx);
 			}
+			duk_pop(ctx);
 		}
-		duk_pop(ctx);
 	}
+	duk_pop(ctx);
 
 	if(duk_get_prop_string(ctx, 0, "colors"))
 	{
@@ -327,31 +327,15 @@ duk_ret_t CDuckJs::NativeRenderSetTeeSkin(duk_context* ctx)
 			if(duk_get_prop_index(ctx, -1, i))
 			{
 				duk_to_object(ctx, -1);
-				if(duk_get_prop_string(ctx, -1, "r"))
-				{
-					SkinInfo.m_aColors[i][0] = (float)duk_to_number(ctx, -1);
-					duk_pop(ctx);
-				}
-				if(duk_get_prop_string(ctx, -1, "g"))
-				{
-					SkinInfo.m_aColors[i][1] = (float)duk_to_number(ctx, -1);
-					duk_pop(ctx);
-				}
-				if(duk_get_prop_string(ctx, -1, "b"))
-				{
-					SkinInfo.m_aColors[i][2] = (float)duk_to_number(ctx, -1);
-					duk_pop(ctx);
-				}
-				if(duk_get_prop_string(ctx, -1, "a"))
-				{
-					SkinInfo.m_aColors[i][3] = (float)duk_to_number(ctx, -1);
-					duk_pop(ctx);
-				}
-				duk_pop(ctx);
+				DukGetFloatProp(ctx, -1, "r", &SkinInfo.m_aColors[i][0]);
+				DukGetFloatProp(ctx, -1, "g", &SkinInfo.m_aColors[i][1]);
+				DukGetFloatProp(ctx, -1, "b", &SkinInfo.m_aColors[i][2]);
+				DukGetFloatProp(ctx, -1, "a", &SkinInfo.m_aColors[i][3]);
 			}
+			duk_pop(ctx);
 		}
-		duk_pop(ctx);
 	}
+	duk_pop(ctx);
 
 	This()->Bridge()->QueueSetTeeSkin(SkinInfo);
 	return 0;
@@ -388,7 +372,6 @@ duk_ret_t CDuckJs::NativeRenderSetFreeform(duk_context *ctx)
 		if(duk_get_prop_index(ctx, 0, i))
 		{
 			CurrentFreeform[VertCount++] = duk_to_number(ctx, -1);
-			duk_pop(ctx);
 
 			if(VertCount >= FfFloatCount)
 			{
@@ -396,6 +379,7 @@ duk_ret_t CDuckJs::NativeRenderSetFreeform(duk_context *ctx)
 				pFreeformBuffer[FreeformCount++] = *(IGraphics::CFreeformItem*)CurrentFreeform;
 			}
 		}
+		duk_pop(ctx);
 	}
 
 	if(VertCount > 0)
@@ -487,46 +471,14 @@ duk_ret_t CDuckJs::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 	bool GotAirJump = true;
 	int Emote = 0;
 
-	if(duk_get_prop_string(ctx, 0, "size"))
-	{
-		Size = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 0, "angle"))
-	{
-		Angle = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 0, "pos_x"))
-	{
-		PosX = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 0, "pos_y"))
-	{
-		PosY = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 0, "is_walking"))
-	{
-		IsWalking = (bool)duk_to_boolean(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 0, "is_grounded"))
-	{
-		IsGrounded = (bool)duk_to_boolean(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 0, "got_air_jump"))
-	{
-		GotAirJump = (bool)duk_to_boolean(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 0, "emote"))
-	{
-		Emote = (int)duk_to_int(ctx, -1);
-		duk_pop(ctx);
-	}
+	DukGetFloatProp(ctx, 0, "size", &Size);
+	DukGetFloatProp(ctx, 0, "angle", &Angle);
+	DukGetFloatProp(ctx, 0, "pos_x", &PosX);
+	DukGetFloatProp(ctx, 0, "pos_y", &PosY);
+	DukGetBoolProp(ctx, 0, "is_walking", &IsWalking);
+	DukGetBoolProp(ctx, 0, "is_grounded", &IsGrounded);
+	DukGetBoolProp(ctx, 0, "got_air_jump", &GotAirJump);
+	DukGetIntProp(ctx, 0, "emote", &Emote);
 
 	CDuckBridge::CTeeDrawBodyAndFeetInfo TeeDrawInfo;
 	TeeDrawInfo.m_Size = Size;
@@ -591,46 +543,14 @@ duk_ret_t CDuckJs::NativeRenderDrawTeeHand(duk_context* ctx)
 	float PosY = 0;
 	float OffX = 0;
 	float OffY = 0;
-	bool IsWalking = false;
-	bool IsGrounded = true;
-	bool GotAirJump = true;
-	int Emote = 0;
 
-	if(duk_get_prop_string(ctx, 0, "size"))
-	{
-		Size = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 0, "angle_dir"))
-	{
-		AngleDir = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 0, "angle_off"))
-	{
-		AngleOff = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 0, "pos_x"))
-	{
-		PosX = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 0, "pos_y"))
-	{
-		PosY = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 0, "off_x"))
-	{
-		OffX = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 0, "off_y"))
-	{
-		OffY = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
+	DukGetFloatProp(ctx, 0, "size", &Size);
+	DukGetFloatProp(ctx, 0, "angle_dir", &AngleDir);
+	DukGetFloatProp(ctx, 0, "angle_off", &AngleOff);
+	DukGetFloatProp(ctx, 0, "pos_x", &PosX);
+	DukGetFloatProp(ctx, 0, "pos_y", &PosY);
+	DukGetFloatProp(ctx, 0, "off_x", &OffX);
+	DukGetFloatProp(ctx, 0, "off_y", &OffY);
 
 	CDuckBridge::CTeeDrawHand TeeHandInfo;
 	TeeHandInfo.m_Size = Size;
@@ -713,18 +633,25 @@ duk_ret_t CDuckJs::NativeRenderDrawText(duk_context *ctx)
 		return 0;
 	}
 
-	const char* aStr;
+	char* pText = 0;
 	float FontSize = 10.0f;
 	float aColors[4] = {1, 1, 1, 1};
-	float aRect[4];
+	float aRect[4] = { 0, 0, -1, -1};
 
-	DukGetStringPropNoCopy(ctx, 0, "str", &aStr);
-
-	if(!aStr)
+	if(duk_get_prop_string(ctx, 0, "str"))
 	{
+		const char* pStr = duk_to_string(ctx, -1);
+		int Len = min(str_length(pStr), 1024*1024); // 1MB max
+		pText = (char*)mem_alloc(Len+1, 1);
+		str_copy(pText, pStr, Len+1);
+	}
+	else
+	{
+		duk_pop(ctx);
 		dbg_msg("duck", "ERROR: TwRenderDrawText(text) text.str is null");
 		return 0;
 	}
+	duk_pop(ctx);
 
 	DukGetFloatProp(ctx, 0, "font_size", &FontSize);
 
@@ -734,13 +661,11 @@ duk_ret_t CDuckJs::NativeRenderDrawText(duk_context *ctx)
 		for(int i = 0; i < 4; i++)
 		{
 			if(duk_get_prop_index(ctx, -1, i))
-			{
 				aColors[i] = duk_to_number(ctx, -1);
-				duk_pop(ctx);
-			}
+			duk_pop(ctx);
 		}
-		duk_pop(ctx);
 	}
+	duk_pop(ctx);
 
 	// get rect
 	if(duk_get_prop_string(ctx, 0, "rect"))
@@ -748,20 +673,19 @@ duk_ret_t CDuckJs::NativeRenderDrawText(duk_context *ctx)
 		for(int i = 0; i < 4; i++)
 		{
 			if(duk_get_prop_index(ctx, -1, i))
-			{
 				aRect[i] = duk_to_number(ctx, -1);
-				duk_pop(ctx);
-			}
+			duk_pop(ctx);
 		}
-		duk_pop(ctx);
 	}
 	else
 	{
+		duk_pop(ctx);
 		dbg_msg("duck", "ERROR: TwRenderDrawText(text) text.rect is undefined");
 		return 0;
 	}
+	duk_pop(ctx);
 
-	This()->Bridge()->QueueDrawText(aStr, FontSize, aRect, aColors);
+	This()->Bridge()->QueueDrawText(pText, FontSize, aRect, aColors);
 	return 0;
 }
 
@@ -1562,33 +1486,15 @@ duk_ret_t CDuckJs::NativeCollisionSetStaticBlock(duk_context* ctx)
 	int BlockId = duk_to_int(ctx, 0);
 
 	CDuckCollision::CStaticBlock SolidBlock;
-	SolidBlock.m_Flags = -1;
+	int Flags = -1;
 
-	if(duk_get_prop_string(ctx, 1, "flags"))
-	{
-		SolidBlock.m_Flags = (int)duk_to_int(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 1, "pos_x"))
-	{
-		SolidBlock.m_Pos.x = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 1, "pos_y"))
-	{
-		SolidBlock.m_Pos.y = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 1, "width"))
-	{
-		SolidBlock.m_Size.x = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
-	if(duk_get_prop_string(ctx, 1, "height"))
-	{
-		SolidBlock.m_Size.y = (float)duk_to_number(ctx, -1);
-		duk_pop(ctx);
-	}
+	DukGetIntProp(ctx, 1, "flags", &Flags);
+	SolidBlock.m_Flags = Flags;
+
+	DukGetFloatProp(ctx, 1, "pos_x", &SolidBlock.m_Pos.x);
+	DukGetFloatProp(ctx, 1, "pos_y", &SolidBlock.m_Pos.y);
+	DukGetFloatProp(ctx, 1, "width", &SolidBlock.m_Size.x);
+	DukGetFloatProp(ctx, 1, "height", &SolidBlock.m_Size.y);
 
 	if(BlockId >= 0)
 		This()->Bridge()->m_Collision.SetStaticBlock(BlockId, SolidBlock);
@@ -2024,7 +1930,13 @@ duk_ret_t CDuckJs::NativeNetPacketUnpack(duk_context *ctx)
 		return 0;
 	}
 
-	duk_get_prop_string(ctx, 0, "raw");
+	if(!duk_get_prop_string(ctx, 0, "raw"))
+	{
+		duk_pop(ctx);
+		dbg_msg("duck", "ERROR: TwNetPacketUnpack(packet, template) can't unpack");
+		return 0;
+	}
+
 	duk_size_t RawBufferSize;
 	const u8* pRawBuffer = (u8*)duk_get_buffer(ctx, -1, &RawBufferSize);
 	duk_pop(ctx);
@@ -2341,26 +2253,33 @@ duk_ret_t CDuckJs::NativeCalculateTextSize(duk_context *ctx)
 
 	if(!duk_is_object(ctx, 0))
 	{
-		dbg_msg("duck", "ERROR: TwRenderDrawText(text) text is not an object");
+		dbg_msg("duck", "ERROR: TwCalculateTextSize(text) text is not an object");
 		return 0;
 	}
 
-	const char* aStr;
+	char* pText = 0;
 	float FontSize = 10.0f;
 	float LineWidth = -1;
 
-	DukGetStringPropNoCopy(ctx, 0, "str", &aStr);
-
-	if(!aStr)
+	if(duk_get_prop_string(ctx, 0, "str"))
 	{
-		dbg_msg("duck", "ERROR: TwRenderDrawText(text) text.str is null");
+		const char* pStr = duk_to_string(ctx, -1);
+		int Len = min(str_length(pStr), 1024*1024); // 1MB max
+		pText = (char*)mem_alloc(Len+1, 1);
+		str_copy(pText, pStr, Len+1);
+	}
+	else
+	{
+		duk_pop(ctx);
+		dbg_msg("duck", "ERROR: TwCalculateTextSize(text) text.str is null");
 		return 0;
 	}
+	duk_pop(ctx);
 
 	DukGetFloatProp(ctx, 0, "font_size", &FontSize);
 	DukGetFloatProp(ctx, 0, "line_width", &LineWidth);
 
-	vec2 Size = This()->Bridge()->CalculateTextSize(aStr, FontSize, LineWidth);
+	vec2 Size = This()->Bridge()->CalculateTextSize(pText, FontSize, LineWidth);
 
 	This()->PushObject();
 	This()->ObjectSetMemberFloat("w", Size.x);

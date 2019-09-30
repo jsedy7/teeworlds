@@ -102,8 +102,17 @@ inline void DukGetIntProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pProp
 	if(duk_get_prop_string(pCtx, ObjIdx, pPropName))
 	{
 		*pOutInt = duk_to_int(pCtx, -1);
-		duk_pop(pCtx);
 	}
+	duk_pop(pCtx);
+}
+
+inline void DukGetBoolProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, bool* pOutInt)
+{
+	if(duk_get_prop_string(pCtx, ObjIdx, pPropName))
+	{
+		*pOutInt = duk_to_boolean(pCtx, -1);
+	}
+	duk_pop(pCtx);
 }
 
 inline void DukGetFloatProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, float* pOutFloat)
@@ -111,8 +120,8 @@ inline void DukGetFloatProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPr
 	if(duk_get_prop_string(pCtx, ObjIdx, pPropName))
 	{
 		*pOutFloat = duk_to_number(pCtx, -1);
-		duk_pop(pCtx);
 	}
+	duk_pop(pCtx);
 }
 
 inline void DukGetStringProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, char* pOutBuff, int OutSize)
@@ -121,19 +130,8 @@ inline void DukGetStringProp(duk_context* pCtx, duk_idx_t ObjIdx, const char* pP
 	{
 		const char* pStr = duk_to_string(pCtx, -1);
 		str_copy(pOutBuff, pStr, OutSize);
-		duk_pop(pCtx);
 	}
-}
-
-inline void DukGetStringPropNoCopy(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName, const char** pOutStr)
-{
-	if(duk_get_prop_string(pCtx, ObjIdx, pPropName))
-	{
-		*pOutStr = duk_to_string(pCtx, -1);
-		duk_pop(pCtx);
-		return;
-	}
-	*pOutStr = 0;
+	duk_pop(pCtx);
 }
 
 inline bool DukIsPropNull(duk_context* pCtx, duk_idx_t ObjIdx, const char* pPropName)
@@ -142,8 +140,8 @@ inline bool DukIsPropNull(duk_context* pCtx, duk_idx_t ObjIdx, const char* pProp
 	if(duk_get_prop_string(pCtx, ObjIdx, pPropName))
 	{
 		IsNull &= duk_is_null_or_undefined(pCtx, -1);
-		duk_pop(pCtx);
 	}
+	duk_pop(pCtx);
 	return IsNull;
 }
 

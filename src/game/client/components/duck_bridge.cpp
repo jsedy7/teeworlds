@@ -738,21 +738,24 @@ void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 			case CRenderCmd::DRAW_TEXT:
 			{
 				const CTextInfo& Text = Cmd.m_Text;
+				const bool DoClipping = Text.m_aRect[2] > 0 && Text.m_aRect[3] > 0;
 
 				// clip
-				float Points[4];
-				Graphics()->GetScreen(&Points[0], &Points[1], &Points[2], &Points[3]);
-				float x0 = (Text.m_aRect[0] - Points[0]) / (Points[2]-Points[0]);
-				float y0 = (Text.m_aRect[1] - Points[1]) / (Points[3]-Points[1]);
-				float x1 = ((Text.m_aRect[0]+Text.m_aRect[2]) - Points[0]) / (Points[2]-Points[0]);
-				float y1 = ((Text.m_aRect[1]+Text.m_aRect[3]) - Points[1]) / (Points[3]-Points[1]);
+				if(DoClipping)
+				{
+					float Points[4];
+					Graphics()->GetScreen(&Points[0], &Points[1], &Points[2], &Points[3]);
+					float x0 = (Text.m_aRect[0] - Points[0]) / (Points[2]-Points[0]);
+					float y0 = (Text.m_aRect[1] - Points[1]) / (Points[3]-Points[1]);
+					float x1 = ((Text.m_aRect[0]+Text.m_aRect[2]) - Points[0]) / (Points[2]-Points[0]);
+					float y1 = ((Text.m_aRect[1]+Text.m_aRect[3]) - Points[1]) / (Points[3]-Points[1]);
 
-				if(x1 < 0.0f || x0 > 1.0f || y1 < 0.0f || y0 > 1.0f)
-					continue;
+					if(x1 < 0.0f || x0 > 1.0f || y1 < 0.0f || y0 > 1.0f)
+						continue;
 
-				Graphics()->ClipEnable((int)(x0*Graphics()->ScreenWidth()), (int)(y0*Graphics()->ScreenHeight()),
-					(int)((x1-x0)*Graphics()->ScreenWidth()), (int)((y1-y0)*Graphics()->ScreenHeight()));
-				// ---
+					Graphics()->ClipEnable((int)(x0*Graphics()->ScreenWidth()), (int)(y0*Graphics()->ScreenHeight()),
+						(int)((x1-x0)*Graphics()->ScreenWidth()), (int)((y1-y0)*Graphics()->ScreenHeight()));
+				}
 
 
 				float PosX = Text.m_aRect[0];
@@ -766,7 +769,8 @@ void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 				vec4 ShadowColor(0, 0, 0, 0);
 				TextRender()->TextShadowed(&Cursor, Text.m_pStr, -1, vec2(0,0), ShadowColor, TextColor);
 
-				Graphics()->ClipDisable();
+				if(DoClipping)
+					Graphics()->ClipDisable();
 			} break;
 
 			default:

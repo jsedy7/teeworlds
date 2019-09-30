@@ -51,7 +51,7 @@ function DrawBackpackIcon(itemsNotSeenCount)
             str: text,
             font_size: fontSize,
             colors: [1, 1, 1, 1],
-            rect: [notifX+Margin, notifY+Margin-2, size.w+10, size.h+10]
+            rect: [notifX+Margin, notifY+Margin-2]
         });
 
         const promtX = 28;
@@ -78,12 +78,12 @@ function DrawBackpackInventory()
     const panelY = 50;
 
     TwRenderSetTexture(-1);
-    TwRenderSetColorF4(0, 0, 0, 1);
+    TwRenderSetColorU32(0xFF002255);
     TwRenderQuad(panelX, panelY, panelWidth, panelHeight);
 
     for(var c = 0; c < itemsPerColumn; c++) {
         for(var l = 0; l < itemsPerLine; l++) {
-            TwRenderSetColorF4(1, 0, 0, 1);
+            TwRenderSetColorU32(0xFF071730);
             TwRenderQuad(panelX + itemSpacing + (itemWidth + itemSpacing) * c, panelY + itemSpacing + (itemWidth + itemSpacing) * l, itemWidth, itemWidth);
         }
     }
@@ -139,7 +139,6 @@ function DrawItemNotification(posX, posY, startTime, clientLocalTime)
     const size = TwCalculateTextSize({
         str: text,
         font_size: fontSize,
-        line_width: -1
     });
 
     const alpha = 1.0 - 0.5 * max(a - 0.5, 0) * 2.0;
@@ -156,7 +155,7 @@ function DrawItemNotification(posX, posY, startTime, clientLocalTime)
         str: text,
         font_size: fontSize,
         colors: [1, 1, 1, alpha],
-        rect: [posX - size.w/2, bgY + Margin - 2, 10000, 500]
+        rect: [posX - size.w/2, bgY + Margin - 2]
     });
 }
 
