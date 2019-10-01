@@ -599,12 +599,12 @@ public:
 		Graphics()->QuadsEnd();
 	}
 
-	virtual void TextDeferredRenderEx(CTextCursor *pCursor, const char *pText, int Length,
-									  CQuadChar* aQuadChar, int QuadCharMaxCount, int* pQuadCharCount,
-									  IGraphics::CTextureHandle* pFontTexture)
+	virtual void TextDeferredRenderEx(CTextCursor *pCursor, const char *pText, int Length, CQuadChar* aQuadChar, int QuadCharMaxCount, int* pQuadCharCount, IGraphics::CTextureHandle* pFontTexture)
 	{
 		CFont *pFont = pCursor->m_pFont;
 		CFontSizeData *pSizeData = NULL;
+
+		//dbg_msg("textrender", "rendering text '%s'", text);
 
 		float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
 		float FakeToScreenX, FakeToScreenY;
@@ -669,8 +669,7 @@ public:
 				Compare.m_Y = DrawY;
 				Compare.m_Flags &= ~TEXTFLAG_RENDER;
 				Compare.m_LineWidth = -1;
-				TextDeferredRenderEx(&Compare, pCurrent, Wlen, aQuadChar, QuadCharMaxCount, pQuadCharCount,
-									 pFontTexture);
+				TextDeferredRenderEx(&Compare, pCurrent, Wlen, aQuadChar, QuadCharMaxCount, pQuadCharCount, pFontTexture);
 
 				if(Compare.m_X-DrawX > pCursor->m_LineWidth)
 				{
@@ -682,8 +681,7 @@ public:
 					Cutter.m_Flags &= ~TEXTFLAG_RENDER;
 					Cutter.m_Flags |= TEXTFLAG_STOP_AT_END;
 
-					TextDeferredRenderEx(&Cutter, (const char *)pCurrent, Wlen, aQuadChar, QuadCharMaxCount,
-										 pQuadCharCount, pFontTexture);
+					TextDeferredRenderEx(&Cutter, (const char *)pCurrent, Wlen, aQuadChar, QuadCharMaxCount, pQuadCharCount, pFontTexture);
 					Wlen = Cutter.m_GlyphCount;
 					NewLine = 1;
 
@@ -712,6 +710,7 @@ public:
 				{
 					DrawX = pCursor->m_StartX;
 					DrawY += Size;
+					GotNewLine = 1;
 					DrawX = (int)(DrawX * FakeToScreenX) / FakeToScreenX; // realign
 					DrawY = (int)(DrawY * FakeToScreenY) / FakeToScreenY;
 					++LineCount;
@@ -761,6 +760,7 @@ public:
 				++LineCount;
 			}
 		}
+
 
 		pCursor->m_X = DrawX;
 		pCursor->m_LineCount = LineCount;
@@ -946,6 +946,174 @@ public:
 
 			if(pCursor->m_Flags&TEXTFLAG_RENDER)
 				Graphics()->QuadsEnd();
+		}
+
+		pCursor->m_X = DrawX;
+		pCursor->m_LineCount = LineCount;
+
+		if(GotNewLine)
+			pCursor->m_Y = DrawY;
+	}
+
+	void TextCalculateRect(CTextCursor *pCursor, const char *pText, int Length, float* pOutRect) // DUCK
+	{
+		CFont *pFont = pCursor->m_pFont;
+		CFontSizeData *pSizeData = NULL;
+
+		//dbg_msg("textrender", "rendering text '%s'", text);
+
+		float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
+		float FakeToScreenX, FakeToScreenY;
+		int ActualX, ActualY;
+
+		int ActualSize;
+		int i;
+		int GotNewLine = 0;
+		float DrawX = 0.0f, DrawY = 0.0f;
+		int LineCount = 0;
+		float CursorX, CursorY;
+
+		float Size = pCursor->m_FontSize;
+
+		// to correct coords, convert to screen coords, round, and convert back
+		Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
+
+		FakeToScreenX = (Graphics()->ScreenWidth()/(ScreenX1-ScreenX0));
+		FakeToScreenY = (Graphics()->ScreenHeight()/(ScreenY1-ScreenY0));
+		ActualX = (int)(pCursor->m_X * FakeToScreenX);
+		ActualY = (int)(pCursor->m_Y * FakeToScreenY);
+
+		CursorX = ActualX / FakeToScreenX;
+		CursorY = ActualY / FakeToScreenY;
+
+		// same with size
+		ActualSize = (int)(Size * FakeToScreenY);
+		Size = ActualSize / FakeToScreenY;
+
+		// fetch pFont data
+		if(!pFont)
+			pFont = m_pDefaultFont;
+
+		if(!pFont)
+			return;
+
+		pSizeData = GetSize(pFont, ActualSize);
+		RenderSetup(pFont, ActualSize);
+
+		float Scale = 1.0f/pSizeData->m_FontSize;
+
+		// set length
+		if(Length < 0)
+			Length = str_length(pText);
+
+		// if we don't want to render, we can just skip the first outline pass
+		{
+			const char *pCurrent = (char *)pText;
+			const char *pEnd = pCurrent+Length;
+			DrawX = CursorX;
+			DrawY = CursorY;
+			LineCount = pCursor->m_LineCount;
+
+			while(pCurrent < pEnd && (pCursor->m_MaxLines < 1 || LineCount <= pCursor->m_MaxLines))
+			{
+				int NewLine = 0;
+				const char *pBatchEnd = pEnd;
+				if(pCursor->m_LineWidth > 0 && !(pCursor->m_Flags&TEXTFLAG_STOP_AT_END))
+				{
+					int Wlen = min(WordLength((char *)pCurrent), (int)(pEnd-pCurrent));
+					CTextCursor Compare = *pCursor;
+					Compare.m_X = DrawX;
+					Compare.m_Y = DrawY;
+					Compare.m_Flags &= ~TEXTFLAG_RENDER;
+					Compare.m_LineWidth = -1;
+					TextCalculateRect(&Compare, pCurrent, Wlen, pOutRect);
+
+					if(Compare.m_X-DrawX > pCursor->m_LineWidth)
+					{
+						// word can't be fitted in one line, cut it
+						CTextCursor Cutter = *pCursor;
+						Cutter.m_GlyphCount = 0;
+						Cutter.m_X = DrawX;
+						Cutter.m_Y = DrawY;
+						Cutter.m_Flags &= ~TEXTFLAG_RENDER;
+						Cutter.m_Flags |= TEXTFLAG_STOP_AT_END;
+
+						TextCalculateRect(&Cutter, (const char *)pCurrent, Wlen, pOutRect);
+						Wlen = Cutter.m_GlyphCount;
+						NewLine = 1;
+
+						if(Wlen <= 3) // if we can't place 3 chars of the word on this line, take the next
+							Wlen = 0;
+					}
+					else if(Compare.m_X-pCursor->m_StartX > pCursor->m_LineWidth)
+					{
+						NewLine = 1;
+						Wlen = 0;
+					}
+
+					pBatchEnd = pCurrent + Wlen;
+				}
+
+				const char *pTmp = pCurrent;
+				int NextCharacter = str_utf8_decode(&pTmp);
+				while(pCurrent < pBatchEnd)
+				{
+					pCursor->m_CharCount += pTmp-pCurrent;
+					int Character = NextCharacter;
+					pCurrent = pTmp;
+					NextCharacter = str_utf8_decode(&pTmp);
+
+					if(Character == '\n')
+					{
+						DrawX = pCursor->m_StartX;
+						DrawY += Size;
+						GotNewLine = 1;
+						DrawX = (int)(DrawX * FakeToScreenX) / FakeToScreenX; // realign
+						DrawY = (int)(DrawY * FakeToScreenY) / FakeToScreenY;
+						++LineCount;
+						if(pCursor->m_MaxLines > 0 && LineCount > pCursor->m_MaxLines)
+							break;
+						continue;
+					}
+
+					CFontChar *pChr = GetChar(pFont, pSizeData, Character);
+					if(pChr)
+					{
+						float Advance = pChr->m_AdvanceX + Kerning(pFont, Character, NextCharacter)*Scale;
+						if(pCursor->m_Flags&TEXTFLAG_STOP_AT_END && DrawX+Advance*Size-pCursor->m_StartX > pCursor->m_LineWidth)
+						{
+							// we hit the end of the line, no more to render or count
+							pCurrent = pEnd;
+							break;
+						}
+
+						if(pCursor->m_Flags&TEXTFLAG_RENDER)
+						{
+							float CharX = DrawX+pChr->m_OffsetX*Size;
+							float CharY = DrawY+pChr->m_OffsetY*Size;
+							float CharW = pChr->m_Width*Size;
+							float CharH = pChr->m_Height*Size;
+							pOutRect[0] = min(pOutRect[0], CharX);
+							pOutRect[1] = min(pOutRect[1], CharY);
+							pOutRect[2] = max(pOutRect[2], CharX + CharW);
+							pOutRect[3] = max(pOutRect[3], CharY + CharH);
+						}
+
+						DrawX += Advance*Size;
+						pCursor->m_GlyphCount++;
+					}
+				}
+
+				if(NewLine)
+				{
+					DrawX = pCursor->m_StartX;
+					DrawY += Size;
+					GotNewLine = 1;
+					DrawX = (int)(DrawX * FakeToScreenX) / FakeToScreenX; // realign
+					DrawY = (int)(DrawY * FakeToScreenY) / FakeToScreenY;
+					++LineCount;
+				}
+			}
 		}
 
 		pCursor->m_X = DrawX;

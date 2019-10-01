@@ -48,6 +48,7 @@ public:
 		IGraphics::CTextureHandle* pFontTexture) = 0;
 	virtual void TextShadowed(CTextCursor *pCursor, const char *pText, int Length, vec2 ShadowOffset,
 		vec4 ShadowColor, vec4 TextColor_) = 0;
+	virtual void TextCalculateRect(CTextCursor *pCursor, const char *pText, int Length, float* pOutRect) = 0; // DUCK
 
 	// old foolish interface
 	virtual void TextColor(float r, float g, float b, float a) = 0;

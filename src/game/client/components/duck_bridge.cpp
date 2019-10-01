@@ -612,19 +612,26 @@ vec2 CDuckBridge::CalculateTextSize(const char *pStr, float FontSize, float Line
 			break;
 	}
 
+	Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
+
+	float aRect[4] = {FLT_MAX, FLT_MAX, -FLT_MAX, -FLT_MAX};
 	CTextCursor Cursor;
-	TextRender()->SetCursor(&Cursor, 0, 0, FontSize, TEXTFLAG_ALLOW_NEWLINE);
+	TextRender()->SetCursor(&Cursor, 0, 0, FontSize, TEXTFLAG_RENDER|TEXTFLAG_ALLOW_NEWLINE);
 	Cursor.m_LineWidth = LineWidth;
-	TextRender()->TextEx(&Cursor, pStr, -1);
+	TextRender()->TextCalculateRect(&Cursor, pStr, -1, aRect);
+
+	const float BaseLine = TextRender()->TextGetLineBaseY(&Cursor);
 
 	// TODO: is this even useful at all?
 	Graphics()->MapScreen(ScreenX0, ScreenY0, ScreenX1, ScreenY1); // restore screen
 
-	float y = Cursor.m_Y;
-	if(Cursor.m_X != 0)
-		y += FontSize;
+	float Width = aRect[2]-aRect[0];
+	if(LineWidth > 0)
+		Width = min(Width, LineWidth);
 
-	return vec2(Cursor.m_X, y);
+	float Height = max(aRect[3]-aRect[1], BaseLine);
+
+	return vec2(Width, Height);
 }
 
 void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)

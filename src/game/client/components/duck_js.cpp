@@ -642,7 +642,7 @@ duk_ret_t CDuckJs::NativeRenderDrawText(duk_context *ctx)
 	{
 		const char* pStr = duk_to_string(ctx, -1);
 		int Len = min(str_length(pStr), 1024*1024); // 1MB max
-		pText = (char*)mem_alloc(Len+1, 1);
+		pText = (char*)This()->Bridge()->m_FrameAllocator.Alloc(Len+1);(Len+1);
 		str_copy(pText, pStr, Len+1);
 	}
 	else
@@ -2265,7 +2265,7 @@ duk_ret_t CDuckJs::NativeCalculateTextSize(duk_context *ctx)
 	{
 		const char* pStr = duk_to_string(ctx, -1);
 		int Len = min(str_length(pStr), 1024*1024); // 1MB max
-		pText = (char*)mem_alloc(Len+1, 1);
+		pText = (char*)This()->Bridge()->m_FrameAllocator.Alloc(Len+1);
 		str_copy(pText, pStr, Len+1);
 	}
 	else
