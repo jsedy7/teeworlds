@@ -700,6 +700,26 @@ TwGetCamera
 
 |
 
+TwGetUiMousePos
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwGetUiMousePos()
+
+
+| Get screen mouse position in UI coordinates.
+
+**Parameters**
+
+* None
+
+**Returns**
+
+* **pos**: { x: float, y: float }
+
+
+|
+
 TwMapSetTileCollisionFlags
 ---------------------------------------------------------------------
 .. code-block:: js
@@ -895,6 +915,7 @@ TwSetHudPartsShown
 
 
 | Show/hide parts of the hud.
+| Not specified parts are unchanged.
 | Example:
 
 .. code-block:: js
@@ -908,6 +929,7 @@ TwSetHudPartsShown
 		score: 1,
 		chat: 1,
 		scoreboard: 1,
+		weapon_cursor: 1,
 	};
 
 	TwSetHudPartsShown(hud);
@@ -919,14 +941,15 @@ TwSetHudPartsShown
 .. code-block:: js
 
 	var hud = {
-		health: int,
-		armor: int,
-		ammo: int,
-		time: int,
-		killfeed: int,
-		score: int,
-		chat: int,
-		scoreboard: int,
+		health: bool,
+		armor: bool,
+		ammo: bool,
+		time: bool,
+		killfeed: bool,
+		score: bool,
+		chat: bool,
+		scoreboard: bool,
+		weapon_cursor: bool,
 	};
 
 **Returns**
@@ -1199,6 +1222,27 @@ TwCalculateTextSize
 **Returns**
 
 * **size**: { x: float, y: float }
+
+
+|
+
+TwSetMenuModeActive
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwSetMenuModeActive(active)
+
+
+| Activate or deactivate menu mode.
+| All game input is deactivated (tee does not move, shoot or anything else).
+
+**Parameters**
+
+* **active**: bool
+
+**Returns**
+
+* None
 
 
 |

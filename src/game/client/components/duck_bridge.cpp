@@ -138,9 +138,7 @@ void CDuckBridge::DrawTeeHand(const CDuckBridge::CTeeDrawHand& Hand, const CTeeS
 
 CDuckBridge::CDuckBridge() : m_CurrentPacket(0, 0) // We have to do this, CMsgPacker can't be uninitialized apparently...
 {
-	m_RgGame.Init(this, DrawSpace::GAME);
-	m_RgGameForeGround.Init(this, DrawSpace::GAME_FOREGROUND);
-	m_RgHud.Init(this, DrawSpace::HUD);
+
 }
 
 void CDuckBridge::Reset()
@@ -168,6 +166,9 @@ void CDuckBridge::Reset()
 
 	// FIXME: unload sounds
 	m_aSounds.clear();
+
+	m_MousePos = vec2(Graphics()->ScreenWidth() * 0.5, Graphics()->ScreenHeight() * 0.5);
+	m_IsMenuModeActive = false;
 }
 
 void CDuckBridge::QueueSetColor(const float* pColor)
@@ -580,6 +581,23 @@ vec2 CDuckBridge::GetCameraPos()
 float CDuckBridge::GetCameraZoom()
 {
 	return m_pClient->m_pCamera->GetZoom();
+}
+
+vec2 CDuckBridge::GetUiMousePos()
+{
+	vec2 Pos = m_MousePos;
+	Pos.x = clamp(Pos.x, 0.0f, (float)Graphics()->ScreenWidth());
+	Pos.y = clamp(Pos.y, 0.0f, (float)Graphics()->ScreenHeight());
+	CUIRect Rect = *UI()->Screen();
+	Graphics()->MapScreen(0.0f, 0.0f, Rect.w, Rect.h);
+	Pos.x *= Rect.w / Graphics()->ScreenWidth();
+	Pos.y *= Rect.h / Graphics()->ScreenHeight();
+	return Pos;
+}
+
+void CDuckBridge::SetMenuModeActive(bool Active)
+{
+	m_IsMenuModeActive = Active;
 }
 
 vec2 CDuckBridge::CalculateTextSize(const char *pStr, float FontSize, float LineWidth)
@@ -1690,6 +1708,11 @@ void CDuckBridge::OnInit()
 	m_Js.m_pBridge = this;
 	m_CurrentDrawSpace = 0;
 	m_CurrentPacketFlags = -1;
+	m_RgGame.Init(this, DrawSpace::GAME);
+	m_RgGameForeGround.Init(this, DrawSpace::GAME_FOREGROUND);
+	m_RgHud.Init(this, DrawSpace::HUD);
+	m_MousePos = vec2(Graphics()->ScreenWidth() * 0.5, Graphics()->ScreenHeight() * 0.5);
+	m_IsMenuModeActive = false;
 }
 
 void CDuckBridge::OnReset()
@@ -1768,6 +1791,19 @@ void CDuckBridge::OnMessage(int Msg, void *pRawMsg)
 	m_Js.OnMessage(Msg, pRawMsg);
 }
 
+bool CDuckBridge::OnMouseMove(float x, float y)
+{
+	if(m_IsMenuModeActive)
+	{
+		m_MousePos += vec2(x, y);
+		m_MousePos.x = clamp(m_MousePos.x, 0.0f, (float)Graphics()->ScreenWidth());
+		m_MousePos.y = clamp(m_MousePos.y, 0.0f, (float)Graphics()->ScreenHeight());
+		return true;
+	}
+
+	return false;
+}
+
 void CDuckBridge::OnSnapItem(int Msg, void *pRawMsg)
 {
 	if(!IsLoaded()) {
@@ -1792,6 +1828,9 @@ bool CDuckBridge::OnInput(IInput::CEvent e)
 	}
 
 	m_Js.OnInput(e);
+
+	if(m_IsMenuModeActive)
+		return true;
 	return false;
 }
 

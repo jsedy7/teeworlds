@@ -47,6 +47,7 @@ class CDuckJs
 	static duk_ret_t NativeGetUiScreenRect(duk_context *ctx);
 	static duk_ret_t NativeGetScreenSize(duk_context *ctx);
 	static duk_ret_t NativeGetCamera(duk_context *ctx);
+	static duk_ret_t NativeGetUiMousePos(duk_context *ctx);
 	static duk_ret_t NativeMapSetTileCollisionFlags(duk_context *ctx);
 	static duk_ret_t NativeDirectionFromAngle(duk_context *ctx);
 	static duk_ret_t NativeCollisionSetStaticBlock(duk_context *ctx);
@@ -63,6 +64,7 @@ class CDuckJs
 	static duk_ret_t NativePlayMusic(duk_context *ctx);
 	static duk_ret_t NativeRandomInt(duk_context *ctx);
 	static duk_ret_t NativeCalculateTextSize(duk_context *ctx);
+	static duk_ret_t NativeSetMenuModeActive(duk_context *ctx);
 
 	// TODO: not great if we want to do nested objects
 	void PushObject();

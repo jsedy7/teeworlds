@@ -751,9 +751,11 @@ void CHud::OnRender()
 
 	bool RenderTime = true;
 	bool RenderScore = true;
+	bool RenderWeaponCursor = true;
 	if(m_pClient->m_pDuckBridge->IsLoaded()) {
-		RenderTime = m_pClient->m_pDuckBridge->m_HudPartsShown.m_Time & 1;
-		RenderScore = m_pClient->m_pDuckBridge->m_HudPartsShown.m_Score & 1;
+		RenderTime = m_pClient->m_pDuckBridge->m_HudPartsShown.m_Time;
+		RenderScore = m_pClient->m_pDuckBridge->m_HudPartsShown.m_Score;
+		RenderWeaponCursor = m_pClient->m_pDuckBridge->m_HudPartsShown.m_WeaponCursor;
 	}
 
 	m_Width = 300.0f*Graphics()->ScreenAspect();
@@ -790,5 +792,6 @@ void CHud::OnRender()
 		RenderVoting();
 	}
 
-	RenderCursor();
+	if(RenderWeaponCursor)
+		RenderCursor();
 }

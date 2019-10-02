@@ -1393,6 +1393,31 @@ duk_ret_t CDuckJs::NativeGetCamera(duk_context *ctx)
 }
 
 /*#
+`TwGetUiMousePos()`
+
+| Get screen mouse position in UI coordinates.
+
+**Parameters**
+
+* None
+
+**Returns**
+
+* **pos**: { x: float, y: float }
+
+#*/
+duk_ret_t CDuckJs::NativeGetUiMousePos(duk_context *ctx)
+{
+	CheckArgumentCount(ctx, 0);
+	vec2 Pos = This()->Bridge()->GetUiMousePos();
+
+	This()->PushObject();
+	This()->ObjectSetMemberFloat("x", Pos.x);
+	This()->ObjectSetMemberFloat("y", Pos.y);
+	return 1;
+}
+
+/*#
 `TwMapSetTileCollisionFlags(tile_x, tile_y, flags)`
 
 | Modify a map tile's collision flags.
@@ -1662,6 +1687,7 @@ duk_ret_t CDuckJs::NativeCollisionGetPredictedDynamicDisks(duk_context *ctx)
 `TwSetHudPartsShown(hud)`
 
 | Show/hide parts of the hud.
+| Not specified parts are unchanged.
 | Example:
 
 .. code-block:: js
@@ -1675,6 +1701,7 @@ duk_ret_t CDuckJs::NativeCollisionGetPredictedDynamicDisks(duk_context *ctx)
 		score: 1,
 		chat: 1,
 		scoreboard: 1,
+		weapon_cursor: 1,
 	};
 
 	TwSetHudPartsShown(hud);
@@ -1686,14 +1713,15 @@ duk_ret_t CDuckJs::NativeCollisionGetPredictedDynamicDisks(duk_context *ctx)
 .. code-block:: js
 
 	var hud = {
-		health: int,
-		armor: int,
-		ammo: int,
-		time: int,
-		killfeed: int,
-		score: int,
-		chat: int,
-		scoreboard: int,
+		health: bool,
+		armor: bool,
+		ammo: bool,
+		time: bool,
+		killfeed: bool,
+		score: bool,
+		chat: bool,
+		scoreboard: bool,
+		weapon_cursor: bool,
 	};
 
 **Returns**
@@ -1703,31 +1731,19 @@ duk_ret_t CDuckJs::NativeCollisionGetPredictedDynamicDisks(duk_context *ctx)
 #*/
 duk_ret_t CDuckJs::NativeSetHudPartsShown(duk_context *ctx)
 {
-	/*
-	var shown = {
-		health: 1,
-		armor: 1,
-		ammo: 1,
-		time: 1,
-		killfeed: 1,
-		score: 1,
-		chat: 1,
-		scoreboard: 1,
-	}
-	*/
-
 	CheckArgumentCount(ctx, 1);
 
-	CDuckBridge::CHudPartsShown hps;
+	CDuckBridge::CHudPartsShown hps = This()->Bridge()->m_HudPartsShown;
 
-	DukGetIntProp(ctx, 0, "health", &hps.m_Health);
-	DukGetIntProp(ctx, 0, "armor", &hps.m_Armor);
-	DukGetIntProp(ctx, 0, "ammo", &hps.m_Ammo);
-	DukGetIntProp(ctx, 0, "time", &hps.m_Time);
-	DukGetIntProp(ctx, 0, "killfeed", &hps.m_KillFeed);
-	DukGetIntProp(ctx, 0, "score", &hps.m_Score);
-	DukGetIntProp(ctx, 0, "chat", &hps.m_Chat);
-	DukGetIntProp(ctx, 0, "scoreboard", &hps.m_Scoreboard);
+	DukGetBoolProp(ctx, 0, "health", &hps.m_Health);
+	DukGetBoolProp(ctx, 0, "armor", &hps.m_Armor);
+	DukGetBoolProp(ctx, 0, "ammo", &hps.m_Ammo);
+	DukGetBoolProp(ctx, 0, "time", &hps.m_Time);
+	DukGetBoolProp(ctx, 0, "killfeed", &hps.m_KillFeed);
+	DukGetBoolProp(ctx, 0, "score", &hps.m_Score);
+	DukGetBoolProp(ctx, 0, "chat", &hps.m_Chat);
+	DukGetBoolProp(ctx, 0, "scoreboard", &hps.m_Scoreboard);
+	DukGetBoolProp(ctx, 0, "weapon_cursor", &hps.m_WeaponCursor);
 
 	This()->Bridge()->SetHudPartsShown(hps);
 
@@ -2287,6 +2303,30 @@ duk_ret_t CDuckJs::NativeCalculateTextSize(duk_context *ctx)
 	return 1;
 }
 
+/*#
+`TwSetMenuModeActive(active)`
+
+| Activate or deactivate menu mode.
+| All game input is deactivated (tee does not move, shoot or anything else).
+
+**Parameters**
+
+* **active**: bool
+
+**Returns**
+
+* None
+
+#*/
+duk_ret_t CDuckJs::NativeSetMenuModeActive(duk_context *ctx)
+{
+	CheckArgumentCount(ctx, 1);
+
+	bool Active = duk_to_boolean(ctx, 0);
+	This()->Bridge()->SetMenuModeActive(Active);
+	return 0;
+}
+
 void CDuckJs::PushObject()
 {
 	m_CurrentPushedObjID = duk_push_object(Ctx());
@@ -2439,6 +2479,7 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(GetUiScreenRect, 0);
 	REGISTER_FUNC(GetScreenSize, 0);
 	REGISTER_FUNC(GetCamera, 0);
+	REGISTER_FUNC(GetUiMousePos, 0);
 	REGISTER_FUNC(MapSetTileCollisionFlags, 3);
 	REGISTER_FUNC(DirectionFromAngle, 1);
 	REGISTER_FUNC(CollisionSetStaticBlock, 2);
@@ -2455,6 +2496,7 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(PlayMusic, 1);
 	REGISTER_FUNC(RandomInt, 2);
 	REGISTER_FUNC(CalculateTextSize, 1);
+	REGISTER_FUNC(SetMenuModeActive, 1);
 
 #undef REGISTER_FUNC
 

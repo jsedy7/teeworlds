@@ -186,24 +186,26 @@ struct CDuckBridge : public CComponent
 	struct CHudPartsShown
 	{
 		// TODO: make those bools?
-		int m_Health;
-		int m_Armor;
-		int m_Ammo;
-		int m_Time;
-		int m_KillFeed;
-		int m_Score;
-		int m_Chat;
-		int m_Scoreboard;
+		bool m_Health;
+		bool m_Armor;
+		bool m_Ammo;
+		bool m_Time;
+		bool m_KillFeed;
+		bool m_Score;
+		bool m_Chat;
+		bool m_Scoreboard;
+		bool m_WeaponCursor;
 
 		CHudPartsShown() {
-			m_Health = 1;
-			m_Armor = 1;
-			m_Ammo = 1;
-			m_Time = 1;
-			m_KillFeed = 1;
-			m_Score = 1;
-			m_Chat = 1;
-			m_Scoreboard = 1;
+			m_Health = true;
+			m_Armor = true;
+			m_Ammo = true;
+			m_Time = true;
+			m_KillFeed = true;
+			m_Score = true;
+			m_Chat = true;
+			m_Scoreboard = true;
+			m_WeaponCursor = true;
 		}
 	};
 
@@ -301,6 +303,9 @@ struct CDuckBridge : public CComponent
 	CRenderGroup m_RgGameForeGround;
 	CRenderGroupHud m_RgHud;
 
+	vec2 m_MousePos;
+	bool m_IsMenuModeActive;
+
 	void DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo);
 	void DrawTeeHand(const CTeeDrawHand& Hand, const CTeeSkinInfo& SkinInfo);
 
@@ -344,6 +349,8 @@ struct CDuckBridge : public CComponent
 	vec2 GetScreenSize();
 	vec2 GetCameraPos();
 	float GetCameraZoom();
+	vec2 GetUiMousePos();
+	void SetMenuModeActive(bool Active);
 
 	vec2 CalculateTextSize(const char* pStr, float FontSize, float LineWidth);
 
@@ -370,6 +377,7 @@ struct CDuckBridge : public CComponent
 	virtual void OnShutdown();
 	virtual void OnRender();
 	virtual void OnMessage(int Msg, void *pRawMsg);
+	virtual bool OnMouseMove(float x, float y);
 	void OnSnapItem(int Msg, void *pRawMsg);
 	virtual void OnStateChange(int NewState, int OldState);
 	virtual bool OnInput(IInput::CEvent e);

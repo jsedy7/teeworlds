@@ -37,7 +37,7 @@ function DrawBackpackIcon(itemsNotSeenCount)
             line_width: -1
         });
 
-        const Margin = 3;
+        const Margin = 2;
         const notifW = size.w + Margin * 2;
         const notifH = size.h + Margin * 2;
         const notifX = 5 + width - notifW;
@@ -90,8 +90,17 @@ function DrawBackpackInventory()
 
     if(game.gotItem) {
         TwRenderSetTexture(TwGetModTexture("potato"));
+        const potatoX = panelX + itemSpacing + itemWidth/2;
+        const potatoY = panelY + itemSpacing + itemWidth/2;
+        const potatoW = itemWidth-10;
+
+        // do shadow
+        TwRenderSetColorF4(0, 0, 0, 1);
+        TwRenderQuadCentered(potatoX + 2, potatoY + 2, potatoW, potatoW);
+
+        // do potato
         TwRenderSetColorF4(1, 1, 1, 1);
-        TwRenderQuadCentered(panelX + itemSpacing + itemWidth/2, panelY + itemSpacing + itemWidth/2, itemWidth-10, itemWidth-10);
+        TwRenderQuadCentered(potatoX, potatoY, potatoW, potatoW);
     }
 }
 
@@ -142,7 +151,7 @@ function DrawItemNotification(posX, posY, startTime, clientLocalTime)
     });
 
     const alpha = 1.0 - 0.5 * max(a - 0.5, 0) * 2.0;
-    const Margin = 5.0;
+    const Margin = 4.0;
     const bgW = size.w + Margin * 2;
     const bgH = size.h + Margin * 2;
     const bgY = posY - a * 50 - 30 - bgH/2;
@@ -155,8 +164,17 @@ function DrawItemNotification(posX, posY, startTime, clientLocalTime)
         str: text,
         font_size: fontSize,
         colors: [1, 1, 1, alpha],
-        rect: [posX - size.w/2, bgY + Margin - 2]
+        rect: [posX - size.w/2, bgY + Margin]
     });
+}
+
+function DrawMouseCursor()
+{
+    const mousePos = TwGetUiMousePos();
+    TwRenderSetTexture(TwGetBaseTexture(Teeworlds.IMAGE_CURSOR));
+    TwRenderSetColorF4(1, 1, 1, 1);
+    TwRenderQuad(mousePos.x, mousePos.y, 24, 24);
+    //printObj(mousePos);
 }
 
 function OpenOrCloseBackpack()
@@ -166,8 +184,13 @@ function OpenOrCloseBackpack()
     }
     else {
         ui.backpackIsOpen = true;
-        game.newItems = 0;
+        game.newItems = 0; // mark all new items as seen
     }
+
+    TwSetMenuModeActive(ui.backpackIsOpen);
+    TwSetHudPartsShown({
+        weapon_cursor: !ui.backpackIsOpen
+    });
 }
 
 function OnLoaded()
@@ -221,8 +244,6 @@ function OnRender(clientLocalTime, intraTick)
 
     TwRenderSetDrawSpace(Teeworlds.DRAW_SPACE_HUD);
 
-    var displayInteract = false;
-
     // draw dialog bubbles
     ui.dialog_lines.forEach(function(line) {
         const npcCore = charCores[line.npc_cid];
@@ -230,19 +251,16 @@ function OnRender(clientLocalTime, intraTick)
             return;
         }
 
-        // close enough to npc to interact, display prompt
-        if(distance({ x: localCore.pos_x, y: localCore.pos_y }, { x: npcCore.pos_x, y: npcCore.pos_x }) < 400) {
-            displayInteract = true;
-        }
-
         const Margin = 10;
-        var bubbleW = 160;
+        const bubbleTextW = 160;
+        var bubbleW = bubbleTextW;
+        const fontSize = 13;
 
         // calculate text size
         const textSize = TwCalculateTextSize({
             str: line.text,
-            font_size: 13,
-            line_width: bubbleW
+            font_size: fontSize,
+            line_width: bubbleTextW
         });
 
         var bubbleH = textSize.h + 2 + Margin*2;
@@ -274,13 +292,16 @@ function OnRender(clientLocalTime, intraTick)
             tailX, tailY,
         ]);
         TwRenderDrawFreeform(0, 0);
+
+        /*TwRenderSetColorF4(1, 0, 0, 1);
+        TwRenderQuad(bubbleX+Margin, bubbleY+Margin, textSize.w, textSize.h);*/
         
         // draw text
         TwRenderDrawText({
             str: line.text,
-            font_size: 13,
+            font_size: fontSize,
             colors: [1, 1, 1, 1],
-            rect: [bubbleX+Margin, bubbleY+Margin, bubbleW-Margin, bubbleH-Margin]
+            rect: [bubbleX+Margin, bubbleY+Margin, bubbleTextW, textSize.h]
         });
 
         // close enough to npc to interact, display prompt
@@ -298,6 +319,7 @@ function OnRender(clientLocalTime, intraTick)
 
     if(ui.backpackIsOpen) {
         DrawBackpackInventory();
+        DrawMouseCursor();
     }
 }
 
