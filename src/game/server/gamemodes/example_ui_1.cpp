@@ -10,7 +10,8 @@ struct ModNetID
 {
 	enum Enum {
 		NPC_DIALOG_LINE=0x1,
-		NPC_GIVE_ITEM=0x2,
+		NPC_GIVE_ITEM,
+		NPC_PROMPT_QUESTION,
 	};
 };
 
@@ -25,6 +26,14 @@ struct CModNetObj_NPCDialogLine
 struct CModNetObj_NPCGiveItem
 {
 	enum { NET_ID = ModNetID::NPC_GIVE_ITEM };
+};
+
+struct CModNetObj_NPCQuestion
+{
+	enum { NET_ID = ModNetID::NPC_PROMPT_QUESTION };
+	int m_NpcClientID; // NPC client ID
+	char m_aAnswer1[32];
+	char m_aAnswer2[32];
 };
 
 struct CNPC
@@ -147,6 +156,8 @@ struct CNPC
 		pCharacter->m_Emote = EMOTE_NORMAL;
 		if(pServer->Tick() % 250 < 6)
 			pCharacter->m_Emote = EMOTE_BLINK;
+		if(m_aDialogLineID[SnappingClient] > 6)
+			pCharacter->m_Emote = EMOTE_HAPPY;
 
 		pCharacter->m_AmmoCount = 0;
 		pCharacter->m_Health = 0;
@@ -177,11 +188,23 @@ struct CNPC
 	{
 		int OldLineID = m_aDialogLineID[ClientID];
 		m_aDialogLineID[ClientID] = min(m_aDialogLineID[ClientID]+1, m_aDialogLines.size()-1);
+		//m_aDialogLineID[ClientID] = (m_aDialogLineID[ClientID]+1) % m_aDialogLines.size();
 
-		if(OldLineID != m_aDialogLineID[ClientID] && m_aDialogLineID[ClientID] == 3)
+		if(OldLineID == m_aDialogLineID[ClientID])
+			return;
+
+		if(m_aDialogLineID[ClientID] == 3)
 		{
 			CModNetObj_NPCGiveItem Item;
 			m_pGameServer->SendDuckNetObj(Item, ClientID);
+		}
+		else if(m_aDialogLineID[ClientID] == 6)
+		{
+			CModNetObj_NPCQuestion Question;
+			Question.m_NpcClientID = m_ClientID;
+			str_copy(Question.m_aAnswer1, "Yes of course!", sizeof(Question.m_aAnswer1));
+			str_copy(Question.m_aAnswer2, "Uuuh how am I well equi-", sizeof(Question.m_aAnswer2));
+			m_pGameServer->SendDuckNetObj(Question, ClientID);
 		}
 	}
 };
@@ -206,6 +229,10 @@ CGameControllerExampleUI1::CGameControllerExampleUI1(class CGameContext *pGameSe
 	TestNpc.m_aDialogLines.add("What I must tell you is of utmost importance.");
 	TestNpc.m_aDialogLines.add("But first, take this powerful item with you.");
 	TestNpc.m_aDialogLines.add("...");
+	TestNpc.m_aDialogLines.add("The town of Yth'riopk is in grave danger!");
+	TestNpc.m_aDialogLines.add("A giant ogre from the Chocolate tribe is attacking as we speak!");
+	TestNpc.m_aDialogLines.add("Will you help the poor town folks, now that you are well equipped?");
+	TestNpc.m_aDialogLines.add("Good luck!");
 
 	mem_zero(m_aInteractKeyPressed, sizeof(m_aInteractKeyPressed));
 }
@@ -237,7 +264,7 @@ void CGameControllerExampleUI1::Tick()
 			if(pChar)
 			{
 				float dist = distance(TestNpc.m_Core.m_Pos, pChar->GetPos());
-				if(dist < 400)
+				if(dist < 400 && TestNpc.m_aDialogLineID[ClientID] < 6)
 				{
 					TestNpc.NextLine(ClientID);
 					TestNpc.SendDialogLineTo(ClientID);
@@ -261,5 +288,11 @@ void CGameControllerExampleUI1::OnDuckMessage(int MsgID, CUnpacker *pUnpacker, i
 	if(MsgID == 0x1)
 	{
 		m_aInteractKeyPressed[ClientID] = true;
+	}
+
+	if(MsgID == 0x2)
+	{
+		TestNpc.NextLine(ClientID);
+		TestNpc.SendDialogLineTo(ClientID);
 	}
 }

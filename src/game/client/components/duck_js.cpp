@@ -2279,6 +2279,8 @@ duk_ret_t CDuckJs::NativeRandomInt(duk_context *ctx)
 		line_width: 240
 	});
 
+| Note: this is not 100% accurate for now unfortunately...
+
 **Parameters**
 
 * **text**:

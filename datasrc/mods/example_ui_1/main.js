@@ -3,19 +3,28 @@
 var game = {
     localTime: 0,
     newItems: 0,
-    gotItem: false
+    gotItem: false,
 };
 
 var ui = {
     show_inventory: false,
-    dialog_lines: [],
     fkey_was_released: true,
     receivedItemTime: -1,
-    backpackIsOpen: false
+    backpackIsOpen: false,
 };
 
-var keyWasReleased = [];
+function CreateNPC()
+{
+    return {
+        dialog_line: null,
+        question: null,
+        hoveredID: null
+    };
+};
 
+var npcs = [];
+
+var keyWasReleased = [];
 var localClientID = 0;
 
 function DrawBackpackIcon(itemsNotSeenCount)
@@ -319,20 +328,20 @@ function OnRender(clientLocalTime, intraTick)
     TwRenderSetDrawSpace(Teeworlds.DRAW_SPACE_HUD);
 
     // draw dialog bubbles
-    ui.dialog_lines.forEach(function(line) {
-        const npcCore = charCores[line.npc_cid];
+    npcs.forEach(function(npc, npcID) {
+        const npcCore = charCores[npcID];
         if(!npcCore) {
             return;
         }
 
         const Margin = 10;
-        const bubbleTextW = 160;
+        const bubbleTextW = 161;
         var bubbleW = bubbleTextW;
         const fontSize = 13;
 
         // calculate text size
         const textSize = TwCalculateTextSize({
-            str: line.text,
+            str: npc.dialog_line.text,
             font_size: fontSize,
             line_width: bubbleTextW
         });
@@ -372,15 +381,83 @@ function OnRender(clientLocalTime, intraTick)
         
         // draw text
         TwRenderDrawText({
-            str: line.text,
+            str: npc.dialog_line.text,
             font_size: fontSize,
             color: [1, 1, 1, 1],
-            rect: [bubbleX+Margin, bubbleY+Margin, bubbleTextW, textSize.h]
+            rect: [bubbleX+Margin, bubbleY+Margin, bubbleTextW]
         });
 
-        // close enough to npc to interact, display prompt
-        if(distance({ x: localCore.pos_x, y: localCore.pos_y }, { x: npcCore.pos_x, y: npcCore.pos_y }) < 400) {
-            DrawInteractPrompt(clientLocalTime, npcUiX, tailTopY + 10, 30);
+        var question = npc.question;
+        if(question === null) {
+            // close enough to npc to interact, display prompt
+            if(distance({ x: localCore.pos_x, y: localCore.pos_y }, { x: npcCore.pos_x, y: npcCore.pos_y }) < 400) {
+                DrawInteractPrompt(clientLocalTime, npcUiX, tailTopY + 10, 30);
+            }
+        }
+        else {
+            // get cusror pos in hud space
+            const cursorPos = TwGetCursorPosition();
+            const cursorUiX = (cursorPos.x - worldViewRect.x) / worldViewRect.w * uiRect.w;
+            const cursorUiY = (cursorPos.y - worldViewRect.y) / worldViewRect.h * uiRect.h;
+
+            const firstRect = {
+                x: bubbleX + bubbleW + 5,
+                y: bubbleY,
+                w: 180,
+                h: 30,
+            };
+
+            const secondRect = {
+                x: bubbleX + bubbleW + 5,
+                y: bubbleY + firstRect.h + 5,
+                w: firstRect.w,
+                h: firstRect.h,
+            };
+
+            const fontSize = 12;
+            var textSize1 = TwCalculateTextSize({
+                str: question.answer1,
+                font_size: fontSize,
+            });
+            var textSize2 = TwCalculateTextSize({
+                str: question.answer2,
+                font_size: fontSize,
+            });
+
+            npc.hoveredID = null;
+            var color = [0, 0.5, 0, 1];
+            if(IsPointInsideRect({x: cursorUiX, y: cursorUiY}, firstRect)) {
+                color = [0, 1.0, 0, 1];
+                firstRect.w += 2;
+                npc.hoveredID = 0;
+            }
+            DrawRect(firstRect, color);
+
+            TwRenderDrawText({
+                str: question.answer1,
+                font_size: fontSize,
+                color: [1, 1, 1, 1],
+                rect: [ firstRect.x + 10, firstRect.y + firstRect.h/2 - textSize1.h/2]
+            });
+
+            var color = [0.5, 0, 0, 1];
+            if(IsPointInsideRect({x: cursorUiX, y: cursorUiY}, secondRect)) {
+                color = [1.0, 0, 0, 1];
+                secondRect.w += 2;
+                npc.hoveredID = 1;
+            }
+            DrawRect(secondRect, color);
+
+            TwRenderDrawText({
+                str: question.answer2,
+                font_size: fontSize,
+                color: [1, 1, 1, 1],
+                rect: [ secondRect.x + 10, secondRect.y + secondRect.h/2 - textSize2.h/2]
+            });
+
+            TwRenderSetTexture(-1);
+            TwRenderSetColorF4(0, 1, 1, 1);
+            TwRenderQuadCentered(cursorUiX, cursorUiY, 10, 10);
         }
     });
 
@@ -415,13 +492,29 @@ function OnMessage(packet)
         });
 
         printObj(line);
-        ui.dialog_lines[line.npc_cid] = line;
+        if(npcs[line.npc_cid] === undefined) {
+            npcs[line.npc_cid] = CreateNPC();
+        }
+        npcs[line.npc_cid].dialog_line = line;
     }
     else if(packet.mod_id == 0x2) {
         print("received item");
         ui.receivedItemTime = game.localTime;
         game.newItems = 1;
         game.gotItem = true;
+    }
+    else if(packet.mod_id == 0x3) {
+        var question = TwNetPacketUnpack(packet, {
+            i32_npc_cid: 0,
+            str32_answer1: 0,
+            str32_answer2: 0
+        });
+
+        printObj(question);
+        if(npcs[question.npc_cid] === undefined) {
+            npcs[question.npc_cid] = CreateNPC();
+        }
+        npcs[question.npc_cid].question = question;
     }
 }
 
@@ -442,13 +535,30 @@ function OnInput(event)
 {
     //printObj(event);
 
-    if(GotKeyPress(event, 102)) {
+    if(GotKeyPress(event, 102)) { // f
         TwNetSendPacket({
             net_id: 1,
             force_send_now: 1,
         });
     }
-    if(GotKeyPress(event, 9)) {
+    if(GotKeyPress(event, 9)) { // tab
         OpenOrCloseBackpack();
     }
+    if(GotKeyPress(event, 411)) { // left click
+        HandleLeftClick();
+    }
+}
+
+function HandleLeftClick()
+{
+    npcs.forEach(function(npc, npcID) {
+        if(npc.question) {
+            TwNetSendPacket({
+                net_id: 2,
+                force_send_now: 1,
+                i32_answerID: npc.hoveredID
+            });
+            npc.question = null;
+        }
+    });
 }
