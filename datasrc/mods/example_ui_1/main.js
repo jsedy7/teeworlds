@@ -50,7 +50,7 @@ function DrawBackpackIcon(itemsNotSeenCount)
         TwRenderDrawText({
             str: text,
             font_size: fontSize,
-            colors: [1, 1, 1, 1],
+            color: [1, 1, 1, 1],
             rect: [notifX+Margin, notifY+Margin-2]
         });
 
@@ -77,6 +77,8 @@ function DrawBackpackInventory()
     const panelX = 0;
     const panelY = 50;
 
+    const mousePos = TwGetUiMousePos();
+
     TwRenderSetTexture(-1);
     TwRenderSetColorU32(0xFF002255);
     TwRenderQuad(panelX, panelY, panelWidth, panelHeight);
@@ -92,7 +94,20 @@ function DrawBackpackInventory()
         TwRenderSetTexture(TwGetModTexture("potato"));
         const potatoX = panelX + itemSpacing + itemWidth/2;
         const potatoY = panelY + itemSpacing + itemWidth/2;
-        const potatoW = itemWidth-10;
+        var potatoW = itemWidth-10;
+
+        const potatoRect = {
+            x: potatoX - itemWidth/2,
+            y: potatoY - itemWidth/2,
+            w: itemWidth,
+            h: itemWidth,
+        };
+    
+        var hovered = IsPointInsideRect(mousePos, potatoRect);
+
+        if(hovered) {
+            potatoW += 3 + 3 * (Math.sin(game.localTime * 5) + 1.0) / 2;
+        }
 
         // do shadow
         TwRenderSetColorF4(0, 0, 0, 1);
@@ -101,6 +116,65 @@ function DrawBackpackInventory()
         // do potato
         TwRenderSetColorF4(1, 1, 1, 1);
         TwRenderQuadCentered(potatoX, potatoY, potatoW, potatoW);
+
+        // if hovered, draw item description
+        if(hovered) {
+            var descRect = {
+                x: potatoRect.x + itemWidth + itemSpacing / 2,
+                y: potatoRect.y,
+                w: 180,
+                h: 200
+            };
+
+            DrawBorderRect(descRect, 4, [0, 0, 0, 1], [0.4, 0.4, 0.4, 1]);
+            DrawBorderRect(potatoRect, 2, [0, 0, 0, 0], [1, 0, 0, 1]); // outline
+
+            const headerHeight = 30;
+            DrawRect({
+                x: descRect.x,
+                y: descRect.y,
+                w: descRect.w,
+                h: headerHeight,
+            }, [0.4, 0.4, 0.4, 1]);
+
+            const headerTextSize = TwCalculateTextSize({
+                str: "Potato",
+                font_size: 13,
+            });
+
+            TwRenderDrawText({
+                str: "Potato",
+                font_size: 13,
+                color: [1, 1, 1, 1],
+                rect: [descRect.x + descRect.w/2 - headerTextSize.w/2, descRect.y + headerHeight/2 - headerTextSize.h/2]
+            });
+
+            TwRenderDrawText({
+                str: "+10 health points on consumption when cooked",
+                font_size: 10,
+                color: [0.3, 1, 0.2, 1],
+                rect: [descRect.x + 10, descRect.y + headerHeight + 5, descRect.w - 20]
+            });
+
+            TwRenderDrawText({
+                str: "The potato is considered as the fourth most important crop behind the corn, wheat, and rice. The average American eats 140 pounds of potatoes per year.",
+                font_size: 10,
+                color: [1, 1, 1, 1],
+                rect: [descRect.x + 10, descRect.y + headerHeight + 50, descRect.w - 20]
+            });
+
+            const raritySize = TwCalculateTextSize({
+                str: "common",
+                font_size: 10,
+            });
+
+            TwRenderDrawText({
+                str: "common",
+                font_size: 10,
+                color: [0.4, 0.4, 0.4, 1],
+                rect: [descRect.x + descRect.w/2 - raritySize.w/2, descRect.y + descRect.h - raritySize.h - 5]
+            });
+        }
     }
 }
 
@@ -163,7 +237,7 @@ function DrawItemNotification(posX, posY, startTime, clientLocalTime)
     TwRenderDrawText({
         str: text,
         font_size: fontSize,
-        colors: [1, 1, 1, alpha],
+        color: [1, 1, 1, alpha],
         rect: [posX - size.w/2, bgY + Margin]
     });
 }
@@ -300,7 +374,7 @@ function OnRender(clientLocalTime, intraTick)
         TwRenderDrawText({
             str: line.text,
             font_size: fontSize,
-            colors: [1, 1, 1, 1],
+            color: [1, 1, 1, 1],
             rect: [bubbleX+Margin, bubbleY+Margin, bubbleTextW, textSize.h]
         });
 

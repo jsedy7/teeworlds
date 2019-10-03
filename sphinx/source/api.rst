@@ -340,7 +340,7 @@ TwRenderDrawText
 	TwRenderDrawText({
 		str: "This a text",
 		font_size: 10,
-		colors: [1, 0, 1, 1], // rgba (0.0 - 1.0)
+		color: [1, 0, 1, 1], // rgba (0.0 - 1.0)
 		rect: [100, 25, 200, 100], // x y width height
 	});
 
@@ -353,7 +353,7 @@ TwRenderDrawText
 	var text = {
 		str: string,
 		font_size: float,
-		colors: float[4],
+		color: float[4],
 		rect: float[4],
 	};
 

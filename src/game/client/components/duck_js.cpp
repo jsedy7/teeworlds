@@ -602,7 +602,7 @@ duk_ret_t CDuckJs::NativeRenderDrawFreeform(duk_context *ctx)
 	TwRenderDrawText({
 		str: "This a text",
 		font_size: 10,
-		colors: [1, 0, 1, 1], // rgba (0.0 - 1.0)
+		color: [1, 0, 1, 1], // rgba (0.0 - 1.0)
 		rect: [100, 25, 200, 100], // x y width height
 	});
 
@@ -615,7 +615,7 @@ duk_ret_t CDuckJs::NativeRenderDrawFreeform(duk_context *ctx)
 	var text = {
 		str: string,
 		font_size: float,
-		colors: float[4],
+		color: float[4],
 		rect: float[4],
 	};
 
@@ -656,7 +656,7 @@ duk_ret_t CDuckJs::NativeRenderDrawText(duk_context *ctx)
 	DukGetFloatProp(ctx, 0, "font_size", &FontSize);
 
 	// get colors
-	if(duk_get_prop_string(ctx, 0, "colors"))
+	if(duk_get_prop_string(ctx, 0, "color"))
 	{
 		for(int i = 0; i < 4; i++)
 		{
