@@ -347,6 +347,7 @@ struct CDuckBridge : public CComponent
 
 	CUIRect GetUiScreenRect();
 	vec2 GetScreenSize();
+	vec2 GetPixelScale();
 	vec2 GetCameraPos();
 	float GetCameraZoom();
 	vec2 GetUiMousePos();

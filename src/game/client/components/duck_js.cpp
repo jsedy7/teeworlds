@@ -1418,6 +1418,39 @@ duk_ret_t CDuckJs::NativeGetUiMousePos(duk_context *ctx)
 }
 
 /*#
+`TwGetPixelScale()`
+
+| Get current draw plane pixel scale. Useful to draw using pixel size.
+| Example:
+
+.. code-block:: js
+
+	const pixelScale = TwGetPixelScale();
+	var wdith = widthInPixel * pixelScale.x;
+	TwRenderQuad(0, 0, width, 50);
+
+
+**Parameters**
+
+* None
+
+**Returns**
+
+* **scale**: { x: float, y: float }
+
+#*/
+duk_ret_t CDuckJs::NativeGetPixelScale(duk_context *ctx)
+{
+	CheckArgumentCount(ctx, 0);
+	vec2 Scale = This()->Bridge()->GetPixelScale();
+
+	This()->PushObject();
+	This()->ObjectSetMemberFloat("x", Scale.x);
+	This()->ObjectSetMemberFloat("y", Scale.y);
+	return 1;
+}
+
+/*#
 `TwMapSetTileCollisionFlags(tile_x, tile_y, flags)`
 
 | Modify a map tile's collision flags.
@@ -2480,6 +2513,7 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(GetScreenSize, 0);
 	REGISTER_FUNC(GetCamera, 0);
 	REGISTER_FUNC(GetUiMousePos, 0);
+	REGISTER_FUNC(GetPixelScale, 0);
 	REGISTER_FUNC(MapSetTileCollisionFlags, 3);
 	REGISTER_FUNC(DirectionFromAngle, 1);
 	REGISTER_FUNC(CollisionSetStaticBlock, 2);

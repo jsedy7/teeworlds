@@ -573,6 +573,55 @@ vec2 CDuckBridge::GetScreenSize()
 	return vec2(Graphics()->ScreenWidth(), Graphics()->ScreenHeight());
 }
 
+vec2 CDuckBridge::GetPixelScale()
+{
+	float OriScreenX0, OriScreenY0, OriScreenX1, OriScreenY1;
+	float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
+	Graphics()->GetScreen(&OriScreenX0, &OriScreenY0, &OriScreenX1, &OriScreenY1);
+
+	float MappedScreenWidth;
+	float MappedScreenHeight;
+
+	switch(m_CurrentDrawSpace)
+	{
+		case DrawSpace::GAME:
+		case DrawSpace::GAME_FOREGROUND:
+		{
+			CMapItemGroup Group;
+			Group.m_OffsetX = 0;
+			Group.m_OffsetY = 0;
+			Group.m_ParallaxX = 100;
+			Group.m_ParallaxY = 100;
+			Group.m_UseClipping = false;
+			RenderTools()->MapScreenToGroup(0, 0, &Group, GetCameraZoom());
+
+			float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
+			Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
+			MappedScreenWidth = ScreenX1-ScreenX0;
+			MappedScreenHeight = ScreenY1-ScreenY0;
+
+		} break;
+
+		case DrawSpace::HUD:
+		{
+			CUIRect Rect = *UI()->Screen();
+			MappedScreenWidth = Rect.w;
+			MappedScreenHeight = Rect.h;
+		} break;
+
+		default:
+			dbg_assert(0, "case not handled");
+			break;
+	}
+
+	// restore screen
+	Graphics()->MapScreen(OriScreenX0, OriScreenY0, OriScreenX1, OriScreenY1);
+
+	float FakeToScreenX = Graphics()->ScreenWidth()/MappedScreenWidth;
+	float FakeToScreenY = Graphics()->ScreenHeight()/MappedScreenHeight;
+	return vec2(1.0/FakeToScreenX, 1.0/FakeToScreenY);
+}
+
 vec2 CDuckBridge::GetCameraPos()
 {
 	return *m_pClient->m_pCamera->GetCenter();

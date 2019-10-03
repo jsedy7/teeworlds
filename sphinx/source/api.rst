@@ -720,6 +720,34 @@ TwGetUiMousePos
 
 |
 
+TwGetPixelScale
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwGetPixelScale()
+
+
+| Get current draw plane pixel scale. Useful to draw using pixel size.
+| Example:
+
+.. code-block:: js
+
+	const pixelScale = TwGetPixelScale();
+	var wdith = widthInPixel * pixelScale.x;
+	TwRenderQuad(0, 0, width, 50);
+
+
+**Parameters**
+
+* None
+
+**Returns**
+
+* **scale**: { x: float, y: float }
+
+
+|
+
 TwMapSetTileCollisionFlags
 ---------------------------------------------------------------------
 .. code-block:: js

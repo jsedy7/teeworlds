@@ -50,15 +50,11 @@ function DrawRect(rect, rectColor)
     TwRenderQuad(rect.x, rect.y, rect.w, rect.h);
 }
 
-// borderWidth is in pixel size when on UI plane
 function DrawBorderRect(rect, borderWith, rectColor, borderColor)
 {
-    const screenSize = TwGetScreenSize();
-    const uiRect = TwGetUiScreenRect();
-    const fakeToScreenX = screenSize.w/uiRect.w;
-	const fakeToScreenY = screenSize.h/uiRect.h;
-	const borderW = borderWith/fakeToScreenX;
-    const borderH = borderWith/fakeToScreenY;
+    const pixelScale = TwGetPixelScale();
+	const borderW = borderWith * pixelScale.x;
+    const borderH = borderWith * pixelScale.y;
     
     TwRenderSetTexture(-1);
 
