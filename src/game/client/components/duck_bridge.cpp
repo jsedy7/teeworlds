@@ -169,6 +169,7 @@ void CDuckBridge::Reset()
 
 	m_MousePos = vec2(Graphics()->ScreenWidth() * 0.5, Graphics()->ScreenHeight() * 0.5);
 	m_IsMenuModeActive = false;
+	m_DoUnloadModBecauseError = false;
 }
 
 void CDuckBridge::QueueSetColor(const float* pColor)
@@ -320,9 +321,7 @@ void CDuckBridge::PacketCreate(int NetID, int Flags)
 	m_CurrentPacket.Reset();
 	m_CurrentPacket.AddInt((NETMSG_DUCK_NETOBJ) << 1 | 1);
 	m_CurrentPacket.AddInt(NetID);
-
 	m_CurrentPacketFlags = Flags;
-	dbg_assert(m_CurrentPacket.Size() < 16 && m_CurrentPacket.Size() > 0, "Hmm");
 }
 
 void CDuckBridge::PacketPackFloat(float f)
@@ -712,10 +711,30 @@ void CDuckBridge::JsError(int ErrorLevel, const char *format, ...)
 
 	aBuffer[Len] = 0;
 
-	if(ErrorLevel > JsError::WARNING)
+	const char* pErrorStr = "WARNING";
+	if(ErrorLevel == JsErrorLvl::ERROR)
+		pErrorStr = "ERROR";
+	else if(ErrorLevel == JsErrorLvl::CRITICAL)
+		pErrorStr = "CRITICAL";
+
+	dbg_msg("duck_js", "[%s] %.*s", pErrorStr, Len, aBuffer);
+
+	// send error to server
+	PacketCreate(0x10001, MSGFLAG_VITAL|MSGFLAG_FLUSH);
+	PacketPackInt(ErrorLevel);
+	PacketPackString(aBuffer, sizeof(aBuffer));
+	SendPacket();
+
+	// if the error is more serious than a warning, go to spectators
+	// TODO: maybe disconnect instead?
+	if(ErrorLevel > JsErrorLvl::WARNING)
 	{
 		m_pClient->SendSwitchTeam(-1);
-		Unload();
+		m_DoUnloadModBecauseError = true;
+
+#ifdef CONF_DEBUG
+		dbg_break();
+#endif
 	}
 }
 
@@ -1665,15 +1684,19 @@ bool CDuckBridge::LoadModFilesFromDisk(const SHA256_DIGEST *pModSha256)
 		{
 			const char* pRelPath = pFilePaths[i].m_aBuff+ModRootDirLen+1;
 			bool Loaded = m_Js.LoadJsScriptFile(pFilePaths[i].m_aBuff, pRelPath);
-			dbg_assert(Loaded, "error loading js script");
-			// TODO: show error instead of breaking
 		}
 		else if(str_endswith(pFilePaths[i].m_aBuff, ".png"))
 		{
 			const char* pTextureName = pFilePaths[i].m_aBuff+ModRootDirLen+1;
 			const char* pTextureRelPath = pFilePaths[i].m_aBuff+SaveDirPathLen;
 			const bool Loaded = LoadTexture(pTextureRelPath, pTextureName);
-			dbg_assert(Loaded, "error loading png image");
+
+			if(!Loaded)
+			{
+				JsError(JsErrorLvl::CRITICAL, "error loading png image '%s'", pTextureName);
+				continue;
+			}
+
 			dbg_msg("duck", "image loaded '%s' (%x)", pTextureName, m_aTextures[m_aTextures.size()-1].m_Hash);
 			// TODO: show error instead of breaking
 
@@ -1782,6 +1805,7 @@ void CDuckBridge::OnInit()
 	m_RgHud.Init(this, DrawSpace::HUD);
 	m_MousePos = vec2(Graphics()->ScreenWidth() * 0.5, Graphics()->ScreenHeight() * 0.5);
 	m_IsMenuModeActive = false;
+	m_DoUnloadModBecauseError = false;
 }
 
 void CDuckBridge::OnReset()
@@ -1796,6 +1820,12 @@ void CDuckBridge::OnShutdown()
 
 void CDuckBridge::OnRender()
 {
+	if(m_DoUnloadModBecauseError)
+	{
+		Unload();
+		return;
+	}
+
 	if(Client()->State() != IClient::STATE_ONLINE || !IsLoaded())
 		return;
 
@@ -1848,7 +1878,10 @@ void CDuckBridge::OnRender()
 	}
 
 	// detect stack leak
-	dbg_assert(duk_get_top(m_Js.Ctx()) == 0, "stack leak");
+	if(duk_get_top(m_Js.Ctx()) != 0)
+	{
+		JsError(JsErrorLvl::CRITICAL, "Stack leak");
+	}
 }
 
 void CDuckBridge::OnMessage(int Msg, void *pRawMsg)
@@ -1908,5 +1941,6 @@ void CDuckBridge::Unload()
 	m_Js.Shutdown();
 	Reset();
 	m_IsModLoaded = false;
+	m_DoUnloadModBecauseError = false;
 	dbg_msg("duck", "MOD UNLOAD");
 }

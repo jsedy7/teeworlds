@@ -223,7 +223,12 @@ CGameControllerExampleUI1::CGameControllerExampleUI1(class CGameContext *pGameSe
 		dbg_msg("server", "failed to load duck mod");
 	}
 
-	TestNpc.Init(MAX_CLIENTS-g_Config.m_DbgDummies-1, "Dune the wise", GameServer());
+	int DbgDummies = 0;
+#ifdef CONF_DEBUG
+	DbgDummies = g_Config.m_DbgDummies;
+#endif
+
+	TestNpc.Init(MAX_CLIENTS-DbgDummies-1, "Dune the wise", GameServer());
 	TestNpc.m_Core.m_Pos = vec2(1056, 800);
 	TestNpc.m_aDialogLines.add("Hello adventurer!\nCome closer my dear.");
 	TestNpc.m_aDialogLines.add("What I must tell you is of utmost importance.");
@@ -294,5 +299,12 @@ void CGameControllerExampleUI1::OnDuckMessage(int MsgID, CUnpacker *pUnpacker, i
 	{
 		TestNpc.NextLine(ClientID);
 		TestNpc.SendDialogLineTo(ClientID);
+	}
+
+	if(MsgID == 0x10001)
+	{
+		int ErrorLvl = pUnpacker->GetInt();
+		const char* ErrorStr = pUnpacker->GetString();
+		dbg_msg("duck_js", "Client_%d JS_%d %s", ClientID, ErrorLvl, ErrorStr);
 	}
 }

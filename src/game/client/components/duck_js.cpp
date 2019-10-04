@@ -30,12 +30,16 @@ static duk_ret_t NativePrint(duk_context *ctx)
 	return 0;  /* no return value (= undefined) */
 }
 
-static bool _CheckArgumentCountImp(duk_context* pCtx, int NumArgs, const char* pFuncName)
+#define JS_WARN(fmt, ...) This()->Bridge()->JsError(JsErrorLvl::WARNING, fmt, __VA_ARGS__)
+#define JS_ERR(fmt, ...) This()->Bridge()->JsError(JsErrorLvl::ERROR, fmt, __VA_ARGS__)
+#define JS_CRIT(fmt, ...) This()->Bridge()->JsError(JsErrorLvl::CRITICAL, fmt, __VA_ARGS__)
+
+bool CDuckJs::_CheckArgumentCountImp(duk_context* pCtx, int NumArgs, const char* pFuncName)
 {
 	int n = duk_get_top(pCtx);
 	if(n != NumArgs)
 	{
-		dbg_msg("duck", "ERROR: Tw%s() wrong argument count, expected %d", pFuncName, NumArgs);
+		JS_ERR("Tw%s() wrong argument count, expected %d", pFuncName, NumArgs);
 		return false;
 	}
 
@@ -43,7 +47,7 @@ static bool _CheckArgumentCountImp(duk_context* pCtx, int NumArgs, const char* p
 	{
 		if(duk_is_undefined(pCtx, i))
 		{
-			dbg_msg("duck", "ERROR: Tw%s() wrong argument count, expected %d", pFuncName, NumArgs);
+			JS_ERR("Tw%s() wrong argument count, expected %d", pFuncName, NumArgs);
 			return false;
 		}
 	}
@@ -51,7 +55,7 @@ static bool _CheckArgumentCountImp(duk_context* pCtx, int NumArgs, const char* p
 	return true;
 }
 
-#define CheckArgumentCount(ctx, num) if(!_CheckArgumentCountImp(ctx, num, __FUNCTION__ + 15)) { return 0; }
+#define CheckArgumentCount(ctx, num) if(!This()->_CheckArgumentCountImp(ctx, num, __FUNCTION__ + 15)) { return 0; }
 
 /*#
 `TwRenderQuad(x, y, width, height)`
@@ -411,10 +415,13 @@ duk_ret_t CDuckJs::NativeRenderSetDrawSpace(duk_context *ctx)
 	CheckArgumentCount(ctx, 1);
 
 	int ds = duk_to_int(ctx, 0);
-	dbg_assert(ds >= 0 && ds < CDuckBridge::DrawSpace::_COUNT, "Draw space undefined");
+	if(!(ds >= 0 && ds < CDuckBridge::DrawSpace::_COUNT))
+	{
+		JS_ERR("TwRenderSetDrawSpace(): Draw space undefined");
+		return 0;
+	}
 
 	This()->Bridge()->m_CurrentDrawSpace = ds;
-
 	return 0;
 }
 
@@ -629,7 +636,7 @@ duk_ret_t CDuckJs::NativeRenderDrawText(duk_context *ctx)
 
 	if(!duk_is_object(ctx, 0))
 	{
-		dbg_msg("duck", "ERROR: TwRenderDrawText(text) text is not an object");
+		JS_ERR("TwRenderDrawText(text) text is not an object");
 		return 0;
 	}
 
@@ -648,7 +655,7 @@ duk_ret_t CDuckJs::NativeRenderDrawText(duk_context *ctx)
 	else
 	{
 		duk_pop(ctx);
-		dbg_msg("duck", "ERROR: TwRenderDrawText(text) text.str is null");
+		JS_ERR("TwRenderDrawText(text) text.str is null");
 		return 0;
 	}
 	duk_pop(ctx);
@@ -680,7 +687,7 @@ duk_ret_t CDuckJs::NativeRenderDrawText(duk_context *ctx)
 	else
 	{
 		duk_pop(ctx);
-		dbg_msg("duck", "ERROR: TwRenderDrawText(text) text.rect is undefined");
+		JS_ERR("TwRenderDrawText(text) text.rect is undefined");
 		return 0;
 	}
 	duk_pop(ctx);
@@ -1837,7 +1844,7 @@ duk_ret_t CDuckJs::NativeNetSendPacket(duk_context *ctx)
 
 	if(!duk_is_object(ctx, 0))
 	{
-		dbg_msg("duck", "ERROR: TwNetSendPacket(packet) packet is not an object");
+		JS_ERR("TwNetSendPacket(packet) packet is not an object");
 		return 0;
 	}
 
@@ -1848,7 +1855,7 @@ duk_ret_t CDuckJs::NativeNetSendPacket(duk_context *ctx)
 
 	if(NetID <= 0)
 	{
-		dbg_msg("duck", "ERROR: TwNetSendPacket(packet) net_id is invalid (%d)", NetID);
+		JS_ERR("TwNetSendPacket(packet) net_id is invalid (%d)", NetID);
 		return 0;
 	}
 
@@ -1892,7 +1899,7 @@ duk_ret_t CDuckJs::NativeNetSendPacket(duk_context *ctx)
 
 				if(Size > sizeof(aStr))
 				{
-					dbg_msg("duck", "ERROR: TwNetSendPacket(packet) string is too large (%d)", Size);
+					JS_ERR("TwNetSendPacket(packet) string is too large (%d)", Size);
 					return 0;
 				}
 
@@ -1969,20 +1976,20 @@ duk_ret_t CDuckJs::NativeNetPacketUnpack(duk_context *ctx)
 
 	if(!duk_is_object(ctx, 0))
 	{
-		dbg_msg("duck", "ERROR: TwNetPacketUnpack(packet, template) packet is not an object");
+		JS_ERR("TwNetPacketUnpack(packet, template) packet is not an object");
 		return 0;
 	}
 
 	if(!duk_is_object(ctx, 1))
 	{
-		dbg_msg("duck", "ERROR: TwNetPacketUnpack(packet, template) template is not an object");
+		JS_ERR("TwNetPacketUnpack(packet, template) template is not an object");
 		return 0;
 	}
 
 	if(!duk_get_prop_string(ctx, 0, "raw"))
 	{
 		duk_pop(ctx);
-		dbg_msg("duck", "ERROR: TwNetPacketUnpack(packet, template) can't unpack");
+		JS_ERR("TwNetPacketUnpack(packet, template) can't unpack");
 		return 0;
 	}
 
@@ -2015,7 +2022,7 @@ duk_ret_t CDuckJs::NativeNetPacketUnpack(duk_context *ctx)
 	vp.Size = SIZE;\
 	Cursor += SIZE;\
 	if(Cursor > RawBufferSize) {\
-		dbg_msg("duck", "ERROR: TwNetPacketUnpack(net_obj, template) template is too large (%d > %d)", Cursor, RawBufferSize);\
+		JS_ERR("TwNetPacketUnpack(net_obj, template) template is too large (%d > %d)", Cursor, RawBufferSize);\
 		return 0;\
 	}\
 	aProperties.add(vp)
@@ -2084,7 +2091,7 @@ duk_ret_t CDuckJs::NativeNetPacketUnpack(duk_context *ctx)
 			} break;
 
 			default:
-				dbg_assert(0, "Type not handled");
+				JS_CRIT("Type not handled");
 				break;
 		}
 	}
@@ -2304,7 +2311,7 @@ duk_ret_t CDuckJs::NativeCalculateTextSize(duk_context *ctx)
 
 	if(!duk_is_object(ctx, 0))
 	{
-		dbg_msg("duck", "ERROR: TwCalculateTextSize(text) text is not an object");
+		JS_ERR("TwCalculateTextSize(text) text is not an object");
 		return 0;
 	}
 
@@ -2322,7 +2329,7 @@ duk_ret_t CDuckJs::NativeCalculateTextSize(duk_context *ctx)
 	else
 	{
 		duk_pop(ctx);
-		dbg_msg("duck", "ERROR: TwCalculateTextSize(text) text.str is null");
+		JS_ERR("TwCalculateTextSize(text) text.str is null");
 		return 0;
 	}
 	duk_pop(ctx);
@@ -2459,7 +2466,7 @@ bool CDuckJs::LoadJsScriptFile(const char* pJsFilePath, const char* pJsRelFilePa
 	duk_push_string(Ctx(), pFileData);
 	if(duk_peval(Ctx()) != 0)
 	{
-		dbg_msg("duck", "[JS ERROR] '%s': \n   %s", pJsRelFilePath, duk_safe_to_stacktrace(Ctx(), -1));
+		JS_ERR("'%s': \n   %s", pJsRelFilePath, duk_safe_to_stacktrace(Ctx(), -1));
 		mem_free(pFileData);
 		return false;
 	}
@@ -2576,23 +2583,7 @@ void CDuckJs::CallJsFunction(int NumArgs)
 
 	if(duk_pcall(pCtx, NumArgs) != DUK_EXEC_SUCCESS)
 	{
-		dbg_msg("duck", "[JS ERROR] %s(): \n    %s", aLastCalledFunction, duk_safe_to_stacktrace(pCtx, -1));
-
-		/*if(duk_is_error(pCtx, -1))
-		{
-			duk_get_prop_string(pCtx, -1, "stack");
-			const char* pStack = duk_safe_to_string(pCtx, -1);
-			duk_pop(pCtx);
-
-			dbg_msg("duck", "[JS ERROR] OnCharacterCorePostTick(): %s", pStack);
-		}
-		else
-		{
-			dbg_msg("duck", "[JS ERROR] OnCharacterCorePostTick(): %s", duk_safe_to_string(pCtx, -1));
-		}*/
-
-		// TODO: exit more gracefully
-		dbg_assert(false, "CallJsFunction error");
+		JS_ERR("%s(): \n    %s", aLastCalledFunction, duk_safe_to_stacktrace(pCtx, -1));
 	}
 }
 
@@ -2602,7 +2593,7 @@ bool CDuckJs::HasJsFunctionReturned()
 
 	if(duk_is_undefined(pCtx, -1))
 	{
-		dbg_msg("duck", "[JS WARNING] %s() must return a value", aLastCalledFunction);
+		JS_WARN("%s() must return a value", aLastCalledFunction);
 		duk_pop(pCtx);
 		return false;
 	}

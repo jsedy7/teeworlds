@@ -89,6 +89,8 @@ class CDuckJs
 	bool MakeVanillaJsNetObj(int MsgID, void* pRawMsg);
 	const char* GetContentEnumsAsJs();
 
+	bool _CheckArgumentCountImp(duk_context* pCtx, int NumArgs, const char* pFuncName);
+
 public:
 	CDuckJs();
 	void Shutdown();

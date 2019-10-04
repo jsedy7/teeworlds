@@ -39,7 +39,7 @@ struct CMultiStackAllocator
 	void Clear();
 };
 
-struct JsError
+struct JsErrorLvl
 {
 	enum Enum {
 		WARNING=0,
@@ -176,6 +176,7 @@ struct CDuckBridge : public CComponent
 	};
 
 	bool m_IsModLoaded;
+	bool m_DoUnloadModBecauseError;
 	CMultiStackAllocator m_FrameAllocator; // holds data for a frame
 
 	int m_CurrentDrawSpace;
