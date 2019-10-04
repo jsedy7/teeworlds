@@ -39,6 +39,15 @@ struct CMultiStackAllocator
 	void Clear();
 };
 
+struct JsError
+{
+	enum Enum {
+		WARNING=0,
+		ERROR,
+		CRITICAL
+	};
+};
+
 struct CDuckBridge : public CComponent
 {
 	CDuckJs m_Js;
@@ -355,6 +364,8 @@ struct CDuckBridge : public CComponent
 
 	vec2 CalculateTextSize(const char* pStr, float FontSize, float LineWidth);
 
+	void JsError(int ErrorLevel, const char* format, ...);
+
 	// "entries"
 	void RenderDrawSpace(DrawSpace::Enum Space);
 	void CharacterCorePreTick(CCharacterCore** apCharCores);
@@ -382,9 +393,8 @@ struct CDuckBridge : public CComponent
 	void OnSnapItem(int Msg, void *pRawMsg);
 	virtual void OnStateChange(int NewState, int OldState);
 	virtual bool OnInput(IInput::CEvent e);
-	void OnModReset();
-	void OnModUnload();
 
+	void Unload();
 	inline bool IsLoaded() const { return m_Js.m_pDukContext != 0 && m_IsModLoaded; }
 
 	friend class CDuckJs;

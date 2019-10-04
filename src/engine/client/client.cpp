@@ -1492,7 +1492,6 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 				GameClient()->StartDuckModHttpDownload(pModDescription, pModUrl, &ModSha256);
 				SendDuckModReady();
 			}
-
 		}
 		else if((pPacket->m_Flags&NET_CHUNKFLAG_VITAL) != 0 && Msg == NETMSG_DUCK_MOD_INFO_DEV)
 		{

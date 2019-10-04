@@ -869,7 +869,14 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 				m_aClients[ClientID].m_State = CClient::STATE_CONNECTING;
 
 				// DUCK
-				if(!HandleDuckClientInfo(ClientID, &Unpacker))
+				if(TryGetDuckClientInfo(ClientID, &Unpacker))
+				{
+					if(!SendDuckMod(ClientID))
+					{
+						SendMap(ClientID);
+					}
+				}
+				else
 				{
 					m_aClients[ClientID].m_DuckVersion = 0;
 					SendMap(ClientID);
@@ -1413,7 +1420,9 @@ int CServer::Run()
 						if(m_aClients[c].m_State <= CClient::STATE_AUTH)
 							continue;
 
-						SendMap(c);
+						if(!IsDuckClient(c)) // Don't send the map yet for duck clients (may or may not break stuff?)
+							SendMap(c);
+
 						m_aClients[c].Reset();
 						m_aClients[c].m_State = aSpecs[c] ? CClient::STATE_CONNECTING_AS_SPEC : CClient::STATE_CONNECTING;
 					}
@@ -1422,6 +1431,21 @@ int CServer::Run()
 					m_CurrentGameTick = 0;
 					Kernel()->ReregisterInterface(GameServer());
 					GameServer()->OnInit();
+
+					// send duck mod to duck client if there is one
+					for(int c = 0; c < MAX_CLIENTS; c++)
+					{
+						if(m_aClients[c].m_State <= CClient::STATE_AUTH)
+							continue;
+
+						if(!IsDuckClient(c))
+							continue;
+
+						if(!SendDuckMod(c))
+						{
+							SendMap(c);
+						}
+					}
 				}
 				else
 				{
@@ -2093,41 +2117,44 @@ void CServer::SendDuckModChunks(int ClientID)
 	}
 }
 
-bool CServer::HandleDuckClientInfo(int ClientID, CUnpacker *pUnpacker)
+bool CServer::SendDuckMod(int ClientID)
+{
+	if(m_aDuckDevModFolderPath[0] == 0) // there is not a duck mod
+		return false;
+
+	// dev mode
+	if(IsDuckDevMode())
+	{
+		// TODO: oh god, do this elsewhere / cache it
+		if(CompressDuckModFolder(m_aDuckDevModFolderPath))
+			SendDuckModChunkInfo(ClientID);
+		else
+		{
+			dbg_msg("duck", "[dev mode] failed to load and compress duck mod. dir='%s'", m_aDuckDevModFolderPath);
+			m_NetServer.Drop(ClientID, "Server local mod is invalid");
+			return false;
+		}
+	}
+	else
+		SendDuckModHttpInfo(ClientID);
+	return true;
+}
+
+bool CServer::TryGetDuckClientInfo(int ClientID, CUnpacker *pUnpacker)
 {
 	// try to get duck version
 	const int DuckVersion = pUnpacker->GetInt();
 	if(!pUnpacker->Error())
 	{
 		m_aClients[ClientID].m_DuckVersion = DuckVersion;
-
-		if(m_aDuckDevModFolderPath[0] != 0) // there is a duck mod
-		{
-			// dev mode
-			if(IsDuckDevMode())
-			{
-				// TODO: oh god, do this elsewhere / cache it
-				if(CompressDuckModFolder(m_aDuckDevModFolderPath))
-					SendDuckModChunkInfo(ClientID);
-				else
-				{
-					dbg_msg("duck", "[dev mode] failed to load and compress duck mod. dir='%s'", m_aDuckDevModFolderPath);
-					m_NetServer.Drop(ClientID, "Server local mod is invalid");
-					return false;
-				}
-			}
-			else
-				SendDuckModHttpInfo(ClientID);
-		}
-		else
-		{
-			SendMap(ClientID);
-		}
-
-		// send map after mod
 		return true;
 	}
-	return false; // send map immediatly
+	return false;
+}
+
+bool CServer::IsDuckClient(int ClientID)
+{
+	return m_aClients[ClientID].m_DuckVersion != 0;
 }
 
 bool CServer::LoadDuckMod(const char* pReleaseUrl, const char* pReleaseZipPath, const char* pDevFolderPath)

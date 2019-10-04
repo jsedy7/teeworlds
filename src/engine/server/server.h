@@ -301,7 +301,9 @@ public:
 	bool LoadDuckModZipFile(const char *pModPath);
 	bool CompressDuckModFolder(const char* pModPath);
 	void SendDuckModChunks(int ClientID);
-	bool HandleDuckClientInfo(int ClientID, CUnpacker* pUnpacker);
+	bool SendDuckMod(int ClientID);
+	bool TryGetDuckClientInfo(int ClientID, CUnpacker* pUnpacker);
+	bool IsDuckClient(int ClientID);
 
 	bool LoadDuckMod(const char* pReleaseUrl, const char* pReleaseZipPath, const char* pDevFolderPath);
 };

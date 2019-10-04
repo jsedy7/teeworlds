@@ -701,6 +701,24 @@ vec2 CDuckBridge::CalculateTextSize(const char *pStr, float FontSize, float Line
 	return vec2(Width, Height);
 }
 
+void CDuckBridge::JsError(int ErrorLevel, const char *format, ...)
+{
+	char aBuffer[1024];
+
+	va_list ap;
+	va_start(ap, format);
+	int Len = vsnprintf(aBuffer, sizeof(aBuffer), format, ap);
+	va_end(ap);
+
+	aBuffer[Len] = 0;
+
+	if(ErrorLevel > JsError::WARNING)
+	{
+		m_pClient->SendSwitchTeam(-1);
+		Unload();
+	}
+}
+
 void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 {
 	const int CmdCount = m_aRenderCmdList[Space].size();
@@ -1634,7 +1652,9 @@ bool CDuckBridge::LoadModFilesFromDisk(const SHA256_DIGEST *pModSha256)
 	fs_listdir(aModRootPath, ListDirCallback, 1, &FileSearch);
 
 	// reset mod
-	OnModReset();
+	m_Js.ResetDukContext();
+	Reset();
+	m_IsModLoaded = false;
 
 	const int FileCount = aFilePathList.size();
 	const CPath* pFilePaths = aFilePathList.base_ptr();
@@ -1866,7 +1886,7 @@ void CDuckBridge::OnStateChange(int NewState, int OldState)
 {
 	if(OldState != IClient::STATE_OFFLINE && NewState == IClient::STATE_OFFLINE)
 	{
-		OnModReset();
+		Unload();
 	}
 }
 
@@ -1883,19 +1903,10 @@ bool CDuckBridge::OnInput(IInput::CEvent e)
 	return false;
 }
 
-void CDuckBridge::OnModReset()
+void CDuckBridge::Unload()
 {
-	m_Js.ResetDukContext();
+	m_Js.Shutdown();
 	Reset();
 	m_IsModLoaded = false;
-}
-
-void CDuckBridge::OnModUnload()
-{
-	if(m_Js.m_pDukContext)
-		duk_destroy_heap(m_Js.m_pDukContext);
-	m_Js.m_pDukContext = 0;
-
-	Reset();
-	m_IsModLoaded = false;
+	dbg_msg("duck", "MOD UNLOAD");
 }
