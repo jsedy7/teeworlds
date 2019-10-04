@@ -309,12 +309,28 @@ struct CDuckBridge : public CComponent
 		}
 	};
 
+	class CRenderGroupJsErrors : public CRenderGroup
+	{
+	public:
+		virtual void OnRender();
+	};
+
 	CRenderGroup m_RgGame;
 	CRenderGroup m_RgGameForeGround;
 	CRenderGroupHud m_RgHud;
+	CRenderGroupJsErrors m_RgJsErrors;
 
 	vec2 m_MousePos;
 	bool m_IsMenuModeActive;
+
+	struct CJsErrorStr
+	{
+		float m_Time;
+		int m_Level;
+		char m_aText[1024];
+	};
+
+	array<CJsErrorStr> m_aJsErrors;
 
 	void DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo);
 	void DrawTeeHand(const CTeeDrawHand& Hand, const CTeeSkinInfo& SkinInfo);
@@ -395,6 +411,7 @@ struct CDuckBridge : public CComponent
 	virtual void OnStateChange(int NewState, int OldState);
 	virtual bool OnInput(IInput::CEvent e);
 
+	void ModInit();
 	void Unload();
 	inline bool IsLoaded() const { return m_Js.m_pDukContext != 0 && m_IsModLoaded; }
 

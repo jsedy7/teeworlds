@@ -246,6 +246,7 @@ void CGameClient::OnConsoleInit()
 	m_All.Add(&m_pDuckBridge->m_RgHud); // DUCK
 	m_All.Add(m_pStats);
 	m_All.Add(m_pMotd);
+	m_All.Add(&m_pDuckBridge->m_RgJsErrors); // DUCK
 	m_All.Add(m_pMenus);
 	m_All.Add(&m_pMenus->m_Binder);
 	m_All.Add(m_pGameConsole);

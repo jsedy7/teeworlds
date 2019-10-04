@@ -2096,6 +2096,9 @@ duk_ret_t CDuckJs::NativeNetPacketUnpack(duk_context *ctx)
 		}
 	}
 
+	if(Cursor < RawBufferSize)
+		JS_WARN("TwNetPacketUnpack() packet only partially unpacked (%d / %d)", Cursor, RawBufferSize);
+
 	return 1;
 }
 

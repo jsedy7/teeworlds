@@ -678,8 +678,6 @@ vec2 CDuckBridge::CalculateTextSize(const char *pStr, float FontSize, float Line
 			break;
 	}
 
-	Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
-
 	float aRect[4] = {FLT_MAX, FLT_MAX, -FLT_MAX, -FLT_MAX};
 	CTextCursor Cursor;
 	TextRender()->SetCursor(&Cursor, 0, 0, FontSize, TEXTFLAG_RENDER|TEXTFLAG_ALLOW_NEWLINE);
@@ -724,6 +722,12 @@ void CDuckBridge::JsError(int ErrorLevel, const char *format, ...)
 	PacketPackInt(ErrorLevel);
 	PacketPackString(aBuffer, sizeof(aBuffer));
 	SendPacket();
+
+	CJsErrorStr ErrStr;
+	str_copy(ErrStr.m_aText, aBuffer, sizeof(ErrStr.m_aText));
+	ErrStr.m_Level = ErrorLevel;
+	ErrStr.m_Time = Client()->LocalTime();
+	m_aJsErrors.add(ErrStr);
 
 	// if the error is more serious than a warning, go to spectators
 	// TODO: maybe disconnect instead?
@@ -1671,9 +1675,7 @@ bool CDuckBridge::LoadModFilesFromDisk(const SHA256_DIGEST *pModSha256)
 	fs_listdir(aModRootPath, ListDirCallback, 1, &FileSearch);
 
 	// reset mod
-	m_Js.ResetDukContext();
-	Reset();
-	m_IsModLoaded = false;
+	ModInit();
 
 	const int FileCount = aFilePathList.size();
 	const CPath* pFilePaths = aFilePathList.base_ptr();
@@ -1803,6 +1805,7 @@ void CDuckBridge::OnInit()
 	m_RgGame.Init(this, DrawSpace::GAME);
 	m_RgGameForeGround.Init(this, DrawSpace::GAME_FOREGROUND);
 	m_RgHud.Init(this, DrawSpace::HUD);
+	m_RgJsErrors.Init(this, DrawSpace::HUD);
 	m_MousePos = vec2(Graphics()->ScreenWidth() * 0.5, Graphics()->ScreenHeight() * 0.5);
 	m_IsMenuModeActive = false;
 	m_DoUnloadModBecauseError = false;
@@ -1936,6 +1939,14 @@ bool CDuckBridge::OnInput(IInput::CEvent e)
 	return false;
 }
 
+void CDuckBridge::ModInit()
+{
+	m_Js.ResetDukContext();
+	Reset();
+	m_IsModLoaded = false;
+	m_aJsErrors.clear();
+}
+
 void CDuckBridge::Unload()
 {
 	m_Js.Shutdown();
@@ -1943,4 +1954,58 @@ void CDuckBridge::Unload()
 	m_IsModLoaded = false;
 	m_DoUnloadModBecauseError = false;
 	dbg_msg("duck", "MOD UNLOAD");
+}
+
+void CDuckBridge::CRenderGroupJsErrors::OnRender()
+{
+	CUIRect UiRect = *UI()->Screen();
+	Graphics()->MapScreen(0.0f, 0.0f, UiRect.w, UiRect.h);
+
+	const int Count = m_pBridge->m_aJsErrors.size();
+	const CDuckBridge::CJsErrorStr* aErrors = m_pBridge->m_aJsErrors.base_ptr();
+	const float LocalTime = Client()->LocalTime();
+	const float StayOnScreenTime = 10.f;
+	const float FadeTime = 1.f;
+	const float FontSize = 12;
+	const float MarginX = 5;
+	const float MarginY = 3;
+	const float LineWidth = UiRect.w/3;
+	float OffsetY = UiRect.h;
+
+	for(int i = Count-1; i >= 0; i--)
+	{
+		const CDuckBridge::CJsErrorStr& Err = aErrors[i];
+		float a = min((StayOnScreenTime + FadeTime - (LocalTime - Err.m_Time)) / FadeTime, 1.0f);
+		if(a < 0.0f)
+			continue;
+
+		float aRect[4] = {FLT_MAX, FLT_MAX, -FLT_MAX, -FLT_MAX};
+		CTextCursor Cursor;
+		TextRender()->SetCursor(&Cursor, 0, 0, FontSize, TEXTFLAG_RENDER|TEXTFLAG_ALLOW_NEWLINE);
+		Cursor.m_LineWidth = LineWidth;
+		TextRender()->TextCalculateRect(&Cursor, Err.m_aText, -1, aRect);
+		const vec2 Size(aRect[2] - aRect[0], aRect[3] - aRect[1]);
+
+		Graphics()->TextureClear();
+		Graphics()->QuadsBegin();
+
+		switch(Err.m_Level) {
+			case JsErrorLvl::WARNING:  Graphics()->SetColor(0.8 * a, 0.25 * a, 0, a); break;
+			case JsErrorLvl::ERROR:    Graphics()->SetColor(0.8 * a, 0.0, 0, a); break;
+			case JsErrorLvl::CRITICAL: Graphics()->SetColor(0.4 * a, 0, 0, a); break;
+			default: dbg_assert(0, "case not handled"); break;
+		}
+
+		float BgX = UiRect.w - Size.x - MarginX*2;
+		float BgY =  OffsetY - Size.y - MarginY*2;
+		IGraphics::CQuadItem BgQuad(BgX, BgY, Size.x + MarginX*2, Size.y + MarginY*2);
+		Graphics()->QuadsDrawTL(&BgQuad, 1);
+		Graphics()->QuadsEnd();
+
+		TextRender()->SetCursor(&Cursor, BgX + MarginX, BgY + MarginY, FontSize, TEXTFLAG_RENDER|TEXTFLAG_ALLOW_NEWLINE);
+		Cursor.m_LineWidth = LineWidth;
+		TextRender()->TextShadowed(&Cursor, Err.m_aText, -1, vec2(0,0), vec4(0,0,0,0), vec4(1, 1, 1, a));
+
+		OffsetY -= Size.y + MarginY * 2;
+	}
 }
