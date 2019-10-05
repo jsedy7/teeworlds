@@ -208,7 +208,7 @@ function OnUpdate(clientLocalTime, intraTick)
 
 function OnRender(clientLocalTime, intraTick)
 {
-    TwRenderSetDrawSpace(1 /*DRAW_SPACE_GAME*/);
+    TwRenderSetDrawSpace(Teeworlds.DRAW_SPACE_GAME_FOREGROUND);
     
     var charList = TwGetClientCharacterCores();
     if(charList[0] != null) {
