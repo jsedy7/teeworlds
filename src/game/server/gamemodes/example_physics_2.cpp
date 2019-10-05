@@ -1,9 +1,55 @@
-#include "duck_mod.h"
+#include "example_physics_2.h"
 #include <stdint.h>
+#include <engine/shared/config.h>
 #include <game/server/gamecontext.h>
 #include <game/server/entities/character.h>
 #include <game/server/player.h>
-#include <game/my_protocol.h>
+
+typedef uint32_t u32;
+typedef int32_t i32;
+
+struct ModNetID
+{
+	enum Enum {
+		TEST=0,
+		DEBUG_RECT,
+		MAP_RECT_SET_SOLID,
+
+		_COUNT
+	};
+};
+
+struct CNetObj_Test
+{
+	enum { NET_ID = ModNetID::TEST };
+
+	i32 ClientID;
+	float Value1;
+};
+
+struct CNetObj_DebugRect
+{
+	enum { NET_ID = ModNetID::DEBUG_RECT };
+
+	int id;
+	float x;
+	float y;
+	float w;
+	float h;
+	u32 color;
+};
+
+struct CNetObj_MapRectSetSolid
+{
+	enum { NET_ID = ModNetID::MAP_RECT_SET_SOLID };
+
+	i32 solid;
+	i32 hookable;
+	i32 x;
+	i32 y;
+	i32 w;
+	i32 h;
+};
 
 inline bool IsInsideRect(vec2 Pos, vec2 RectPos, vec2 RectSize)
 {
@@ -11,7 +57,7 @@ inline bool IsInsideRect(vec2 Pos, vec2 RectPos, vec2 RectSize)
 			Pos.y >= RectPos.y && Pos.y < (RectPos.y+RectSize.y));
 }
 
-void CGameControllerDUCK::FlipSolidRect(float Rx, float Ry, float Rw, float Rh, bool Solid, bool IsHookable)
+void CGameControllerExamplePhys2::FlipSolidRect(float Rx, float Ry, float Rw, float Rh, bool Solid, bool IsHookable)
 {
 	CNetObj_MapRectSetSolid Flip;
 	Flip.solid = Solid;
@@ -53,10 +99,18 @@ void CGameControllerDUCK::FlipSolidRect(float Rx, float Ry, float Rw, float Rh, 
 	}
 }
 
-CGameControllerDUCK::CGameControllerDUCK(class CGameContext *pGameServer)
+CGameControllerExamplePhys2::CGameControllerExamplePhys2(class CGameContext *pGameServer)
 : IGameController(pGameServer)
 {
-	m_pGameType = "DUCK";
+	m_pGameType = "EXPHYS2";
+	str_copy(g_Config.m_SvMap, "phys2", sizeof(g_Config.m_SvMap)); // force dm1
+
+	// load duck mod
+	if(!Server()->LoadDuckMod("", "", "data/mods/example_physics_2"))
+	{
+		dbg_msg("server", "failed to load duck mod");
+	}
+
 	//m_GameFlags = GAMEFLAG_TEAMS; // GAMEFLAG_TEAMS makes it a two-team gamemode
 
 	ButtonLaserLinePair Pair;
@@ -95,15 +149,9 @@ CGameControllerDUCK::CGameControllerDUCK(class CGameContext *pGameServer)
 	Pair.m_LineFlip = false;
 	Pair.m_IsLineHookable = false;
 	m_aButtonLinePairs[3] = Pair;
-
-	// load duck mod
-	if(!Server()->LoadDuckMod("https://github.com/LordSk/teeworlds/releases/download/0.1-test0/portal.zip", "data/mods/portal.zip", "data/mods/portal"))
-	{
-		dbg_msg("server", "failed to load duck mod");
-	}
 }
 
-void CGameControllerDUCK::Tick()
+void CGameControllerExamplePhys2::Tick()
 {
 	IGameController::Tick();
 
@@ -188,7 +236,7 @@ void CGameControllerDUCK::Tick()
 	}
 }
 
-void CGameControllerDUCK::OnPlayerConnect(CPlayer* pPlayer)
+void CGameControllerExamplePhys2::OnPlayerConnect(CPlayer* pPlayer)
 {
 	IGameController::OnPlayerConnect(pPlayer);
 

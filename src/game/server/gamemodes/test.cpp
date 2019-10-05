@@ -4,7 +4,63 @@
 #include <game/server/gamecontext.h>
 #include <game/server/player.h>
 #include <game/server/entities/character.h>
-#include <game/my_protocol.h>
+
+typedef uint32_t u32;
+typedef int32_t i32;
+
+struct ModNetID
+{
+	enum Enum {
+		TEST=0,
+		DEBUG_RECT,
+		MAP_RECT_SET_SOLID,
+
+		HOOK_BLOCK,
+		DYNAMIC_DISK,
+
+		_COUNT
+	};
+};
+
+struct CNetObj_DebugRect
+{
+	enum { NET_ID = ModNetID::DEBUG_RECT };
+
+	int id;
+	float x;
+	float y;
+	float w;
+	float h;
+	u32 color;
+};
+
+struct CNetObj_HookBlock
+{
+	enum { NET_ID = ModNetID::HOOK_BLOCK };
+
+	int m_Id;
+	int m_Flags;
+	float m_PosX;
+	float m_PosY;
+	float m_VelX;
+	float m_VelY;
+	float m_Width;
+	float m_Height;
+};
+
+struct CNetObj_DynamicDisk
+{
+	enum { NET_ID = ModNetID::DYNAMIC_DISK };
+
+	int m_Id;
+	int m_Flags;
+	float m_PosX;
+	float m_PosY;
+	float m_VelX;
+	float m_VelY;
+	float m_Radius;
+	float m_HookForce;
+};
 
 //#define CHARCHORE_TEST
 

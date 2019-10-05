@@ -2,10 +2,15 @@
 #include <base/system.h>
 #include <game/mapitems.h>
 #include <game/gamecore.h>
+#include <game/layers.h>
 
 void CDuckCollision::Init(CLayers* pLayers)
 {
-	CCollision::Init(pLayers);
+	m_pLayers = pLayers;
+	m_Width = m_pLayers->GameLayer()->m_Width;
+	m_Height = m_pLayers->GameLayer()->m_Height;
+	m_pTiles = static_cast<CTile *>(m_pLayers->Map()->GetData(m_pLayers->GameLayer()->m_Data));
+
 	Reset();
 }
 

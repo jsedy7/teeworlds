@@ -7,8 +7,6 @@ var game = {
 };
 
 var ui = {
-    show_inventory: false,
-    fkey_was_released: true,
     receivedItemTime: -1,
     backpackIsOpen: false,
 };
@@ -301,10 +299,6 @@ function OnUpdate(clientLocalTime, intraTick)
 function OnRender(clientLocalTime, intraTick)
 {
     game.localTime = clientLocalTime;
-
-    if(ui.show_inventory) {
-        DrawInventory();
-    }
 
     const uiRect = TwGetUiScreenRect();
     const charCores = TwGetClientCharacterCores();

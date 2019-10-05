@@ -88,13 +88,12 @@ function findLaserLineID(line)
     return -1;
 }
 
-function OnUpdate(clientLocalTime)
+function OnRender(clientLocalTime)
 {
     var delta = clientLocalTime - lastClientlocalTime;
     lastClientlocalTime = clientLocalTime;
 
-    //print("Hello from the dark side! " + someInt);
-    TwSetDrawSpace(Teeworlds.DRAW_SPACE_GAME);
+    TwRenderSetDrawSpace(Teeworlds.DRAW_SPACE_GAME_FOREGROUND);
 
     game.debugRects.forEach(function(r) {
         TwRenderSetColorU32(r.color);
@@ -119,37 +118,40 @@ function OnUpdate(clientLocalTime)
     }
 }
 
-function OnMessage(netObj)
+function OnMessage(packet)
 {
     //printObj(netObj);
 
-    if(netObj.netID == 0x1) { // DEBUG_RECT
-        var rectId = TwUnpackInt32(netObj);
-        var rect = {
-            x: TwUnpackFloat(netObj),
-            y: TwUnpackFloat(netObj),
-            w: TwUnpackFloat(netObj),
-            h: TwUnpackFloat(netObj),
-            color: TwUnpackUint32(netObj),
-        };
-        game.debugRects[rectId] = rect;
+    if(packet.mod_id == 0x1) { // DEBUG_RECT
+        var rect = TwNetPacketUnpack(packet, {
+            i32_id: 0,
+            float_x: 0,
+            float_y: 0,
+            float_w: 0,
+            float_h: 0,
+            u32_color: 0,
+        });
+
+        game.debugRects[rect.id] = rect;
     }
 
-    if(netObj.netID == 0x2) { // MAP_RECT_SET_SOLID
-        var solid = TwUnpackUint8(netObj);
-        var hookable = TwUnpackUint8(netObj);
-        var tx = TwUnpackUint16(netObj);
-        var ty = TwUnpackUint16(netObj);
-        var tw = TwUnpackUint16(netObj);
-        var th = TwUnpackUint16(netObj);
+    if(packet.mod_id == 0x2) { // MAP_RECT_SET_SOLID
+        var rect = TwNetPacketUnpack(packet, {
+            i32_solid: 0,
+            i32_hookable: 0,
+            i32_tx: 0,
+            i32_ty: 0,
+            i32_tw: 0,
+            i32_th: 0,
+        });
 
         var lline = makeLaserLine();
-        lline.solid = solid;
-        lline.hookable = hookable;
-        lline.x = tx * 32;
-        lline.y = ty * 32;
-        lline.w = tw * 32;
-        lline.h = th * 32;
+        lline.solid = rect.solid;
+        lline.hookable = rect.hookable;
+        lline.x = rect.tx * 32;
+        lline.y = rect.ty * 32;
+        lline.w = rect.tw * 32;
+        lline.h = rect.th * 32;
 
         var lineID = findLaserLineID(lline);
         if(lineID != -1) {
@@ -161,17 +163,17 @@ function OnMessage(netObj)
 
         //printObj(lline);
 
-        if(solid == 0) {
-            for(var x = 0; x < tw; x++) {
-                for(var y = 0; y < th; y++) {
-                    TwMapSetTileCollisionFlags(tx + x, ty + y, 0); // air
+        if(rect.solid == 0) {
+            for(var x = 0; x < rect.tw; x++) {
+                for(var y = 0; y < rect.th; y++) {
+                    TwMapSetTileCollisionFlags(rect.tx + x, rect.ty + y, 0); // air
                 }
             }
         }
         else {
-            for(var x = 0; x < tw; x++) {
-                for(var y = 0; y < th; y++) {
-                    TwMapSetTileCollisionFlags(tx+ x, ty + y, 1 | (4 * !hookable)); // solid
+            for(var x = 0; x < rect.tw; x++) {
+                for(var y = 0; y < rect.th; y++) {
+                    TwMapSetTileCollisionFlags(rect.tx + x, rect.ty + y, 1 | (4 * !rect.hookable)); // solid
                 }
             }
         }

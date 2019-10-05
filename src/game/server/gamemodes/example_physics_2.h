@@ -1,7 +1,7 @@
 #pragma once
 #include <game/server/gamecontroller.h>
 
-class CGameControllerDUCK : public IGameController
+class CGameControllerExamplePhys2 : public IGameController
 {
 	void FlipSolidRect(float Rx, float Ry, float Rw, float Rh, bool Solid, bool IsHookable);
 
@@ -19,8 +19,10 @@ class CGameControllerDUCK : public IGameController
 	enum { BUTTON_PAIR_COUNT = 4 };
 	ButtonLaserLinePair m_aButtonLinePairs[BUTTON_PAIR_COUNT];
 
+	bool HasEnoughPlayers() const { return true; }
+
 public:
-	CGameControllerDUCK(class CGameContext *pGameServer);
+	CGameControllerExamplePhys2(class CGameContext *pGameServer);
 
 	virtual void Tick();
 	void OnPlayerConnect(class CPlayer *pPlayer);
