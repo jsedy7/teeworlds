@@ -8,23 +8,23 @@ void CDuckWorldCore::Init(CWorldCore *pBaseWorldCore, CDuckCollision *pDuckColli
 {
 	m_pBaseWorldCore = pBaseWorldCore;
 	m_pCollision = pDuckCollison;
-
-	m_aCoreExtras.set_size(MAX_CLIENTS);
+	m_aCustomCores.hint_size(64);
 
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
-		m_aCoreExtras[i].Reset();
+		m_aBaseCoreExtras[i].Reset();
 	}
+
+	m_NextUID = 0;
 }
 
 void CDuckWorldCore::Reset()
 {
 	m_aCustomCores.clear();
-	m_aCoreExtras.set_size(MAX_CLIENTS);
 
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
-		m_aCoreExtras[i].Reset();
+		m_aBaseCoreExtras[i].Reset();
 	}
 }
 
@@ -36,20 +36,22 @@ void CDuckWorldCore::Tick()
 	{
 		if(!aBaseCores[i])
 			continue;
-		CharacterCore_ExtraTick(aBaseCores[i], &m_aCoreExtras[i], true);
+		CharacterCore_ExtraTick(aBaseCores[i], &m_aBaseCoreExtras[i], true);
 	}
 
 	const int AdditionnalCount = m_aCustomCores.size();
 	for(int i = 0; i < AdditionnalCount; i++)
 	{
-		m_aCustomCores[i].m_pWorld = m_pBaseWorldCore;
-		m_aCustomCores[i].m_pCollision = m_pCollision;
-		CustomCore_Tick(&m_aCustomCores[i], &m_aCoreExtras[i+MAX_CLIENTS], true);
+		if(m_aCustomCores[i].m_UID < 0)
+			continue;
+		CustomCore_Tick(&m_aCustomCores[i], &m_aCustomCores[i].m_Extra);
 	}
 
 	for(int i = 0; i < AdditionnalCount; i++)
 	{
-		CustomCore_Move(&m_aCustomCores[i], &m_aCoreExtras[i+MAX_CLIENTS]);
+		if(m_aCustomCores[i].m_UID < 0)
+			continue;
+		CustomCore_Move(&m_aCustomCores[i], &m_aCustomCores[i].m_Extra);
 	}
 
 	// base characters will Move() elsewhere
@@ -64,7 +66,7 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCoreExtra* 
 	{
 		if(!pThis->m_Input.m_Hook)
 		{
-			pThisExtra->m_HookedCurstomCoreID = -1;
+			pThisExtra->m_HookedCustomCoreUID = -1;
 		}
 		else
 		{
@@ -72,8 +74,19 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCoreExtra* 
 		}
 	}
 
+	int HookedCustomRealID = -1;
+	if(pThisExtra->m_HookedCustomCoreUID != -1)
+	{
+		HookedCustomRealID = FindCustomCoreFromUID(pThisExtra->m_HookedCustomCoreUID);
+		if(HookedCustomRealID == -1)
+		{
+			pThisExtra->m_HookedCustomCoreUID = -1;
+			pThis->m_HookState = HOOK_RETRACT_START;
+		}
+	}
+
 	// cancel ground hooking when hooking a custom core
-	if(pThis->m_HookedPlayer == -1 && pThis->m_HookState == HOOK_GRABBED && distance(pThis->m_HookPos, pThis->m_Pos) > 46.0f && pThisExtra->m_HookedCurstomCoreID != -1)
+	if(pThis->m_HookedPlayer == -1 && pThis->m_HookState == HOOK_GRABBED && distance(pThis->m_HookPos, pThis->m_Pos) > 46.0f && pThisExtra->m_HookedCustomCoreUID != -1)
 	{
 		vec2 HookVel = normalize(pThis->m_HookPos-pThis->m_Pos)*m_pBaseWorldCore->m_Tuning.m_HookDragAccel;
 		if(HookVel.y > 0)
@@ -98,23 +111,21 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCoreExtra* 
 			float Distance = 0.0f;
 			for(int i = 0; i < AdditionnalCount; i++)
 			{
-				CCharacterCore *pCharCore = &m_aCustomCores[i];
+				CCustomCore *pCore = &m_aCustomCores[i];
 
-				if(pCharCore == pThis)
-					continue; // make sure that we don't nudge our self
-
-				vec2 ClosestPoint = closest_point_on_line(OldPos, NewPos, pCharCore->m_Pos);
-				if(distance(pCharCore->m_Pos, ClosestPoint) < PhysSize+2.0f)
+				vec2 ClosestPoint = closest_point_on_line(OldPos, NewPos, pCore->m_Pos);
+				if(distance(pCore->m_Pos, ClosestPoint) < PhysSize+2.0f)
 				{
-					if((pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCurstomCoreID == -1) || distance(OldPos, pCharCore->m_Pos) < Distance)
+					if((pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCustomCoreUID == -1) || distance(OldPos, pCore->m_Pos) < Distance)
 					{
 						pThis->m_TriggeredEvents |= COREEVENTFLAG_HOOK_ATTACH_PLAYER;
 						pThis->m_TriggeredEvents &= ~COREEVENTFLAG_HOOK_ATTACH_GROUND;
 						pThis->m_TriggeredEvents &= ~COREEVENTFLAG_HOOK_HIT_NOHOOK;
 						pThis->m_HookState = HOOK_GRABBED;
 						pThis->m_HookedPlayer = -1;
-						pThisExtra->m_HookedCurstomCoreID = i; // we grabbed an additonnal core
-						Distance = distance(OldPos, pCharCore->m_Pos);
+						pThisExtra->m_HookedCustomCoreUID = pCore->m_UID; // we grabbed an custom core
+						HookedCustomRealID = i;
+						Distance = distance(OldPos, pCore->m_Pos);
 					}
 				}
 			}
@@ -123,23 +134,21 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCoreExtra* 
 
 	if(pThis->m_HookState == HOOK_GRABBED)
 	{
-		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCurstomCoreID != -1)
+		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCustomCoreUID != -1)
 		{
-			CCharacterCore *pCharCore = &m_aCustomCores[pThisExtra->m_HookedCurstomCoreID];
-			pThis->m_HookPos = pCharCore->m_Pos;
-			// TODO: Check if pThisAddInfo->m_HookedAddCharChore still exists!
+			CCustomCore *pCore = &m_aCustomCores[HookedCustomRealID];
+			pThis->m_HookPos = pCore->m_Pos;
 		}
 	}
 
 	for(int i = 0; i < AdditionnalCount; i++)
 	{
-		CCharacterCore *pCharCore = &m_aCustomCores[i];
-		CCoreExtra *pExtra = &m_aCoreExtras[i+MAX_CLIENTS];
+		CCustomCore *pCore = &m_aCustomCores[i];
 
 		// handle player <-> player collision
-		float Distance = distance(pThis->m_Pos, pCharCore->m_Pos);
-		vec2 Dir = normalize(pThis->m_Pos - pCharCore->m_Pos);
-		float MinDist = pExtra->m_Radius + PhysSize * 0.5f;
+		float Distance = distance(pThis->m_Pos, pCore->m_Pos);
+		vec2 Dir = normalize(pThis->m_Pos - pCore->m_Pos);
+		float MinDist = pCore->m_Extra.m_Radius + PhysSize * 0.5f;
 		if(m_pBaseWorldCore->m_Tuning.m_PlayerCollision && Distance < MinDist+7 && Distance > 0.0f)
 		{
 			float a = (MinDist+10 - Distance);
@@ -155,7 +164,7 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCoreExtra* 
 		}
 
 		// handle hook influence
-		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCurstomCoreID == i && m_pBaseWorldCore->m_Tuning.m_PlayerHooking)
+		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCustomCoreUID == pCore->m_UID && m_pBaseWorldCore->m_Tuning.m_PlayerHooking)
 		{
 			if(Distance > MinDist+14) // TODO: fix tweakable variable
 			{
@@ -163,8 +172,8 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCoreExtra* 
 				float DragSpeed = m_pBaseWorldCore->m_Tuning.m_HookDragSpeed;
 
 				// add force to the hooked player
-				pCharCore->m_Vel.x = SaturatedAdd(-DragSpeed, DragSpeed, pCharCore->m_Vel.x, Accel*Dir.x*1.5f);
-				pCharCore->m_Vel.y = SaturatedAdd(-DragSpeed, DragSpeed, pCharCore->m_Vel.y, Accel*Dir.y*1.5f);
+				pCore->m_Vel.x = SaturatedAdd(-DragSpeed, DragSpeed, pCore->m_Vel.x, Accel*Dir.x*1.5f);
+				pCore->m_Vel.y = SaturatedAdd(-DragSpeed, DragSpeed, pCore->m_Vel.y, Accel*Dir.y*1.5f);
 
 				// add a little bit force to the guy who has the grip
 				pThis->m_Vel.x = SaturatedAdd(-DragSpeed, DragSpeed, pThis->m_Vel.x, -Accel*Dir.x*0.25f);
@@ -177,10 +186,8 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCoreExtra* 
 	pThisExtra->m_OldHookState = pThis->m_HookState;
 }
 
-void CDuckWorldCore::CustomCore_Tick(CCharacterCore *pThis, CCoreExtra *pThisExtra, bool UseInput)
+void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis, CCoreExtra *pThisExtra)
 {
-	pThis->m_TriggeredEvents = 0;
-
 	// get ground state
 	bool Grounded = false;
 	if(m_pCollision->CheckPoint(pThis->m_Pos.x+pThisExtra->m_Radius/2, pThis->m_Pos.y+pThisExtra->m_Radius/2+5))
@@ -197,13 +204,23 @@ void CDuckWorldCore::CustomCore_Tick(CCharacterCore *pThis, CCoreExtra *pThisExt
 	const float PhysSize = pThisExtra->m_Radius;
 	const int AdditionnalCount = m_aCustomCores.size();
 
+	int HookedCustomRealID = -1;
+	if(pThisExtra->m_HookedCustomCoreUID != -1)
+	{
+		HookedCustomRealID = FindCustomCoreFromUID(pThisExtra->m_HookedCustomCoreUID);
+		if(HookedCustomRealID == -1)
+		{
+			pThisExtra->m_HookedCustomCoreUID = -1;
+			pThis->m_HookState = HOOK_RETRACT_START;
+		}
+	}
+
 	if(pThis->m_HookState == HOOK_GRABBED)
 	{
-		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCurstomCoreID != -1)
+		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCustomCoreUID != -1)
 		{
-			CCharacterCore *pCharCore = &m_aCustomCores[pThisExtra->m_HookedCurstomCoreID];
-			pThis->m_HookPos = pCharCore->m_Pos;
-			// TODO: Check if pThisAddInfo->m_HookedAddCharChore still exists!
+			CCustomCore *pCore = &m_aCustomCores[HookedCustomRealID];
+			pThis->m_HookPos = pCore->m_Pos;
 		}
 	}
 
@@ -252,16 +269,15 @@ void CDuckWorldCore::CustomCore_Tick(CCharacterCore *pThis, CCoreExtra *pThisExt
 
 	for(int i = 0; i < AdditionnalCount; i++)
 	{
-		CCharacterCore *pCharCore = &m_aCustomCores[i];
-		CCoreExtra *pExtra = &m_aCoreExtras[i+MAX_CLIENTS];
+		CCustomCore *pCore = &m_aCustomCores[i];
 
-		if(pCharCore == pThis)
+		if(pCore == pThis)
 			continue; // make sure that we don't nudge our self
 
 		// handle player <-> player collision
-		float Distance = distance(pThis->m_Pos, pCharCore->m_Pos);
-		vec2 Dir = normalize(pThis->m_Pos - pCharCore->m_Pos);
-		float MinDist = pExtra->m_Radius + pThisExtra->m_Radius;
+		float Distance = distance(pThis->m_Pos, pCore->m_Pos);
+		vec2 Dir = normalize(pThis->m_Pos - pCore->m_Pos);
+		float MinDist = pCore->m_Extra.m_Radius + pThisExtra->m_Radius;
 		if(m_pBaseWorldCore->m_Tuning.m_PlayerCollision && Distance < MinDist+7 && Distance > 0.0f)
 		{
 			float a = (MinDist+10 - Distance);
@@ -277,7 +293,7 @@ void CDuckWorldCore::CustomCore_Tick(CCharacterCore *pThis, CCoreExtra *pThisExt
 		}
 
 		// handle hook influence
-		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCurstomCoreID == i && m_pBaseWorldCore->m_Tuning.m_PlayerHooking)
+		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCustomCoreUID == pCore->m_UID && m_pBaseWorldCore->m_Tuning.m_PlayerHooking)
 		{
 			if(Distance > MinDist+14) // TODO: fix tweakable variable
 			{
@@ -285,8 +301,8 @@ void CDuckWorldCore::CustomCore_Tick(CCharacterCore *pThis, CCoreExtra *pThisExt
 				float DragSpeed = m_pBaseWorldCore->m_Tuning.m_HookDragSpeed;
 
 				// add force to the hooked player
-				pCharCore->m_Vel.x = SaturatedAdd(-DragSpeed, DragSpeed, pCharCore->m_Vel.x, Accel*Dir.x*1.5f);
-				pCharCore->m_Vel.y = SaturatedAdd(-DragSpeed, DragSpeed, pCharCore->m_Vel.y, Accel*Dir.y*1.5f);
+				pCore->m_Vel.x = SaturatedAdd(-DragSpeed, DragSpeed, pCore->m_Vel.x, Accel*Dir.x*1.5f);
+				pCore->m_Vel.y = SaturatedAdd(-DragSpeed, DragSpeed, pCore->m_Vel.y, Accel*Dir.y*1.5f);
 
 				// add a little bit force to the guy who has the grip
 				pThis->m_Vel.x = SaturatedAdd(-DragSpeed, DragSpeed, pThis->m_Vel.x, -Accel*Dir.x*0.25f);
@@ -303,7 +319,7 @@ void CDuckWorldCore::CustomCore_Tick(CCharacterCore *pThis, CCoreExtra *pThisExt
 		pThis->m_Vel = normalize(pThis->m_Vel) * 6000;
 }
 
-void CDuckWorldCore::CustomCore_Move(CCharacterCore *pThis, CCoreExtra *pThisExtra)
+void CDuckWorldCore::CustomCore_Move(CCustomCore *pThis, CCoreExtra *pThisExtra)
 {
 	const float PhysSize = pThisExtra->m_Radius * 2;
 	float RampValue = VelocityRamp(length(pThis->m_Vel)*50, m_pBaseWorldCore->m_Tuning.m_VelrampStart, m_pBaseWorldCore->m_Tuning.m_VelrampRange, m_pBaseWorldCore->m_Tuning.m_VelrampCurvature);
@@ -398,18 +414,17 @@ void CDuckWorldCore::CustomCore_Move(CCharacterCore *pThis, CCoreExtra *pThisExt
 			// check against custom cores
 			for(int p = 0; p < AdditionnalCount; p++)
 			{
-				CCharacterCore *pCharCore = &m_aCustomCores[p];
-				CCoreExtra *pExtra = &m_aCoreExtras[p+MAX_CLIENTS];
-				if(pCharCore == pThis)
+				CCustomCore *pCore = &m_aCustomCores[p];
+				if(pCore == pThis)
 					continue;
 
-				float D = distance(Pos, pCharCore->m_Pos);
-				float MinDist = pThisExtra->m_Radius + pExtra->m_Radius;
+				float D = distance(Pos, pCore->m_Pos);
+				float MinDist = pThisExtra->m_Radius + pCore->m_Extra.m_Radius;
 				if(D < MinDist && D > 0.0f)
 				{
 					if(a > 0.0f)
 						pThis->m_Pos = LastPos;
-					else if(distance(NewPos, pCharCore->m_Pos) > D)
+					else if(distance(NewPos, pCore->m_Pos) > D)
 						pThis->m_Pos = NewPos;
 					return;
 				}
@@ -423,69 +438,74 @@ void CDuckWorldCore::CustomCore_Move(CCharacterCore *pThis, CCoreExtra *pThisExt
 
 int CDuckWorldCore::AddCustomCore(float Radius)
 {
-	CCharacterCore Core;
+	CCustomCore Core;
 	mem_zero(&Core, sizeof(Core));
-	Core.m_pWorld = m_pBaseWorldCore;
-	Core.m_pCollision = m_pCollision;
 
 	CCoreExtra Extra;
 	Extra.Reset();
 	if(Radius > 0)
 		Extra.m_Radius = Radius;
-	m_aCoreExtras.add(Extra);
+	Core.m_Extra = Extra;
+	Core.m_UID = m_NextUID++;
 	return m_aCustomCores.add(Core);
+}
+
+void CDuckWorldCore::RemoveCustomCore(int ID)
+{
+	dbg_assert(ID >= 0 && ID <= m_aCustomCores.size(), "ID out of bounds");
+
+	m_aCustomCores.remove_index_fast(ID);
 }
 
 void CDuckWorldCore::SendAllCoreData(CGameContext *pGameServer)
 {
 	const int AdditionnalCount = m_aCustomCores.size();
 
-	for(int p = 0; p < MAX_CLIENTS; p++)
+	for(int PlayerID = 0; PlayerID < MAX_CLIENTS; PlayerID++)
 	{
-		if(!pGameServer->m_apPlayers[p])
+		if(!pGameServer->m_apPlayers[PlayerID])
 			continue;
-		if(pGameServer->m_apPlayers[p]->IsDummy())
+		if(pGameServer->m_apPlayers[PlayerID]->IsDummy())
 			continue;
+
+		CNetClear NetClear;
+		pGameServer->SendDuckNetObj(NetClear, pGameServer->m_apPlayers[PlayerID]->GetCID());
 
 		for(int i = 0; i < AdditionnalCount; i++)
 		{
 			CNetCoreCustomData Data;
 			Data.m_ID = i;
 			Data.m_Core = m_aCustomCores[i];
-			Data.m_Extra = m_aCoreExtras[i + MAX_CLIENTS];
-			pGameServer->SendDuckNetObj(Data, pGameServer->m_apPlayers[p]->GetCID());
+			pGameServer->SendDuckNetObj(Data, pGameServer->m_apPlayers[PlayerID]->GetCID());
 		}
 
 		for(int i = 0; i < MAX_CLIENTS; i++)
 		{
 			// FIXME: fix GetCharacter() linker error
-			if(!pGameServer->m_apPlayers[i] || pGameServer->m_apPlayers[p]->IsDummy()/* || !pGameServer->m_apPlayers[p]->GetCharacter()*/)
+			if(!pGameServer->m_apPlayers[i] || pGameServer->m_apPlayers[PlayerID]->IsDummy()/* || !pGameServer->m_apPlayers[p]->GetCharacter()*/)
 				continue;
 
 			CNetCoreBaseExtraData Data;
 			Data.m_ID = i;
-			Data.m_Extra = m_aCoreExtras[i];
-			pGameServer->SendDuckNetObj(Data, pGameServer->m_apPlayers[p]->GetCID());
+			Data.m_Extra = m_aBaseCoreExtras[i];
+			pGameServer->SendDuckNetObj(Data, pGameServer->m_apPlayers[PlayerID]->GetCID());
 		}
 	}
 }
 
 void CDuckWorldCore::RecvCoreCustomData(const CDuckWorldCore::CNetCoreCustomData &CoreData)
 {
-	// TODO: this is not great
-	// having the 2 differently sized arrays is prone to error
 	const int ID = CoreData.m_ID;
 	if(ID < 0 || ID > 4096) // reasonable limit
 		return;
 
-	if(ID >= m_aCustomCores.size())
+	/*if(ID >= m_aCustomCores.size())
 	{
 		m_aCustomCores.set_size(ID + 1);
-		m_aCoreExtras.set_size(ID + 1 + MAX_CLIENTS);
 	}
 
-	m_aCustomCores[ID] = CoreData.m_Core;
-	m_aCoreExtras[MAX_CLIENTS + ID] = CoreData.m_Extra;
+	m_aCustomCores[ID] = CoreData.m_Core;*/
+	m_aCustomCores.add(CoreData.m_Core);
 }
 
 void CDuckWorldCore::RecvCoreBaseExtraData(const CDuckWorldCore::CNetCoreBaseExtraData &CoreData)
@@ -494,11 +514,28 @@ void CDuckWorldCore::RecvCoreBaseExtraData(const CDuckWorldCore::CNetCoreBaseExt
 	if(ID < 0 || ID > MAX_CLIENTS)
 		return;
 
-	m_aCoreExtras[ID] = CoreData.m_Extra;
+	m_aBaseCoreExtras[ID] = CoreData.m_Extra;
+}
+
+void CDuckWorldCore::RecvClear(const CDuckWorldCore::CNetClear &NetClear)
+{
+	m_aCustomCores.set_size(0); // clear
 }
 
 void CDuckWorldCore::Copy(const CDuckWorldCore *pOther)
 {
-	m_aCustomCores = pOther->m_aCustomCores;
-	m_aCoreExtras = pOther->m_aCoreExtras;
+	*this = *pOther;
+}
+
+int CDuckWorldCore::FindCustomCoreFromUID(int UID)
+{
+	// slow
+	const int Count = m_aCustomCores.size();
+	for(int i = 0; i < Count; i++)
+	{
+		if(m_aCustomCores[i].m_UID == UID)
+			return i;
+	}
+
+	return -1;
 }

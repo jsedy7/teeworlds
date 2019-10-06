@@ -1913,6 +1913,11 @@ void CDuckBridge::OnMessage(int Msg, void *pRawMsg)
 			dbg_assert(ObjSize == sizeof(CDuckWorldCore::CNetCoreCustomData), "core data size is invalid");
 			m_WorldCore.RecvCoreCustomData(*(CDuckWorldCore::CNetCoreCustomData*)pObjRawData);
 		}
+		else if(ObjNetID == CDuckWorldCore::CNetClear::NET_ID)
+		{
+			dbg_assert(ObjSize == sizeof(CDuckWorldCore::CNetClear), "core data size is invalid");
+			m_WorldCore.RecvClear(*((CDuckWorldCore::CNetClear*)pObjRawData));
+		}
 
 		return;
 	}

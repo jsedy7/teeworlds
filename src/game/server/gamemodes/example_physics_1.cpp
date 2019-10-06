@@ -75,6 +75,17 @@ void CGameControllerExamplePhys1::Tick()
 	m_DuckWorldCore.Tick();
 	m_DuckWorldCore.SendAllCoreData(GameServer());
 
+	if(random_int() % 40 == 0)
+	{
+		int CoreID = m_DuckWorldCore.AddCustomCore(15 + (random_int() % 25));
+		m_DuckWorldCore.m_aCustomCores[CoreID].m_Pos = vec2(500 + (random_int() % 25), 280);
+	}
+
+	if(random_int() % 50 == 0 && m_DuckWorldCore.m_aCustomCores.size() > 0)
+	{
+		m_DuckWorldCore.RemoveCustomCore(random_int() % m_DuckWorldCore.m_aCustomCores.size());
+	}
+
 	/*CDuckCollision* pCollision = (CDuckCollision*)GameServer()->Collision();
 	CDuckCollision::CDynamicDisk& Disk = *pCollision->GetDynamicDisk(0);
 	Disk.Tick(pCollision, &GameServer()->m_World.m_Core);
