@@ -64,12 +64,27 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCoreExtra* 
 	{
 		if(!pThis->m_Input.m_Hook)
 		{
-			pThisExtra->m_HookedAddCharChore = -1;
+			pThisExtra->m_HookedCurstomCoreID = -1;
 		}
 		else
 		{
 			pThisExtra->m_OldHookState = HOOK_FLYING;
 		}
+	}
+
+	// cancel ground hooking when hooking a custom core
+	if(pThis->m_HookedPlayer == -1 && pThis->m_HookState == HOOK_GRABBED && distance(pThis->m_HookPos, pThis->m_Pos) > 46.0f && pThisExtra->m_HookedCurstomCoreID != -1)
+	{
+		vec2 HookVel = normalize(pThis->m_HookPos-pThis->m_Pos)*m_pBaseWorldCore->m_Tuning.m_HookDragAccel;
+		if(HookVel.y > 0)
+			HookVel.y *= 0.3f;
+
+		if((HookVel.x < 0 && pThis->m_Direction < 0) || (HookVel.x > 0 && pThis->m_Direction > 0))
+			HookVel.x *= 0.95f;
+		else
+			HookVel.x *= 0.75f;
+
+		pThis->m_Vel -= HookVel;
 	}
 
 	if(pThisExtra->m_OldHookState == HOOK_FLYING)
@@ -91,14 +106,14 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCoreExtra* 
 				vec2 ClosestPoint = closest_point_on_line(OldPos, NewPos, pCharCore->m_Pos);
 				if(distance(pCharCore->m_Pos, ClosestPoint) < PhysSize+2.0f)
 				{
-					if((pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedAddCharChore == -1) || distance(OldPos, pCharCore->m_Pos) < Distance)
+					if((pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCurstomCoreID == -1) || distance(OldPos, pCharCore->m_Pos) < Distance)
 					{
 						pThis->m_TriggeredEvents |= COREEVENTFLAG_HOOK_ATTACH_PLAYER;
 						pThis->m_TriggeredEvents &= ~COREEVENTFLAG_HOOK_ATTACH_GROUND;
 						pThis->m_TriggeredEvents &= ~COREEVENTFLAG_HOOK_HIT_NOHOOK;
 						pThis->m_HookState = HOOK_GRABBED;
 						pThis->m_HookedPlayer = -1;
-						pThisExtra->m_HookedAddCharChore = i; // we grabbed an additonnal core
+						pThisExtra->m_HookedCurstomCoreID = i; // we grabbed an additonnal core
 						Distance = distance(OldPos, pCharCore->m_Pos);
 					}
 				}
@@ -108,9 +123,9 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCoreExtra* 
 
 	if(pThis->m_HookState == HOOK_GRABBED)
 	{
-		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedAddCharChore != -1)
+		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCurstomCoreID != -1)
 		{
-			CCharacterCore *pCharCore = &m_aCustomCores[pThisExtra->m_HookedAddCharChore];
+			CCharacterCore *pCharCore = &m_aCustomCores[pThisExtra->m_HookedCurstomCoreID];
 			pThis->m_HookPos = pCharCore->m_Pos;
 			// TODO: Check if pThisAddInfo->m_HookedAddCharChore still exists!
 		}
@@ -140,7 +155,7 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCoreExtra* 
 		}
 
 		// handle hook influence
-		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedAddCharChore == i && m_pBaseWorldCore->m_Tuning.m_PlayerHooking)
+		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCurstomCoreID == i && m_pBaseWorldCore->m_Tuning.m_PlayerHooking)
 		{
 			if(Distance > MinDist+14) // TODO: fix tweakable variable
 			{
@@ -184,9 +199,9 @@ void CDuckWorldCore::CustomCore_Tick(CCharacterCore *pThis, CCoreExtra *pThisExt
 
 	if(pThis->m_HookState == HOOK_GRABBED)
 	{
-		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedAddCharChore != -1)
+		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCurstomCoreID != -1)
 		{
-			CCharacterCore *pCharCore = &m_aCustomCores[pThisExtra->m_HookedAddCharChore];
+			CCharacterCore *pCharCore = &m_aCustomCores[pThisExtra->m_HookedCurstomCoreID];
 			pThis->m_HookPos = pCharCore->m_Pos;
 			// TODO: Check if pThisAddInfo->m_HookedAddCharChore still exists!
 		}
@@ -262,7 +277,7 @@ void CDuckWorldCore::CustomCore_Tick(CCharacterCore *pThis, CCoreExtra *pThisExt
 		}
 
 		// handle hook influence
-		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedAddCharChore == i && m_pBaseWorldCore->m_Tuning.m_PlayerHooking)
+		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCurstomCoreID == i && m_pBaseWorldCore->m_Tuning.m_PlayerHooking)
 		{
 			if(Distance > MinDist+14) // TODO: fix tweakable variable
 			{

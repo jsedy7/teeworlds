@@ -7,14 +7,14 @@ struct CGameContext;
 
 struct CCoreExtra
 {
-	int m_HookedAddCharChore;
+	int m_HookedCurstomCoreID;
 	int m_OldHookState;
 	vec2 m_OldHookPos;
 	float m_Radius;
 
 	void Reset()
 	{
-		m_HookedAddCharChore = -1;
+		m_HookedCurstomCoreID = -1;
 		m_OldHookState = HOOK_IDLE;
 		m_Radius = 14;
 	}
