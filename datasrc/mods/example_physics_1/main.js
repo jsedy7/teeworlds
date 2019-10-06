@@ -36,7 +36,7 @@ function OnLoaded()
         killfeed: 0,
         score: 0,
         chat: 1,
-        scoreboard: 0,
+        scoreboard: 1,
     });
 
     //printObj(Teeworlds);
@@ -74,7 +74,10 @@ function OnRender(clientLocalTime, intraTick)
     var cores = TwGetDuckCores();
 
     cores.forEach(function(core, coreID) {
-        DrawCircle(core.x, core.y, 28, [1, 0, 1, 1]);
+        DrawCircle(core.x, core.y, core.radius, [1, 1, 1, 1]);
+        TwRenderSetTexture(-1);
+        TwRenderSetColorF4(1, 0, 1, 0.5);
+        TwRenderQuadCentered(core.x, core.y, core.radius * 2, core.radius * 2);
     });
 }
 

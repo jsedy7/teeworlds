@@ -1908,10 +1908,10 @@ void CDuckBridge::OnMessage(int Msg, void *pRawMsg)
 			dbg_assert(ObjSize == sizeof(CDuckWorldCore::CNetCoreBaseExtraData), "core data size is invalid");
 			m_WorldCore.RecvCoreBaseExtraData(*(CDuckWorldCore::CNetCoreBaseExtraData*)pObjRawData);
 		}
-		else if(ObjNetID == CDuckWorldCore::CNetCoreAddiData::NET_ID)
+		else if(ObjNetID == CDuckWorldCore::CNetCoreCustomData::NET_ID)
 		{
-			dbg_assert(ObjSize == sizeof(CDuckWorldCore::CNetCoreAddiData), "core data size is invalid");
-			m_WorldCore.RecvCoreAddiData(*(CDuckWorldCore::CNetCoreAddiData*)pObjRawData);
+			dbg_assert(ObjSize == sizeof(CDuckWorldCore::CNetCoreCustomData), "core data size is invalid");
+			m_WorldCore.RecvCoreCustomData(*(CDuckWorldCore::CNetCoreCustomData*)pObjRawData);
 		}
 
 		return;

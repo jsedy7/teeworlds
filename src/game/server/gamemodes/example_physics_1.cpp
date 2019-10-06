@@ -59,8 +59,8 @@ CGameControllerExamplePhys1::CGameControllerExamplePhys1(class CGameContext *pGa
 	pCollision->SetDynamicDisk(0, Disk);*/
 
 	m_DuckWorldCore.Init(&GameServer()->m_World.m_Core, pCollision);
-	m_TestCoreID = m_DuckWorldCore.AddCharCore();
-	m_DuckWorldCore.m_aAdditionalCharCores[m_TestCoreID].m_Pos = vec2(500, 280);
+	m_TestCoreID = m_DuckWorldCore.AddCustomCore(40);
+	m_DuckWorldCore.m_aCustomCores[m_TestCoreID].m_Pos = vec2(500, 280);
 }
 
 void CGameControllerExamplePhys1::OnPlayerConnect(CPlayer* pPlayer)

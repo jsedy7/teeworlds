@@ -5,49 +5,53 @@
 struct CDuckCollision;
 struct CGameContext;
 
-struct CCharacterCoreAddInfo
+struct CCoreExtra
 {
 	int m_HookedAddCharChore;
 	int m_OldHookState;
 	vec2 m_OldHookPos;
+	float m_Radius;
 
 	void Reset()
 	{
 		m_HookedAddCharChore = -1;
 		m_OldHookState = HOOK_IDLE;
+		m_Radius = 14;
 	}
 };
 
 struct CDuckWorldCore
 {
-	struct CNetCoreAddiData
+	struct CNetCoreCustomData
 	{
 		enum { NET_ID = 0x2001 };
 		int m_ID;
 		CCharacterCore m_Core;
-		CCharacterCoreAddInfo m_AddInfo;
+		CCoreExtra m_Extra;
 	};
 
 	struct CNetCoreBaseExtraData
 	{
 		enum { NET_ID = 0x2002 };
 		int m_ID;
-		CCharacterCoreAddInfo m_AddInfo;
+		CCoreExtra m_Extra;
 	};
 
 	CDuckCollision* m_pCollision;
 	CWorldCore* m_pBaseWorldCore;
-	array<CCharacterCore> m_aAdditionalCharCores;
-	array<CCharacterCoreAddInfo> m_aAdditionalCharCoreInfos;
+	array<CCharacterCore> m_aCustomCores;
+	array<CCoreExtra> m_aCoreExtras;
 
 	void Init(CWorldCore* pBaseWorldCore, CDuckCollision* pDuckCollison);
 	void Reset();
 	void Tick();
-	void CCharacterCore_Tick(CCharacterCore* pThis, CCharacterCoreAddInfo *pThisAddInfo, bool UseInput);
-	int AddCharCore();
+	void CharacterCore_ExtraTick(CCharacterCore* pThis, CCoreExtra *pThisExtra, bool UseInput);
+	void CustomCore_Tick(CCharacterCore* pThis, CCoreExtra *pThisExtra, bool UseInput);
+	void CustomCore_Move(CCharacterCore* pThis, CCoreExtra *pThisExtra);
+	int AddCustomCore(float Radius = -1);
 
 	void SendAllCoreData(CGameContext* pGameServer);
-	void RecvCoreAddiData(const CNetCoreAddiData& CoreData);
+	void RecvCoreCustomData(const CNetCoreCustomData& CoreData);
 	void RecvCoreBaseExtraData(const CNetCoreBaseExtraData& CoreData);
 
 	void Copy(const CDuckWorldCore* pOther);

@@ -1484,7 +1484,7 @@ duk_ret_t CDuckJs::NativeGetDuckCores(duk_context *ctx)
 
 	const CDuckWorldCore& Predicted = This()->Bridge()->m_WorldCorePredicted;
 	const CDuckWorldCore& Current = This()->Bridge()->m_WorldCore;
-	const int Count = Predicted.m_aAdditionalCharCores.size();
+	const int Count = Predicted.m_aCustomCores.size();
 
 
 	IClient* pClient = This()->Bridge()->Client();
@@ -1495,13 +1495,14 @@ duk_ret_t CDuckJs::NativeGetDuckCores(duk_context *ctx)
 	{
 		duk_idx_t ObjIdx = duk_push_object(ctx);
 
-		vec2 CurPos = Predicted.m_aAdditionalCharCores[i].m_Pos;
-		vec2 PrevPos = Current.m_aAdditionalCharCores[i].m_Pos;
+		vec2 CurPos = Predicted.m_aCustomCores[i].m_Pos;
+		vec2 PrevPos = Current.m_aCustomCores[i].m_Pos;
 		vec2 Position = mix(PrevPos, CurPos, IntraTick);
 
 		DukSetIntProp(ctx, ObjIdx, "id", i);
 		DukSetFloatProp(ctx, ObjIdx, "x", Position.x);
 		DukSetFloatProp(ctx, ObjIdx, "y", Position.y);
+		DukSetFloatProp(ctx, ObjIdx, "radius", Current.m_aCoreExtras[MAX_CLIENTS+i].m_Radius);
 
 		duk_put_prop_index(ctx, Array, i);
 	}
