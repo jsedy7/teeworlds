@@ -55,4 +55,6 @@ public:
 
 	void Tick(CWorldCore* pWorld);
 	void Reset();
+
+	void MoveBoxCornerSignal(vec2 *pInoutPos, vec2 *pInoutVel, vec2 Size, float Elasticity, bool *pCorner) const;
 };

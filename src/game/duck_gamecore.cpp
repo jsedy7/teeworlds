@@ -318,8 +318,8 @@ void CDuckWorldCore::CustomCore_Move(CCharacterCore *pThis, CCoreExtra *pThisExt
 	{
 		float MinDeltaX = 100000000000.0f;
 		float MinDeltaY = 100000000000.0f;
-		float MinVelX = 100000000000.0f;
-		float MinVelY = 100000000000.0f;
+		float MinVelX   = 100000000000.0f;
+		float MinVelY   = 100000000000.0f;
 
 		for(float byi = -PhysSize * 0.5; byi < PhysSize * 0.5; byi += MaxPhysSize * 0.5)
 		{
@@ -334,24 +334,25 @@ void CDuckWorldCore::CustomCore_Move(CCharacterCore *pThis, CCoreExtra *pThisExt
 				vec2 TestPos = StartPos;
 				vec2 StartVel = pThis->m_Vel;
 				vec2 TestVel = StartVel;
-				m_pCollision->MoveBox(&TestPos, &TestVel, vec2(MaxPhysSize, MaxPhysSize), 0, &pThis->m_Death);
+
+				// FIXME: this is supposed to be MoveBox(), but the corner case causes issues
+				bool Corner = false;
+				m_pCollision->MoveBoxCornerSignal(&TestPos, &TestVel, vec2(MaxPhysSize, MaxPhysSize), 0, &Corner);
+				if(Corner)
+					continue;
 
 				float DeltaX = TestPos.x - StartPos.x;
 				float DeltaY = TestPos.y - StartPos.y;
 
-				/*if(TestVel.x == 0 && TestVel.y == 0 && (StartVel.x != 0 || StartVel.y != 0))
-					continue;*/
-
-				if(abs(DeltaX) < abs(MinDeltaX))
-				{
+				if(fabs(DeltaX) < fabs(MinDeltaX))
 					MinDeltaX = DeltaX;
-					MinVelX = TestVel.x;
-				}
-				if(abs(DeltaY) < abs(MinDeltaY))
-				{
+				if(fabs(DeltaY) < fabs(MinDeltaY))
 					MinDeltaY = DeltaY;
+
+				if(fabs(TestVel.x) < fabs(MinVelX))
+					MinVelX = TestVel.x;
+				if(fabs(TestVel.y) < fabs(MinVelY))
 					MinVelY = TestVel.y;
-				}
 			}
 		}
 
@@ -360,7 +361,7 @@ void CDuckWorldCore::CustomCore_Move(CCharacterCore *pThis, CCoreExtra *pThisExt
 	}
 	else
 	{
-		m_pCollision->MoveBox(&NewPos, &pThis->m_Vel, vec2(PhysSize, PhysSize), 0, &pThis->m_Death);
+		m_pCollision->MoveBox(&NewPos, &pThis->m_Vel, vec2(PhysSize, PhysSize), 0, NULL);
 	}
 
 	pThis->m_Vel.x = pThis->m_Vel.x*(1.0f/RampValue);
