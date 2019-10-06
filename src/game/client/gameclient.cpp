@@ -1414,6 +1414,10 @@ void CGameClient::OnPredict()
 		m_aClients[i].m_Predicted.Read(&m_Snap.m_aCharacters[i].m_Cur);
 	}
 
+	m_pDuckBridge->m_WorldCorePredicted.Copy(&m_pDuckBridge->m_WorldCore);
+	m_pDuckBridge->m_WorldCorePredicted.m_pBaseWorldCore = &World;
+	m_pDuckBridge->m_WorldCorePredicted.m_pCollision = &m_pDuckBridge->m_Collision;
+
 	// predict
 	for(int Tick = Client()->GameTick()+1; Tick <= Client()->PredGameTick(); Tick++)
 	{
@@ -1452,6 +1456,7 @@ void CGameClient::OnPredict()
 		}
 
 		m_pDuckBridge->CharacterCorePostTick(World.m_apCharacters);
+		m_pDuckBridge->m_WorldCorePredicted.Tick();
 
 		// move all players and quantize their data
 		for(int c = 0; c < MAX_CLIENTS; c++)

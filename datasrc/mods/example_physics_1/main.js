@@ -3,6 +3,7 @@
 var game = {
     dynDisks: [],
     prevDynDisks: [],
+    charCores: [],
 };
 
 function DrawCircle(x, y, radius, color)
@@ -65,6 +66,16 @@ function OnRender(clientLocalTime, intraTick)
         var c = 0.5 + (Math.sin(clientLocalTime) * 0.5 + 0.5) * 0.5;
         DrawCircle(disk.pos_x, disk.pos_y, disk.radius, [0, c, c, 1]);
     });
+
+    game.charCores.forEach(function(core, coreID) {
+        DrawCircle(core.x, core.y, 28, [1, 0, 1, 1]);
+    });
+
+    var cores = TwGetDuckCores();
+
+    cores.forEach(function(core, coreID) {
+        DrawCircle(core.x, core.y, 28, [1, 0, 1, 1]);
+    });
 }
 
 function OnMessage(packet)
@@ -87,6 +98,19 @@ function OnMessage(packet)
         game.prevDynDisks[diskId] = game.dynDisks[diskId];
         game.dynDisks[diskId] = disk;
         TwCollisionSetDynamicDisk(diskId, disk);
+    }
+    else if(packet.mod_id == 0x2) {
+        //printObj(packet);
+
+        var charCore = TwNetPacketUnpack(packet, {
+            i32_ID: 0,
+            float_x: 0,
+            float_y: 0,
+            float_vel_x: 0,
+            float_vel_y: 0,
+        });
+
+        game.charCores[charCore.ID] = charCore;
     }
 }
 

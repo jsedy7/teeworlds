@@ -10,6 +10,7 @@ struct ModNetID
 {
 	enum Enum {
 		DISK=0x1,
+		CHARCORE,
 	};
 };
 
@@ -27,6 +28,17 @@ struct CNetObj_ModDynamicDisk
 	float m_HookForce;
 };
 
+struct CNetObj_DuckCharCore
+{
+	enum { NET_ID = ModNetID::CHARCORE };
+
+	int m_ID;
+	float m_X;
+	float m_Y;
+	float m_VelX;
+	float m_VelY;
+};
+
 CGameControllerExamplePhys1::CGameControllerExamplePhys1(class CGameContext *pGameServer)
 : IGameController(pGameServer)
 {
@@ -40,11 +52,15 @@ CGameControllerExamplePhys1::CGameControllerExamplePhys1(class CGameContext *pGa
 	}
 
 	CDuckCollision* pCollision = (CDuckCollision*)GameServer()->Collision();
-	CDuckCollision::CDynamicDisk Disk;
-	Disk.m_Pos = vec2(700, 280);
+	/*CDuckCollision::CDynamicDisk Disk;
+	Disk.m_Pos = vec2(500, 280);
 	Disk.m_Vel = vec2(0, 0);
 	Disk.m_Radius = 30;
-	pCollision->SetDynamicDisk(0, Disk);
+	pCollision->SetDynamicDisk(0, Disk);*/
+
+	m_DuckWorldCore.Init(&GameServer()->m_World.m_Core, pCollision);
+	m_TestCoreID = m_DuckWorldCore.AddCharCore();
+	m_DuckWorldCore.m_aAdditionalCharCores[m_TestCoreID].m_Pos = vec2(500, 280);
 }
 
 void CGameControllerExamplePhys1::OnPlayerConnect(CPlayer* pPlayer)
@@ -56,31 +72,15 @@ void CGameControllerExamplePhys1::OnPlayerConnect(CPlayer* pPlayer)
 void CGameControllerExamplePhys1::Tick()
 {
 	IGameController::Tick();
+	m_DuckWorldCore.Tick();
+	m_DuckWorldCore.SendAllCoreData(GameServer());
 
-	CDuckCollision* pCollision = (CDuckCollision*)GameServer()->Collision();
+	/*CDuckCollision* pCollision = (CDuckCollision*)GameServer()->Collision();
 	CDuckCollision::CDynamicDisk& Disk = *pCollision->GetDynamicDisk(0);
 	Disk.Tick(pCollision, &GameServer()->m_World.m_Core);
-	Disk.Move(pCollision, &GameServer()->m_World.m_Core);
+	Disk.Move(pCollision, &GameServer()->m_World.m_Core);*/
 
-	for(int p = 0; p < MAX_PLAYERS; p++)
-	{
-		if(GameServer()->m_apPlayers[p])
-		{
-			if(GameServer()->m_apPlayers[p]->IsDummy())
-				continue;
 
-			CNetObj_ModDynamicDisk NetDisk;
-			NetDisk.m_Id = 0;
-			NetDisk.m_Flags = Disk.m_Flags;
-			NetDisk.m_PosX = Disk.m_Pos.x;
-			NetDisk.m_PosY = Disk.m_Pos.y;
-			NetDisk.m_VelX = Disk.m_Vel.x;
-			NetDisk.m_VelY = Disk.m_Vel.y;
-			NetDisk.m_Radius = Disk.m_Radius;
-			NetDisk.m_HookForce = Disk.m_HookForce;
-			GameServer()->SendDuckNetObj(NetDisk, p);
-		}
-	}
 }
 
 void CGameControllerExamplePhys1::Snap(int SnappingClient)

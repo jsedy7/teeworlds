@@ -49,6 +49,7 @@ class CDuckJs
 	static duk_ret_t NativeGetCamera(duk_context *ctx);
 	static duk_ret_t NativeGetUiMousePos(duk_context *ctx);
 	static duk_ret_t NativeGetPixelScale(duk_context *ctx);
+	static duk_ret_t NativeGetDuckCores(duk_context *ctx);
 	static duk_ret_t NativeMapSetTileCollisionFlags(duk_context *ctx);
 	static duk_ret_t NativeDirectionFromAngle(duk_context *ctx);
 	static duk_ret_t NativeCollisionSetStaticBlock(duk_context *ctx);

@@ -170,6 +170,8 @@ void CDuckBridge::Reset()
 	m_MousePos = vec2(Graphics()->ScreenWidth() * 0.5, Graphics()->ScreenHeight() * 0.5);
 	m_IsMenuModeActive = false;
 	m_DoUnloadModBecauseError = false;
+
+	m_WorldCore.Reset();
 }
 
 void CDuckBridge::QueueSetColor(const float* pColor)
@@ -1890,6 +1892,28 @@ void CDuckBridge::OnRender()
 void CDuckBridge::OnMessage(int Msg, void *pRawMsg)
 {
 	if(!IsLoaded()) {
+		return;
+	}
+
+	// parse special objects
+	if(Msg == NETMSG_DUCK_NETOBJ)
+	{
+		CUnpacker Unpacker = *(CUnpacker*)pRawMsg; // unpacker copy
+		const int ObjNetID = Unpacker.GetInt();
+		const int ObjSize = Unpacker.GetInt();
+		const u8* pObjRawData = (u8*)Unpacker.GetRaw(ObjSize);
+
+		if(ObjNetID == CDuckWorldCore::CNetCoreBaseExtraData::NET_ID)
+		{
+			dbg_assert(ObjSize == sizeof(CDuckWorldCore::CNetCoreBaseExtraData), "core data size is invalid");
+			m_WorldCore.RecvCoreBaseExtraData(*(CDuckWorldCore::CNetCoreBaseExtraData*)pObjRawData);
+		}
+		else if(ObjNetID == CDuckWorldCore::CNetCoreAddiData::NET_ID)
+		{
+			dbg_assert(ObjSize == sizeof(CDuckWorldCore::CNetCoreAddiData), "core data size is invalid");
+			m_WorldCore.RecvCoreAddiData(*(CDuckWorldCore::CNetCoreAddiData*)pObjRawData);
+		}
+
 		return;
 	}
 

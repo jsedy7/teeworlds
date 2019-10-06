@@ -5,10 +5,16 @@
 #include <engine/graphics.h>
 #include <engine/sound.h>
 #include <game/duck_collision.h>
+#include <game/duck_gamecore.h>
 #include <game/client/component.h>
 #include <generated/protocol.h>
 
 #include "duck_js.h"
+
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef int32_t i32;
 
 // Bridge between teeworlds and duktape
 
@@ -331,6 +337,9 @@ struct CDuckBridge : public CComponent
 	};
 
 	array<CJsErrorStr> m_aJsErrors;
+
+	CDuckWorldCore m_WorldCore;
+	CDuckWorldCore m_WorldCorePredicted;
 
 	void DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo);
 	void DrawTeeHand(const CTeeDrawHand& Hand, const CTeeSkinInfo& SkinInfo);

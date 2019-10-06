@@ -748,6 +748,37 @@ TwGetPixelScale
 
 |
 
+TwGetDuckCores
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwGetDuckCores()
+
+
+| Get predicted duck cores.
+
+
+**Parameters**
+
+* None
+
+**Returns**
+
+* **cores**:
+
+.. code-block:: js
+
+	var cores = [
+		{
+			x: float,
+			y: float,
+		},
+		...
+	];
+
+
+|
+
 TwMapSetTileCollisionFlags
 ---------------------------------------------------------------------
 .. code-block:: js

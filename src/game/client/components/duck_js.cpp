@@ -11,11 +11,6 @@
 
 #include "duck_bridge.h"
 
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef int32_t i32;
-
 static CDuckJs* s_DuckJs = 0;
 inline CDuckJs* This() { return s_DuckJs; }
 
@@ -1457,6 +1452,63 @@ duk_ret_t CDuckJs::NativeGetPixelScale(duk_context *ctx)
 	return 1;
 }
 
+
+/*#
+`TwGetDuckCores()`
+
+| Get predicted duck cores.
+
+
+**Parameters**
+
+* None
+
+**Returns**
+
+* **cores**:
+
+.. code-block:: js
+
+	var cores = [
+		{
+			x: float,
+			y: float,
+		},
+		...
+	];
+
+#*/
+duk_ret_t CDuckJs::NativeGetDuckCores(duk_context *ctx)
+{
+	CheckArgumentCount(ctx, 0);
+
+	const CDuckWorldCore& Predicted = This()->Bridge()->m_WorldCorePredicted;
+	const CDuckWorldCore& Current = This()->Bridge()->m_WorldCore;
+	const int Count = Predicted.m_aAdditionalCharCores.size();
+
+
+	IClient* pClient = This()->Bridge()->Client();
+	float IntraTick = pClient->IntraGameTick();
+
+	duk_idx_t Array = duk_push_array(ctx);
+	for(int i = 0; i < Count; i++)
+	{
+		duk_idx_t ObjIdx = duk_push_object(ctx);
+
+		vec2 CurPos = Predicted.m_aAdditionalCharCores[i].m_Pos;
+		vec2 PrevPos = Current.m_aAdditionalCharCores[i].m_Pos;
+		vec2 Position = mix(PrevPos, CurPos, IntraTick);
+
+		DukSetIntProp(ctx, ObjIdx, "id", i);
+		DukSetFloatProp(ctx, ObjIdx, "x", Position.x);
+		DukSetFloatProp(ctx, ObjIdx, "y", Position.y);
+
+		duk_put_prop_index(ctx, Array, i);
+	}
+
+	return 1;
+}
+
 /*#
 `TwMapSetTileCollisionFlags(tile_x, tile_y, flags)`
 
@@ -2526,6 +2578,7 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(GetCamera, 0);
 	REGISTER_FUNC(GetUiMousePos, 0);
 	REGISTER_FUNC(GetPixelScale, 0);
+	REGISTER_FUNC(GetDuckCores, 0);
 	REGISTER_FUNC(MapSetTileCollisionFlags, 3);
 	REGISTER_FUNC(DirectionFromAngle, 1);
 	REGISTER_FUNC(CollisionSetStaticBlock, 2);
