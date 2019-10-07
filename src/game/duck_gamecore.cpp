@@ -44,14 +44,14 @@ void CDuckWorldCore::Tick()
 	{
 		if(m_aCustomCores[i].m_UID < 0)
 			continue;
-		CustomCore_Tick(&m_aCustomCores[i], &m_aCustomCores[i].m_Extra);
+		CustomCore_Tick(&m_aCustomCores[i]);
 	}
 
 	for(int i = 0; i < AdditionnalCount; i++)
 	{
 		if(m_aCustomCores[i].m_UID < 0)
 			continue;
-		CustomCore_Move(&m_aCustomCores[i], &m_aCustomCores[i].m_Extra);
+		CustomCore_Move(&m_aCustomCores[i]);
 	}
 
 	// base characters will Move() elsewhere
@@ -148,7 +148,7 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCoreExtra* 
 		// handle player <-> player collision
 		float Distance = distance(pThis->m_Pos, pCore->m_Pos);
 		vec2 Dir = normalize(pThis->m_Pos - pCore->m_Pos);
-		float MinDist = pCore->m_Extra.m_Radius + PhysSize * 0.5f;
+		float MinDist = pCore->m_Radius + PhysSize * 0.5f;
 		if(m_pBaseWorldCore->m_Tuning.m_PlayerCollision && Distance < MinDist+7 && Distance > 0.0f)
 		{
 			float a = (MinDist+10 - Distance);
@@ -186,13 +186,13 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCoreExtra* 
 	pThisExtra->m_OldHookState = pThis->m_HookState;
 }
 
-void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis, CCoreExtra *pThisExtra)
+void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis)
 {
 	// get ground state
 	bool Grounded = false;
-	if(m_pCollision->CheckPoint(pThis->m_Pos.x+pThisExtra->m_Radius/2, pThis->m_Pos.y+pThisExtra->m_Radius/2+5))
+	if(m_pCollision->CheckPoint(pThis->m_Pos.x+pThis->m_Radius/2, pThis->m_Pos.y+pThis->m_Radius/2+5))
 		Grounded = true;
-	if(m_pCollision->CheckPoint(pThis->m_Pos.x-pThisExtra->m_Radius/2, pThis->m_Pos.y+pThisExtra->m_Radius/2+5))
+	if(m_pCollision->CheckPoint(pThis->m_Pos.x-pThis->m_Radius/2, pThis->m_Pos.y+pThis->m_Radius/2+5))
 		Grounded = true;
 
 	pThis->m_Vel.y += m_pBaseWorldCore->m_Tuning.m_Gravity;
@@ -201,23 +201,23 @@ void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis, CCoreExtra *pThisExtra)
 	float Accel = Grounded ? m_pBaseWorldCore->m_Tuning.m_GroundControlAccel : m_pBaseWorldCore->m_Tuning.m_AirControlAccel;
 	float Friction = Grounded ? m_pBaseWorldCore->m_Tuning.m_GroundFriction : m_pBaseWorldCore->m_Tuning.m_AirFriction;
 
-	const float PhysSize = pThisExtra->m_Radius;
+	const float PhysSize = pThis->m_Radius;
 	const int AdditionnalCount = m_aCustomCores.size();
 
 	int HookedCustomRealID = -1;
-	if(pThisExtra->m_HookedCustomCoreUID != -1)
+	if(pThis->m_HookedCustomCoreUID != -1)
 	{
-		HookedCustomRealID = FindCustomCoreFromUID(pThisExtra->m_HookedCustomCoreUID);
+		HookedCustomRealID = FindCustomCoreFromUID(pThis->m_HookedCustomCoreUID);
 		if(HookedCustomRealID == -1)
 		{
-			pThisExtra->m_HookedCustomCoreUID = -1;
+			pThis->m_HookedCustomCoreUID = -1;
 			pThis->m_HookState = HOOK_RETRACT_START;
 		}
 	}
 
 	if(pThis->m_HookState == HOOK_GRABBED)
 	{
-		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCustomCoreUID != -1)
+		if(pThis->m_HookedPlayer == -1 && pThis->m_HookedCustomCoreUID != -1)
 		{
 			CCustomCore *pCore = &m_aCustomCores[HookedCustomRealID];
 			pThis->m_HookPos = pCore->m_Pos;
@@ -233,7 +233,7 @@ void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis, CCoreExtra *pThisExtra)
 		// handle player <-> player collision
 		float Distance = distance(pThis->m_Pos, pCharCore->m_Pos);
 		vec2 Dir = normalize(pThis->m_Pos - pCharCore->m_Pos);
-		float MinDist = 28.0f * 0.5f + pThisExtra->m_Radius;
+		float MinDist = 28.0f * 0.5f + pThis->m_Radius;
 		if(m_pBaseWorldCore->m_Tuning.m_PlayerCollision && Distance < MinDist+7 && Distance > 0.0f)
 		{
 			float a = (MinDist+10 - Distance);
@@ -277,7 +277,7 @@ void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis, CCoreExtra *pThisExtra)
 		// handle player <-> player collision
 		float Distance = distance(pThis->m_Pos, pCore->m_Pos);
 		vec2 Dir = normalize(pThis->m_Pos - pCore->m_Pos);
-		float MinDist = pCore->m_Extra.m_Radius + pThisExtra->m_Radius;
+		float MinDist = pCore->m_Radius + pThis->m_Radius;
 		if(m_pBaseWorldCore->m_Tuning.m_PlayerCollision && Distance < MinDist+7 && Distance > 0.0f)
 		{
 			float a = (MinDist+10 - Distance);
@@ -293,7 +293,7 @@ void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis, CCoreExtra *pThisExtra)
 		}
 
 		// handle hook influence
-		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCustomCoreUID == pCore->m_UID && m_pBaseWorldCore->m_Tuning.m_PlayerHooking)
+		if(pThis->m_HookedPlayer == -1 && pThis->m_HookedCustomCoreUID == pCore->m_UID && m_pBaseWorldCore->m_Tuning.m_PlayerHooking)
 		{
 			if(Distance > MinDist+14) // TODO: fix tweakable variable
 			{
@@ -311,17 +311,14 @@ void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis, CCoreExtra *pThisExtra)
 		}
 	}
 
-	pThisExtra->m_OldHookPos = pThis->m_HookPos;
-	pThisExtra->m_OldHookState = pThis->m_HookState;
-
 	// clamp the velocity to something sane
 	if(length(pThis->m_Vel) > 6000)
 		pThis->m_Vel = normalize(pThis->m_Vel) * 6000;
 }
 
-void CDuckWorldCore::CustomCore_Move(CCustomCore *pThis, CCoreExtra *pThisExtra)
+void CDuckWorldCore::CustomCore_Move(CCustomCore *pThis)
 {
-	const float PhysSize = pThisExtra->m_Radius * 2;
+	const float PhysSize = pThis->m_Radius * 2;
 	float RampValue = VelocityRamp(length(pThis->m_Vel)*50, m_pBaseWorldCore->m_Tuning.m_VelrampStart, m_pBaseWorldCore->m_Tuning.m_VelrampRange, m_pBaseWorldCore->m_Tuning.m_VelrampCurvature);
 
 	pThis->m_Vel.x = pThis->m_Vel.x*RampValue;
@@ -400,7 +397,7 @@ void CDuckWorldCore::CustomCore_Move(CCustomCore *pThis, CCoreExtra *pThisExtra)
 				if(!pCharCore)
 					continue;
 				float D = distance(Pos, pCharCore->m_Pos);
-				float MinDist = pThisExtra->m_Radius + 28.0f * 0.5f;
+				float MinDist = pThis->m_Radius + 28.0f * 0.5f;
 				if(D < MinDist && D > 0.0f)
 				{
 					if(a > 0.0f)
@@ -419,7 +416,7 @@ void CDuckWorldCore::CustomCore_Move(CCustomCore *pThis, CCoreExtra *pThisExtra)
 					continue;
 
 				float D = distance(Pos, pCore->m_Pos);
-				float MinDist = pThisExtra->m_Radius + pCore->m_Extra.m_Radius;
+				float MinDist = pThis->m_Radius + pCore->m_Radius;
 				if(D < MinDist && D > 0.0f)
 				{
 					if(a > 0.0f)
@@ -440,12 +437,7 @@ int CDuckWorldCore::AddCustomCore(float Radius)
 {
 	CCustomCore Core;
 	mem_zero(&Core, sizeof(Core));
-
-	CCoreExtra Extra;
-	Extra.Reset();
-	if(Radius > 0)
-		Extra.m_Radius = Radius;
-	Core.m_Extra = Extra;
+	Core.m_Radius = Radius;
 	Core.m_UID = m_NextUID++;
 	return m_aCustomCores.add(Core);
 }

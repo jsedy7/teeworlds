@@ -1502,7 +1502,7 @@ duk_ret_t CDuckJs::NativeGetDuckCores(duk_context *ctx)
 		DukSetIntProp(ctx, ObjIdx, "id", i);
 		DukSetFloatProp(ctx, ObjIdx, "x", Position.x);
 		DukSetFloatProp(ctx, ObjIdx, "y", Position.y);
-		DukSetFloatProp(ctx, ObjIdx, "radius", Current.m_aCustomCores[i].m_Extra.m_Radius);
+		DukSetFloatProp(ctx, ObjIdx, "radius", Current.m_aCustomCores[i].m_Radius);
 
 		duk_put_prop_index(ctx, Array, i);
 	}

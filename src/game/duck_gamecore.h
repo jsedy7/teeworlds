@@ -10,13 +10,11 @@ struct CCoreExtra
 	int m_HookedCustomCoreUID;
 	int m_OldHookState;
 	vec2 m_OldHookPos;
-	float m_Radius;
 
 	void Reset()
 	{
 		m_HookedCustomCoreUID = -1;
 		m_OldHookState = HOOK_IDLE;
-		m_Radius = 14;
 	}
 };
 
@@ -31,8 +29,8 @@ struct CCustomCore
 	int m_HookTick;
 	int m_HookState;
 	int m_HookedPlayer;
-
-	CCoreExtra m_Extra;
+	int m_HookedCustomCoreUID;
+	float m_Radius;
 };
 
 struct CDuckWorldCore
@@ -67,8 +65,8 @@ struct CDuckWorldCore
 	void Reset();
 	void Tick();
 	void CharacterCore_ExtraTick(CCharacterCore* pThis, CCoreExtra *pThisExtra, bool UseInput);
-	void CustomCore_Tick(CCustomCore *pThis, CCoreExtra *pThisExtra);
-	void CustomCore_Move(CCustomCore *pThis, CCoreExtra *pThisExtra);
+	void CustomCore_Tick(CCustomCore *pThis);
+	void CustomCore_Move(CCustomCore *pThis);
 	int AddCustomCore(float Radius = -1);
 	void RemoveCustomCore(int ID);
 
