@@ -4,12 +4,15 @@
 #include <base/tl/sorted_array.h>
 #include <engine/graphics.h>
 #include <engine/sound.h>
+#include <engine/shared/snapshot.h>
 #include <game/duck_collision.h>
 #include <game/duck_gamecore.h>
 #include <game/client/component.h>
 #include <generated/protocol.h>
 
 #include "duck_js.h"
+
+#define DUCK_VERSION 0x1
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -341,6 +344,39 @@ struct CDuckBridge : public CComponent
 	CDuckWorldCore m_WorldCore;
 	CDuckWorldCore m_WorldCorePredicted;
 
+	// Snapshot stuff
+	enum
+	{
+		SNAP_CURRENT,
+		SNAP_PREV,
+		SNAP_COUNT
+	};
+
+	int m_CurrentRecvTick;
+	int m_AckGameTick;
+	int m_SnapCrcErrors;
+	int m_RecivedSnapshots;
+	unsigned m_SnapshotParts;
+	char m_aSnapshotIncommingData[CSnapshot::MAX_SIZE];
+	CSnapshotStorage m_SnapshotStorage;
+	CSnapshotStorage::CHolder *m_aSnapshots[SNAP_COUNT];
+	CSnapshotDelta m_SnapshotDelta;
+	int m_CurGameTick;
+	int m_PrevGameTick;
+	/*float m_GameIntraTick;
+	float m_GameTickTime;
+	int m_PredTick;
+	float m_PredIntraTick;*/
+
+	struct CSnapState
+	{
+		array<CNetObj_DuckCustomCore> m_aCustomCores;
+		CNetObj_DuckCharCoreExtra m_aCharCoreExtra[MAX_CLIENTS];
+	};
+
+	CSnapState m_SnapPrev;
+	CSnapState m_Snap;
+
 	void DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo);
 	void DrawTeeHand(const CTeeDrawHand& Hand, const CTeeSkinInfo& SkinInfo);
 
@@ -401,6 +437,9 @@ struct CDuckBridge : public CComponent
 	void RenderWeaponCursor(int WeaponID, vec2 Pos);
 	void RenderWeaponAmmo(int WeaponID, vec2 Pos);
 
+	void SnapshotReceive(int MsgID, CUnpacker* pUnpacker);
+	void OnNewDuckSnapshot();
+
 	// mod installation
 	bool IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256);
 	bool ExtractAndInstallModZipBuffer(const CGrowBuffer* pHttpZipData, const SHA256_DIGEST* pModSha256);
@@ -423,6 +462,8 @@ struct CDuckBridge : public CComponent
 	void ModInit();
 	void Unload();
 	inline bool IsLoaded() const { return m_Js.m_pDukContext != 0 && m_IsModLoaded; }
+
+	inline int DuckVersion() const { return DUCK_VERSION; }
 
 	friend class CDuckJs;
 };

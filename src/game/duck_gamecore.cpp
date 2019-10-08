@@ -449,7 +449,7 @@ void CDuckWorldCore::RemoveCustomCore(int ID)
 	m_aCustomCores.remove_index_fast(ID);
 }
 
-void CDuckWorldCore::SendAllCoreData(CGameContext *pGameServer)
+void CDuckWorldCore::Snap(CGameContext *pGameServer, int SnappingClient)
 {
 	const int AdditionnalCount = m_aCustomCores.size();
 
@@ -460,15 +460,10 @@ void CDuckWorldCore::SendAllCoreData(CGameContext *pGameServer)
 		if(pGameServer->m_apPlayers[PlayerID]->IsDummy())
 			continue;
 
-		CNetClear NetClear;
-		pGameServer->SendDuckNetObj(NetClear, pGameServer->m_apPlayers[PlayerID]->GetCID());
-
 		for(int i = 0; i < AdditionnalCount; i++)
 		{
-			CNetCoreCustomData Data;
-			Data.m_ID = i;
-			Data.m_Core = m_aCustomCores[i];
-			pGameServer->SendDuckNetObj(Data, pGameServer->m_apPlayers[PlayerID]->GetCID());
+			CNetObj_DuckCustomCore* pData = pGameServer->DuckSnapNewItem<CNetObj_DuckCustomCore>(m_aCustomCores[i].m_UID);
+			pData->m_Core = m_aCustomCores[i];
 		}
 
 		for(int i = 0; i < MAX_CLIENTS; i++)
@@ -477,41 +472,10 @@ void CDuckWorldCore::SendAllCoreData(CGameContext *pGameServer)
 			if(!pGameServer->m_apPlayers[i] || pGameServer->m_apPlayers[PlayerID]->IsDummy()/* || !pGameServer->m_apPlayers[p]->GetCharacter()*/)
 				continue;
 
-			CNetCoreBaseExtraData Data;
-			Data.m_ID = i;
-			Data.m_Extra = m_aBaseCoreExtras[i];
-			pGameServer->SendDuckNetObj(Data, pGameServer->m_apPlayers[PlayerID]->GetCID());
+			CNetObj_DuckCharCoreExtra* pData = pGameServer->DuckSnapNewItem<CNetObj_DuckCharCoreExtra>(pGameServer->m_apPlayers[PlayerID]->GetCID());
+			pData->m_Extra = m_aBaseCoreExtras[i];
 		}
 	}
-}
-
-void CDuckWorldCore::RecvCoreCustomData(const CDuckWorldCore::CNetCoreCustomData &CoreData)
-{
-	const int ID = CoreData.m_ID;
-	if(ID < 0 || ID > 4096) // reasonable limit
-		return;
-
-	/*if(ID >= m_aCustomCores.size())
-	{
-		m_aCustomCores.set_size(ID + 1);
-	}
-
-	m_aCustomCores[ID] = CoreData.m_Core;*/
-	m_aCustomCores.add(CoreData.m_Core);
-}
-
-void CDuckWorldCore::RecvCoreBaseExtraData(const CDuckWorldCore::CNetCoreBaseExtraData &CoreData)
-{
-	const int ID = CoreData.m_ID;
-	if(ID < 0 || ID > MAX_CLIENTS)
-		return;
-
-	m_aBaseCoreExtras[ID] = CoreData.m_Extra;
-}
-
-void CDuckWorldCore::RecvClear(const CDuckWorldCore::CNetClear &NetClear)
-{
-	m_aCustomCores.set_size(0); // clear
 }
 
 void CDuckWorldCore::Copy(const CDuckWorldCore *pOther)

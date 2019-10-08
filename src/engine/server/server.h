@@ -287,12 +287,19 @@ public:
 	virtual void *SnapNewItem(int Type, int ID, int Size);
 	void SnapSetStaticsize(int ItemType, int Size);
 
+	// TODO: Move to duck_server.cpp
 	// DUCK
 	SHA256_DIGEST m_DuckModSha256;
 	CGrowBuffer m_DuckModFileBuffer;
 	char m_aDuckDevModFolderPath[128];
 	char m_aDuckModZipPath[128];
 	char m_aDuckModReleaseUrl[512];
+	CSnapshotDelta m_DuckSnapshotDelta;
+	CSnapshotBuilder m_DuckSnapshotBuilder;
+	CSnapIDPool m_DuckSnapIDPool;
+	CSnapshotStorage m_aDuckClientSnapshots[MAX_CLIENTS];
+	int m_aDuckClientSnapRate[MAX_CLIENTS];
+	int m_aDuckClientLastAckedSnapshot[MAX_CLIENTS];
 
 	bool IsDuckDevMode() const;
 	void ResetDuckMod();
@@ -304,7 +311,11 @@ public:
 	bool SendDuckMod(int ClientID);
 	bool TryGetDuckClientInfo(int ClientID, CUnpacker* pUnpacker);
 	bool IsDuckClient(int ClientID);
+	void DuckPreSnap(int ClientID);
+	void DuckPostSnap(int ClientID);
+	void DuckClientReset(int ClientID);
 
+	void* _DuckSnapNewItem(int Type, int ItemID, int Size); // do not manually call this one
 	bool LoadDuckMod(const char* pReleaseUrl, const char* pReleaseZipPath, const char* pDevFolderPath);
 };
 

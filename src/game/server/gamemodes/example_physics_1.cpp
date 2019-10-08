@@ -6,6 +6,19 @@
 #include <game/server/player.h>
 #include <game/server/entities/character.h>
 
+// TODO: move
+inline bool NetworkClipped(CGameContext* pGameServer, int SnappingClient, vec2 CheckPos)
+{
+	float dx = pGameServer->m_apPlayers[SnappingClient]->m_ViewPos.x-CheckPos.x;
+	float dy = pGameServer->m_apPlayers[SnappingClient]->m_ViewPos.y-CheckPos.y;
+
+	if(absolute(dx) > 1000.0f || absolute(dy) > 800.0f)
+		return 1;
+
+	if(distance(pGameServer->m_apPlayers[SnappingClient]->m_ViewPos, CheckPos) > 1100.0f)
+		return 1;
+}
+
 struct ModNetID
 {
 	enum Enum {
@@ -52,15 +65,15 @@ CGameControllerExamplePhys1::CGameControllerExamplePhys1(class CGameContext *pGa
 	}
 
 	CDuckCollision* pCollision = (CDuckCollision*)GameServer()->Collision();
-	/*CDuckCollision::CDynamicDisk Disk;
-	Disk.m_Pos = vec2(500, 280);
-	Disk.m_Vel = vec2(0, 0);
-	Disk.m_Radius = 30;
-	pCollision->SetDynamicDisk(0, Disk);*/
-
 	m_DuckWorldCore.Init(&GameServer()->m_World.m_Core, pCollision);
-	m_TestCoreID = m_DuckWorldCore.AddCustomCore(40);
-	m_DuckWorldCore.m_aCustomCores[m_TestCoreID].m_Pos = vec2(500, 280);
+	//m_TestCoreID = m_DuckWorldCore.AddCustomCore(40);
+	//m_DuckWorldCore.m_aCustomCores[m_TestCoreID].m_Pos = vec2(500, 280);
+
+	for(int i = 0; i < 100; i++)
+	{
+		int CoreID = m_DuckWorldCore.AddCustomCore(15 + (random_int() % 25));
+		m_DuckWorldCore.m_aCustomCores[CoreID].m_Pos = vec2(500 + (random_int() % 25), 280);
+	}
 }
 
 void CGameControllerExamplePhys1::OnPlayerConnect(CPlayer* pPlayer)
@@ -73,9 +86,9 @@ void CGameControllerExamplePhys1::Tick()
 {
 	IGameController::Tick();
 	m_DuckWorldCore.Tick();
-	m_DuckWorldCore.SendAllCoreData(GameServer());
+	//m_DuckWorldCore.SendAllCoreData(GameServer());
 
-	if(random_int() % 40 == 0)
+	/*if(random_int() % 40 == 0)
 	{
 		int CoreID = m_DuckWorldCore.AddCustomCore(15 + (random_int() % 25));
 		m_DuckWorldCore.m_aCustomCores[CoreID].m_Pos = vec2(500 + (random_int() % 25), 280);
@@ -84,19 +97,13 @@ void CGameControllerExamplePhys1::Tick()
 	if(random_int() % 50 == 0 && m_DuckWorldCore.m_aCustomCores.size() > 0)
 	{
 		m_DuckWorldCore.RemoveCustomCore(random_int() % m_DuckWorldCore.m_aCustomCores.size());
-	}
-
-	/*CDuckCollision* pCollision = (CDuckCollision*)GameServer()->Collision();
-	CDuckCollision::CDynamicDisk& Disk = *pCollision->GetDynamicDisk(0);
-	Disk.Tick(pCollision, &GameServer()->m_World.m_Core);
-	Disk.Move(pCollision, &GameServer()->m_World.m_Core);*/
-
-
+	}*/
 }
 
 void CGameControllerExamplePhys1::Snap(int SnappingClient)
 {
 	IGameController::Snap(SnappingClient);
+	m_DuckWorldCore.Snap(GameServer(), SnappingClient);
 }
 
 void CGameControllerExamplePhys1::OnDuckMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)

@@ -160,6 +160,7 @@ CSnapshotDelta::CSnapshotDelta()
 
 void CSnapshotDelta::SetStaticsize(int ItemType, int Size)
 {
+	dbg_assert(ItemType >= 0 && ItemType < (sizeof(m_aItemSizes)/sizeof(m_aItemSizes[0])), "ItemType out of bounds");
 	m_aItemSizes[ItemType] = Size;
 }
 

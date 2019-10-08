@@ -160,6 +160,7 @@ public:
 	virtual const char *DuckModDescription() const = 0;
 	virtual int DuckModDownloadAmount() const = 0;
 	virtual int DuckModDownloadTotalsize() const = 0;
+	virtual void GetGameAndPredictedTime(int64* pGame, int64 *pPredicted) const = 0;
 };
 
 class IGameClient : public IInterface
@@ -192,11 +193,7 @@ public:
 	virtual const char *NetVersionHashReal() const = 0;
 	virtual int ClientVersion() const = 0;
 
-	// DUCK
-	virtual int DuckVersion() const = 0;
-	virtual void StartDuckModHttpDownload(const char* pModDesc, const char* pModUrl, const SHA256_DIGEST* pModSha256) = 0;
-	virtual bool TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256) = 0;
-	virtual bool InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256) = 0;
+	virtual class CDuckBridge* DuckBridge() = 0; // DUCK
 };
 
 extern IGameClient *CreateGameClient();

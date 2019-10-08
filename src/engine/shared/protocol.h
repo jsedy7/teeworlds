@@ -79,6 +79,9 @@ enum
 	NETMSG_DUCK_MOD_INFO,
 	NETMSG_DUCK_MOD_INFO_DEV,
 	NETMSG_DUCK_MOD_DATA,
+	NETMSG_DUCK_SNAP,			// normal snapshot, multiple parts
+	NETMSG_DUCK_SNAPEMPTY,		// empty snapshot
+	NETMSG_DUCK_SNAPSINGLE,
 
 	// client
 	NETMSG_DUCK_MOD_READY,

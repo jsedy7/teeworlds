@@ -197,6 +197,13 @@ public:
 		Msg.AddRaw(&NetObj, sizeof(NetObj));
 		Server()->SendMsg(&Msg, MSGFLAG_VITAL, CID);
 	}
+
+	template<typename T>
+	T* DuckSnapNewItem(int ItemID)
+	{
+		const int Type = T::NET_ID;
+		return (T*)Server()->_DuckSnapNewItem(Type, ItemID, sizeof(T));
+	}
 };
 
 inline int64 CmaskAll() { return -1; }

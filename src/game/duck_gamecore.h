@@ -33,28 +33,20 @@ struct CCustomCore
 	float m_Radius;
 };
 
+struct CNetObj_DuckCustomCore
+{
+	enum { NET_ID = 0x2001 };
+	CCustomCore m_Core;
+};
+
+struct CNetObj_DuckCharCoreExtra
+{
+	enum { NET_ID = 0x2002 };
+	CCoreExtra m_Extra;
+};
+
 struct CDuckWorldCore
 {
-	struct CNetCoreCustomData
-	{
-		enum { NET_ID = 0x2001 };
-		int m_ID;
-		int m_Tick;
-		CCustomCore m_Core;
-	};
-
-	struct CNetCoreBaseExtraData
-	{
-		enum { NET_ID = 0x2002 };
-		int m_ID;
-		CCoreExtra m_Extra;
-	};
-
-	struct CNetClear
-	{
-		enum { NET_ID = 0x2003 };
-	};
-
 	CDuckCollision* m_pCollision;
 	CWorldCore* m_pBaseWorldCore;
 	CCoreExtra m_aBaseCoreExtras[MAX_CLIENTS];
@@ -70,10 +62,7 @@ struct CDuckWorldCore
 	int AddCustomCore(float Radius = -1);
 	void RemoveCustomCore(int ID);
 
-	void SendAllCoreData(CGameContext* pGameServer);
-	void RecvCoreCustomData(const CNetCoreCustomData& CoreData);
-	void RecvCoreBaseExtraData(const CNetCoreBaseExtraData& CoreData);
-	void RecvClear(const CNetClear& NetClear);
+	void Snap(CGameContext* pGameServer, int SnappingClient);
 
 	void Copy(const CDuckWorldCore* pOther);
 	int FindCustomCoreFromUID(int UID);

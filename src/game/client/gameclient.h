@@ -302,11 +302,7 @@ public:
 	class CMapLayers *m_pMapLayersForeGround;
 	class CDuckBridge *m_pDuckBridge;
 
-	// DUCK
-	virtual int DuckVersion() const;
-	virtual void StartDuckModHttpDownload(const char* pModDesc, const char* pModUrl, const SHA256_DIGEST* pModSha256);
-	virtual bool TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256);
-	virtual bool InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256);
+	CDuckBridge* DuckBridge() { return m_pDuckBridge; }; // DUCK
 };
 
 const char *Localize(const char *pStr, const char *pContext="")

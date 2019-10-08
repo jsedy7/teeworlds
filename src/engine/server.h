@@ -70,6 +70,7 @@ public:
 	virtual bool DemoRecorder_IsRecording() = 0;
 
 	virtual bool LoadDuckMod(const char* pReleaseUrl, const char* pReleaseZipPath, const char* pDevFolderPath) = 0; // DUCK
+	virtual void* _DuckSnapNewItem(int Type, int ID, int Size) = 0; // DUCK
 };
 
 class IGameServer : public IInterface

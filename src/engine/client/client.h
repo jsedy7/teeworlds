@@ -340,9 +340,9 @@ public:
 
 	// DUCK
 	void SendDuckModReady();
-
 	virtual const char *DuckModDescription() const { return "Mod"; };
 	virtual int DuckModDownloadAmount() const { return m_DuckModDownloadAmount; };
 	virtual int DuckModDownloadTotalsize() const { return m_DuckModDownloadTotalsize; }
+	void GetGameAndPredictedTime(int64 *pGame, int64* pPredicted) const;
 };
 #endif

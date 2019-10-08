@@ -1414,9 +1414,20 @@ void CGameClient::OnPredict()
 		m_aClients[i].m_Predicted.Read(&m_Snap.m_aCharacters[i].m_Cur);
 	}
 
-	m_pDuckBridge->m_WorldCorePredicted.Copy(&m_pDuckBridge->m_WorldCore);
-	m_pDuckBridge->m_WorldCorePredicted.m_pBaseWorldCore = &World;
-	m_pDuckBridge->m_WorldCorePredicted.m_pCollision = &m_pDuckBridge->m_Collision;
+	if(m_pDuckBridge->IsLoaded())
+	{
+		m_pDuckBridge->m_WorldCore.Reset();
+		CNetObj_DuckCustomCore* pNetCores = m_pDuckBridge->m_Snap.m_aCustomCores.base_ptr();
+		const int NetCoreCount = m_pDuckBridge->m_Snap.m_aCustomCores.size();
+		for(int i = 0; i < NetCoreCount; i++)
+			m_pDuckBridge->m_WorldCore.m_aCustomCores.add(pNetCores[i].m_Core);
+		for(int i = 0; i < MAX_CLIENTS; i++)
+			m_pDuckBridge->m_WorldCore.m_aBaseCoreExtras[i] = m_pDuckBridge->m_Snap.m_aCharCoreExtra[i].m_Extra;
+
+		m_pDuckBridge->m_WorldCorePredicted.Copy(&m_pDuckBridge->m_WorldCore);
+		m_pDuckBridge->m_WorldCorePredicted.m_pBaseWorldCore = &World;
+		m_pDuckBridge->m_WorldCorePredicted.m_pCollision = &m_pDuckBridge->m_Collision;
+	}
 
 	// predict
 	for(int Tick = Client()->GameTick()+1; Tick <= Client()->PredGameTick(); Tick++)
@@ -1456,7 +1467,11 @@ void CGameClient::OnPredict()
 		}
 
 		m_pDuckBridge->CharacterCorePostTick(World.m_apCharacters);
-		m_pDuckBridge->m_WorldCorePredicted.Tick();
+
+		if(m_pDuckBridge->IsLoaded())
+		{
+			m_pDuckBridge->m_WorldCorePredicted.Tick();
+		}
 
 		// move all players and quantize their data
 		for(int c = 0; c < MAX_CLIENTS; c++)
@@ -1784,27 +1799,6 @@ void CGameClient::ConchainXmasHatUpdate(IConsole::IResult *pResult, void *pUserD
 		if(pClient->m_aClients[i].m_Active)
 			pClient->m_aClients[i].UpdateRenderInfo(pClient, i, true);
 	}
-}
-
-// DUCK
-int CGameClient::DuckVersion() const
-{
-	return 0x1;
-}
-
-void CGameClient::StartDuckModHttpDownload(const char* pModDesc, const char* pModUrl, const SHA256_DIGEST* pModSha256)
-{
-	m_pDuckBridge->StartDuckModHttpDownload(pModUrl, pModSha256);
-}
-
-bool CGameClient::TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256)
-{
-	return m_pDuckBridge->TryLoadInstalledDuckMod(pModSha256);
-}
-
-bool CGameClient::InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256)
-{
-	return m_pDuckBridge->InstallAndLoadDuckModFromZipBuffer(pBuffer, BufferSize, pModSha256);
 }
 
 CCollision* CGameClient::Collision()

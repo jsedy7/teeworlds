@@ -36,6 +36,7 @@
 #include <engine/shared/snapshot.h>
 
 #include <game/version.h>
+#include <game/client/components/duck_bridge.h>
 
 #include <mastersrv/mastersrv.h>
 #include <versionsrv/versionsrv.h>
@@ -350,8 +351,8 @@ void CClient::SendInfo()
 	Msg.AddString(g_Config.m_Password, 128);
 	Msg.AddInt(GameClient()->ClientVersion());
 	// DUCK
-	dbg_assert(GameClient()->DuckVersion() > 0, "Duck version <= 0");
-	Msg.AddInt(GameClient()->DuckVersion());
+	dbg_assert(GameClient()->DuckBridge()->DuckVersion() > 0, "Duck version <= 0");
+	Msg.AddInt(GameClient()->DuckBridge()->DuckVersion());
 	SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH);
 }
 
@@ -1482,14 +1483,15 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 			sha256_str(ModSha256, aModSha256Str, sizeof(aModSha256Str));
 			dbg_msg("duck", "mod info packet, desc='%s' url='%s' 'sha256=%s'", pModDescription, pModUrl, aModSha256Str);
 
-			if(GameClient()->TryLoadInstalledDuckMod(&ModSha256))
+			if(GameClient()->DuckBridge()->TryLoadInstalledDuckMod(&ModSha256))
 			{
 				SendDuckModReady();
 			}
 			else
 			{
 				// TODO: this is currently blocking, make it not
-				GameClient()->StartDuckModHttpDownload(pModDescription, pModUrl, &ModSha256);
+				// TODO: use pModDescription
+				GameClient()->DuckBridge()->StartDuckModHttpDownload(pModUrl, &ModSha256);
 				SendDuckModReady();
 			}
 		}
@@ -1508,7 +1510,7 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 			char aModSha256Str[SHA256_MAXSTRSIZE];
 			sha256_str(ModSha256, aModSha256Str, sizeof(aModSha256Str));
 
-			if(GameClient()->TryLoadInstalledDuckMod(&ModSha256))
+			if(GameClient()->DuckBridge()->TryLoadInstalledDuckMod(&ModSha256))
 			{
 				SendDuckModReady();
 				dbg_msg("duck", "mod info dev packet, mod is already installed, sha256=%s'", aModSha256Str);
@@ -1552,7 +1554,7 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 				// mod download complete
 				dbg_msg("duck", "mod download complete, loading...");
 
-				bool IsInstalled = GameClient()->InstallAndLoadDuckModFromZipBuffer(m_DuckModDownloadFileBuff.m_pData, m_DuckModDownloadFileBuff.m_Size, &m_DuckModDownloadSha256);
+				bool IsInstalled = GameClient()->DuckBridge()->InstallAndLoadDuckModFromZipBuffer(m_DuckModDownloadFileBuff.m_pData, m_DuckModDownloadFileBuff.m_Size, &m_DuckModDownloadSha256);
 
 				m_DuckModDownloadFileBuff.Clear();
 				m_DuckModDownloadAmount = 0;
@@ -1575,6 +1577,10 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 				if(g_Config.m_Debug)
 					dbg_msg("duck", "requested next mod chunk package");
 			}
+		}
+		else if(Msg == NETMSG_DUCK_SNAP || Msg == NETMSG_DUCK_SNAPSINGLE || Msg == NETMSG_DUCK_SNAPEMPTY)
+		{
+			GameClient()->DuckBridge()->SnapshotReceive(Msg, &Unpacker);
 		}
 	}
 	else
@@ -2621,6 +2627,14 @@ void CClient::SendDuckModReady()
 {
 	CMsgPacker Msg(NETMSG_DUCK_MOD_READY, true);
 	SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH);
+}
+
+void CClient::GetGameAndPredictedTime(int64 *pGame, int64 *pPredicted) const
+{
+	CSmoothTime GameCopy = m_GameTime;
+	CSmoothTime PredictedCopy = m_PredictedTime;
+	*pGame = GameCopy.Get(time_get());
+	*pPredicted = PredictedCopy.Get(time_get());
 }
 
 
