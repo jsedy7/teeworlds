@@ -396,6 +396,7 @@ struct CDuckBridge : public CComponent
 	void QueueDrawTeeHand(const CTeeDrawHand& Hand);
 	void QueueDrawFreeform(vec2 Pos);
 	void QueueDrawText(const char* pStr, float FontSize, float *pRect, float *pColors);
+	void QueueDrawCircle(vec2 Pos, float Radius);
 
 	void SetHudPartsShown(CHudPartsShown hps);
 

@@ -226,9 +226,12 @@ void CDuckBridge::QueueSetTeeSkin(const CTeeSkinInfo& SkinInfo)
 
 void CDuckBridge::QueueSetFreeform(const IGraphics::CFreeformItem *pFreeform, int FreeformCount)
 {
+	IGraphics::CFreeformItem* pFreeformBuffer = (IGraphics::CFreeformItem*)m_FrameAllocator.Alloc(sizeof(IGraphics::CFreeformItem) * FreeformCount);
+	mem_copy(pFreeformBuffer, pFreeform, sizeof(IGraphics::CFreeformItem) * FreeformCount);
+
 	CRenderCmd Cmd;
 	Cmd.m_Type = CRenderCmd::SET_FREEFORM_VERTICES;
-	Cmd.m_pFreeformQuads = (float*)pFreeform;
+	Cmd.m_pFreeformQuads = (float*)pFreeformBuffer;
 	Cmd.m_FreeformQuadCount = FreeformCount;
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
@@ -258,6 +261,28 @@ void CDuckBridge::QueueDrawText(const char *pStr, float FontSize, float* pRect, 
 	mem_move(Cmd.m_Text.m_aRect, pRect, sizeof(float)*4);
 
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
+}
+
+void CDuckBridge::QueueDrawCircle(vec2 Pos, float Radius)
+{
+	const int Polys = 32;
+	IGraphics::CFreeformItem Quads[Polys];
+
+	for(int p = 0; p < Polys; p++)
+	{
+		IGraphics::CFreeformItem& q = Quads[p];
+		q.m_X0 = cosf((p/(float)Polys) * 2 * pi) * Radius;
+		q.m_Y0 = sinf((p/(float)Polys) * 2 * pi) * Radius;
+		q.m_X1 = 0;
+		q.m_Y1 = 0;
+		q.m_X2 = cosf(((p+1)/(float)Polys) * 2 * pi) * Radius;
+		q.m_Y2 = sinf(((p+1)/(float)Polys) * 2 * pi) * Radius;
+		q.m_X3 = 0;
+		q.m_Y3 = 0;
+	}
+
+	QueueSetFreeform(Quads, Polys);
+	QueueDrawFreeform(Pos);
 }
 
 void CDuckBridge::SetHudPartsShown(CHudPartsShown hps)
@@ -764,6 +789,15 @@ void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 	float* pWantColor = RenderSpace.m_aWantColor;
 	float* pWantQuadSubSet = RenderSpace.m_aWantQuadSubSet;
 
+	int FakeID = -12345;
+	IGraphics::CTextureHandle FakeTexture = *(IGraphics::CTextureHandle*)&FakeID;
+	IGraphics::CTextureHandle CurrentTexture;
+
+	int FlushCount = 0;
+
+	Graphics()->TextureClear();
+	Graphics()->QuadsBegin();
+
 	for(int i = 0; i < CmdCount; i++)
 	{
 		const CRenderCmd& Cmd = aCmds[i];
@@ -798,12 +832,24 @@ void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 			case CRenderCmd::DRAW_QUAD_CENTERED:
 			case CRenderCmd::DRAW_QUAD:
 			case CRenderCmd::DRAW_FREEFORM: {
-				if(RenderSpace.m_WantTextureID < 0)
-					Graphics()->TextureClear();
-				else
-					Graphics()->TextureSet(*(IGraphics::CTextureHandle*)&RenderSpace.m_WantTextureID);
+				if(CurrentTexture.Id() != RenderSpace.m_WantTextureID)
+				{
+					Graphics()->QuadsEnd(); // Flush
+					FlushCount++;
 
-				Graphics()->QuadsBegin();
+					if(RenderSpace.m_WantTextureID < 0)
+					{
+						Graphics()->TextureClear();
+						CurrentTexture.Invalidate();
+					}
+					else
+					{
+						Graphics()->TextureSet(*(IGraphics::CTextureHandle*)&RenderSpace.m_WantTextureID);
+						CurrentTexture = *(IGraphics::CTextureHandle*)&RenderSpace.m_WantTextureID;
+					}
+
+					Graphics()->QuadsBegin();
+				}
 
 				Graphics()->SetColor(pWantColor[0] * pWantColor[3], pWantColor[1] * pWantColor[3], pWantColor[2] * pWantColor[3], pWantColor[3]);
 
@@ -838,32 +884,22 @@ void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 				}
 				else
 					Graphics()->QuadsDrawTL((IGraphics::CQuadItem*)&Cmd.m_Quad, 1);
-
-				Graphics()->QuadsEnd();
 			} break;
 
 			case CRenderCmd::DRAW_TEE_BODYANDFEET:
 				DrawTeeBodyAndFeet(Cmd.m_TeeBodyAndFeet, RenderSpace.m_CurrentTeeSkin);
-
-				// TODO: do this better
-				/*mem_zero(RenderSpace.m_aWantColor, sizeof(RenderSpace.m_aWantColor));
-				mem_zero(RenderSpace.m_aWantQuadSubSet, sizeof(RenderSpace.m_aWantQuadSubSet));
-				RenderSpace.m_WantTextureID = -1; // clear by default
-				RenderSpace.m_WantQuadRotation = 0; // clear by default*/
+				CurrentTexture = FakeTexture;
 				break;
 
 			case CRenderCmd::DRAW_TEE_HAND:
 				DrawTeeHand(Cmd.m_TeeHand, RenderSpace.m_CurrentTeeSkin);
-
-				// TODO: do this better
-				/*mem_zero(RenderSpace.m_aWantColor, sizeof(RenderSpace.m_aWantColor));
-				mem_zero(RenderSpace.m_aWantQuadSubSet, sizeof(RenderSpace.m_aWantQuadSubSet));
-				RenderSpace.m_WantTextureID = -1; // clear by default
-				RenderSpace.m_WantQuadRotation = 0; // clear by default*/
+				CurrentTexture = FakeTexture;
 				break;
 
 			case CRenderCmd::DRAW_TEXT:
 			{
+				CurrentTexture = FakeTexture;
+
 				const CTextInfo& Text = Cmd.m_Text;
 				const bool DoClipping = Text.m_aRect[2] > 0 && Text.m_aRect[3] > 0;
 
@@ -904,6 +940,11 @@ void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 				dbg_assert(0, "Render command type not handled");
 		}
 	}
+
+	Graphics()->QuadsEnd(); // flush
+	FlushCount++;
+
+	//dbg_msg("duck", "flush count = %d", FlushCount);
 
 	m_aRenderCmdList[Space].set_size(0);
 	RenderSpace = CRenderSpace();

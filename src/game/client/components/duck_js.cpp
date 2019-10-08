@@ -359,7 +359,7 @@ duk_ret_t CDuckJs::NativeRenderSetFreeform(duk_context *ctx)
 {
 	CheckArgumentCount(ctx, 1);
 
-	IGraphics::CFreeformItem* pFreeformBuffer = (IGraphics::CFreeformItem*)This()->Bridge()->m_FrameAllocator.Alloc(sizeof(IGraphics::CFreeformItem) * CDuckBridge::CRenderSpace::FREEFORM_MAX_COUNT );
+	static IGraphics::CFreeformItem aFreeformBuffer[CDuckBridge::CRenderSpace::FREEFORM_MAX_COUNT];
 	int FreeformCount = 0;
 	int VertCount = 0;
 	float CurrentFreeform[sizeof(IGraphics::CFreeformItem)/sizeof(float)];
@@ -375,7 +375,7 @@ duk_ret_t CDuckJs::NativeRenderSetFreeform(duk_context *ctx)
 			if(VertCount >= FfFloatCount)
 			{
 				VertCount = 0;
-				pFreeformBuffer[FreeformCount++] = *(IGraphics::CFreeformItem*)CurrentFreeform;
+				aFreeformBuffer[FreeformCount++] = *(IGraphics::CFreeformItem*)CurrentFreeform;
 			}
 		}
 		duk_pop(ctx);
@@ -384,10 +384,10 @@ duk_ret_t CDuckJs::NativeRenderSetFreeform(duk_context *ctx)
 	if(VertCount > 0)
 	{
 		mem_zero(CurrentFreeform+VertCount, sizeof(CurrentFreeform)-sizeof(float)*VertCount);
-		pFreeformBuffer[FreeformCount++] = *(IGraphics::CFreeformItem*)CurrentFreeform;
+		aFreeformBuffer[FreeformCount++] = *(IGraphics::CFreeformItem*)CurrentFreeform;
 	}
 
-	This()->Bridge()->QueueSetFreeform(pFreeformBuffer, FreeformCount);
+	This()->Bridge()->QueueSetFreeform(aFreeformBuffer, FreeformCount);
 	return 0;
 }
 
@@ -688,6 +688,18 @@ duk_ret_t CDuckJs::NativeRenderDrawText(duk_context *ctx)
 	duk_pop(ctx);
 
 	This()->Bridge()->QueueDrawText(pText, FontSize, aRect, aColors);
+	return 0;
+}
+
+duk_ret_t CDuckJs::NativeRenderDrawCircle(duk_context *ctx)
+{
+	CheckArgumentCount(ctx, 3);
+
+	float x = duk_to_number(ctx, 0);
+	float y = duk_to_number(ctx, 1);
+	float Radius = duk_to_number(ctx, 2);
+
+	This()->Bridge()->QueueDrawCircle(vec2(x, y), Radius);
 	return 0;
 }
 
@@ -2563,6 +2575,7 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(RenderDrawTeeHand, 1);
 	REGISTER_FUNC(RenderDrawFreeform, 2);
 	REGISTER_FUNC(RenderDrawText, 1);
+	REGISTER_FUNC(RenderDrawCircle, 3);
 	REGISTER_FUNC(RenderSetDrawSpace, 1);
 	REGISTER_FUNC(GetBaseTexture, 1);
 	REGISTER_FUNC(GetSpriteSubSet, 1);
@@ -2604,6 +2617,7 @@ void CDuckJs::ResetDukContext()
 	char* aBuff = (char*)mem_alloc(1024*1024, 1);
 
 	str_format(aBuff, 1024*1024,
+		//"\"use strict\";\n"
 		"const Teeworlds = {"
 		"	DRAW_SPACE_GAME: 0,"
 		"	DRAW_SPACE_GAME_FOREGROUND: 1,"
@@ -2613,7 +2627,13 @@ void CDuckJs::ResetDukContext()
 
 	//dbg_msg("duck", aBuff);
 
-	duk_eval_string(Ctx(), aBuff);
+	//duk_eval_string(Ctx(), aBuff);
+	if(duk_peval_string(Ctx(), aBuff) != DUK_EXEC_SUCCESS)
+	{
+		JS_ERR(duk_safe_to_stacktrace(Ctx(), -1));
+		dbg_break();
+	}
+
 	duk_pop(Ctx());
 
 	mem_free(aBuff);

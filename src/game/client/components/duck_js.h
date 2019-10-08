@@ -34,6 +34,7 @@ class CDuckJs
 	static duk_ret_t NativeRenderDrawTeeHand(duk_context *ctx);
 	static duk_ret_t NativeRenderDrawFreeform(duk_context *ctx);
 	static duk_ret_t NativeRenderDrawText(duk_context *ctx);
+	static duk_ret_t NativeRenderDrawCircle(duk_context *ctx);
 	static duk_ret_t NativeGetBaseTexture(duk_context *ctx);
 	static duk_ret_t NativeGetSpriteSubSet(duk_context *ctx);
 	static duk_ret_t NativeGetSpriteScale(duk_context *ctx);

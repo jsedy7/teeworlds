@@ -6,21 +6,46 @@ var game = {
     charCores: [],
 };
 
-function DrawCircle(x, y, radius, color)
+const testCircle = MakeCircle(20);
+var circlMeshes = [];
+var cores = [];
+
+function MakeCircle(radius)
 {
     const polys = 32;
-    var circle = [];
-    
+    var circle = new Array(polys * 8);
+
     for(var p = 0; p < polys; p++)
     {
-        circle.push(Math.cos((p/polys) * 2*Math.PI) * radius, Math.sin((p/polys) * 2*Math.PI) * radius);
-        circle.push(0, 0);
-        circle.push(Math.cos(((p+1)/polys) * 2*Math.PI) * radius, Math.sin(((p+1)/polys) * 2*Math.PI) * radius);
-        circle.push(0, 0);
+        circle[p*8]   = Math.cos((p/polys) * 2*Math.PI) * radius;
+        circle[p*8+1] = Math.sin((p/polys) * 2*Math.PI) * radius;
+        circle[p*8+2] = 0;
+        circle[p*8+3] = 0;
+        circle[p*8+4] = Math.cos(((p+1)/polys) * 2*Math.PI) * radius;
+        circle[p*8+5] = Math.sin(((p+1)/polys) * 2*Math.PI) * radius;
+        circle[p*8+6] = 0;
+        circle[p*8+7] = 0;
     }
 
-    TwRenderSetTexture(-1);
-    TwRenderSetColorF4(color[0], color[1], color[2], color[3]);
+    return circle;
+}
+
+function DrawCircle(x, y, radius)
+{
+    const polys = 16;
+    var circle = new Array(polys * 8);
+    for(var p = 0; p < polys; p++)
+    {
+        circle[p*8]   = Math.cos((p/polys) * 2*Math.PI) * radius;
+        circle[p*8+1] = Math.sin((p/polys) * 2*Math.PI) * radius;
+        circle[p*8+2] = 0;
+        circle[p*8+3] = 0;
+        circle[p*8+4] = Math.cos(((p+1)/polys) * 2*Math.PI) * radius;
+        circle[p*8+5] = Math.sin(((p+1)/polys) * 2*Math.PI) * radius;
+        circle[p*8+6] = 0;
+        circle[p*8+7] = 0;
+    }
+
     TwRenderSetFreeform(circle);
     TwRenderDrawFreeform(x, y);
 }
@@ -44,77 +69,49 @@ function OnLoaded()
 
 function OnUpdate(clientLocalTime, intraTick)
 {
-   
+    cores = TwGetDuckCores();
 }
 
 function OnRender(clientLocalTime, intraTick)
 {
     TwRenderSetDrawSpace(Teeworlds.DRAW_SPACE_GAME_FOREGROUND);
-    
-    // draw dynamic disks
-    game.predictedDynDisks = TwCollisionGetPredictedDynamicDisks();
-    game.dynDisks.forEach(function(disk, diskId) {
-        var c = 0.5 + (Math.sin(clientLocalTime) * 0.5 + 0.5) * 0.5;
-        var prevDisk = game.prevDynDisks[diskId];
-        var pos_x = mix(prevDisk.pos_x, disk.pos_x, intraTick);
-        var pos_y = mix(prevDisk.pos_y, disk.pos_y, intraTick);
 
-        DrawCircle(pos_x, pos_y, disk.radius, [c, 0, 0, 1]);
-    });
+    for(var i = 0; i < cores.length; i++) {
+        const core = cores[i];
+        TwRenderSetColorF4(1, 1, 1, 1);
+        TwRenderDrawCircle(core.x, core.y, core.radius);
 
-    game.predictedDynDisks.forEach(function(disk, diskId) {
-        var c = 0.5 + (Math.sin(clientLocalTime) * 0.5 + 0.5) * 0.5;
-        DrawCircle(disk.pos_x, disk.pos_y, disk.radius, [0, c, c, 1]);
-    });
-
-    game.charCores.forEach(function(core, coreID) {
-        DrawCircle(core.x, core.y, 28, [1, 0, 1, 1]);
-    });
-
-    var cores = TwGetDuckCores();
-
-    cores.forEach(function(core, coreID) {
-        DrawCircle(core.x, core.y, core.radius, [1, 1, 1, 1]);
         TwRenderSetTexture(-1);
         TwRenderSetColorF4(1, 0, 1, 0.5);
         TwRenderQuadCentered(core.x, core.y, core.radius * 2, core.radius * 2);
-    });
+    }
+
+    /*TwRenderSetTexture(-1);
+    TwRenderSetColorF4(1, 1, 1, 1);
+
+    for(var y = 0; y < 30; y++) {
+        for(var x = 0; x < 30; x++) {
+            var rx = x * 50;
+            var ry = y * 50;
+            var radius = 20;
+            TwRenderDrawCircle(rx, ry, radius);
+        }
+    }
+
+    TwRenderSetColorF4(1, 0, 1, 0.5);
+
+    for(var y = 0; y < 30; y++) {
+        for(var x = 0; x < 30; x++) {
+            var rx = x * 50;
+            var ry = y * 50;
+            var radius = 20;
+            TwRenderQuadCentered(rx, ry, radius * 2, radius * 2);
+        }
+    }*/
 }
 
 function OnMessage(packet)
 {
-    if(packet.mod_id == 0x1) {
-        //printObj(packet);
-
-        var disk = TwNetPacketUnpack(packet, {
-            i32_diskID: 0,
-            i32_flags:   0,
-            float_pos_x: 0,
-            float_pos_y: 0,
-            float_vel_x: 0,
-            float_vel_y: 0,
-            float_radius: 0,
-            float_hook_force:0,
-        });
-
-        var diskId = disk.diskID;
-        game.prevDynDisks[diskId] = game.dynDisks[diskId];
-        game.dynDisks[diskId] = disk;
-        TwCollisionSetDynamicDisk(diskId, disk);
-    }
-    else if(packet.mod_id == 0x2) {
-        //printObj(packet);
-
-        var charCore = TwNetPacketUnpack(packet, {
-            i32_ID: 0,
-            float_x: 0,
-            float_y: 0,
-            float_vel_x: 0,
-            float_vel_y: 0,
-        });
-
-        game.charCores[charCore.ID] = charCore;
-    }
 }
 
 function OnInput(event)
