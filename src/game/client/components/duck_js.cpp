@@ -14,14 +14,18 @@
 static CDuckJs* s_DuckJs = 0;
 inline CDuckJs* This() { return s_DuckJs; }
 
-static duk_ret_t NativePrint(duk_context *ctx)
+duk_ret_t CDuckJs::NativePrint(duk_context *ctx)
 {
 	const char* pStr = duk_to_string(ctx, 0);
 	const int Len = str_length(pStr);
-	const int MaxLen = 2048;
+	const int MaxLen = 128;
+	char aBuff[MaxLen+1];
 
-	for(int i = 0; i < (Len/MaxLen + 1); i++)
-		dbg_msg("mod", "%.*s", MaxLen, pStr + i * MaxLen);
+	for(int i = 0; i < Len; i += MaxLen)
+	{
+		str_copy(aBuff, pStr + i, min(Len-i+1, MaxLen+1));
+		This()->Bridge()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "mod", aBuff);
+	}
 	return 0;  /* no return value (= undefined) */
 }
 
@@ -2506,33 +2510,15 @@ bool CDuckJs::LoadJsScriptFile(const char* pJsFilePath, const char* pJsRelFilePa
 	pFileData[FileSize] = 0;
 	io_close(ScriptFile);
 
-	/*char aErrFuncBuff[1024];
-	str_format(aErrFuncBuff, sizeof(aErrFuncBuff),
-		"Duktape.errCreate = function(err) { \
-			try { \
-				if(typeof err === 'object' && \
-				typeof err.stack !== 'undefined' && \
-				typeof err.lineNumber === 'number') { \
-					err.stack = err.stack + ' (%s:' + err.lineNumber + ')'; \
-					err.message = err.stack; \
-				} \
-			} \
-			catch(e) { \
-			} \
-			return err; \
-	   }", pJsRelFilePath);
-
-	duk_push_string(Ctx(), aErrFuncBuff);
-	if(duk_peval(Ctx()) != 0)
+	// eval script
+	duk_push_string(Ctx(), pJsRelFilePath);
+	if(duk_pcompile_string_filename(Ctx(), DUK_COMPILE_STRICT, pFileData) != 0)
 	{
-		dbg_msg("duck", "[JS ERROR] %s: %s", pJsRelFilePath, duk_safe_to_string(Ctx(), -1));
+		JS_ERR("'%s': \n   %s", pJsRelFilePath, duk_safe_to_stacktrace(Ctx(), -1));
+		mem_free(pFileData);
 		return false;
 	}
-	duk_pop(Ctx());*/
-
-	// eval script
-	duk_push_string(Ctx(), pFileData);
-	if(duk_peval(Ctx()) != 0)
+	if(duk_pcall(Ctx(), 0) != 0)
 	{
 		JS_ERR("'%s': \n   %s", pJsRelFilePath, duk_safe_to_stacktrace(Ctx(), -1));
 		mem_free(pFileData);

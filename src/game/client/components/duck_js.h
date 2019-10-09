@@ -20,6 +20,7 @@ class CDuckJs
 	inline duk_context* Ctx() { return m_pDukContext; }
 	inline CDuckBridge* Bridge() { return m_pBridge; }
 
+	static duk_ret_t NativePrint(duk_context *ctx);
 	static duk_ret_t NativeRenderQuad(duk_context *ctx);
 	static duk_ret_t NativeRenderQuadCentered(duk_context *ctx);
 	static duk_ret_t NativeRenderSetColorU32(duk_context *ctx);
