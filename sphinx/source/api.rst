@@ -10,6 +10,25 @@ Functions
 
 |
 
+print
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function print(str)
+
+
+Print a string to console.
+
+**Parameters**
+
+* **str**: string
+
+**Returns**
+
+* None
+
+|
+
 TwRenderQuad
 ---------------------------------------------------------------------
 .. code-block:: js

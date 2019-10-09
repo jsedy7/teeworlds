@@ -341,32 +341,8 @@ struct CDuckBridge : public CComponent
 
 	array<CJsErrorStr> m_aJsErrors;
 
-	CDuckWorldCore m_WorldCore;
 	CDuckWorldCore m_WorldCorePredicted;
-
-	// Snapshot stuff
-	enum
-	{
-		SNAP_CURRENT,
-		SNAP_PREV,
-		SNAP_COUNT
-	};
-
-	int m_CurrentRecvTick;
-	int m_AckGameTick;
-	int m_SnapCrcErrors;
-	int m_RecivedSnapshots;
-	unsigned m_SnapshotParts;
-	char m_aSnapshotIncommingData[CSnapshot::MAX_SIZE];
-	CSnapshotStorage m_SnapshotStorage;
-	CSnapshotStorage::CHolder *m_aSnapshots[SNAP_COUNT];
-	CSnapshotDelta m_SnapshotDelta;
-	int m_CurGameTick;
-	int m_PrevGameTick;
-	/*float m_GameIntraTick;
-	float m_GameTickTime;
-	int m_PredTick;
-	float m_PredIntraTick;*/
+	CDuckWorldCore m_WorldCorePredictedPrev;
 
 	struct CSnapState
 	{
@@ -438,8 +414,7 @@ struct CDuckBridge : public CComponent
 	void RenderWeaponCursor(int WeaponID, vec2 Pos);
 	void RenderWeaponAmmo(int WeaponID, vec2 Pos);
 
-	void SnapshotReceive(int MsgID, CUnpacker* pUnpacker);
-	void OnNewDuckSnapshot();
+	void OnNewSnapshot();
 
 	// mod installation
 	bool IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256);

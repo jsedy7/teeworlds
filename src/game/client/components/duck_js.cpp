@@ -14,21 +14,6 @@
 static CDuckJs* s_DuckJs = 0;
 inline CDuckJs* This() { return s_DuckJs; }
 
-duk_ret_t CDuckJs::NativePrint(duk_context *ctx)
-{
-	const char* pStr = duk_to_string(ctx, 0);
-	const int Len = str_length(pStr);
-	const int MaxLen = 128;
-	char aBuff[MaxLen+1];
-
-	for(int i = 0; i < Len; i += MaxLen)
-	{
-		str_copy(aBuff, pStr + i, min(Len-i+1, MaxLen+1));
-		This()->Bridge()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "mod", aBuff);
-	}
-	return 0;  /* no return value (= undefined) */
-}
-
 #define JS_WARN(fmt, ...) This()->Bridge()->JsError(JsErrorLvl::WARNING, fmt, __VA_ARGS__)
 #define JS_ERR(fmt, ...) This()->Bridge()->JsError(JsErrorLvl::ERROR, fmt, __VA_ARGS__)
 #define JS_CRIT(fmt, ...) This()->Bridge()->JsError(JsErrorLvl::CRITICAL, fmt, __VA_ARGS__)
@@ -55,6 +40,36 @@ bool CDuckJs::_CheckArgumentCountImp(duk_context* pCtx, int NumArgs, const char*
 }
 
 #define CheckArgumentCount(ctx, num) if(!This()->_CheckArgumentCountImp(ctx, num, __FUNCTION__ + 15)) { return 0; }
+
+/*#
+`print(str)`
+
+Print a string to console.
+
+**Parameters**
+
+* **str**: string
+
+**Returns**
+
+* None
+#*/
+duk_ret_t CDuckJs::NativePrint(duk_context *ctx)
+{
+	CheckArgumentCount(ctx, 1);
+
+	const char* pStr = duk_to_string(ctx, 0);
+	const int Len = str_length(pStr);
+	const int MaxLen = 128;
+	char aBuff[MaxLen+1];
+
+	for(int i = 0; i < Len; i += MaxLen)
+	{
+		str_copy(aBuff, pStr + i, min(Len-i+1, MaxLen+1));
+		This()->Bridge()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "mod", aBuff);
+	}
+	return 0;  /* no return value (= undefined) */
+}
 
 /*#
 `TwRenderQuad(x, y, width, height)`
@@ -1498,27 +1513,46 @@ duk_ret_t CDuckJs::NativeGetDuckCores(duk_context *ctx)
 {
 	CheckArgumentCount(ctx, 0);
 
-	const CDuckWorldCore& Predicted = This()->Bridge()->m_WorldCorePredicted;
-	const CDuckWorldCore& Current = This()->Bridge()->m_WorldCore;
-	const int Count = Predicted.m_aCustomCores.size();
-
 
 	IClient* pClient = This()->Bridge()->Client();
 	float IntraTick = pClient->IntraGameTick();
+	float PredIntraTick = pClient->PredIntraGameTick();
+	const CDuckBridge& Bridge = *This()->Bridge();
+	const int Count = Bridge.m_WorldCorePredicted.m_aCustomCores.size();
+	const int CountPrev = Bridge.m_WorldCorePredictedPrev.m_aCustomCores.size();
+	const CCustomCore* Cores = Bridge.m_WorldCorePredicted.m_aCustomCores.base_ptr();
+	const CCustomCore* CoresPrev = Bridge.m_WorldCorePredictedPrev.m_aCustomCores.base_ptr();
 
 	duk_idx_t Array = duk_push_array(ctx);
 	for(int i = 0; i < Count; i++)
 	{
 		duk_idx_t ObjIdx = duk_push_object(ctx);
 
-		vec2 CurPos = Predicted.m_aCustomCores[i].m_Pos;
-		vec2 PrevPos = Current.m_aCustomCores[i].m_Pos;
-		vec2 Position = mix(PrevPos, CurPos, IntraTick);
+		int PrevID = -1;
+		for(int j = 0; j < CountPrev; j++)
+		{
+			if(CoresPrev[j].m_UID == Cores[i].m_UID)
+			{
+				PrevID = j;
+				break;
+			}
+		}
+
+		vec2 CurPos = Cores[i].m_Pos;
+		vec2 PrevPos;
+
+		// don't interpolate this one
+		if(PrevID == -1)
+			PrevPos = CurPos;
+		else
+			PrevPos = CoresPrev[PrevID].m_Pos;
+
+		vec2 Position = mix(PrevPos, CurPos, PredIntraTick);
 
 		DukSetIntProp(ctx, ObjIdx, "id", i);
 		DukSetFloatProp(ctx, ObjIdx, "x", Position.x);
 		DukSetFloatProp(ctx, ObjIdx, "y", Position.y);
-		DukSetFloatProp(ctx, ObjIdx, "radius", Current.m_aCustomCores[i].m_Radius);
+		DukSetFloatProp(ctx, ObjIdx, "radius", Cores[i].m_Radius);
 
 		duk_put_prop_index(ctx, Array, i);
 	}

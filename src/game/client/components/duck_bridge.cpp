@@ -171,17 +171,6 @@ void CDuckBridge::Reset()
 	m_MousePos = vec2(Graphics()->ScreenWidth() * 0.5, Graphics()->ScreenHeight() * 0.5);
 	m_IsMenuModeActive = false;
 	m_DoUnloadModBecauseError = false;
-
-	m_WorldCore.Reset();
-
-	m_CurrentRecvTick = -1;
-	m_AckGameTick = -1;
-	m_SnapCrcErrors = 0;
-	m_RecivedSnapshots = 0;
-	m_SnapshotParts = 0;
-	m_SnapshotStorage.PurgeAll();
-	m_CurGameTick = -1;
-	m_PrevGameTick = -1;
 }
 
 void CDuckBridge::QueueSetColor(const float* pColor)
@@ -1158,220 +1147,30 @@ void CDuckBridge::RenderWeaponAmmo(int WeaponID, vec2 Pos)
 	// TODO: do ammo?
 }
 
-void CDuckBridge::SnapshotReceive(int MsgID, CUnpacker *pUnpacker)
+void CDuckBridge::OnNewSnapshot()
 {
-	int NumParts = 1;
-	int Part = 0;
-	int GameTick = pUnpacker->GetInt();
-	int DeltaTick = GameTick-pUnpacker->GetInt();
-	int PartSize = 0;
-	int Crc = 0;
-	int CompleteSize = 0;
-	const char *pData = 0;
-
-	// we are not allowed to process snapshot yet
-	if(Client()->State() < IClient::STATE_LOADING)
+	if(!IsLoaded())
 		return;
 
-	if(MsgID == NETMSG_DUCK_SNAP)
-	{
-		NumParts = pUnpacker->GetInt();
-		Part = pUnpacker->GetInt();
-	}
-
-	if(MsgID != NETMSG_DUCK_SNAPEMPTY)
-	{
-		Crc = pUnpacker->GetInt();
-		PartSize = pUnpacker->GetInt();
-	}
-
-	//dbg_msg("duck", "received snapshot, PartSize=%d", PartSize);
-	pData = (const char *)pUnpacker->GetRaw(PartSize);
-
-	if(pUnpacker->Error() || NumParts < 1 || NumParts > CSnapshot::MAX_PARTS || Part < 0 || Part >= NumParts || PartSize < 0 || PartSize > MAX_SNAPSHOT_PACKSIZE)
-		return;
-
-	if(GameTick >= m_CurrentRecvTick)
-	{
-		if(GameTick != m_CurrentRecvTick)
-		{
-			m_SnapshotParts = 0;
-			m_CurrentRecvTick = GameTick;
-		}
-
-		// TODO: clean this up abit
-		mem_copy((char*)m_aSnapshotIncommingData + Part*MAX_SNAPSHOT_PACKSIZE, pData, PartSize);
-		m_SnapshotParts |= 1<<Part;
-
-		if(m_SnapshotParts == (unsigned)((1<<NumParts)-1))
-		{
-			static CSnapshot Emptysnap;
-			CSnapshot *pDeltaShot = &Emptysnap;
-			int PurgeTick;
-			void *pDeltaData;
-			int DeltaSize;
-			unsigned char aTmpBuffer2[CSnapshot::MAX_SIZE];
-			unsigned char aTmpBuffer3[CSnapshot::MAX_SIZE];
-			CSnapshot *pTmpBuffer3 = (CSnapshot*)aTmpBuffer3;	// Fix compiler warning for strict-aliasing
-			int SnapSize;
-
-			CompleteSize = (NumParts-1) * MAX_SNAPSHOT_PACKSIZE + PartSize;
-
-			// reset snapshoting
-			m_SnapshotParts = 0;
-
-			// find snapshot that we should use as delta
-			Emptysnap.Clear();
-
-			// find delta
-			if(DeltaTick >= 0)
-			{
-				int DeltashotSize = m_SnapshotStorage.Get(DeltaTick, 0, &pDeltaShot, 0);
-
-				if(DeltashotSize < 0)
-				{
-					// couldn't find the delta snapshots that the server used
-					// to compress this snapshot. force the server to resync
-					if(g_Config.m_Debug)
-					{
-						char aBuf[256];
-						str_format(aBuf, sizeof(aBuf), "error, couldn't find the delta snapshot");
-						Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "client", aBuf);
-					}
-
-					// ack snapshot
-					// TODO: combine this with the input message
-					m_AckGameTick = -1;
-					return;
-				}
-			}
-
-			// decompress snapshot
-			pDeltaData = m_SnapshotDelta.EmptyDelta();
-			DeltaSize = sizeof(int)*3;
-
-			if(CompleteSize)
-			{
-				int IntSize = CVariableInt::Decompress(m_aSnapshotIncommingData, CompleteSize, aTmpBuffer2, sizeof(aTmpBuffer2));
-
-				if(IntSize < 0) // failure during decompression, bail
-					return;
-
-				pDeltaData = aTmpBuffer2;
-				DeltaSize = IntSize;
-			}
-
-			// unpack delta
-			SnapSize = m_SnapshotDelta.UnpackDelta(pDeltaShot, pTmpBuffer3, pDeltaData, DeltaSize);
-			if(SnapSize < 0)
-			{
-				Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "duck", "delta unpack failed!");
-				return;
-			}
-
-			if(MsgID != NETMSG_DUCK_SNAPEMPTY && pTmpBuffer3->Crc() != Crc)
-			{
-				if(g_Config.m_Debug)
-				{
-					char aBuf[256];
-					str_format(aBuf, sizeof(aBuf), "snapshot crc error #%d - tick=%d wantedcrc=%d gotcrc=%d compressed_size=%d delta_tick=%d",
-						m_SnapCrcErrors, GameTick, Crc, pTmpBuffer3->Crc(), CompleteSize, DeltaTick);
-					Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "duck", aBuf);
-				}
-
-				m_SnapCrcErrors++;
-				/*if(m_SnapCrcErrors > 10)
-				{
-					// to many errors, send reset
-					m_AckGameTick = -1;
-					SendInput();
-					m_SnapCrcErrors = 0;
-				}*/
-				return;
-			}
-			else
-			{
-				if(m_SnapCrcErrors)
-					m_SnapCrcErrors--;
-			}
-
-			// purge old snapshots
-			PurgeTick = DeltaTick;
-			if(m_aSnapshots[SNAP_PREV] && m_aSnapshots[SNAP_PREV]->m_Tick < PurgeTick)
-				PurgeTick = m_aSnapshots[SNAP_PREV]->m_Tick;
-			if(m_aSnapshots[SNAP_CURRENT] && m_aSnapshots[SNAP_CURRENT]->m_Tick < PurgeTick)
-				PurgeTick = m_aSnapshots[SNAP_CURRENT]->m_Tick;
-			m_SnapshotStorage.PurgeUntil(PurgeTick);
-
-			// add new
-			m_SnapshotStorage.Add(GameTick, time_get(), SnapSize, pTmpBuffer3, 1);
-
-			// add snapshot to demo
-			/*if(m_DemoRecorder.IsRecording())
-			{
-				// build up snapshot and add local messages
-				m_DemoRecSnapshotBuilder.Init(pTmpBuffer3);
-				GameClient()->OnDemoRecSnap();
-				SnapSize = m_DemoRecSnapshotBuilder.Finish(pTmpBuffer3);
-
-				// write snapshot
-				m_DemoRecorder.RecordSnapshot(GameTick, pTmpBuffer3, SnapSize);
-			}*/
-
-			// apply snapshot, cycle pointers
-			m_RecivedSnapshots++;
-
-			m_CurrentRecvTick = GameTick;
-
-			// we got two snapshots until we see us self as connected
-			if(m_RecivedSnapshots == 2)
-			{
-				// start at 200ms and work from there
-				//m_PredictedTime.Init(GameTick*time_freq()/50);
-				//m_PredictedTime.SetAdjustSpeed(1, 1000.0f);
-				//m_GameTime.Init((GameTick-1)*time_freq()/50);
-				m_aSnapshots[SNAP_PREV] = m_SnapshotStorage.m_pFirst;
-				m_aSnapshots[SNAP_CURRENT] = m_SnapshotStorage.m_pLast;
-				//SetState(IClient::STATE_ONLINE);
-				//DemoRecorder_HandleAutoStart();
-			}
-
-			// adjust game time
-			if(m_RecivedSnapshots > 2)
-			{
-				/*int64 Now = m_GameTime.Get(time_get());
-				int64 TickStart = GameTick*time_freq()/50;
-				int64 TimeLeft = (TickStart-Now)*1000 / time_freq();
-				CGraph Graph; // TODO: save this maybe?
-				m_GameTime.Update(&Graph, (GameTick-1)*time_freq()/50, TimeLeft, 0);*/
-			}
-
-			// ack snapshot
-			m_AckGameTick = GameTick;
-		}
-	}
-}
-
-void CDuckBridge::OnNewDuckSnapshot()
-{
 	// reset snap
 	m_SnapPrev = m_Snap;
 	m_Snap.m_aCustomCores.set_size(0);
 
-	const int Num = m_aSnapshots[SNAP_CURRENT]->m_pSnap->NumItems();
-	for(int i = 0; i < Num; i++)
+	int Num = Client()->SnapNumItems(IClient::SNAP_CURRENT);
+	for(int Index = 0; Index < Num; Index++)
 	{
-		const CSnapshotItem *pItem = m_aSnapshots[SNAP_CURRENT]->m_pAltSnap->GetItem(i);
-		// OnDuckSnapItem(pItem); TODO: enable
+		IClient::CSnapItem Item;
+		const void *pData = Client()->SnapGetItem(IClient::SNAP_CURRENT, Index, &Item);
 
-		const int ID = pItem->ID();
-		const int Type = pItem->Type();
+		const int ID = Item.m_ID;
+		const int Type = Item.m_Type;
+		const int Size = Item.m_DataSize;
 
-		if(Type == CNetObj_DuckCharCoreExtra::NET_ID)
+		if(Type == CNetObj_DuckCharCoreExtra::NET_ID && Size == sizeof(CNetObj_DuckCharCoreExtra))
 		{
 			if(ID >= 0 && ID < MAX_CLIENTS)
 			{
-				m_Snap.m_aCharCoreExtra[ID] = *(CNetObj_DuckCharCoreExtra*)pItem->Data();
+				m_Snap.m_aCharCoreExtra[ID] = *(CNetObj_DuckCharCoreExtra*)pData;
 			}
 			else if(g_Config.m_Debug)
 			{
@@ -1379,9 +1178,9 @@ void CDuckBridge::OnNewDuckSnapshot()
 			}
 		}
 
-		if(Type == CNetObj_DuckCustomCore::NET_ID)
+		if(Type == CNetObj_DuckCustomCore::NET_ID && Size == sizeof(CNetObj_DuckCustomCore))
 		{
-			m_Snap.m_aCustomCores.add(*(CNetObj_DuckCustomCore*)pItem->Data());
+			m_Snap.m_aCustomCores.add(*(CNetObj_DuckCustomCore*)pData);
 		}
 	}
 
@@ -2092,15 +1891,6 @@ void CDuckBridge::OnInit()
 	m_MousePos = vec2(Graphics()->ScreenWidth() * 0.5, Graphics()->ScreenHeight() * 0.5);
 	m_IsMenuModeActive = false;
 	m_DoUnloadModBecauseError = false;
-
-	m_CurrentRecvTick = -1;
-	m_AckGameTick = -1;
-	m_SnapCrcErrors = 0;
-	m_RecivedSnapshots = 0;
-	m_SnapshotParts = 0;
-	m_CurGameTick = -1;
-	m_PrevGameTick = -1;
-	m_SnapshotStorage.Init();
 }
 
 void CDuckBridge::OnReset()
@@ -2123,45 +1913,6 @@ void CDuckBridge::OnRender()
 
 	if(Client()->State() != IClient::STATE_ONLINE || !IsLoaded())
 		return;
-
-	// snapshot
-	if(m_RecivedSnapshots >= 3)
-	{
-		// switch snapshot
-		int64 Freq = time_freq();
-		int64 Now;
-		int64 PredNow;
-		Client()->GetGameAndPredictedTime(&Now, &PredNow);
-
-		while(1)
-		{
-			CSnapshotStorage::CHolder *pCur = m_aSnapshots[SNAP_CURRENT];
-			int64 TickStart = (pCur->m_Tick)*Freq/50;
-
-			if(TickStart < Now)
-			{
-				CSnapshotStorage::CHolder *pNext = m_aSnapshots[SNAP_CURRENT]->m_pNext;
-				if(pNext)
-				{
-					m_aSnapshots[SNAP_PREV] = m_aSnapshots[SNAP_CURRENT];
-					m_aSnapshots[SNAP_CURRENT] = pNext;
-
-					// set ticks
-					m_CurGameTick = m_aSnapshots[SNAP_CURRENT]->m_Tick;
-					m_PrevGameTick = m_aSnapshots[SNAP_PREV]->m_Tick;
-
-					if(m_aSnapshots[SNAP_CURRENT] && m_aSnapshots[SNAP_PREV])
-					{
-						OnNewDuckSnapshot();
-					}
-				}
-				else
-					break;
-			}
-			else
-				break;
-		}
-	}
 
 	m_FrameAllocator.Clear(); // clear frame allocator
 

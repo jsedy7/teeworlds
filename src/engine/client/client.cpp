@@ -1578,10 +1578,6 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 					dbg_msg("duck", "requested next mod chunk package");
 			}
 		}
-		else if(Msg == NETMSG_DUCK_SNAP || Msg == NETMSG_DUCK_SNAPSINGLE || Msg == NETMSG_DUCK_SNAPEMPTY)
-		{
-			GameClient()->DuckBridge()->SnapshotReceive(Msg, &Unpacker);
-		}
 	}
 	else
 	{
@@ -2627,14 +2623,6 @@ void CClient::SendDuckModReady()
 {
 	CMsgPacker Msg(NETMSG_DUCK_MOD_READY, true);
 	SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH);
-}
-
-void CClient::GetGameAndPredictedTime(int64 *pGame, int64 *pPredicted) const
-{
-	CSmoothTime GameCopy = m_GameTime;
-	CSmoothTime PredictedCopy = m_PredictedTime;
-	*pGame = GameCopy.Get(time_get());
-	*pPredicted = PredictedCopy.Get(time_get());
 }
 
 

@@ -66,14 +66,14 @@ CGameControllerExamplePhys1::CGameControllerExamplePhys1(class CGameContext *pGa
 
 	CDuckCollision* pCollision = (CDuckCollision*)GameServer()->Collision();
 	m_DuckWorldCore.Init(&GameServer()->m_World.m_Core, pCollision);
-	//m_TestCoreID = m_DuckWorldCore.AddCustomCore(40);
-	//m_DuckWorldCore.m_aCustomCores[m_TestCoreID].m_Pos = vec2(500, 280);
+	m_TestCoreID = m_DuckWorldCore.AddCustomCore(40);
+	m_DuckWorldCore.m_aCustomCores[m_TestCoreID].m_Pos = vec2(500, 280);
 
-	for(int i = 0; i < 100; i++)
+	/*for(int i = 0; i < 100; i++)
 	{
 		int CoreID = m_DuckWorldCore.AddCustomCore(15 + (random_int() % 25));
 		m_DuckWorldCore.m_aCustomCores[CoreID].m_Pos = vec2(500 + (random_int() % 25), 280);
-	}
+	}*/
 }
 
 void CGameControllerExamplePhys1::OnPlayerConnect(CPlayer* pPlayer)
@@ -86,7 +86,6 @@ void CGameControllerExamplePhys1::Tick()
 {
 	IGameController::Tick();
 	m_DuckWorldCore.Tick();
-	//m_DuckWorldCore.SendAllCoreData(GameServer());
 
 	/*if(random_int() % 40 == 0)
 	{

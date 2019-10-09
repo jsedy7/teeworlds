@@ -1026,6 +1026,9 @@ void CGameClient::OnNewSnapshot()
 	// clear out the invalid pointers
 	mem_zero(&m_Snap, sizeof(m_Snap));
 
+	// DUCK
+	m_pDuckBridge->OnNewSnapshot();
+
 	// secure snapshot
 	{
 		int Num = Client()->SnapNumItems(IClient::SNAP_CURRENT);
@@ -1080,7 +1083,6 @@ void CGameClient::OnNewSnapshot()
 		{
 			IClient::CSnapItem Item;
 			const void *pData = Client()->SnapGetItem(IClient::SNAP_CURRENT, i, &Item);
-			m_pDuckBridge->OnSnapItem(Item.m_Type, (void*)pData); // DUCK
 
 			// demo items
 			if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
@@ -1414,19 +1416,18 @@ void CGameClient::OnPredict()
 		m_aClients[i].m_Predicted.Read(&m_Snap.m_aCharacters[i].m_Cur);
 	}
 
+	CDuckWorldCore DuckWorld;
 	if(m_pDuckBridge->IsLoaded())
 	{
-		m_pDuckBridge->m_WorldCore.Reset();
+		DuckWorld.Init(&World, &m_pDuckBridge->m_Collision);
+
 		CNetObj_DuckCustomCore* pNetCores = m_pDuckBridge->m_Snap.m_aCustomCores.base_ptr();
 		const int NetCoreCount = m_pDuckBridge->m_Snap.m_aCustomCores.size();
-		for(int i = 0; i < NetCoreCount; i++)
-			m_pDuckBridge->m_WorldCore.m_aCustomCores.add(pNetCores[i].m_Core);
-		for(int i = 0; i < MAX_CLIENTS; i++)
-			m_pDuckBridge->m_WorldCore.m_aBaseCoreExtras[i] = m_pDuckBridge->m_Snap.m_aCharCoreExtra[i].m_Extra;
 
-		m_pDuckBridge->m_WorldCorePredicted.Copy(&m_pDuckBridge->m_WorldCore);
-		m_pDuckBridge->m_WorldCorePredicted.m_pBaseWorldCore = &World;
-		m_pDuckBridge->m_WorldCorePredicted.m_pCollision = &m_pDuckBridge->m_Collision;
+		for(int i = 0; i < NetCoreCount; i++)
+			DuckWorld.m_aCustomCores.add(pNetCores[i].m_Core);
+		for(int i = 0; i < MAX_CLIENTS; i++)
+			DuckWorld.m_aBaseCoreExtras[i] = m_pDuckBridge->m_Snap.m_aCharCoreExtra[i].m_Extra;
 	}
 
 	// predict
@@ -1435,6 +1436,9 @@ void CGameClient::OnPredict()
 		// fetch the local
 		if(Tick == Client()->PredGameTick() && World.m_apCharacters[m_LocalClientID])
 			m_PredictedPrevChar = *World.m_apCharacters[m_LocalClientID];
+
+		if(Tick == Client()->PredGameTick())
+			m_pDuckBridge->m_WorldCorePredictedPrev.Copy(&DuckWorld);
 
 		// first calculate where everyone should move
 		for(int c = 0; c < MAX_CLIENTS; c++)
@@ -1470,7 +1474,7 @@ void CGameClient::OnPredict()
 
 		if(m_pDuckBridge->IsLoaded())
 		{
-			m_pDuckBridge->m_WorldCorePredicted.Tick();
+			DuckWorld.Tick();
 		}
 
 		// move all players and quantize their data
@@ -1496,6 +1500,9 @@ void CGameClient::OnPredict()
 
 		if(Tick == Client()->PredGameTick() && World.m_apCharacters[m_LocalClientID])
 			m_PredictedChar = *World.m_apCharacters[m_LocalClientID];
+
+		if(Tick == Client()->PredGameTick())
+			m_pDuckBridge->m_WorldCorePredicted.Copy(&DuckWorld);
 	}
 
 	if(g_Config.m_Debug && g_Config.m_ClPredict && m_PredictedTick == Client()->PredGameTick())

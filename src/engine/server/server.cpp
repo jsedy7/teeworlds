@@ -588,11 +588,7 @@ void CServer::DoSnapshot()
 
 			m_SnapshotBuilder.Init();
 
-			DuckPreSnap(i);
-
 			GameServer()->OnSnap(i);
-
-			DuckPostSnap(i);
 
 			// finish snapshot
 			SnapshotSize = m_SnapshotBuilder.Finish(pData);
@@ -690,7 +686,6 @@ int CServer::NewClientCallback(int ClientID, void *pUser)
 	pThis->m_aClients[ClientID].m_NoRconNote = false;
 	pThis->m_aClients[ClientID].m_Quitting = false;
 	pThis->m_aClients[ClientID].Reset();
-	pThis->DuckClientReset(ClientID); // DUCK
 	return 0;
 }
 
@@ -1835,11 +1830,6 @@ void CServer::ResetDuckMod()
 	mem_zero(m_aDuckDevModFolderPath, sizeof(m_aDuckDevModFolderPath));
 	mem_zero(m_aDuckModZipPath, sizeof(m_aDuckModZipPath));
 	mem_zero(m_aDuckModReleaseUrl, sizeof(m_aDuckModReleaseUrl));
-
-	for(int i = 0; i < MAX_CLIENTS; i++)
-	{
-		m_aDuckClientSnapshots[i].Init();
-	}
 }
 
 // DUCK
@@ -2129,8 +2119,6 @@ void CServer::SendDuckModChunks(int ClientID)
 
 bool CServer::SendDuckMod(int ClientID)
 {
-	DuckClientReset(ClientID);
-
 	if(m_aDuckDevModFolderPath[0] == 0) // there is not a duck mod
 		return false;
 
@@ -2167,121 +2155,6 @@ bool CServer::TryGetDuckClientInfo(int ClientID, CUnpacker *pUnpacker)
 bool CServer::IsDuckClient(int ClientID)
 {
 	return m_aClients[ClientID].m_DuckVersion != 0;
-}
-
-void CServer::DuckPreSnap(int ClientID)
-{
-	m_DuckSnapshotBuilder.Init();
-}
-
-void CServer::DuckPostSnap(int ClientID)
-{
-	char aData[CSnapshot::MAX_SIZE];
-	CSnapshot *pData = (CSnapshot*)aData;	// Fix compiler warning for strict-aliasing
-	char aDeltaData[CSnapshot::MAX_SIZE];
-	char aCompData[CSnapshot::MAX_SIZE];
-	int SnapshotSize;
-	int Crc;
-	static CSnapshot EmptySnap;
-	CSnapshot *pDeltashot = &EmptySnap;
-	int DeltashotSize;
-	int DeltaTick = -1;
-	int DeltaSize;
-
-	// finish snapshot
-	SnapshotSize = m_DuckSnapshotBuilder.Finish(pData);
-	Crc = pData->Crc();
-
-	// remove old snapshos
-	// keep 3 seconds worth of snapshots
-	m_aDuckClientSnapshots[ClientID].PurgeUntil(m_CurrentGameTick-SERVER_TICK_SPEED*3);
-
-	// save it the snapshot
-	m_aDuckClientSnapshots[ClientID].Add(m_CurrentGameTick, time_get(), SnapshotSize, pData, 0);
-
-	// find snapshot that we can preform delta against
-	EmptySnap.Clear();
-
-	m_aDuckClientLastAckedSnapshot[ClientID] = m_aClients[ClientID].m_LastAckedSnapshot;
-
-	{
-		DeltashotSize = m_aDuckClientSnapshots[ClientID].Get(m_aDuckClientLastAckedSnapshot[ClientID], 0, &pDeltashot, 0);
-		if(DeltashotSize >= 0)
-			DeltaTick = m_aDuckClientLastAckedSnapshot[ClientID];
-		else
-		{
-			// no acked package found, force client to recover rate
-			if(m_aDuckClientSnapRate[ClientID] == CClient::SNAPRATE_FULL)
-				m_aDuckClientSnapRate[ClientID] = CClient::SNAPRATE_RECOVER;
-		}
-	}
-
-	// create delta
-	DeltaSize = m_DuckSnapshotDelta.CreateDelta(pDeltashot, pData, aDeltaData);
-
-	if(DeltaSize)
-	{
-		// compress it
-		int SnapshotSize;
-		const int MaxSize = MAX_SNAPSHOT_PACKSIZE;
-		int NumPackets;
-
-		SnapshotSize = CVariableInt::Compress(aDeltaData, DeltaSize, aCompData, sizeof(aCompData));
-		NumPackets = (SnapshotSize+MaxSize-1)/MaxSize;
-
-		//dbg_msg("duck", "snapshot compression ratio: %g", DeltaSize/(float)SnapshotSize);
-
-		for(int n = 0, Left = SnapshotSize; Left > 0; n++)
-		{
-			int Chunk = Left < MaxSize ? Left : MaxSize;
-			Left -= Chunk;
-
-			if(NumPackets == 1)
-			{
-				CMsgPacker Msg(NETMSG_DUCK_SNAPSINGLE, true);
-				Msg.AddInt(m_CurrentGameTick);
-				Msg.AddInt(m_CurrentGameTick-DeltaTick);
-				Msg.AddInt(Crc);
-				Msg.AddInt(Chunk);
-				Msg.AddRaw(&aCompData[n*MaxSize], Chunk);
-				SendMsg(&Msg, MSGFLAG_FLUSH, ClientID);
-			}
-			else
-			{
-				CMsgPacker Msg(NETMSG_DUCK_SNAP, true);
-				Msg.AddInt(m_CurrentGameTick);
-				Msg.AddInt(m_CurrentGameTick-DeltaTick);
-				Msg.AddInt(NumPackets);
-				Msg.AddInt(n);
-				Msg.AddInt(Crc);
-				Msg.AddInt(Chunk);
-				Msg.AddRaw(&aCompData[n*MaxSize], Chunk);
-				SendMsg(&Msg, MSGFLAG_FLUSH, ClientID);
-			}
-		}
-	}
-	else
-	{
-		CMsgPacker Msg(NETMSG_DUCK_SNAPEMPTY, true);
-		Msg.AddInt(m_CurrentGameTick);
-		Msg.AddInt(m_CurrentGameTick-DeltaTick);
-		SendMsg(&Msg, MSGFLAG_FLUSH, ClientID);
-	}
-}
-
-void CServer::DuckClientReset(int ClientID)
-{
-	m_aDuckClientSnapshots[ClientID].PurgeAll();
-	m_aDuckClientSnapRate[ClientID] = CClient::SNAPRATE_INIT;
-	m_aDuckClientLastAckedSnapshot[ClientID] = -1;
-}
-
-void *CServer::_DuckSnapNewItem(int Type, int ItemID, int Size)
-{
-	dbg_assert(Type >= 0 && Type <=0xffff, "incorrect type");
-	dbg_assert(ItemID >= 0 && ItemID <=0xffff, "incorrect id");
-	//m_DuckSnapshotDelta.SetStaticsize(Type, Size); // TODO: is this useful? EDIT: yeah it causes a crash
-	return m_DuckSnapshotBuilder.NewItem(Type, ItemID, Size);
 }
 
 bool CServer::LoadDuckMod(const char* pReleaseUrl, const char* pReleaseZipPath, const char* pDevFolderPath)

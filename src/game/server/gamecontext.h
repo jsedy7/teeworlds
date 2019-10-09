@@ -202,7 +202,7 @@ public:
 	T* DuckSnapNewItem(int ItemID)
 	{
 		const int Type = T::NET_ID;
-		return (T*)Server()->_DuckSnapNewItem(Type, ItemID, sizeof(T));
+		return (T*)Server()->SnapNewItem(Type, ItemID, sizeof(T));
 	}
 };
 
