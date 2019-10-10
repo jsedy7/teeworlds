@@ -94,6 +94,17 @@ struct CCustomCore
 		Write(&NetObj);
 		Read(NetObj);
 	}
+
+	void Reset()
+	{
+		m_UID = -1;
+		m_Pos = vec2(0,0);
+		m_Vel = vec2(0,0);
+		m_HookPos = vec2(0,0);
+		m_IsHooked = false;
+		m_HookedCustomCoreUID = -1;
+		m_Radius = 20;
+	}
 };
 
 struct CDuckWorldCore

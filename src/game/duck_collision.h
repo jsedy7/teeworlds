@@ -56,5 +56,6 @@ public:
 	void Tick(CWorldCore* pWorld);
 	void Reset();
 
-	void MoveBoxCornerSignal(vec2 *pInoutPos, vec2 *pInoutVel, vec2 Size, float Elasticity, bool *pCorner) const;
+	bool TestBoxBig(vec2 Pos, vec2 Size, int Flag=COLFLAG_SOLID) const;
+	void MoveBoxBig(vec2 *pInoutPos, vec2 *pInoutVel, vec2 Size, float Elasticity) const;
 };

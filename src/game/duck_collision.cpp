@@ -170,8 +170,53 @@ void CDuckCollision::Reset()
 	}
 }
 
-// Same as CCollision::MoveBox, but signal if the corner case is reached
-void CDuckCollision::MoveBoxCornerSignal(vec2 *pInoutPos, vec2 *pInoutVel, vec2 Size, float Elasticity, bool *pCorner) const
+bool CDuckCollision::TestBoxBig(vec2 Pos, vec2 Size, int Flag) const
+{
+	const float MinStaticPhysSize = 30; // actually the smallest boject right now is a map tile (32 x 32)
+
+	if(TestBox(Pos, Size, Flag))
+		return true;
+
+	// multi sample the rest
+	const int MsCount = (int)(Size.x / MinStaticPhysSize);
+	const float MsGap = Size.x / MsCount;
+
+	if(!MsCount)
+		return false;
+
+	Size *= 0.5;
+
+	// top
+	for(int i = 0; i < MsCount; i++)
+	{
+		if(CheckPoint(Pos.x-Size.x + (i+1) * MsGap, Pos.y-Size.y, Flag))
+			return true;
+	}
+
+	// bottom
+	for(int i = 0; i < MsCount; i++)
+	{
+		if(CheckPoint(Pos.x-Size.x + (i+1) * MsGap, Pos.y+Size.y, Flag))
+			return true;
+	}
+
+	// left
+	for(int i = 0; i < MsCount; i++)
+	{
+		if(CheckPoint(Pos.x-Size.x, Pos.y-Size.y + (i+1) * MsGap, Flag))
+			return true;
+	}
+
+	// right
+	for(int i = 0; i < MsCount; i++)
+	{
+		if(CheckPoint(Pos.x+Size.x, Pos.y-Size.y + (i+1) * MsGap, Flag))
+			return true;
+	}
+	return 0;
+}
+
+void CDuckCollision::MoveBoxBig(vec2 *pInoutPos, vec2 *pInoutVel, vec2 Size, float Elasticity) const
 {
 	// do the move
 	vec2 Pos = *pInoutPos;
@@ -179,8 +224,6 @@ void CDuckCollision::MoveBoxCornerSignal(vec2 *pInoutPos, vec2 *pInoutVel, vec2 
 
 	float Distance = length(Vel);
 	int Max = (int)Distance;
-
-	*pCorner = false;
 
 	if(Distance > 0.00001f)
 	{
@@ -194,18 +237,18 @@ void CDuckCollision::MoveBoxCornerSignal(vec2 *pInoutPos, vec2 *pInoutVel, vec2 
 
 			vec2 NewPos = Pos + Vel*Fraction; // TODO: this row is not nice
 
-			if(TestBox(vec2(NewPos.x, NewPos.y), Size))
+			if(TestBoxBig(vec2(NewPos.x, NewPos.y), Size))
 			{
 				int Hits = 0;
 
-				if(TestBox(vec2(Pos.x, NewPos.y), Size))
+				if(TestBoxBig(vec2(Pos.x, NewPos.y), Size))
 				{
 					NewPos.y = Pos.y;
 					Vel.y *= -Elasticity;
 					Hits++;
 				}
 
-				if(TestBox(vec2(NewPos.x, Pos.y), Size))
+				if(TestBoxBig(vec2(NewPos.x, Pos.y), Size))
 				{
 					NewPos.x = Pos.x;
 					Vel.x *= -Elasticity;
@@ -216,7 +259,6 @@ void CDuckCollision::MoveBoxCornerSignal(vec2 *pInoutPos, vec2 *pInoutVel, vec2 
 				// this is a real _corner case_!
 				if(Hits == 0)
 				{
-					*pCorner = true;
 					NewPos.y = Pos.y;
 					Vel.y *= -Elasticity;
 					NewPos.x = Pos.x;
@@ -231,7 +273,6 @@ void CDuckCollision::MoveBoxCornerSignal(vec2 *pInoutPos, vec2 *pInoutVel, vec2 
 	*pInoutPos = Pos;
 	*pInoutVel = Vel;
 }
-
 void CDuckCollision::CDynamicDisk::Tick(CDuckCollision *pCollision, CWorldCore *pWorld)
 {
 	const float PhysSize = 28;

@@ -326,76 +326,8 @@ void CDuckWorldCore::CustomCore_Move(CCustomCore *pThis)
 
 	vec2 NewPos = pThis->m_Pos;
 
-	// split into several boxes if size is >= TileSize
-	// TODO: this is not great, make a MoveCircle function (check velocity vector as x/y stairs)
-	const float MaxPhysSize = 31;
-	if(PhysSize > MaxPhysSize)
-	{
-		float MinDeltaX = 100000000000.0f;
-		float MinDeltaY = 100000000000.0f;
-		float MinVelX   = 100000000000.0f;
-		float MinVelY   = 100000000000.0f;
-
-		for(float byi = -PhysSize * 0.5; byi < PhysSize * 0.5; byi += MaxPhysSize * 0.5)
-		{
-			bool LastY = false;
-
-			for(float bxi = -PhysSize * 0.5; bxi < PhysSize * 0.5; bxi += MaxPhysSize * 0.5)
-			{
-				bool LastX = false;
-
-				vec2 StartPos = pThis->m_Pos + vec2(bxi, byi) + vec2(MaxPhysSize * 0.5, MaxPhysSize * 0.5);
-				if(bxi + MaxPhysSize > PhysSize * 0.5)
-				{
-					StartPos.x -= MaxPhysSize - (PhysSize * 0.5 - bxi);
-					LastX = true;
-				}
-				if(byi + MaxPhysSize > PhysSize * 0.5)
-				{
-					StartPos.y -= MaxPhysSize - (PhysSize * 0.5 - byi);
-					LastY = true;
-				}
-
-				vec2 TestPos = StartPos;
-				vec2 StartVel = pThis->m_Vel;
-				vec2 TestVel = StartVel;
-
-				// FIXME: this is supposed to be MoveBox(), but the corner case causes issues
-				bool Corner = false;
-				m_pCollision->MoveBoxCornerSignal(&TestPos, &TestVel, vec2(MaxPhysSize, MaxPhysSize), 0, &Corner);
-				if(Corner)
-					continue;
-
-				float DeltaX = TestPos.x - StartPos.x;
-				float DeltaY = TestPos.y - StartPos.y;
-
-				if(fabs(DeltaX) < fabs(MinDeltaX))
-					MinDeltaX = DeltaX;
-				if(fabs(DeltaY) < fabs(MinDeltaY))
-					MinDeltaY = DeltaY;
-
-				if(fabs(TestVel.x) < fabs(MinVelX))
-					MinVelX = TestVel.x;
-				if(fabs(TestVel.y) < fabs(MinVelY))
-					MinVelY = TestVel.y;
-
-				if(LastX)
-					break;
-			}
-
-			if(LastY)
-				break;
-		}
-
-		//dbg_msg("duck", "ActualCornerCount=%d", ActualCornerCount);
-
-		NewPos += vec2(MinDeltaX, MinDeltaY);
-		pThis->m_Vel = vec2(MinVelX, MinVelY);
-	}
-	else
-	{
-		m_pCollision->MoveBox(&NewPos, &pThis->m_Vel, vec2(PhysSize, PhysSize), 0, NULL);
-	}
+	// NOTE: this is MoveBox() with more sampling
+	m_pCollision->MoveBoxBig(&NewPos, &pThis->m_Vel, vec2(PhysSize, PhysSize), 0);
 
 	pThis->m_Vel.x = pThis->m_Vel.x*(1.0f/RampValue);
 
@@ -456,7 +388,7 @@ void CDuckWorldCore::CustomCore_Move(CCustomCore *pThis)
 int CDuckWorldCore::AddCustomCore(float Radius)
 {
 	CCustomCore Core;
-	mem_zero(&Core, sizeof(Core));
+	Core.Reset();
 	Core.m_Radius = Radius;
 	Core.m_UID = m_NextUID++;
 	return m_aCustomCores.add(Core);
