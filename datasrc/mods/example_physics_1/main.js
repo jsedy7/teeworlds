@@ -69,13 +69,14 @@ function OnLoaded()
 
 function OnUpdate(clientLocalTime, intraTick)
 {
-    cores = TwGetDuckCores();
+    
 }
 
 function OnRender(clientLocalTime, intraTick)
 {
     TwRenderSetDrawSpace(Teeworlds.DRAW_SPACE_GAME_FOREGROUND);
 
+    cores = TwGetDuckCores();
     for(var i = 0; i < cores.length; i++) {
         const core = cores[i];
         TwRenderSetColorF4(1, 1, 1, 1);

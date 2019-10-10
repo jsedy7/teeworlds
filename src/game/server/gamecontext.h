@@ -201,7 +201,7 @@ public:
 	template<typename T>
 	T* DuckSnapNewItem(int ItemID)
 	{
-		const int Type = T::NET_ID;
+		const int Type = T::NET_ID + NUM_NETOBJTYPES;
 		return (T*)Server()->SnapNewItem(Type, ItemID, sizeof(T));
 	}
 };

@@ -1518,27 +1518,28 @@ duk_ret_t CDuckJs::NativeGetDuckCores(duk_context *ctx)
 	float IntraTick = pClient->IntraGameTick();
 	float PredIntraTick = pClient->PredIntraGameTick();
 	const CDuckBridge& Bridge = *This()->Bridge();
+
 	const int Count = Bridge.m_WorldCorePredicted.m_aCustomCores.size();
-	const int CountPrev = Bridge.m_WorldCorePredictedPrev.m_aCustomCores.size();
 	const CCustomCore* Cores = Bridge.m_WorldCorePredicted.m_aCustomCores.base_ptr();
+	const int CountPrev = Bridge.m_WorldCorePredictedPrev.m_aCustomCores.size();
 	const CCustomCore* CoresPrev = Bridge.m_WorldCorePredictedPrev.m_aCustomCores.base_ptr();
 
 	duk_idx_t Array = duk_push_array(ctx);
-	for(int i = 0; i < Count; i++)
+	for(int CurI = 0; CurI < Count; CurI++)
 	{
 		duk_idx_t ObjIdx = duk_push_object(ctx);
 
 		int PrevID = -1;
-		for(int j = 0; j < CountPrev; j++)
+		for(int PrevI = 0; PrevI < CountPrev; PrevI++)
 		{
-			if(CoresPrev[j].m_UID == Cores[i].m_UID)
+			if(CoresPrev[PrevI].m_UID == Cores[CurI].m_UID)
 			{
-				PrevID = j;
+				PrevID = PrevI;
 				break;
 			}
 		}
 
-		vec2 CurPos = Cores[i].m_Pos;
+		vec2 CurPos = Cores[CurI].m_Pos;
 		vec2 PrevPos;
 
 		// don't interpolate this one
@@ -1549,13 +1550,52 @@ duk_ret_t CDuckJs::NativeGetDuckCores(duk_context *ctx)
 
 		vec2 Position = mix(PrevPos, CurPos, PredIntraTick);
 
-		DukSetIntProp(ctx, ObjIdx, "id", i);
+		DukSetIntProp(ctx, ObjIdx, "id", CurI);
 		DukSetFloatProp(ctx, ObjIdx, "x", Position.x);
 		DukSetFloatProp(ctx, ObjIdx, "y", Position.y);
-		DukSetFloatProp(ctx, ObjIdx, "radius", Cores[i].m_Radius);
+		DukSetFloatProp(ctx, ObjIdx, "radius", Cores[CurI].m_Radius);
 
-		duk_put_prop_index(ctx, Array, i);
+		duk_put_prop_index(ctx, Array, CurI);
 	}
+
+	/*const int Count = Bridge.m_Snap.m_aCustomCores.size();
+	const CNetObj_DuckCustomCore* Cores = Bridge.m_Snap.m_aCustomCores.base_ptr();
+	const int CountPrev = Bridge.m_SnapPrev.m_aCustomCores.size();
+	const CNetObj_DuckCustomCore* CoresPrev = Bridge.m_SnapPrev.m_aCustomCores.base_ptr();
+
+	duk_idx_t Array = duk_push_array(ctx);
+	for(int CurI = 0; CurI < Count; CurI++)
+	{
+		duk_idx_t ObjIdx = duk_push_object(ctx);
+
+		int PrevID = -1;
+		for(int PrevI = 0; PrevI < CountPrev; PrevI++)
+		{
+			if(CoresPrev[PrevI].m_UID == Cores[CurI].m_UID)
+			{
+				PrevID = PrevI;
+				break;
+			}
+		}
+
+		vec2 CurPos = vec2(Cores[CurI].m_PosX / 256.f, Cores[CurI].m_PosY / 256.f);
+		vec2 PrevPos;
+
+		// don't interpolate this one
+		if(PrevID == -1)
+			PrevPos = CurPos;
+		else
+			PrevPos = vec2(CoresPrev[PrevID].m_PosX / 256.f, CoresPrev[PrevID].m_PosY / 256.f);;
+
+		vec2 Position = mix(PrevPos, CurPos, IntraTick);
+
+		DukSetIntProp(ctx, ObjIdx, "id", CurI);
+		DukSetFloatProp(ctx, ObjIdx, "x", Position.x);
+		DukSetFloatProp(ctx, ObjIdx, "y", Position.y);
+		DukSetFloatProp(ctx, ObjIdx, "radius", Cores[CurI].m_Radius / 256.f);
+
+		duk_put_prop_index(ctx, Array, CurI);
+	}*/
 
 	return 1;
 }

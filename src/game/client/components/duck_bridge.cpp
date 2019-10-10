@@ -1082,15 +1082,6 @@ void CDuckBridge::CharacterCorePostTick(CCharacterCore** apCharCores)
 void CDuckBridge::Predict(CWorldCore* pWorld)
 {
 	// TODO: fix this
-	/*const int DiskCount = m_Collision.m_aDynamicDisks.size();
-	for(int i = 0; i < DiskCount; i++)
-	{
-		m_Collision.m_aDynamicDisks[i].Tick(&m_Collision, pWorld);
-	}
-	for(int i = 0; i < DiskCount; i++)
-	{
-		m_Collision.m_aDynamicDisks[i].Move(&m_Collision, pWorld);
-	}*/
 }
 
 void CDuckBridge::RenderPlayerWeapon(int WeaponID, vec2 Pos, float AttachAngle, float Angle, CTeeRenderInfo* pRenderInfo, float RecoilAlpha)
@@ -1163,7 +1154,7 @@ void CDuckBridge::OnNewSnapshot()
 		const void *pData = Client()->SnapGetItem(IClient::SNAP_CURRENT, Index, &Item);
 
 		const int ID = Item.m_ID;
-		const int Type = Item.m_Type;
+		const int Type = Item.m_Type - NUM_NETOBJTYPES;
 		const int Size = Item.m_DataSize;
 
 		if(Type == CNetObj_DuckCharCoreExtra::NET_ID && Size == sizeof(CNetObj_DuckCharCoreExtra))

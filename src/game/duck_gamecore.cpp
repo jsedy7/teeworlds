@@ -30,6 +30,9 @@ void CDuckWorldCore::Reset()
 
 void CDuckWorldCore::Tick()
 {
+	// base characters will Tick() and Move() before
+	// TODO: we need to tick before Move() somehow
+
 	CCharacterCore** aBaseCores = m_pBaseWorldCore->m_apCharacters;
 
 	for(int i = 0; i < MAX_CLIENTS; i++)
@@ -52,12 +55,11 @@ void CDuckWorldCore::Tick()
 		if(m_aCustomCores[i].m_UID < 0)
 			continue;
 		CustomCore_Move(&m_aCustomCores[i]);
+		m_aCustomCores[i].Quantize();
 	}
-
-	// base characters will Move() elsewhere
 }
 
-void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCoreExtra* pThisExtra, bool UseInput)
+void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCharCoreExtra* pThisExtra, bool UseInput)
 {
 	const float PhysSize = 28.f;
 	const int AdditionnalCount = m_aCustomCores.size();
@@ -102,8 +104,8 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCoreExtra* 
 
 	if(pThisExtra->m_OldHookState == HOOK_FLYING)
 	{
-		vec2 OldPos = pThisExtra->m_OldHookPos;
-		vec2 NewPos = pThis->m_HookPos; // we're already at the new position
+		vec2 OldPos = pThis->m_HookPos-pThis->m_HookDir*m_pBaseWorldCore->m_Tuning.m_HookFireSpeed;
+		vec2 NewPos = pThis->m_HookPos;
 
 		// Check against other players first
 		if(m_pBaseWorldCore && m_pBaseWorldCore->m_Tuning.m_PlayerHooking)
@@ -182,7 +184,6 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCoreExtra* 
 		}
 	}
 
-	pThisExtra->m_OldHookPos = pThis->m_HookPos;
 	pThisExtra->m_OldHookState = pThis->m_HookState;
 }
 
@@ -211,13 +212,13 @@ void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis)
 		if(HookedCustomRealID == -1)
 		{
 			pThis->m_HookedCustomCoreUID = -1;
-			pThis->m_HookState = HOOK_RETRACT_START;
+			pThis->m_IsHooked = false;
 		}
 	}
 
-	if(pThis->m_HookState == HOOK_GRABBED)
+	if(pThis->m_IsHooked)
 	{
-		if(pThis->m_HookedPlayer == -1 && pThis->m_HookedCustomCoreUID != -1)
+		if(pThis->m_HookedCustomCoreUID != -1)
 		{
 			CCustomCore *pCore = &m_aCustomCores[HookedCustomRealID];
 			pThis->m_HookPos = pCore->m_Pos;
@@ -293,7 +294,7 @@ void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis)
 		}
 
 		// handle hook influence
-		if(pThis->m_HookedPlayer == -1 && pThis->m_HookedCustomCoreUID == pCore->m_UID && m_pBaseWorldCore->m_Tuning.m_PlayerHooking)
+		if(pThis->m_HookedCustomCoreUID == pCore->m_UID && m_pBaseWorldCore->m_Tuning.m_PlayerHooking)
 		{
 			if(Distance > MinDist+14) // TODO: fix tweakable variable
 			{
@@ -326,6 +327,7 @@ void CDuckWorldCore::CustomCore_Move(CCustomCore *pThis)
 	vec2 NewPos = pThis->m_Pos;
 
 	// split into several boxes if size is >= TileSize
+	// TODO: this is not great, make a MoveCircle function (check velocity vector as x/y stairs)
 	const float MaxPhysSize = 31;
 	if(PhysSize > MaxPhysSize)
 	{
@@ -336,13 +338,23 @@ void CDuckWorldCore::CustomCore_Move(CCustomCore *pThis)
 
 		for(float byi = -PhysSize * 0.5; byi < PhysSize * 0.5; byi += MaxPhysSize * 0.5)
 		{
+			bool LastY = false;
+
 			for(float bxi = -PhysSize * 0.5; bxi < PhysSize * 0.5; bxi += MaxPhysSize * 0.5)
 			{
+				bool LastX = false;
+
 				vec2 StartPos = pThis->m_Pos + vec2(bxi, byi) + vec2(MaxPhysSize * 0.5, MaxPhysSize * 0.5);
 				if(bxi + MaxPhysSize > PhysSize * 0.5)
+				{
 					StartPos.x -= MaxPhysSize - (PhysSize * 0.5 - bxi);
+					LastX = true;
+				}
 				if(byi + MaxPhysSize > PhysSize * 0.5)
+				{
 					StartPos.y -= MaxPhysSize - (PhysSize * 0.5 - byi);
+					LastY = true;
+				}
 
 				vec2 TestPos = StartPos;
 				vec2 StartVel = pThis->m_Vel;
@@ -366,8 +378,16 @@ void CDuckWorldCore::CustomCore_Move(CCustomCore *pThis)
 					MinVelX = TestVel.x;
 				if(fabs(TestVel.y) < fabs(MinVelY))
 					MinVelY = TestVel.y;
+
+				if(LastX)
+					break;
 			}
+
+			if(LastY)
+				break;
 		}
+
+		//dbg_msg("duck", "ActualCornerCount=%d", ActualCornerCount);
 
 		NewPos += vec2(MinDeltaX, MinDeltaY);
 		pThis->m_Vel = vec2(MinVelX, MinVelY);
@@ -463,7 +483,7 @@ void CDuckWorldCore::Snap(CGameContext *pGameServer, int SnappingClient)
 		for(int i = 0; i < AdditionnalCount; i++)
 		{
 			CNetObj_DuckCustomCore* pData = pGameServer->DuckSnapNewItem<CNetObj_DuckCustomCore>(m_aCustomCores[i].m_UID);
-			pData->m_Core = m_aCustomCores[i];
+			m_aCustomCores[i].Write(pData);
 		}
 
 		for(int i = 0; i < MAX_CLIENTS; i++)
@@ -473,7 +493,7 @@ void CDuckWorldCore::Snap(CGameContext *pGameServer, int SnappingClient)
 				continue;
 
 			CNetObj_DuckCharCoreExtra* pData = pGameServer->DuckSnapNewItem<CNetObj_DuckCharCoreExtra>(pGameServer->m_apPlayers[PlayerID]->GetCID());
-			pData->m_Extra = m_aBaseCoreExtras[i];
+			m_aBaseCoreExtras[i].Write(pData);
 		}
 	}
 }

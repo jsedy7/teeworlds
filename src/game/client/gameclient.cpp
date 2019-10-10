@@ -1030,6 +1030,7 @@ void CGameClient::OnNewSnapshot()
 	m_pDuckBridge->OnNewSnapshot();
 
 	// secure snapshot
+	if(!m_pDuckBridge->IsLoaded())
 	{
 		int Num = Client()->SnapNumItems(IClient::SNAP_CURRENT);
 		for(int Index = 0; Index < Num; Index++)
@@ -1424,10 +1425,11 @@ void CGameClient::OnPredict()
 		CNetObj_DuckCustomCore* pNetCores = m_pDuckBridge->m_Snap.m_aCustomCores.base_ptr();
 		const int NetCoreCount = m_pDuckBridge->m_Snap.m_aCustomCores.size();
 
+		DuckWorld.m_aCustomCores.set_size(NetCoreCount);
 		for(int i = 0; i < NetCoreCount; i++)
-			DuckWorld.m_aCustomCores.add(pNetCores[i].m_Core);
+			DuckWorld.m_aCustomCores[i].Read(pNetCores[i]);
 		for(int i = 0; i < MAX_CLIENTS; i++)
-			DuckWorld.m_aBaseCoreExtras[i] = m_pDuckBridge->m_Snap.m_aCharCoreExtra[i].m_Extra;
+			DuckWorld.m_aBaseCoreExtras[i].Read(m_pDuckBridge->m_Snap.m_aCharCoreExtra[i]);
 	}
 
 	// predict
@@ -1457,7 +1459,7 @@ void CGameClient::OnPredict()
 			}
 		}
 
-		m_pDuckBridge->CharacterCorePreTick(World.m_apCharacters);
+		//m_pDuckBridge->CharacterCorePreTick(World.m_apCharacters);
 
 		for(int c = 0; c < MAX_CLIENTS; c++)
 		{
@@ -1470,12 +1472,7 @@ void CGameClient::OnPredict()
 				World.m_apCharacters[c]->Tick(false);
 		}
 
-		m_pDuckBridge->CharacterCorePostTick(World.m_apCharacters);
-
-		if(m_pDuckBridge->IsLoaded())
-		{
-			DuckWorld.Tick();
-		}
+		//m_pDuckBridge->CharacterCorePostTick(World.m_apCharacters);
 
 		// move all players and quantize their data
 		for(int c = 0; c < MAX_CLIENTS; c++)
@@ -1487,7 +1484,12 @@ void CGameClient::OnPredict()
 			World.m_apCharacters[c]->Quantize();
 		}
 
-		m_pDuckBridge->Predict(&World);
+		if(m_pDuckBridge->IsLoaded())
+		{
+			DuckWorld.Tick();
+		}
+
+		//m_pDuckBridge->Predict(&World);
 
 		// check if we want to trigger effects
 		if(Tick > m_LastNewPredictedTick)
