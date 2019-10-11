@@ -107,28 +107,26 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCharCoreExt
 		vec2 OldPos = pThis->m_HookPos-pThis->m_HookDir*m_pBaseWorldCore->m_Tuning.m_HookFireSpeed;
 		vec2 NewPos = pThis->m_HookPos;
 
-		// Check against other players first
-		if(m_pBaseWorldCore && m_pBaseWorldCore->m_Tuning.m_PlayerHooking)
+		float Distance = 0.0f;
+		for(int i = 0; i < AdditionnalCount; i++)
 		{
-			float Distance = 0.0f;
-			for(int i = 0; i < AdditionnalCount; i++)
-			{
-				CCustomCore *pCore = &m_aCustomCores[i];
+			CCustomCore *pCore = &m_aCustomCores[i];
+			if(!(pCore->m_Flags&CCustomCore::FLAG_CHAR_HOOK))
+				continue;
 
-				vec2 ClosestPoint = closest_point_on_line(OldPos, NewPos, pCore->m_Pos);
-				if(distance(pCore->m_Pos, ClosestPoint) < PhysSize+2.0f)
+			vec2 ClosestPoint = closest_point_on_line(OldPos, NewPos, pCore->m_Pos);
+			if(distance(pCore->m_Pos, ClosestPoint) < PhysSize+2.0f)
+			{
+				if((pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCustomCoreUID == -1) || distance(OldPos, pCore->m_Pos) < Distance)
 				{
-					if((pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCustomCoreUID == -1) || distance(OldPos, pCore->m_Pos) < Distance)
-					{
-						pThis->m_TriggeredEvents |= COREEVENTFLAG_HOOK_ATTACH_PLAYER;
-						pThis->m_TriggeredEvents &= ~COREEVENTFLAG_HOOK_ATTACH_GROUND;
-						pThis->m_TriggeredEvents &= ~COREEVENTFLAG_HOOK_HIT_NOHOOK;
-						pThis->m_HookState = HOOK_GRABBED;
-						pThis->m_HookedPlayer = -1;
-						pThisExtra->m_HookedCustomCoreUID = pCore->m_UID; // we grabbed an custom core
-						HookedCustomRealID = i;
-						Distance = distance(OldPos, pCore->m_Pos);
-					}
+					pThis->m_TriggeredEvents |= COREEVENTFLAG_HOOK_ATTACH_PLAYER;
+					pThis->m_TriggeredEvents &= ~COREEVENTFLAG_HOOK_ATTACH_GROUND;
+					pThis->m_TriggeredEvents &= ~COREEVENTFLAG_HOOK_HIT_NOHOOK;
+					pThis->m_HookState = HOOK_GRABBED;
+					pThis->m_HookedPlayer = -1;
+					pThisExtra->m_HookedCustomCoreUID = pCore->m_UID; // we grabbed an custom core
+					HookedCustomRealID = i;
+					Distance = distance(OldPos, pCore->m_Pos);
 				}
 			}
 		}
@@ -151,7 +149,7 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCharCoreExt
 		float Distance = distance(pThis->m_Pos, pCore->m_Pos);
 		vec2 Dir = normalize(pThis->m_Pos - pCore->m_Pos);
 		float MinDist = pCore->m_Radius + PhysSize * 0.5f;
-		if(m_pBaseWorldCore->m_Tuning.m_PlayerCollision && Distance < MinDist+7 && Distance > 0.0f)
+		if(pCore->m_Flags&CCustomCore::FLAG_CHAR_COLLIDE && Distance < MinDist+7 && Distance > 0.0f)
 		{
 			float a = (MinDist+10 - Distance);
 			float Velocity = 0.5f;
@@ -166,7 +164,7 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCharCoreExt
 		}
 
 		// handle hook influence
-		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCustomCoreUID == pCore->m_UID && m_pBaseWorldCore->m_Tuning.m_PlayerHooking)
+		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCustomCoreUID == pCore->m_UID)
 		{
 			if(Distance > MinDist+14) // TODO: fix tweakable variable
 			{
@@ -189,41 +187,33 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCharCoreExt
 
 void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis)
 {
+	const CPhysicsLawsGroup PlgDefault = {
+		-1, // m_UID
+		m_pBaseWorldCore->m_Tuning.m_AirFriction, // m_AirFriction
+		m_pBaseWorldCore->m_Tuning.m_GroundFriction, // m_GroundFriction
+		m_pBaseWorldCore->m_Tuning.m_AirControlSpeed, // m_AirMaxSpeed
+		m_pBaseWorldCore->m_Tuning.m_GroundControlSpeed, // m_GroundMaxSpeed
+		m_pBaseWorldCore->m_Tuning.m_AirControlAccel, // m_AirAccel
+		m_pBaseWorldCore->m_Tuning.m_GroundControlAccel, // m_GroundAccel
+		m_pBaseWorldCore->m_Tuning.m_Gravity, // m_Gravity
+		0, // m_Elasticity
+	};
+
+	const CPhysicsLawsGroup Plg = PlgDefault;
+
 	// get ground state
-	bool Grounded = false;
-	if(m_pCollision->CheckPoint(pThis->m_Pos.x+pThis->m_Radius/2, pThis->m_Pos.y+pThis->m_Radius/2+5))
-		Grounded = true;
-	if(m_pCollision->CheckPoint(pThis->m_Pos.x-pThis->m_Radius/2, pThis->m_Pos.y+pThis->m_Radius/2+5))
-		Grounded = true;
+	const float PhysSize = pThis->m_Radius * 2;
+	bool Grounded = m_pCollision->IsBoxGrounded(pThis->m_Pos, vec2(PhysSize, PhysSize));
 
-	pThis->m_Vel.y += m_pBaseWorldCore->m_Tuning.m_Gravity;
+	pThis->m_Vel.y += Plg.m_Gravity;
 
-	float MaxSpeed = Grounded ? m_pBaseWorldCore->m_Tuning.m_GroundControlSpeed : m_pBaseWorldCore->m_Tuning.m_AirControlSpeed;
-	float Accel = Grounded ? m_pBaseWorldCore->m_Tuning.m_GroundControlAccel : m_pBaseWorldCore->m_Tuning.m_AirControlAccel;
-	float Friction = Grounded ? m_pBaseWorldCore->m_Tuning.m_GroundFriction : m_pBaseWorldCore->m_Tuning.m_AirFriction;
+	const float MaxSpeed = Grounded ? Plg.m_GroundMaxSpeed : Plg.m_AirMaxSpeed;
+	const float Accel = Grounded ? Plg.m_GroundAccel : Plg.m_AirAccel;
+	const float Friction = Grounded ? Plg.m_GroundFriction : Plg.m_AirFriction;
 
-	const float PhysSize = pThis->m_Radius;
+	pThis->m_Vel.x *= Friction;
+
 	const int AdditionnalCount = m_aCustomCores.size();
-
-	int HookedCustomRealID = -1;
-	if(pThis->m_HookedCustomCoreUID != -1)
-	{
-		HookedCustomRealID = FindCustomCoreFromUID(pThis->m_HookedCustomCoreUID);
-		if(HookedCustomRealID == -1)
-		{
-			pThis->m_HookedCustomCoreUID = -1;
-			pThis->m_IsHooked = false;
-		}
-	}
-
-	if(pThis->m_IsHooked)
-	{
-		if(pThis->m_HookedCustomCoreUID != -1)
-		{
-			CCustomCore *pCore = &m_aCustomCores[HookedCustomRealID];
-			pThis->m_HookPos = pCore->m_Pos;
-		}
-	}
 
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
@@ -235,7 +225,7 @@ void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis)
 		float Distance = distance(pThis->m_Pos, pCharCore->m_Pos);
 		vec2 Dir = normalize(pThis->m_Pos - pCharCore->m_Pos);
 		float MinDist = 28.0f * 0.5f + pThis->m_Radius;
-		if(m_pBaseWorldCore->m_Tuning.m_PlayerCollision && Distance < MinDist+7 && Distance > 0.0f)
+		if(pThis->m_Flags&CCustomCore::FLAG_CHAR_COLLIDE && Distance < MinDist+7 && Distance > 0.0f)
 		{
 			float a = (MinDist+10 - Distance);
 			float Velocity = 0.5f;
@@ -248,24 +238,6 @@ void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis)
 			pThis->m_Vel += Dir*a*(Velocity*0.75f);
 			pThis->m_Vel *= 0.85f;
 		}
-
-		// handle hook influence
-		/*if(pThis->m_HookedPlayer == i && m_pBaseWorldCore->m_Tuning.m_PlayerHooking)
-		{
-			if(Distance > PhysSize*1.50f) // TODO: fix tweakable variable
-			{
-				float Accel = m_pBaseWorldCore->m_Tuning.m_HookDragAccel * (Distance/m_pWorld->m_Tuning.m_HookLength);
-				float DragSpeed = m_pBaseWorldCore->m_Tuning.m_HookDragSpeed;
-
-				// add force to the hooked player
-				pCharCore->m_Vel.x = SaturatedAdd(-DragSpeed, DragSpeed, pCharCore->m_Vel.x, Accel*Dir.x*1.5f);
-				pCharCore->m_Vel.y = SaturatedAdd(-DragSpeed, DragSpeed, pCharCore->m_Vel.y, Accel*Dir.y*1.5f);
-
-				// add a little bit force to the guy who has the grip
-				m_Vel.x = SaturatedAdd(-DragSpeed, DragSpeed, m_Vel.x, -Accel*Dir.x*0.25f);
-				m_Vel.y = SaturatedAdd(-DragSpeed, DragSpeed, m_Vel.y, -Accel*Dir.y*0.25f);
-			}
-		}*/
 	}
 
 	for(int i = 0; i < AdditionnalCount; i++)
@@ -275,11 +247,14 @@ void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis)
 		if(pCore == pThis)
 			continue; // make sure that we don't nudge our self
 
+		if(!(pCore->m_Flags&CCustomCore::FLAG_CORE_COLLIDE))
+			continue;
+
 		// handle player <-> player collision
 		float Distance = distance(pThis->m_Pos, pCore->m_Pos);
 		vec2 Dir = normalize(pThis->m_Pos - pCore->m_Pos);
 		float MinDist = pCore->m_Radius + pThis->m_Radius;
-		if(m_pBaseWorldCore->m_Tuning.m_PlayerCollision && Distance < MinDist+7 && Distance > 0.0f)
+		if(Distance < MinDist+7 && Distance > 0.0f)
 		{
 			float a = (MinDist+10 - Distance);
 			float Velocity = 0.5f;
@@ -291,24 +266,6 @@ void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis)
 
 			pThis->m_Vel += Dir*a*(Velocity*0.75f);
 			pThis->m_Vel *= 0.85f;
-		}
-
-		// handle hook influence
-		if(pThis->m_HookedCustomCoreUID == pCore->m_UID && m_pBaseWorldCore->m_Tuning.m_PlayerHooking)
-		{
-			if(Distance > MinDist+14) // TODO: fix tweakable variable
-			{
-				float Accel = m_pBaseWorldCore->m_Tuning.m_HookDragAccel * (Distance/m_pBaseWorldCore->m_Tuning.m_HookLength);
-				float DragSpeed = m_pBaseWorldCore->m_Tuning.m_HookDragSpeed;
-
-				// add force to the hooked player
-				pCore->m_Vel.x = SaturatedAdd(-DragSpeed, DragSpeed, pCore->m_Vel.x, Accel*Dir.x*1.5f);
-				pCore->m_Vel.y = SaturatedAdd(-DragSpeed, DragSpeed, pCore->m_Vel.y, Accel*Dir.y*1.5f);
-
-				// add a little bit force to the guy who has the grip
-				pThis->m_Vel.x = SaturatedAdd(-DragSpeed, DragSpeed, pThis->m_Vel.x, -Accel*Dir.x*0.25f);
-				pThis->m_Vel.y = SaturatedAdd(-DragSpeed, DragSpeed, pThis->m_Vel.y, -Accel*Dir.y*0.25f);
-			}
 		}
 	}
 
@@ -333,16 +290,17 @@ void CDuckWorldCore::CustomCore_Move(CCustomCore *pThis)
 
 	const int AdditionnalCount = m_aCustomCores.size();
 
-	if(m_pBaseWorldCore->m_Tuning.m_PlayerCollision)
+	float Distance = distance(pThis->m_Pos, NewPos);
+	int End = Distance+1;
+	vec2 LastPos = pThis->m_Pos;
+	for(int i = 0; i < End; i++)
 	{
+		float a = i/Distance;
+		vec2 Pos = mix(pThis->m_Pos, NewPos, a);
+
 		// check player collision
-		float Distance = distance(pThis->m_Pos, NewPos);
-		int End = Distance+1;
-		vec2 LastPos = pThis->m_Pos;
-		for(int i = 0; i < End; i++)
+		if(pThis->m_Flags&CCustomCore::FLAG_CHAR_COLLIDE)
 		{
-			float a = i/Distance;
-			vec2 Pos = mix(pThis->m_Pos, NewPos, a);
 			for(int p = 0; p < MAX_CLIENTS; p++)
 			{
 				CCharacterCore *pCharCore = m_pBaseWorldCore->m_apCharacters[p];
@@ -359,8 +317,11 @@ void CDuckWorldCore::CustomCore_Move(CCustomCore *pThis)
 					return;
 				}
 			}
+		}
 
-			// check against custom cores
+		// check against custom cores
+		if(pThis->m_Flags&CCustomCore::FLAG_CORE_COLLIDE)
+		{
 			for(int p = 0; p < AdditionnalCount; p++)
 			{
 				CCustomCore *pCore = &m_aCustomCores[p];
@@ -378,8 +339,9 @@ void CDuckWorldCore::CustomCore_Move(CCustomCore *pThis)
 					return;
 				}
 			}
-			LastPos = Pos;
 		}
+
+		LastPos = Pos;
 	}
 
 	pThis->m_Pos = NewPos;

@@ -10,14 +10,12 @@ struct CNetObj_DuckCustomCore
 	enum { NET_ID = 0x2001 };
 
 	int m_UID;
+	int m_PlgUID;
+	int m_Flags;
 	int m_PosX;
 	int m_PosY;
 	int m_VelX;
 	int m_VelY;
-	int m_IsHooked;
-	int m_HookPosX;
-	int m_HookPosY;
-	int m_HookedCustomCoreUID;
 	int m_Radius;
 };
 
@@ -25,6 +23,20 @@ struct CNetObj_DuckCharCoreExtra
 {
 	enum { NET_ID = 0x2002 };
 	int m_HookedCustomCoreUID;
+};
+
+struct CNetObj_DuckPhysicsLawsGroup
+{
+	enum { NET_ID = 0x2003 };
+	int m_UID;
+	int m_AirFriction;
+	int m_GroundFriction;
+	int m_AirMaxSpeed;
+	int m_GroundMaxSpeed;
+	int m_AirAccel;
+	int m_GroundAccel;
+	int m_Gravity;
+	int m_Elasticity;
 };
 
 struct CCharCoreExtra
@@ -52,39 +64,41 @@ struct CCharCoreExtra
 
 struct CCustomCore
 {
+	enum
+	{
+		FLAG_CHAR_COLLIDE  = 0x1,
+		FLAG_CHAR_HOOK     = 0x2,
+		FLAG_CORE_COLLIDE  = 0x4,
+	};
+
 	int m_UID;
+	int m_PlgUID; // physics laws group unique ID
+	int m_Flags;
 	vec2 m_Pos;
 	vec2 m_Vel;
-	vec2 m_HookPos;
-	bool m_IsHooked;
-	int m_HookedCustomCoreUID;
 	float m_Radius;
 
 	void Read(const CNetObj_DuckCustomCore& NetObj)
 	{
 		m_UID = NetObj.m_UID;
+		m_PlgUID = NetObj.m_PlgUID;
+		m_Flags = NetObj.m_Flags;
 		m_Pos.x = NetObj.m_PosX / 256.f;
 		m_Pos.y = NetObj.m_PosY / 256.f;
 		m_Vel.x = NetObj.m_VelX / 256.f;
 		m_Vel.y = NetObj.m_VelY / 256.f;
-		m_HookPos.x = NetObj.m_HookPosX / 256.f;
-		m_HookPos.y = NetObj.m_HookPosY / 256.f;
-		m_IsHooked = NetObj.m_IsHooked;
-		m_HookedCustomCoreUID = NetObj.m_HookedCustomCoreUID;
 		m_Radius = NetObj.m_Radius / 256.f;
 	}
 
 	void Write(CNetObj_DuckCustomCore* pNetObj)
 	{
 		pNetObj->m_UID = m_UID;
+		pNetObj->m_PlgUID = m_PlgUID;
+		pNetObj->m_Flags = m_Flags;
 		pNetObj->m_PosX = m_Pos.x * 256.f;
 		pNetObj->m_PosY = m_Pos.y * 256.f;
 		pNetObj->m_VelX = m_Vel.x * 256.f;
 		pNetObj->m_VelY = m_Vel.y * 256.f;
-		pNetObj->m_HookPosX = m_HookPos.x * 256.f;
-		pNetObj->m_HookPosY = m_HookPos.y * 256.f;
-		pNetObj->m_IsHooked = m_IsHooked;
-		pNetObj->m_HookedCustomCoreUID = m_HookedCustomCoreUID;
 		pNetObj->m_Radius = m_Radius * 256.f;
 	}
 
@@ -98,12 +112,50 @@ struct CCustomCore
 	void Reset()
 	{
 		m_UID = -1;
+		m_PlgUID = -1;
+		m_Flags = FLAG_CHAR_COLLIDE | FLAG_CHAR_HOOK | FLAG_CORE_COLLIDE;
 		m_Pos = vec2(0,0);
 		m_Vel = vec2(0,0);
-		m_HookPos = vec2(0,0);
-		m_IsHooked = false;
-		m_HookedCustomCoreUID = -1;
 		m_Radius = 20;
+	}
+};
+
+struct CPhysicsLawsGroup
+{
+	int m_UID;
+	float m_AirFriction;
+	float m_GroundFriction;
+	float m_AirMaxSpeed;
+	float m_GroundMaxSpeed;
+	float m_AirAccel;
+	float m_GroundAccel;
+	float m_Gravity;
+	float m_Elasticity;
+
+	void Read(const CNetObj_DuckPhysicsLawsGroup& NetObj)
+	{
+		m_UID = NetObj.m_UID;
+		m_AirFriction = NetObj.m_AirFriction / 256.f;
+		m_GroundFriction = NetObj.m_GroundFriction / 256.f;
+		m_AirMaxSpeed = NetObj.m_AirMaxSpeed / 256.f;
+		m_GroundMaxSpeed = NetObj.m_GroundMaxSpeed / 256.f;
+		m_AirAccel = NetObj.m_AirAccel / 256.f;
+		m_GroundAccel = NetObj.m_GroundAccel / 256.f;
+		m_Gravity = NetObj.m_Gravity / 256.f;
+		m_Elasticity = NetObj.m_Elasticity / 256.f;
+	}
+
+	void Write(CNetObj_DuckPhysicsLawsGroup* pNetObj)
+	{
+		pNetObj->m_UID = m_UID;
+		pNetObj->m_AirFriction = m_AirFriction * 256;
+		pNetObj->m_GroundFriction = m_GroundFriction * 256;
+		pNetObj->m_AirMaxSpeed = m_AirMaxSpeed * 256;
+		pNetObj->m_GroundMaxSpeed = m_GroundMaxSpeed * 256;
+		pNetObj->m_AirAccel = m_AirAccel * 256;
+		pNetObj->m_GroundAccel = m_GroundAccel * 256;
+		pNetObj->m_Gravity = m_Gravity * 256;
+		pNetObj->m_Elasticity = m_Elasticity * 256;
 	}
 };
 
@@ -113,6 +165,7 @@ struct CDuckWorldCore
 	CWorldCore* m_pBaseWorldCore;
 	CCharCoreExtra m_aBaseCoreExtras[MAX_CLIENTS];
 	array<CCustomCore> m_aCustomCores;
+	array<CPhysicsLawsGroup> m_aPhysicsLawsGroups;
 	int m_NextUID;
 
 	void Init(CWorldCore* pBaseWorldCore, CDuckCollision* pDuckCollison);

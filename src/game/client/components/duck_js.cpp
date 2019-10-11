@@ -1692,8 +1692,9 @@ duk_ret_t CDuckJs::NativeCollisionSetStaticBlock(duk_context* ctx)
 	CheckArgumentCount(ctx, 2);
 
 	int BlockId = duk_to_int(ctx, 0);
+	dbg_assert(0, "remove or implement");
 
-	CDuckCollision::CStaticBlock SolidBlock;
+	/*CDuckCollision::CStaticBlock SolidBlock;
 	int Flags = -1;
 
 	DukGetIntProp(ctx, 1, "flags", &Flags);
@@ -1705,7 +1706,7 @@ duk_ret_t CDuckJs::NativeCollisionSetStaticBlock(duk_context* ctx)
 	DukGetFloatProp(ctx, 1, "height", &SolidBlock.m_Size.y);
 
 	if(BlockId >= 0)
-		This()->Bridge()->m_Collision.SetStaticBlock(BlockId, SolidBlock);
+		This()->Bridge()->m_Collision.SetStaticBlock(BlockId, SolidBlock);*/
 	return 0;
 }
 
@@ -1727,143 +1728,12 @@ duk_ret_t CDuckJs::NativeCollisionClearStaticBlock(duk_context* ctx)
 {
 	CheckArgumentCount(ctx, 1);
 
-	int BlockId = duk_to_int(ctx, 0);
+	dbg_assert(0, "remove or implement");
+
+	/*int BlockId = duk_to_int(ctx, 0);
 	if(BlockId >= 0)
-		This()->Bridge()->m_Collision.ClearStaticBlock(BlockId);
+		This()->Bridge()->m_Collision.ClearStaticBlock(BlockId);*/
 	return 0;
-}
-
-/*#
-`TwCollisionSetDynamicDisk(disk_id, disk)`
-
-| Creates or modify a dynamic disk.
-
-**Parameters**
-
-* **disk_id**: int
-* **disk**
-
-.. code-block:: js
-
-	var disk = {
-		flags: int, // unused at the moment
-		pos_x, float,
-		pos_y, float,
-		vel_x, float,
-		vel_y, float,
-		radius, float,
-		hook_force, float,
-	};
-
-**Returns**
-
-* None
-
-#*/
-duk_ret_t CDuckJs::NativeCollisionSetDynamicDisk(duk_context *ctx)
-{
-	CheckArgumentCount(ctx, 2);
-
-	int DiskId = duk_to_int(ctx, 0);
-
-	CDuckCollision::CDynamicDisk Disk;
-
-	int Flags = -1;
-	DukGetIntProp(ctx, 1, "flags", &Flags);
-	Disk.m_Flags = Flags;
-	DukGetFloatProp(ctx, 1, "pos_x", &Disk.m_Pos.x);
-	DukGetFloatProp(ctx, 1, "pos_y", &Disk.m_Pos.y);
-	DukGetFloatProp(ctx, 1, "vel_x", &Disk.m_Vel.x);
-	DukGetFloatProp(ctx, 1, "vel_y", &Disk.m_Vel.y);
-	DukGetFloatProp(ctx, 1, "radius", &Disk.m_Radius);
-	DukGetFloatProp(ctx, 1, "hook_force", &Disk.m_HookForce);
-
-	if(DiskId >= 0)
-		This()->Bridge()->m_Collision.SetDynamicDisk(DiskId, Disk);
-	return 0;
-}
-
-/*#
-`TwCollisionClearDynamicDisk(block_id)`
-
-| Removes a dynamic disk.
-
-**Parameters**
-
-* **disk_id**: int
-
-**Returns**
-
-* None
-
-#*/
-duk_ret_t CDuckJs::NativeCollisionClearDynamicDisk(duk_context *ctx)
-{
-	CheckArgumentCount(ctx, 1);
-
-	int DiskId = duk_to_int(ctx, 0);
-	if(DiskId >= 0)
-		This()->Bridge()->m_Collision.ClearDynamicDisk(DiskId);
-	return 0;
-}
-
-/*#
-`TwCollisionGetPredictedDynamicDisks()`
-
-| Get predicted dynamic disks.
-
-**Parameters**
-
-* None
-
-**Returns**
-
-* **disks**
-
-.. code-block:: js
-
-	var disks = [
-		{
-			id: int,
-			flags: int, // unused at the moment
-			pos_x, float,
-			pos_y, float,
-			vel_x, float,
-			vel_y, float,
-			radius, float,
-			hook_force, float,
-		},
-		...
-	];
-
-
-#*/
-duk_ret_t CDuckJs::NativeCollisionGetPredictedDynamicDisks(duk_context *ctx)
-{
-	CheckArgumentCount(ctx, 0);
-
-	const CDuckCollision::CDynamicDisk* pDisks = This()->Bridge()->m_Collision.m_aDynamicDisks.base_ptr();
-	const int DiskCount = This()->Bridge()->m_Collision.m_aDynamicDisks.size();
-
-	duk_idx_t ArrayIdx = duk_push_array(ctx);
-
-	for(int d = 0; d < DiskCount; d++)
-	{
-		const CDuckCollision::CDynamicDisk& Disk = pDisks[d];
-		duk_idx_t ObjIdx = duk_push_object(ctx);
-		DukSetIntProp(ctx, ObjIdx, "id", Disk.m_FetchID);
-		DukSetIntProp(ctx, ObjIdx, "flags", Disk.m_Flags);
-		DukSetFloatProp(ctx, ObjIdx, "pos_x", Disk.m_Pos.x);
-		DukSetFloatProp(ctx, ObjIdx, "pos_y", Disk.m_Pos.y);
-		DukSetFloatProp(ctx, ObjIdx, "vel_x", Disk.m_Vel.x);
-		DukSetFloatProp(ctx, ObjIdx, "vel_y", Disk.m_Vel.y);
-		DukSetFloatProp(ctx, ObjIdx, "radius", Disk.m_Radius);
-		DukSetFloatProp(ctx, ObjIdx, "hook_force", Disk.m_HookForce);
-
-		duk_put_prop_index(ctx, ArrayIdx, d);
-	}
-
-	return 1;
 }
 
 /*#
@@ -2657,9 +2527,6 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(DirectionFromAngle, 1);
 	REGISTER_FUNC(CollisionSetStaticBlock, 2);
 	REGISTER_FUNC(CollisionClearStaticBlock, 1);
-	REGISTER_FUNC(CollisionSetDynamicDisk, 2);
-	REGISTER_FUNC(CollisionClearDynamicDisk, 1);
-	REGISTER_FUNC(CollisionGetPredictedDynamicDisks, 0);
 	REGISTER_FUNC(SetHudPartsShown, 1);
 	REGISTER_FUNC(NetSendPacket, 1);
 	REGISTER_FUNC(NetPacketUnpack, 2);

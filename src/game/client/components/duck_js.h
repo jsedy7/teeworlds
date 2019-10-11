@@ -56,9 +56,6 @@ class CDuckJs
 	static duk_ret_t NativeDirectionFromAngle(duk_context *ctx);
 	static duk_ret_t NativeCollisionSetStaticBlock(duk_context *ctx);
 	static duk_ret_t NativeCollisionClearStaticBlock(duk_context *ctx);
-	static duk_ret_t NativeCollisionSetDynamicDisk(duk_context *ctx);
-	static duk_ret_t NativeCollisionClearDynamicDisk(duk_context *ctx);
-	static duk_ret_t NativeCollisionGetPredictedDynamicDisks(duk_context *ctx);
 	static duk_ret_t NativeSetHudPartsShown(duk_context *ctx);
 	static duk_ret_t NativeNetSendPacket(duk_context *ctx);
 	static duk_ret_t NativeNetPacketUnpack(duk_context *ctx);

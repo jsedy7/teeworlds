@@ -48,20 +48,6 @@ struct CNetObj_HookBlock
 	float m_Height;
 };
 
-struct CNetObj_DynamicDisk
-{
-	enum { NET_ID = ModNetID::DYNAMIC_DISK };
-
-	int m_Id;
-	int m_Flags;
-	float m_PosX;
-	float m_PosY;
-	float m_VelX;
-	float m_VelY;
-	float m_Radius;
-	float m_HookForce;
-};
-
 //#define CHARCHORE_TEST
 
 static CCharacterCore TestCore;
@@ -84,11 +70,11 @@ CGameControllerTEST::CGameControllerTEST(class CGameContext *pGameServer)
 	TestCore.Init(&GameServer()->m_World.m_Core, pCollision);
 	TestCore.m_Pos = vec2(700, 280);
 #else
-	CDuckCollision::CDynamicDisk Disk;
+	/*CDuckCollision::CDynamicDisk Disk;
 	Disk.m_Pos = vec2(700, 280);
 	Disk.m_Vel = vec2(0, 0);
 	Disk.m_Radius = 30;
-	pCollision->SetDynamicDisk(0, Disk);
+	pCollision->SetDynamicDisk(0, Disk);*/
 #endif
 }
 
@@ -103,7 +89,7 @@ void CGameControllerTEST::Tick()
 	vec2 HookBlockSize = vec2(100 + 400 * a, 64);
 	vec2 HookBlockVel = vec2(0, 0);
 
-	CDuckCollision::CStaticBlock SolidBlock;
+	/*CDuckCollision::CStaticBlock SolidBlock;
 	SolidBlock.m_Pos = HookBlockPos;
 	SolidBlock.m_Size = HookBlockSize;
 	SolidBlock.m_Flags = CCollision::COLFLAG_SOLID;
@@ -121,7 +107,7 @@ void CGameControllerTEST::Tick()
 	Disk.m_Vel = vec2(sign(sin(Time)) * 7.f, 0);
 	Disk.Tick(pCollision, &GameServer()->m_World.m_Core);
 	Disk.Move(pCollision, &GameServer()->m_World.m_Core);
-#endif
+#endif*/
 
 
 	for(int p = 0; p < MAX_PLAYERS; p++)
@@ -151,7 +137,7 @@ void CGameControllerTEST::Tick()
 			NetHookBlock.m_Height = HookBlockSize.y;
 			GameServer()->SendDuckNetObj(NetHookBlock, p);
 
-#ifdef CHARCHORE_TEST
+/*#ifdef CHARCHORE_TEST
 #else
 			CNetObj_DynamicDisk NetDisk;
 			NetDisk.m_Id = 0;
@@ -163,7 +149,7 @@ void CGameControllerTEST::Tick()
 			NetDisk.m_Radius = Disk.m_Radius;
 			NetDisk.m_HookForce = Disk.m_HookForce;
 			GameServer()->SendDuckNetObj(NetDisk, p);
-#endif
+#endif*/
 		}
 	}
 }
