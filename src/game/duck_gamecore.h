@@ -42,12 +42,10 @@ struct CNetObj_DuckPhysicsLawsGroup
 struct CCharCoreExtra
 {
 	int m_HookedCustomCoreUID;
-	int m_OldHookState;
 
 	void Reset()
 	{
 		m_HookedCustomCoreUID = -1;
-		m_OldHookState = HOOK_IDLE;
 	}
 
 	void Read(const CNetObj_DuckCharCoreExtra& NetObj)

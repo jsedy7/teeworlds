@@ -876,17 +876,26 @@ void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 			} break;
 
 			case CRenderCmd::DRAW_TEE_BODYANDFEET:
+				Graphics()->QuadsEnd(); // Flush
+
 				DrawTeeBodyAndFeet(Cmd.m_TeeBodyAndFeet, RenderSpace.m_CurrentTeeSkin);
 				CurrentTexture = FakeTexture;
+
+				Graphics()->QuadsBegin();
 				break;
 
 			case CRenderCmd::DRAW_TEE_HAND:
+				Graphics()->QuadsEnd(); // Flush
+
 				DrawTeeHand(Cmd.m_TeeHand, RenderSpace.m_CurrentTeeSkin);
 				CurrentTexture = FakeTexture;
+
+				Graphics()->QuadsBegin();
 				break;
 
 			case CRenderCmd::DRAW_TEXT:
 			{
+				Graphics()->QuadsEnd(); // Flush
 				CurrentTexture = FakeTexture;
 
 				const CTextInfo& Text = Cmd.m_Text;
@@ -923,6 +932,8 @@ void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 
 				if(DoClipping)
 					Graphics()->ClipDisable();
+
+				Graphics()->QuadsBegin();
 			} break;
 
 			default:

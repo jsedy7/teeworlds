@@ -70,10 +70,6 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCharCoreExt
 		{
 			pThisExtra->m_HookedCustomCoreUID = -1;
 		}
-		else
-		{
-			pThisExtra->m_OldHookState = HOOK_FLYING;
-		}
 	}
 
 	int HookedCustomRealID = -1;
@@ -102,7 +98,7 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCharCoreExt
 		pThis->m_Vel -= HookVel;
 	}
 
-	if(pThisExtra->m_OldHookState == HOOK_FLYING)
+	if(pThis->m_HookState == HOOK_FLYING)
 	{
 		vec2 OldPos = pThis->m_HookPos-pThis->m_HookDir*m_pBaseWorldCore->m_Tuning.m_HookFireSpeed;
 		vec2 NewPos = pThis->m_HookPos;
@@ -115,7 +111,7 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCharCoreExt
 				continue;
 
 			vec2 ClosestPoint = closest_point_on_line(OldPos, NewPos, pCore->m_Pos);
-			if(distance(pCore->m_Pos, ClosestPoint) < PhysSize+2.0f)
+			if(distance(pCore->m_Pos, ClosestPoint) < pCore->m_Radius+2)
 			{
 				if((pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCustomCoreUID == -1) || distance(OldPos, pCore->m_Pos) < Distance)
 				{
@@ -181,8 +177,6 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCharCoreExt
 			}
 		}
 	}
-
-	pThisExtra->m_OldHookState = pThis->m_HookState;
 }
 
 void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis)
