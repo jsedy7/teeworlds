@@ -722,6 +722,20 @@ duk_ret_t CDuckJs::NativeRenderDrawCircle(duk_context *ctx)
 	return 0;
 }
 
+duk_ret_t CDuckJs::NativeRenderDrawLine(duk_context *ctx)
+{
+	CheckArgumentCount(ctx, 5);
+
+	float Pos1X = duk_to_number(ctx, 0);
+	float Pos1Y = duk_to_number(ctx, 1);
+	float Pos2X = duk_to_number(ctx, 2);
+	float Pos2Y = duk_to_number(ctx, 3);
+	float Thickness = duk_to_number(ctx, 4);
+
+	This()->Bridge()->QueueDrawLine(vec2(Pos1X, Pos1Y), vec2(Pos2X, Pos2Y), Thickness);
+	return 0;
+}
+
 /*#
 `TwGetBaseTexture(image_id)`
 
@@ -2385,6 +2399,50 @@ duk_ret_t CDuckJs::NativeSetMenuModeActive(duk_context *ctx)
 	return 0;
 }
 
+duk_ret_t CDuckJs::NativePhysGetJoints(duk_context *ctx)
+{
+	CheckArgumentCount(ctx, 0);
+
+	IClient* pClient = This()->Bridge()->Client();
+	float IntraTick = pClient->IntraGameTick();
+	float PredIntraTick = pClient->PredIntraGameTick();
+	CDuckBridge& Bridge = *This()->Bridge();
+
+	const int Count = Bridge.m_WorldCorePredicted.m_aJoints.size();
+	const CDuckPhysJoint* aJoints = Bridge.m_WorldCorePredicted.m_aJoints.base_ptr();
+	const CCustomCore* aCores = Bridge.m_WorldCorePredicted.m_aCustomCores.base_ptr();
+
+	duk_idx_t Array = duk_push_array(ctx);
+	for(int i = 0; i < Count; i++)
+	{
+		const CDuckPhysJoint& Joint = aJoints[i];
+		duk_idx_t ObjIdx = duk_push_object(ctx);
+
+		CCustomCore* pCore1 = Bridge.m_WorldCorePredicted.FindCustomCoreFromUID(Joint.m_CustomCoreUID1);
+		CCustomCore* pCore2 = Bridge.m_WorldCorePredicted.FindCustomCoreFromUID(Joint.m_CustomCoreUID2);
+
+		if(pCore1)
+			DukSetIntProp(ctx, ObjIdx, "core1_id", pCore1 - aCores);
+		else
+		{
+			duk_push_null(ctx);
+			duk_put_prop_string(ctx, ObjIdx, "core1_id");
+		}
+
+		if(pCore2)
+			DukSetIntProp(ctx, ObjIdx, "core2_id", pCore2 - aCores);
+		else
+		{
+			duk_push_null(ctx);
+			duk_put_prop_string(ctx, ObjIdx, "core2_id");
+		}
+
+		duk_put_prop_index(ctx, Array, i);
+	}
+
+	return 1; // pop array
+}
+
 void CDuckJs::PushObject()
 {
 	m_CurrentPushedObjID = duk_push_object(Ctx());
@@ -2506,6 +2564,7 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(RenderDrawFreeform, 2);
 	REGISTER_FUNC(RenderDrawText, 1);
 	REGISTER_FUNC(RenderDrawCircle, 3);
+	REGISTER_FUNC(RenderDrawLine, 5);
 	REGISTER_FUNC(RenderSetDrawSpace, 1);
 	REGISTER_FUNC(GetBaseTexture, 1);
 	REGISTER_FUNC(GetSpriteSubSet, 1);
@@ -2537,6 +2596,7 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(RandomInt, 2);
 	REGISTER_FUNC(CalculateTextSize, 1);
 	REGISTER_FUNC(SetMenuModeActive, 1);
+	REGISTER_FUNC(PhysGetJoints, 0);
 
 #undef REGISTER_FUNC
 

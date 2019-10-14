@@ -3,6 +3,19 @@
 #include <game/server/gamecontext.h>
 #include <game/server/player.h> // is dummy
 
+const CPhysicsLawsGroup g_PlgDefault = {
+	-1, // m_UID
+	0.95f, // m_AirFriction
+	0.5f, // m_GroundFriction
+	250.0f / SERVER_TICK_SPEED, // m_AirMaxSpeed
+	10, // m_GroundMaxSpeed
+	1.5f, // m_AirAccel
+	100.0f / SERVER_TICK_SPEED, // m_GroundAccel
+	0.5f, // m_Gravity
+	0, // m_Elasticity
+};
+
+const float g_CoreOuterRadius = 5;
 
 void CDuckWorldCore::Init(CWorldCore *pBaseWorldCore, CDuckCollision *pDuckCollison)
 {
@@ -16,6 +29,9 @@ void CDuckWorldCore::Init(CWorldCore *pBaseWorldCore, CDuckCollision *pDuckColli
 	}
 
 	m_NextUID = 0;
+
+	m_aCustomCores.hint_size(256);
+	m_aJoints.hint_size(1024);
 }
 
 void CDuckWorldCore::Reset()
@@ -30,6 +46,12 @@ void CDuckWorldCore::Reset()
 
 void CDuckWorldCore::Tick()
 {
+	const int JointCount = m_aJoints.size();
+	for(int i = 0; i < JointCount; i++)
+	{
+		Joint_Tick(&m_aJoints[i]);
+	}
+
 	// base characters will Tick() and Move() before
 	// TODO: we need to tick before Move() somehow
 
@@ -72,15 +94,11 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCharCoreExt
 		}
 	}
 
-	int HookedCustomRealID = -1;
-	if(pThisExtra->m_HookedCustomCoreUID != -1)
+	CCustomCore* pHookedCore = FindCustomCoreFromUID(pThisExtra->m_HookedCustomCoreUID);
+	if(pThisExtra->m_HookedCustomCoreUID != -1 && !pHookedCore)
 	{
-		HookedCustomRealID = FindCustomCoreFromUID(pThisExtra->m_HookedCustomCoreUID);
-		if(HookedCustomRealID == -1)
-		{
-			pThisExtra->m_HookedCustomCoreUID = -1;
-			pThis->m_HookState = HOOK_RETRACT_START;
-		}
+		pThisExtra->m_HookedCustomCoreUID = -1;
+		pThis->m_HookState = HOOK_RETRACT_START;
 	}
 
 	// cancel ground hooking when hooking a custom core
@@ -121,7 +139,7 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCharCoreExt
 					pThis->m_HookState = HOOK_GRABBED;
 					pThis->m_HookedPlayer = -1;
 					pThisExtra->m_HookedCustomCoreUID = pCore->m_UID; // we grabbed an custom core
-					HookedCustomRealID = i;
+					pHookedCore = pCore;
 					Distance = distance(OldPos, pCore->m_Pos);
 				}
 			}
@@ -132,8 +150,7 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCharCoreExt
 	{
 		if(pThis->m_HookedPlayer == -1 && pThisExtra->m_HookedCustomCoreUID != -1)
 		{
-			CCustomCore *pCore = &m_aCustomCores[HookedCustomRealID];
-			pThis->m_HookPos = pCore->m_Pos;
+			pThis->m_HookPos = pHookedCore->m_Pos;
 		}
 	}
 
@@ -181,19 +198,8 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCharCoreExt
 
 void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis)
 {
-	const CPhysicsLawsGroup PlgDefault = {
-		-1, // m_UID
-		m_pBaseWorldCore->m_Tuning.m_AirFriction, // m_AirFriction
-		m_pBaseWorldCore->m_Tuning.m_GroundFriction, // m_GroundFriction
-		m_pBaseWorldCore->m_Tuning.m_AirControlSpeed, // m_AirMaxSpeed
-		m_pBaseWorldCore->m_Tuning.m_GroundControlSpeed, // m_GroundMaxSpeed
-		m_pBaseWorldCore->m_Tuning.m_AirControlAccel, // m_AirAccel
-		m_pBaseWorldCore->m_Tuning.m_GroundControlAccel, // m_GroundAccel
-		m_pBaseWorldCore->m_Tuning.m_Gravity, // m_Gravity
-		0, // m_Elasticity
-	};
-
-	const CPhysicsLawsGroup Plg = PlgDefault;
+	CPhysicsLawsGroup* pPlgFind = FindPhysicLawsGroupFromUID(pThis->m_PlgUID);
+	const CPhysicsLawsGroup& Plg = pPlgFind ? *pPlgFind : g_PlgDefault;
 
 	// get ground state
 	const float PhysSize = pThis->m_Radius * 2;
@@ -248,9 +254,9 @@ void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis)
 		float Distance = distance(pThis->m_Pos, pCore->m_Pos);
 		vec2 Dir = normalize(pThis->m_Pos - pCore->m_Pos);
 		float MinDist = pCore->m_Radius + pThis->m_Radius;
-		if(Distance < MinDist+7 && Distance > 0.0f)
+		if(Distance < MinDist+g_CoreOuterRadius && Distance > 0.0f)
 		{
-			float a = (MinDist+10 - Distance);
+			float a = (MinDist+g_CoreOuterRadius - Distance);
 			float Velocity = 0.5f;
 
 			// make sure that we don't add excess force by checking the
@@ -270,6 +276,9 @@ void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis)
 
 void CDuckWorldCore::CustomCore_Move(CCustomCore *pThis)
 {
+	CPhysicsLawsGroup* pPlgFind = FindPhysicLawsGroupFromUID(pThis->m_PlgUID);
+	const CPhysicsLawsGroup& Plg = pPlgFind ? *pPlgFind : g_PlgDefault;
+
 	const float PhysSize = pThis->m_Radius * 2;
 	float RampValue = VelocityRamp(length(pThis->m_Vel)*50, m_pBaseWorldCore->m_Tuning.m_VelrampStart, m_pBaseWorldCore->m_Tuning.m_VelrampRange, m_pBaseWorldCore->m_Tuning.m_VelrampCurvature);
 
@@ -278,7 +287,7 @@ void CDuckWorldCore::CustomCore_Move(CCustomCore *pThis)
 	vec2 NewPos = pThis->m_Pos;
 
 	// NOTE: this is MoveBox() with more sampling
-	m_pCollision->MoveBoxBig(&NewPos, &pThis->m_Vel, vec2(PhysSize, PhysSize), 0);
+	m_pCollision->MoveBoxBig(&NewPos, &pThis->m_Vel, vec2(PhysSize, PhysSize), Plg.m_Elasticity);
 
 	pThis->m_Vel.x = pThis->m_Vel.x*(1.0f/RampValue);
 
@@ -341,13 +350,44 @@ void CDuckWorldCore::CustomCore_Move(CCustomCore *pThis)
 	pThis->m_Pos = NewPos;
 }
 
-int CDuckWorldCore::AddCustomCore(float Radius)
+void CDuckWorldCore::Joint_Tick(CDuckPhysJoint *pThis)
+{
+	CCustomCore* pCore1 = FindCustomCoreFromUID(pThis->m_CustomCoreUID1);
+	CCustomCore* pCore2 = FindCustomCoreFromUID(pThis->m_CustomCoreUID2);
+
+	// handle hook influence
+	if(pCore1 && pCore2)
+	{
+		float Distance = distance(pCore1->m_Pos, pCore2->m_Pos);
+		if(Distance > (pCore1->m_Radius + pCore2->m_Radius + g_CoreOuterRadius))
+		{
+			/*float Accel = m_pBaseWorldCore->m_Tuning.m_HookDragAccel * (Distance/m_pBaseWorldCore->m_Tuning.m_HookLength);
+			float DragSpeed = m_pBaseWorldCore->m_Tuning.m_HookDragSpeed;
+
+			// add force to the hooked player
+			pCore->m_Vel.x = SaturatedAdd(-DragSpeed, DragSpeed, pCore->m_Vel.x, Accel*Dir.x*1.5f);
+			pCore->m_Vel.y = SaturatedAdd(-DragSpeed, DragSpeed, pCore->m_Vel.y, Accel*Dir.y*1.5f);
+
+			// add a little bit force to the guy who has the grip
+			pThis->m_Vel.x = SaturatedAdd(-DragSpeed, DragSpeed, pThis->m_Vel.x, -Accel*Dir.x*0.25f);
+			pThis->m_Vel.y = SaturatedAdd(-DragSpeed, DragSpeed, pThis->m_Vel.y, -Accel*Dir.y*0.25f);*/
+
+			vec2 Dir = normalize(pCore2->m_Pos - pCore1->m_Pos);
+			pCore1->m_Vel.x = SaturatedAdd(-100.f, 100.f, pCore1->m_Vel.x, Dir.x * pThis->m_Force1);
+			pCore1->m_Vel.y = SaturatedAdd(-100.f, 100.f, pCore1->m_Vel.y, Dir.y * pThis->m_Force1);
+			//pCore1->m_Vel += Dir * pThis->m_Force1;
+			pCore2->m_Vel += Dir * -pThis->m_Force2;
+		}
+	}
+}
+
+CCustomCore *CDuckWorldCore::AddCustomCore(float Radius)
 {
 	CCustomCore Core;
 	Core.Reset();
 	Core.m_Radius = Radius;
 	Core.m_UID = m_NextUID++;
-	return m_aCustomCores.add(Core);
+	return &m_aCustomCores[m_aCustomCores.add(Core)];
 }
 
 void CDuckWorldCore::RemoveCustomCore(int ID)
@@ -355,6 +395,23 @@ void CDuckWorldCore::RemoveCustomCore(int ID)
 	dbg_assert(ID >= 0 && ID <= m_aCustomCores.size(), "ID out of bounds");
 
 	m_aCustomCores.remove_index_fast(ID);
+}
+
+CPhysicsLawsGroup *CDuckWorldCore::AddPhysicLawsGroup()
+{
+	CPhysicsLawsGroup Plg = {
+		-1, // m_UID
+		m_pBaseWorldCore->m_Tuning.m_AirFriction, // m_AirFriction
+		m_pBaseWorldCore->m_Tuning.m_GroundFriction, // m_GroundFriction
+		m_pBaseWorldCore->m_Tuning.m_AirControlSpeed, // m_AirMaxSpeed
+		m_pBaseWorldCore->m_Tuning.m_GroundControlSpeed, // m_GroundMaxSpeed
+		m_pBaseWorldCore->m_Tuning.m_AirControlAccel, // m_AirAccel
+		m_pBaseWorldCore->m_Tuning.m_GroundControlAccel, // m_GroundAccel
+		m_pBaseWorldCore->m_Tuning.m_Gravity, // m_Gravity
+		0, // m_Elasticity
+	};
+	Plg.m_UID = m_NextUID++;
+	return &m_aPhysicsLawsGroups[m_aPhysicsLawsGroups.add(Plg)];
 }
 
 void CDuckWorldCore::Snap(CGameContext *pGameServer, int SnappingClient)
@@ -374,6 +431,12 @@ void CDuckWorldCore::Snap(CGameContext *pGameServer, int SnappingClient)
 			m_aCustomCores[i].Write(pData);
 		}
 
+		for(int i = 0; i < AdditionnalCount; i++)
+		{
+			CNetObj_DuckPhysJoint* pData = pGameServer->DuckSnapNewItem<CNetObj_DuckPhysJoint>(i);
+			m_aJoints[i].Write(pData);
+		}
+
 		for(int i = 0; i < MAX_CLIENTS; i++)
 		{
 			// FIXME: fix GetCharacter() linker error
@@ -391,15 +454,34 @@ void CDuckWorldCore::Copy(const CDuckWorldCore *pOther)
 	*this = *pOther;
 }
 
-int CDuckWorldCore::FindCustomCoreFromUID(int UID)
+CCustomCore* CDuckWorldCore::FindCustomCoreFromUID(int UID)
 {
+	if(UID < 0)
+		return NULL;
+
 	// slow
 	const int Count = m_aCustomCores.size();
 	for(int i = 0; i < Count; i++)
 	{
 		if(m_aCustomCores[i].m_UID == UID)
-			return i;
+			return &m_aCustomCores[i];
 	}
 
-	return -1;
+	return NULL;
+}
+
+CPhysicsLawsGroup *CDuckWorldCore::FindPhysicLawsGroupFromUID(int UID)
+{
+	if(UID < 0)
+		return NULL;
+
+	// slow
+	const int Count = m_aPhysicsLawsGroups.size();
+	for(int i = 0; i < Count; i++)
+	{
+		if(m_aPhysicsLawsGroups[i].m_UID == UID)
+			return &m_aPhysicsLawsGroups[i];
+	}
+
+	return NULL;
 }

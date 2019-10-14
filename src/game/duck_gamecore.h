@@ -39,6 +39,19 @@ struct CNetObj_DuckPhysicsLawsGroup
 	int m_Elasticity;
 };
 
+struct CNetObj_DuckPhysJoint
+{
+	enum { NET_ID = 0x2004 };
+	int m_EndPos1X;
+	int m_EndPos1Y;
+	int m_EndPos2X;
+	int m_EndPos2Y;
+	int m_Force1;
+	int m_Force2;
+	int m_CustomCoreUID1;
+	int m_CustomCoreUID2;
+};
+
 struct CCharCoreExtra
 {
 	int m_HookedCustomCoreUID;
@@ -57,6 +70,45 @@ struct CCharCoreExtra
 	void Write(CNetObj_DuckCharCoreExtra* pNetObj)
 	{
 		pNetObj->m_HookedCustomCoreUID = m_HookedCustomCoreUID;
+	}
+};
+
+struct CPhysicsLawsGroup
+{
+	int m_UID;
+	float m_AirFriction;
+	float m_GroundFriction;
+	float m_AirMaxSpeed;
+	float m_GroundMaxSpeed;
+	float m_AirAccel;
+	float m_GroundAccel;
+	float m_Gravity;
+	float m_Elasticity;
+
+	void Read(const CNetObj_DuckPhysicsLawsGroup& NetObj)
+	{
+		m_UID = NetObj.m_UID;
+		m_AirFriction = NetObj.m_AirFriction / 256.f;
+		m_GroundFriction = NetObj.m_GroundFriction / 256.f;
+		m_AirMaxSpeed = NetObj.m_AirMaxSpeed / 256.f;
+		m_GroundMaxSpeed = NetObj.m_GroundMaxSpeed / 256.f;
+		m_AirAccel = NetObj.m_AirAccel / 256.f;
+		m_GroundAccel = NetObj.m_GroundAccel / 256.f;
+		m_Gravity = NetObj.m_Gravity / 256.f;
+		m_Elasticity = NetObj.m_Elasticity / 256.f;
+	}
+
+	void Write(CNetObj_DuckPhysicsLawsGroup* pNetObj)
+	{
+		pNetObj->m_UID = m_UID;
+		pNetObj->m_AirFriction = m_AirFriction * 256;
+		pNetObj->m_GroundFriction = m_GroundFriction * 256;
+		pNetObj->m_AirMaxSpeed = m_AirMaxSpeed * 256;
+		pNetObj->m_GroundMaxSpeed = m_GroundMaxSpeed * 256;
+		pNetObj->m_AirAccel = m_AirAccel * 256;
+		pNetObj->m_GroundAccel = m_GroundAccel * 256;
+		pNetObj->m_Gravity = m_Gravity * 256;
+		pNetObj->m_Elasticity = m_Elasticity * 256;
 	}
 };
 
@@ -116,44 +168,44 @@ struct CCustomCore
 		m_Vel = vec2(0,0);
 		m_Radius = 20;
 	}
+
+	inline void SetPhysicLawGroup(const CPhysicsLawsGroup& Plg)
+	{
+		m_PlgUID = Plg.m_UID;
+	}
 };
 
-struct CPhysicsLawsGroup
+struct CDuckPhysJoint
 {
-	int m_UID;
-	float m_AirFriction;
-	float m_GroundFriction;
-	float m_AirMaxSpeed;
-	float m_GroundMaxSpeed;
-	float m_AirAccel;
-	float m_GroundAccel;
-	float m_Gravity;
-	float m_Elasticity;
+	vec2 m_EndPos1;
+	vec2 m_EndPos2;
+	float m_Force1;
+	float m_Force2;
+	int m_CustomCoreUID1;
+	int m_CustomCoreUID2;
 
-	void Read(const CNetObj_DuckPhysicsLawsGroup& NetObj)
+	void Read(const CNetObj_DuckPhysJoint& NetObj)
 	{
-		m_UID = NetObj.m_UID;
-		m_AirFriction = NetObj.m_AirFriction / 256.f;
-		m_GroundFriction = NetObj.m_GroundFriction / 256.f;
-		m_AirMaxSpeed = NetObj.m_AirMaxSpeed / 256.f;
-		m_GroundMaxSpeed = NetObj.m_GroundMaxSpeed / 256.f;
-		m_AirAccel = NetObj.m_AirAccel / 256.f;
-		m_GroundAccel = NetObj.m_GroundAccel / 256.f;
-		m_Gravity = NetObj.m_Gravity / 256.f;
-		m_Elasticity = NetObj.m_Elasticity / 256.f;
+		m_EndPos1.x = NetObj.m_EndPos1X / 256.f;
+		m_EndPos1.y = NetObj.m_EndPos1Y / 256.f;
+		m_EndPos2.x = NetObj.m_EndPos2X / 256.f;
+		m_EndPos2.y = NetObj.m_EndPos2Y / 256.f;
+		m_Force1 = NetObj.m_Force1 / 256.f;
+		m_Force2 = NetObj.m_Force2 / 256.f;
+		m_CustomCoreUID1 = NetObj.m_CustomCoreUID1;
+		m_CustomCoreUID2 = NetObj.m_CustomCoreUID2;
 	}
 
-	void Write(CNetObj_DuckPhysicsLawsGroup* pNetObj)
+	void Write(CNetObj_DuckPhysJoint* pNetObj)
 	{
-		pNetObj->m_UID = m_UID;
-		pNetObj->m_AirFriction = m_AirFriction * 256;
-		pNetObj->m_GroundFriction = m_GroundFriction * 256;
-		pNetObj->m_AirMaxSpeed = m_AirMaxSpeed * 256;
-		pNetObj->m_GroundMaxSpeed = m_GroundMaxSpeed * 256;
-		pNetObj->m_AirAccel = m_AirAccel * 256;
-		pNetObj->m_GroundAccel = m_GroundAccel * 256;
-		pNetObj->m_Gravity = m_Gravity * 256;
-		pNetObj->m_Elasticity = m_Elasticity * 256;
+		pNetObj->m_EndPos1X = m_EndPos1.x * 256;
+		pNetObj->m_EndPos1Y = m_EndPos1.y * 256;
+		pNetObj->m_EndPos2X = m_EndPos2.x * 256;
+		pNetObj->m_EndPos2Y = m_EndPos2.y * 256;
+		pNetObj->m_Force1 = m_Force1 * 256;
+		pNetObj->m_Force2 = m_Force2 * 256;
+		pNetObj->m_CustomCoreUID1 = m_CustomCoreUID1;
+		pNetObj->m_CustomCoreUID2 = m_CustomCoreUID2;
 	}
 };
 
@@ -164,6 +216,7 @@ struct CDuckWorldCore
 	CCharCoreExtra m_aBaseCoreExtras[MAX_CLIENTS];
 	array<CCustomCore> m_aCustomCores;
 	array<CPhysicsLawsGroup> m_aPhysicsLawsGroups;
+	array<CDuckPhysJoint> m_aJoints;
 	int m_NextUID;
 
 	void Init(CWorldCore* pBaseWorldCore, CDuckCollision* pDuckCollison);
@@ -172,11 +225,16 @@ struct CDuckWorldCore
 	void CharacterCore_ExtraTick(CCharacterCore* pThis, CCharCoreExtra *pThisExtra, bool UseInput);
 	void CustomCore_Tick(CCustomCore *pThis);
 	void CustomCore_Move(CCustomCore *pThis);
-	int AddCustomCore(float Radius = -1);
+	void Joint_Tick(CDuckPhysJoint *pThis);
+
+	CCustomCore* AddCustomCore(float Radius = -1); // Warning: pointer may get invalidated, do not keep it
 	void RemoveCustomCore(int ID);
+	CPhysicsLawsGroup* AddPhysicLawsGroup(); // Warning: pointer may get invalidated, do not keep it
+	void RemovePhysicLawsGroup(int ID);
 
 	void Snap(CGameContext* pGameServer, int SnappingClient);
 
 	void Copy(const CDuckWorldCore* pOther);
-	int FindCustomCoreFromUID(int UID);
+	CCustomCore *FindCustomCoreFromUID(int UID);
+	CPhysicsLawsGroup* FindPhysicLawsGroupFromUID(int UID);
 };

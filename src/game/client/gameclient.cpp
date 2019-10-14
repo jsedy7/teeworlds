@@ -1428,6 +1428,14 @@ void CGameClient::OnPredict()
 		DuckWorld.m_aCustomCores.set_size(NetCoreCount);
 		for(int i = 0; i < NetCoreCount; i++)
 			DuckWorld.m_aCustomCores[i].Read(pNetCores[i]);
+
+		CNetObj_DuckPhysJoint* pNetJoints = m_pDuckBridge->m_Snap.m_aJoints.base_ptr();
+		const int NetJointCount = m_pDuckBridge->m_Snap.m_aJoints.size();
+
+		DuckWorld.m_aJoints.set_size(NetJointCount);
+		for(int i = 0; i < NetJointCount; i++)
+			DuckWorld.m_aJoints[i].Read(pNetJoints[i]);
+
 		for(int i = 0; i < MAX_CLIENTS; i++)
 			DuckWorld.m_aBaseCoreExtras[i].Read(m_pDuckBridge->m_Snap.m_aCharCoreExtra[i]);
 	}

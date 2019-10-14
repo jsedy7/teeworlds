@@ -347,7 +347,14 @@ struct CDuckBridge : public CComponent
 	struct CSnapState
 	{
 		array<CNetObj_DuckCustomCore> m_aCustomCores;
+		array<CNetObj_DuckPhysJoint> m_aJoints;
 		CNetObj_DuckCharCoreExtra m_aCharCoreExtra[MAX_CLIENTS];
+
+		void Clear()
+		{
+			m_aCustomCores.set_size(0);
+			m_aJoints.set_size(0);
+		}
 	};
 
 	CSnapState m_SnapPrev;
@@ -373,6 +380,7 @@ struct CDuckBridge : public CComponent
 	void QueueDrawFreeform(vec2 Pos);
 	void QueueDrawText(const char* pStr, float FontSize, float *pRect, float *pColors);
 	void QueueDrawCircle(vec2 Pos, float Radius);
+	void QueueDrawLine(vec2 Pos1, vec2 Pos2, float Thickness);
 
 	void SetHudPartsShown(CHudPartsShown hps);
 

@@ -274,6 +274,17 @@ void CDuckBridge::QueueDrawCircle(vec2 Pos, float Radius)
 	QueueDrawFreeform(Pos);
 }
 
+void CDuckBridge::QueueDrawLine(vec2 Pos1, vec2 Pos2, float Thickness)
+{
+	vec2 Dir = normalize(Pos2 - Pos1);
+	float Angle = angle(Dir);
+	QueueSetQuadRotation(Angle);
+	float Width = distance(Pos1, Pos2);
+	float Height = Thickness;
+	vec2 Center = (Pos1 + Pos2) / 2;
+	QueueDrawQuadCentered(IGraphics::CQuadItem(Center.x, Center.y, Width, Height));
+}
+
 void CDuckBridge::SetHudPartsShown(CHudPartsShown hps)
 {
 	m_HudPartsShown = hps;
@@ -1156,7 +1167,7 @@ void CDuckBridge::OnNewSnapshot()
 
 	// reset snap
 	m_SnapPrev = m_Snap;
-	m_Snap.m_aCustomCores.set_size(0);
+	m_Snap.Clear();
 
 	int Num = Client()->SnapNumItems(IClient::SNAP_CURRENT);
 	for(int Index = 0; Index < Num; Index++)
@@ -1179,10 +1190,13 @@ void CDuckBridge::OnNewSnapshot()
 				dbg_msg("duck", "snapshot error, DuckCharCoreExtra ID out of range (%d)", ID);
 			}
 		}
-
-		if(Type == CNetObj_DuckCustomCore::NET_ID && Size == sizeof(CNetObj_DuckCustomCore))
+		else if(Type == CNetObj_DuckCustomCore::NET_ID && Size == sizeof(CNetObj_DuckCustomCore))
 		{
 			m_Snap.m_aCustomCores.add(*(CNetObj_DuckCustomCore*)pData);
+		}
+		else if(Type == CNetObj_DuckPhysJoint::NET_ID && Size == sizeof(CNetObj_DuckPhysJoint))
+		{
+			m_Snap.m_aJoints.add(*(CNetObj_DuckPhysJoint*)pData);
 		}
 	}
 

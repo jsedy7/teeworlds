@@ -36,6 +36,7 @@ class CDuckJs
 	static duk_ret_t NativeRenderDrawFreeform(duk_context *ctx);
 	static duk_ret_t NativeRenderDrawText(duk_context *ctx);
 	static duk_ret_t NativeRenderDrawCircle(duk_context *ctx);
+	static duk_ret_t NativeRenderDrawLine(duk_context *ctx);
 	static duk_ret_t NativeGetBaseTexture(duk_context *ctx);
 	static duk_ret_t NativeGetSpriteSubSet(duk_context *ctx);
 	static duk_ret_t NativeGetSpriteScale(duk_context *ctx);
@@ -66,6 +67,7 @@ class CDuckJs
 	static duk_ret_t NativeRandomInt(duk_context *ctx);
 	static duk_ret_t NativeCalculateTextSize(duk_context *ctx);
 	static duk_ret_t NativeSetMenuModeActive(duk_context *ctx);
+	static duk_ret_t NativePhysGetJoints(duk_context *ctx);
 
 	// TODO: not great if we want to do nested objects
 	void PushObject();

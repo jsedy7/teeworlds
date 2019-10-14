@@ -148,7 +148,7 @@ bool CDuckCollision::TestBoxBig(vec2 Pos, vec2 Size, int Flag) const
 		if(CheckPoint(Pos.x+Size.x, Pos.y-Size.y + (i+1) * MsGap, Flag))
 			return true;
 	}
-	return 0;
+	return false;
 }
 
 void CDuckCollision::MoveBoxBig(vec2 *pInoutPos, vec2 *pInoutVel, vec2 Size, float Elasticity) const
