@@ -240,6 +240,7 @@ void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis)
 		}
 	}
 
+#if 1
 	for(int i = 0; i < AdditionnalCount; i++)
 	{
 		CCustomCore *pCore = &m_aCustomCores[i];
@@ -253,21 +254,23 @@ void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis)
 		// handle player <-> player collision
 		float Distance = distance(pThis->m_Pos, pCore->m_Pos);
 		vec2 Dir = normalize(pThis->m_Pos - pCore->m_Pos);
-		float MinDist = pCore->m_Radius + pThis->m_Radius;
-		if(Distance < MinDist+g_CoreOuterRadius && Distance > 0.0f)
+		float MinDist = pCore->m_Radius + pThis->m_Radius + 2.0f;
+		if(Distance < MinDist && Distance > 0.0f)
 		{
-			float a = (MinDist+g_CoreOuterRadius - Distance);
+			/*float a = (MinDist+g_CoreOuterRadius - Distance);
 			float Velocity = 0.5f;
 
 			// make sure that we don't add excess force by checking the
 			// direction against the current velocity. if not zero.
-			if (length(pThis->m_Vel) > 0.0001)
+			if(length(pThis->m_Vel) > 0.0001)
 				Velocity = 1-(dot(normalize(pThis->m_Vel), Dir)+1)/2;
 
 			pThis->m_Vel += Dir*a*(Velocity*0.75f);
-			pThis->m_Vel *= 0.85f;
+			pThis->m_Vel *= 0.85f;*/
+			pThis->m_Vel += Dir * (MinDist-Distance) * 1.01f;
 		}
 	}
+#endif
 
 	// clamp the velocity to something sane
 	if(length(pThis->m_Vel) > 6000)
@@ -333,13 +336,23 @@ void CDuckWorldCore::CustomCore_Move(CCustomCore *pThis)
 
 				float D = distance(Pos, pCore->m_Pos);
 				float MinDist = pThis->m_Radius + pCore->m_Radius;
-				if(D < MinDist && D > 0.0f)
+				if(D < MinDist)
 				{
+					if(distance(NewPos, pCore->m_Pos) > D || distance(Pos, pCore->m_Pos + pCore->m_Vel) > D) // we are moving away from the core
+					{
+						continue;
+					}
+
 					if(a > 0.0f)
+					{
 						pThis->m_Pos = LastPos;
-					else if(distance(NewPos, pCore->m_Pos) > D)
+						return;
+					}
+					else
+					{
 						pThis->m_Pos = NewPos;
-					return;
+						return;
+					}
 				}
 			}
 		}
@@ -373,10 +386,8 @@ void CDuckWorldCore::Joint_Tick(CDuckPhysJoint *pThis)
 			pThis->m_Vel.y = SaturatedAdd(-DragSpeed, DragSpeed, pThis->m_Vel.y, -Accel*Dir.y*0.25f);*/
 
 			vec2 Dir = normalize(pCore2->m_Pos - pCore1->m_Pos);
-			pCore1->m_Vel.x = SaturatedAdd(-100.f, 100.f, pCore1->m_Vel.x, Dir.x * pThis->m_Force1);
-			pCore1->m_Vel.y = SaturatedAdd(-100.f, 100.f, pCore1->m_Vel.y, Dir.y * pThis->m_Force1);
-			//pCore1->m_Vel += Dir * pThis->m_Force1;
-			pCore2->m_Vel += Dir * -pThis->m_Force2;
+			pCore1->m_Vel += Dir * pThis->m_Force1;
+			pCore2->m_Vel += Dir * -pThis->m_Force1;
 		}
 	}
 }

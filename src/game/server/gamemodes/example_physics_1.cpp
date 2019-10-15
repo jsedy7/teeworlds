@@ -67,23 +67,24 @@ CGameControllerExamplePhys1::CGameControllerExamplePhys1(class CGameContext *pGa
 	CDuckCollision* pCollision = (CDuckCollision*)GameServer()->Collision();
 	m_DuckWorldCore.Init(&GameServer()->m_World.m_Core, pCollision);
 	CPhysicsLawsGroup* pPlg = m_DuckWorldCore.AddPhysicLawsGroup();
-	pPlg->m_Gravity = 0.0;
-	pPlg->m_Elasticity = 0.9;
+	//pPlg->m_Gravity = 0.0;
+	//pPlg->m_Elasticity = 0.9;
 	pPlg->m_AirFriction = 1.0;
 	pPlg->m_GroundFriction = 1.0;
 
 	CCustomCore* pTestCore1 = m_DuckWorldCore.AddCustomCore(40);
-	//pTestCore1->SetPhysicLawGroup(*pPlg);
+	pTestCore1->SetPhysicLawGroup(*pPlg);
 	pTestCore1->m_Pos = vec2(500, 280);
 
 	CCustomCore* pTestCore2 = m_DuckWorldCore.AddCustomCore(30);
+	pTestCore2->SetPhysicLawGroup(*pPlg);
 	pTestCore2->m_Pos = vec2(300, 280);
 
 	CDuckPhysJoint Joint;
 	Joint.m_CustomCoreUID1 = pTestCore1->m_UID;
 	Joint.m_CustomCoreUID2 = pTestCore2->m_UID;
 	Joint.m_Force1 = 2;
-	Joint.m_Force2 = 2;
+	Joint.m_Force2 = 0.1;
 	m_DuckWorldCore.m_aJoints.add(Joint);
 
 	/*for(int i = 0; i < 100; i++)
