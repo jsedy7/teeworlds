@@ -1198,9 +1198,14 @@ void CDuckBridge::OnNewSnapshot()
 		{
 			m_Snap.m_aJoints.add(*(CNetObj_DuckPhysJoint*)pData);
 		}
+		else if(Type == CNetObj_DuckPhysicsLawsGroup::NET_ID && Size == sizeof(CNetObj_DuckPhysicsLawsGroup))
+		{
+			m_Snap.m_aPhysicsLawsGroups.add(*(CNetObj_DuckPhysicsLawsGroup*)pData);
+		}
 	}
 
-	//dbg_msg("duck", "custom cores cout = %d", m_Snap.m_aCustomCores.size());
+	//dbg_msg("duck", "custom cores count = %d", m_Snap.m_aCustomCores.size());
+	//dbg_msg("duck", "plg count = %d", m_Snap.m_aPhysicsLawsGroups.size());
 }
 
 bool CDuckBridge::IsModAlreadyInstalled(const SHA256_DIGEST *pModSha256)

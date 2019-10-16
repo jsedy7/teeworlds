@@ -171,9 +171,12 @@ struct CCustomCore
 		m_Radius = 20;
 	}
 
-	inline void SetPhysicLawGroup(const CPhysicsLawsGroup& Plg)
+	inline void SetPhysicLawGroup(const CPhysicsLawsGroup* pPlg)
 	{
-		m_PlgUID = Plg.m_UID;
+		if(!pPlg)
+			m_PlgUID = -1;
+		else
+			m_PlgUID = pPlg->m_UID;
 	}
 };
 

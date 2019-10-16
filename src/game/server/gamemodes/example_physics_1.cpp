@@ -73,12 +73,16 @@ CGameControllerExamplePhys1::CGameControllerExamplePhys1(class CGameContext *pGa
 	pPlg->m_GroundFriction = 1.0;
 
 	CCustomCore* pTestCore1 = m_DuckWorldCore.AddCustomCore(40);
-	pTestCore1->SetPhysicLawGroup(*pPlg);
+	pTestCore1->SetPhysicLawGroup(pPlg);
 	pTestCore1->m_Pos = vec2(500, 280);
 
 	CCustomCore* pTestCore2 = m_DuckWorldCore.AddCustomCore(30);
-	pTestCore2->SetPhysicLawGroup(*pPlg);
+	pTestCore2->SetPhysicLawGroup(pPlg);
 	pTestCore2->m_Pos = vec2(300, 280);
+
+	CCustomCore* pTestCore3 = m_DuckWorldCore.AddCustomCore(30);
+	pTestCore3->SetPhysicLawGroup(pPlg);
+	pTestCore3->m_Pos = vec2(400, 280);
 
 	CDuckPhysJoint Joint;
 	Joint.m_CustomCoreUID1 = pTestCore1->m_UID;

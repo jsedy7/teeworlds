@@ -348,12 +348,14 @@ struct CDuckBridge : public CComponent
 	{
 		array<CNetObj_DuckCustomCore> m_aCustomCores;
 		array<CNetObj_DuckPhysJoint> m_aJoints;
+		array<CNetObj_DuckPhysicsLawsGroup> m_aPhysicsLawsGroups;
 		CNetObj_DuckCharCoreExtra m_aCharCoreExtra[MAX_CLIENTS];
 
 		void Clear()
 		{
 			m_aCustomCores.set_size(0);
 			m_aJoints.set_size(0);
+			m_aPhysicsLawsGroups.set_size(0);
 		}
 	};
 

@@ -24,6 +24,7 @@
 #include "gamemodes/test.h"
 #include "gamemodes/example_physics_1.h"
 #include "gamemodes/example_physics_2.h"
+#include "gamemodes/example_physics_3.h"
 #include "gamemodes/example_ui_1.h"
 
 enum
@@ -1505,6 +1506,8 @@ void CGameContext::OnInit()
 		m_pController = new CGameControllerExamplePhys1(this);
 	else if(str_comp_nocase(g_Config.m_SvGametype, "exphys2") == 0)
 		m_pController = new CGameControllerExamplePhys2(this);
+	else if(str_comp_nocase(g_Config.m_SvGametype, "exphys3") == 0)
+		m_pController = new CGameControllerExamplePhys3(this);
 	else
 		m_pController = new CGameControllerDM(this);
 

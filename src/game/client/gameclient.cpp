@@ -1436,6 +1436,13 @@ void CGameClient::OnPredict()
 		for(int i = 0; i < NetJointCount; i++)
 			DuckWorld.m_aJoints[i].Read(pNetJoints[i]);
 
+		CNetObj_DuckPhysicsLawsGroup* pNetPlg = m_pDuckBridge->m_Snap.m_aPhysicsLawsGroups.base_ptr();
+		const int NetPlgCount = m_pDuckBridge->m_Snap.m_aPhysicsLawsGroups.size();
+
+		DuckWorld.m_aPhysicsLawsGroups.set_size(NetPlgCount);
+		for(int i = 0; i < NetPlgCount; i++)
+			DuckWorld.m_aPhysicsLawsGroups[i].Read(pNetPlg[i]);
+
 		for(int i = 0; i < MAX_CLIENTS; i++)
 			DuckWorld.m_aBaseCoreExtras[i].Read(m_pDuckBridge->m_Snap.m_aCharCoreExtra[i]);
 	}

@@ -21,7 +21,6 @@ void CDuckWorldCore::Init(CWorldCore *pBaseWorldCore, CDuckCollision *pDuckColli
 {
 	m_pBaseWorldCore = pBaseWorldCore;
 	m_pCollision = pDuckCollison;
-	m_aCustomCores.hint_size(64);
 
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
@@ -116,7 +115,7 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCharCoreExt
 		pThis->m_Vel -= HookVel;
 	}
 
-	if(pThisExtra->m_OldHookState == HOOK_FLYING) // FIXME: sometimes we don't hook the core even though we should
+	if(pThisExtra->m_OldHookState == HOOK_FLYING || pThis->m_HookState == HOOK_FLYING) // FIXME: sometimes we don't hook the core even though we should
 	{
 		vec2 OldPos = pThis->m_HookPos-pThis->m_HookDir*m_pBaseWorldCore->m_Tuning.m_HookFireSpeed;
 		vec2 NewPos = pThis->m_HookPos;
@@ -400,7 +399,8 @@ CCustomCore *CDuckWorldCore::AddCustomCore(float Radius)
 	Core.Reset();
 	Core.m_Radius = Radius;
 	Core.m_UID = m_NextUID++;
-	return &m_aCustomCores[m_aCustomCores.add(Core)];
+	int ID = m_aCustomCores.add(Core);
+	return &m_aCustomCores[ID];
 }
 
 void CDuckWorldCore::RemoveCustomCore(int ID)
@@ -424,12 +424,15 @@ CPhysicsLawsGroup *CDuckWorldCore::AddPhysicLawsGroup()
 		0, // m_Elasticity
 	};
 	Plg.m_UID = m_NextUID++;
-	return &m_aPhysicsLawsGroups[m_aPhysicsLawsGroups.add(Plg)];
+	int ID = m_aPhysicsLawsGroups.add(Plg);
+	return &m_aPhysicsLawsGroups[ID];
 }
 
 void CDuckWorldCore::Snap(CGameContext *pGameServer, int SnappingClient)
 {
-	const int AdditionnalCount = m_aCustomCores.size();
+	const int CoreCount = m_aCustomCores.size();
+	const int JointCount = m_aJoints.size();
+	const int PlgCount = m_aPhysicsLawsGroups.size();
 
 	for(int PlayerID = 0; PlayerID < MAX_CLIENTS; PlayerID++)
 	{
@@ -438,16 +441,22 @@ void CDuckWorldCore::Snap(CGameContext *pGameServer, int SnappingClient)
 		if(pGameServer->m_apPlayers[PlayerID]->IsDummy())
 			continue;
 
-		for(int i = 0; i < AdditionnalCount; i++)
+		for(int i = 0; i < CoreCount; i++)
 		{
 			CNetObj_DuckCustomCore* pData = pGameServer->DuckSnapNewItem<CNetObj_DuckCustomCore>(m_aCustomCores[i].m_UID);
 			m_aCustomCores[i].Write(pData);
 		}
 
-		for(int i = 0; i < AdditionnalCount; i++)
+		for(int i = 0; i < JointCount; i++)
 		{
 			CNetObj_DuckPhysJoint* pData = pGameServer->DuckSnapNewItem<CNetObj_DuckPhysJoint>(i);
 			m_aJoints[i].Write(pData);
+		}
+
+		for(int i = 0; i < PlgCount; i++)
+		{
+			CNetObj_DuckPhysicsLawsGroup* pData = pGameServer->DuckSnapNewItem<CNetObj_DuckPhysicsLawsGroup>(i);
+			m_aPhysicsLawsGroups[i].Write(pData);
 		}
 
 		for(int i = 0; i < MAX_CLIENTS; i++)
