@@ -441,7 +441,6 @@ struct CDuckBridge : public CComponent
 	virtual void OnRender();
 	virtual void OnMessage(int Msg, void *pRawMsg);
 	virtual bool OnMouseMove(float x, float y);
-	void OnSnapItem(int Msg, void *pRawMsg);
 	virtual void OnStateChange(int NewState, int OldState);
 	virtual bool OnInput(IInput::CEvent e);
 

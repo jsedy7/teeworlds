@@ -481,7 +481,7 @@ void CDuckWorldCore::Copy(const CDuckWorldCore *pOther)
 	*this = *pOther;
 }
 
-CCustomCore* CDuckWorldCore::FindCustomCoreFromUID(int UID)
+CCustomCore* CDuckWorldCore::FindCustomCoreFromUID(int UID, int* pID)
 {
 	if(UID < 0)
 		return NULL;
@@ -491,9 +491,13 @@ CCustomCore* CDuckWorldCore::FindCustomCoreFromUID(int UID)
 	for(int i = 0; i < Count; i++)
 	{
 		if(m_aCustomCores[i].m_UID == UID)
+		{
+			if(pID) *pID = i;
 			return &m_aCustomCores[i];
+		}
 	}
 
+	if(pID) *pID = -1;
 	return NULL;
 }
 

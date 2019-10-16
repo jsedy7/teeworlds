@@ -240,6 +240,6 @@ struct CDuckWorldCore
 	void Snap(CGameContext* pGameServer, int SnappingClient);
 
 	void Copy(const CDuckWorldCore* pOther);
-	CCustomCore *FindCustomCoreFromUID(int UID);
+	CCustomCore *FindCustomCoreFromUID(int UID, int *pID = NULL);
 	CPhysicsLawsGroup* FindPhysicLawsGroupFromUID(int UID);
 };

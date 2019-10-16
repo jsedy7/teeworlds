@@ -1175,32 +1175,41 @@ void CDuckBridge::OnNewSnapshot()
 		IClient::CSnapItem Item;
 		const void *pData = Client()->SnapGetItem(IClient::SNAP_CURRENT, Index, &Item);
 
-		const int ID = Item.m_ID;
-		const int Type = Item.m_Type - NUM_NETOBJTYPES;
-		const int Size = Item.m_DataSize;
+		if(Item.m_Type >= NUM_NETOBJTYPES)
+		{
+			const int ID = Item.m_ID;
+			const int Type = Item.m_Type - NUM_NETOBJTYPES;
+			const int Size = Item.m_DataSize;
 
-		if(Type == CNetObj_DuckCharCoreExtra::NET_ID && Size == sizeof(CNetObj_DuckCharCoreExtra))
-		{
-			if(ID >= 0 && ID < MAX_CLIENTS)
+			if(Type == CNetObj_DuckCharCoreExtra::NET_ID && Size == sizeof(CNetObj_DuckCharCoreExtra))
 			{
-				m_Snap.m_aCharCoreExtra[ID] = *(CNetObj_DuckCharCoreExtra*)pData;
+				if(ID >= 0 && ID < MAX_CLIENTS)
+				{
+					m_Snap.m_aCharCoreExtra[ID] = *(CNetObj_DuckCharCoreExtra*)pData;
+				}
+				else if(g_Config.m_Debug)
+				{
+					dbg_msg("duck", "snapshot error, DuckCharCoreExtra ID out of range (%d)", ID);
+				}
 			}
-			else if(g_Config.m_Debug)
+			else if(Type == CNetObj_DuckCustomCore::NET_ID && Size == sizeof(CNetObj_DuckCustomCore))
 			{
-				dbg_msg("duck", "snapshot error, DuckCharCoreExtra ID out of range (%d)", ID);
+				m_Snap.m_aCustomCores.add(*(CNetObj_DuckCustomCore*)pData);
 			}
+			else if(Type == CNetObj_DuckPhysJoint::NET_ID && Size == sizeof(CNetObj_DuckPhysJoint))
+			{
+				m_Snap.m_aJoints.add(*(CNetObj_DuckPhysJoint*)pData);
+			}
+			else if(Type == CNetObj_DuckPhysicsLawsGroup::NET_ID && Size == sizeof(CNetObj_DuckPhysicsLawsGroup))
+			{
+				m_Snap.m_aPhysicsLawsGroups.add(*(CNetObj_DuckPhysicsLawsGroup*)pData);
+			}
+
+			m_Js.OnDuckSnapItem(Type, ID, (void*)pData, Size);
 		}
-		else if(Type == CNetObj_DuckCustomCore::NET_ID && Size == sizeof(CNetObj_DuckCustomCore))
+		else
 		{
-			m_Snap.m_aCustomCores.add(*(CNetObj_DuckCustomCore*)pData);
-		}
-		else if(Type == CNetObj_DuckPhysJoint::NET_ID && Size == sizeof(CNetObj_DuckPhysJoint))
-		{
-			m_Snap.m_aJoints.add(*(CNetObj_DuckPhysJoint*)pData);
-		}
-		else if(Type == CNetObj_DuckPhysicsLawsGroup::NET_ID && Size == sizeof(CNetObj_DuckPhysicsLawsGroup))
-		{
-			m_Snap.m_aPhysicsLawsGroups.add(*(CNetObj_DuckPhysicsLawsGroup*)pData);
+			m_Js.OnSnapItem(Item.m_Type, Item.m_ID, (void*)pData);
 		}
 	}
 
@@ -2010,15 +2019,6 @@ bool CDuckBridge::OnMouseMove(float x, float y)
 	}
 
 	return false;
-}
-
-void CDuckBridge::OnSnapItem(int Msg, void *pRawMsg)
-{
-	if(!IsLoaded()) {
-		return;
-	}
-
-	m_Js.OnSnapItem(Msg, pRawMsg);
 }
 
 void CDuckBridge::OnStateChange(int NewState, int OldState)

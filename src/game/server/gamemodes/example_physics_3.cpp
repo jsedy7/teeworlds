@@ -13,27 +13,29 @@ inline bool NetworkClipped(CGameContext* pGameServer, int SnappingClient, vec2 C
 	float dy = pGameServer->m_apPlayers[SnappingClient]->m_ViewPos.y-CheckPos.y;
 
 	if(absolute(dx) > 1000.0f || absolute(dy) > 800.0f)
-		return 1;
+		return true;
 
 	if(distance(pGameServer->m_apPlayers[SnappingClient]->m_ViewPos, CheckPos) > 1100.0f)
-		return 1;
+		return true;
+	return false;
 }
 
-struct ModNetID
+struct CNetObj_Bee
 {
-	enum Enum {
-		BEE=0x1,
-	};
+	enum { NET_ID = 0x1 };
+	int m_Core1ID;
+	int m_Core2ID;
+	int m_Health;
 };
-
 
 struct CBee
 {
 	int m_CoreUID[2];
 	CDuckWorldCore* m_pWorld;
 	int m_Health;
+	int m_BeeID;
 
-	void Create(CDuckWorldCore* pWorld, vec2 Pos, int BeePlgUID)
+	void Create(CDuckWorldCore* pWorld, vec2 Pos, int BeePlgUID, int BeeID)
 	{
 		m_pWorld = pWorld;
 
@@ -56,31 +58,56 @@ struct CBee
 		m_CoreUID[1] = pCore2->m_UID;
 
 		m_Health = 10;
+		m_BeeID = BeeID;
+	}
+
+	void Tick()
+	{
+		CCustomCore* pCore1 = m_pWorld->FindCustomCoreFromUID(m_CoreUID[0]);
+		CCustomCore* pCore2 = m_pWorld->FindCustomCoreFromUID(m_CoreUID[1]);
+		pCore1->m_Vel.y -= 0.6;
+		pCore2->m_Vel.y -= 0.6;
 	}
 
 	void Snap(CGameContext* pGameServer, int SnappinClient)
 	{
-		CCustomCore* pCore1 = m_pWorld->FindCustomCoreFromUID(m_CoreUID[0]);
+		int Core1ID, Core2ID;
+		CCustomCore* pCore1 = m_pWorld->FindCustomCoreFromUID(m_CoreUID[0], &Core1ID);
+		CCustomCore* pCore2 = m_pWorld->FindCustomCoreFromUID(m_CoreUID[1], &Core2ID);
 		vec2 Pos = pCore1->m_Pos + vec2(70, 0);
 
 		if(NetworkClipped(pGameServer, SnappinClient, Pos))
 			return;
 
-
+		CNetObj_Bee* pBee = pGameServer->DuckSnapNewItem<CNetObj_Bee>(m_BeeID);
+		pBee->m_Core1ID = Core1ID;
+		pBee->m_Core2ID = Core2ID;
+		pBee->m_Health = m_Health;
 	}
 };
 
 #define MAX_BEES 64
 static CBee m_aBees[MAX_BEES];
-static int m_BeeCount = 0;
+static bool m_aBeeIsAlive[MAX_BEES];
 
 void CGameControllerExamplePhys3::SpawnBeeAt(vec2 Pos)
 {
-	dbg_assert(m_BeeCount < MAX_BEES, "way too many bees dude");
+	int BeeID = -1;
+
+	for(int i = 0; i < MAX_BEES; i++)
+	{
+		if(!m_aBeeIsAlive[i]) {
+			BeeID = i;
+			break;
+		}
+	}
+
+	dbg_assert(BeeID != -1, "way too many bees dude");
 
 	CBee Bee;
-	Bee.Create(&m_DuckWorldCore, Pos, m_BeePlgUID);
-	m_aBees[m_BeeCount++] = Bee;
+	Bee.Create(&m_DuckWorldCore, Pos, m_BeePlgUID, BeeID);
+	m_aBees[BeeID] = Bee;
+	m_aBeeIsAlive[BeeID] = true;
 }
 
 CGameControllerExamplePhys3::CGameControllerExamplePhys3(class CGameContext *pGameServer)
@@ -105,7 +132,7 @@ CGameControllerExamplePhys3::CGameControllerExamplePhys3(class CGameContext *pGa
 
 	m_BeePlgUID = pPlg->m_UID;
 	//m_BeePlgUID = -1;
-	m_BeeCount = 0;
+	mem_zero(m_aBeeIsAlive, sizeof(m_aBeeIsAlive));
 
 	SpawnBeeAt(vec2(1344, 680));
 }
@@ -120,12 +147,26 @@ void CGameControllerExamplePhys3::Tick()
 {
 	IGameController::Tick();
 	m_DuckWorldCore.Tick();
+
+	for(int i = 0; i < MAX_BEES; i++)
+	{
+		if(m_aBeeIsAlive[i]) {
+			m_aBees[i].Tick();
+		}
+	}
 }
 
 void CGameControllerExamplePhys3::Snap(int SnappingClient)
 {
 	IGameController::Snap(SnappingClient);
 	m_DuckWorldCore.Snap(GameServer(), SnappingClient);
+
+	for(int i = 0; i < MAX_BEES; i++)
+	{
+		if(m_aBeeIsAlive[i]) {
+			m_aBees[i].Snap(GameServer(), SnappingClient);
+		}
+	}
 }
 
 void CGameControllerExamplePhys3::OnDuckMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)

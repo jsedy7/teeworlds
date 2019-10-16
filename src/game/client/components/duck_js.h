@@ -96,8 +96,9 @@ class CDuckJs
 public:
 	CDuckJs();
 	void Shutdown();
-	void OnMessage(int Msg, void* pRawMsg);
-	void OnSnapItem(int Msg, void* pRawMsg);
+	void OnMessage(int Msg, void *pRawMsg);
+	void OnSnapItem(int Msg, int SnapID, void* pRawMsg);
+	void OnDuckSnapItem(int Msg, int SnapID, void* pRawMsg, int Size);
 	void OnInput(IInput::CEvent e);
 	void OnModLoaded();
 

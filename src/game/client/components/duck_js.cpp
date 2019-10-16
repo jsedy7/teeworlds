@@ -2741,15 +2741,33 @@ void CDuckJs::OnMessage(int Msg, void* pRawMsg)
 	}
 }
 
-void CDuckJs::OnSnapItem(int Msg, void *pRawMsg)
+void CDuckJs::OnSnapItem(int Msg, int SnapID, void *pRawMsg)
 {
-	if(GetJsFunction("OnMessage"))
+	if(GetJsFunction("OnSnap"))
 	{
 		if(MakeVanillaJsNetObj(Msg, pRawMsg))
 		{
-			CallJsFunction(1);
+			duk_push_int(Ctx(), SnapID);
+
+			CallJsFunction(2);
 			duk_pop(Ctx());
 		}
+	}
+}
+
+void CDuckJs::OnDuckSnapItem(int Msg, int SnapID, void *pRawMsg, int Size)
+{
+	if(GetJsFunction("OnSnap"))
+	{
+		// make netObj
+		PushObject();
+		ObjectSetMemberInt("mod_id", Msg);
+		ObjectSetMemberRawBuffer("raw", pRawMsg, Size);
+
+		duk_push_int(Ctx(), SnapID);
+
+		CallJsFunction(2);
+		duk_pop(Ctx());
 	}
 }
 
@@ -2762,6 +2780,7 @@ void CDuckJs::OnInput(IInput::CEvent e)
 		ObjectSetMemberInt("pressed", e.m_Flags&IInput::FLAG_PRESS ? 1:0);
 		ObjectSetMemberInt("released", e.m_Flags&IInput::FLAG_RELEASE ? 1:0);
 		ObjectSetMemberString("text", e.m_aText);
+
 
 		// call OnInput(event)
 		CallJsFunction(1);
