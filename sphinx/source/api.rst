@@ -767,14 +767,14 @@ TwGetPixelScale
 
 |
 
-TwGetDuckCores
+TwPhysGetCores
 ---------------------------------------------------------------------
 .. code-block:: js
    
-   function TwGetDuckCores()
+   function TwPhysGetCores()
 
 
-| Get predicted duck cores.
+| Get predicted physical cores.
 
 
 **Parameters**
@@ -798,11 +798,43 @@ TwGetDuckCores
 
 |
 
-TwMapSetTileCollisionFlags
+TwPhysGetCores
 ---------------------------------------------------------------------
 .. code-block:: js
    
-   function TwMapSetTileCollisionFlags(tile_x, tile_y, flags)
+   function TwPhysGetCores()
+
+
+| Get physical joints.
+| *Work in progress*
+
+
+**Parameters**
+
+* None
+
+**Returns**
+
+* **joints**:
+
+.. code-block:: js
+
+	var joints = [
+		{
+			core1_id: int or null,
+			core2_id: int or null,
+		},
+		...
+	];
+
+
+|
+
+TwPhysSetTileCollisionFlags
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function TwPhysSetTileCollisionFlags(tile_x, tile_y, flags)
 
 
 | Modify a map tile's collision flags.
@@ -891,96 +923,6 @@ TwCollisionClearStaticBlock
 **Returns**
 
 * None
-
-
-|
-
-TwCollisionSetDynamicDisk
----------------------------------------------------------------------
-.. code-block:: js
-   
-   function TwCollisionSetDynamicDisk(disk_id, disk)
-
-
-| Creates or modify a dynamic disk.
-
-**Parameters**
-
-* **disk_id**: int
-* **disk**
-
-.. code-block:: js
-
-	var disk = {
-		flags: int, // unused at the moment
-		pos_x, float,
-		pos_y, float,
-		vel_x, float,
-		vel_y, float,
-		radius, float,
-		hook_force, float,
-	};
-
-**Returns**
-
-* None
-
-
-|
-
-TwCollisionClearDynamicDisk
----------------------------------------------------------------------
-.. code-block:: js
-   
-   function TwCollisionClearDynamicDisk(block_id)
-
-
-| Removes a dynamic disk.
-
-**Parameters**
-
-* **disk_id**: int
-
-**Returns**
-
-* None
-
-
-|
-
-TwCollisionGetPredictedDynamicDisks
----------------------------------------------------------------------
-.. code-block:: js
-   
-   function TwCollisionGetPredictedDynamicDisks()
-
-
-| Get predicted dynamic disks.
-
-**Parameters**
-
-* None
-
-**Returns**
-
-* **disks**
-
-.. code-block:: js
-
-	var disks = [
-		{
-			id: int,
-			flags: int, // unused at the moment
-			pos_x, float,
-			pos_y, float,
-			vel_x, float,
-			vel_y, float,
-			radius, float,
-			hook_force, float,
-		},
-		...
-	];
-
 
 
 |

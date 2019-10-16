@@ -116,7 +116,7 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCharCoreExt
 		pThis->m_Vel -= HookVel;
 	}
 
-	if(pThis->m_HookState == HOOK_FLYING)
+	if(pThisExtra->m_OldHookState == HOOK_FLYING) // FIXME: sometimes we don't hook the core even though we should
 	{
 		vec2 OldPos = pThis->m_HookPos-pThis->m_HookDir*m_pBaseWorldCore->m_Tuning.m_HookFireSpeed;
 		vec2 NewPos = pThis->m_HookPos;
@@ -194,6 +194,8 @@ void CDuckWorldCore::CharacterCore_ExtraTick(CCharacterCore *pThis, CCharCoreExt
 			}
 		}
 	}
+
+	pThisExtra->m_OldHookState = pThis->m_HookState;
 }
 
 void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis)

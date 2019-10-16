@@ -1499,9 +1499,9 @@ duk_ret_t CDuckJs::NativeGetPixelScale(duk_context *ctx)
 
 
 /*#
-`TwGetDuckCores()`
+`TwPhysGetCores()`
 
-| Get predicted duck cores.
+| Get predicted physical cores.
 
 
 **Parameters**
@@ -1523,7 +1523,7 @@ duk_ret_t CDuckJs::NativeGetPixelScale(duk_context *ctx)
 	];
 
 #*/
-duk_ret_t CDuckJs::NativeGetDuckCores(duk_context *ctx)
+duk_ret_t CDuckJs::NativePhysGetCores(duk_context *ctx)
 {
 	CheckArgumentCount(ctx, 0);
 
@@ -1615,7 +1615,77 @@ duk_ret_t CDuckJs::NativeGetDuckCores(duk_context *ctx)
 }
 
 /*#
-`TwMapSetTileCollisionFlags(tile_x, tile_y, flags)`
+`TwPhysGetCores()`
+
+| Get physical joints.
+| *Work in progress*
+
+
+**Parameters**
+
+* None
+
+**Returns**
+
+* **joints**:
+
+.. code-block:: js
+
+	var joints = [
+		{
+			core1_id: int or null,
+			core2_id: int or null,
+		},
+		...
+	];
+
+#*/
+duk_ret_t CDuckJs::NativePhysGetJoints(duk_context *ctx)
+{
+	CheckArgumentCount(ctx, 0);
+
+	IClient* pClient = This()->Bridge()->Client();
+	float IntraTick = pClient->IntraGameTick();
+	float PredIntraTick = pClient->PredIntraGameTick();
+	CDuckBridge& Bridge = *This()->Bridge();
+
+	const int Count = Bridge.m_WorldCorePredicted.m_aJoints.size();
+	const CDuckPhysJoint* aJoints = Bridge.m_WorldCorePredicted.m_aJoints.base_ptr();
+	const CCustomCore* aCores = Bridge.m_WorldCorePredicted.m_aCustomCores.base_ptr();
+
+	duk_idx_t Array = duk_push_array(ctx);
+	for(int i = 0; i < Count; i++)
+	{
+		const CDuckPhysJoint& Joint = aJoints[i];
+		duk_idx_t ObjIdx = duk_push_object(ctx);
+
+		CCustomCore* pCore1 = Bridge.m_WorldCorePredicted.FindCustomCoreFromUID(Joint.m_CustomCoreUID1);
+		CCustomCore* pCore2 = Bridge.m_WorldCorePredicted.FindCustomCoreFromUID(Joint.m_CustomCoreUID2);
+
+		if(pCore1)
+			DukSetIntProp(ctx, ObjIdx, "core1_id", pCore1 - aCores);
+		else
+		{
+			duk_push_null(ctx);
+			duk_put_prop_string(ctx, ObjIdx, "core1_id");
+		}
+
+		if(pCore2)
+			DukSetIntProp(ctx, ObjIdx, "core2_id", pCore2 - aCores);
+		else
+		{
+			duk_push_null(ctx);
+			duk_put_prop_string(ctx, ObjIdx, "core2_id");
+		}
+
+		duk_put_prop_index(ctx, Array, i);
+	}
+
+	return 1; // pop array
+}
+
+/*#
+`TwPhysSetTileCollisionFlags(tile_x, tile_y, flags)`
 
 | Modify a map tile's collision flags.
 | Example: ``TwMapSetTileCollisionFlags(tx, ty, 0); // air``
@@ -1633,7 +1703,7 @@ duk_ret_t CDuckJs::NativeGetDuckCores(duk_context *ctx)
 * None
 
 #*/
-duk_ret_t CDuckJs::NativeMapSetTileCollisionFlags(duk_context *ctx)
+duk_ret_t CDuckJs::NativePhysSetTileCollisionFlags(duk_context *ctx)
 {
 	CheckArgumentCount(ctx, 3);
 
@@ -2399,50 +2469,6 @@ duk_ret_t CDuckJs::NativeSetMenuModeActive(duk_context *ctx)
 	return 0;
 }
 
-duk_ret_t CDuckJs::NativePhysGetJoints(duk_context *ctx)
-{
-	CheckArgumentCount(ctx, 0);
-
-	IClient* pClient = This()->Bridge()->Client();
-	float IntraTick = pClient->IntraGameTick();
-	float PredIntraTick = pClient->PredIntraGameTick();
-	CDuckBridge& Bridge = *This()->Bridge();
-
-	const int Count = Bridge.m_WorldCorePredicted.m_aJoints.size();
-	const CDuckPhysJoint* aJoints = Bridge.m_WorldCorePredicted.m_aJoints.base_ptr();
-	const CCustomCore* aCores = Bridge.m_WorldCorePredicted.m_aCustomCores.base_ptr();
-
-	duk_idx_t Array = duk_push_array(ctx);
-	for(int i = 0; i < Count; i++)
-	{
-		const CDuckPhysJoint& Joint = aJoints[i];
-		duk_idx_t ObjIdx = duk_push_object(ctx);
-
-		CCustomCore* pCore1 = Bridge.m_WorldCorePredicted.FindCustomCoreFromUID(Joint.m_CustomCoreUID1);
-		CCustomCore* pCore2 = Bridge.m_WorldCorePredicted.FindCustomCoreFromUID(Joint.m_CustomCoreUID2);
-
-		if(pCore1)
-			DukSetIntProp(ctx, ObjIdx, "core1_id", pCore1 - aCores);
-		else
-		{
-			duk_push_null(ctx);
-			duk_put_prop_string(ctx, ObjIdx, "core1_id");
-		}
-
-		if(pCore2)
-			DukSetIntProp(ctx, ObjIdx, "core2_id", pCore2 - aCores);
-		else
-		{
-			duk_push_null(ctx);
-			duk_put_prop_string(ctx, ObjIdx, "core2_id");
-		}
-
-		duk_put_prop_index(ctx, Array, i);
-	}
-
-	return 1; // pop array
-}
-
 void CDuckJs::PushObject()
 {
 	m_CurrentPushedObjID = duk_push_object(Ctx());
@@ -2581,8 +2607,9 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(GetCamera, 0);
 	REGISTER_FUNC(GetUiMousePos, 0);
 	REGISTER_FUNC(GetPixelScale, 0);
-	REGISTER_FUNC(GetDuckCores, 0);
-	REGISTER_FUNC(MapSetTileCollisionFlags, 3);
+	REGISTER_FUNC(PhysGetCores, 0);
+	REGISTER_FUNC(PhysGetJoints, 0);
+	REGISTER_FUNC(PhysSetTileCollisionFlags, 3);
 	REGISTER_FUNC(DirectionFromAngle, 1);
 	REGISTER_FUNC(CollisionSetStaticBlock, 2);
 	REGISTER_FUNC(CollisionClearStaticBlock, 1);
@@ -2596,7 +2623,7 @@ void CDuckJs::ResetDukContext()
 	REGISTER_FUNC(RandomInt, 2);
 	REGISTER_FUNC(CalculateTextSize, 1);
 	REGISTER_FUNC(SetMenuModeActive, 1);
-	REGISTER_FUNC(PhysGetJoints, 0);
+
 
 #undef REGISTER_FUNC
 
