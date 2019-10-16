@@ -45,6 +45,13 @@ struct CBee
 		pCore2->m_PlgUID = BeePlgUID;
 		pCore2->m_Pos = Pos + vec2(70, 0);
 
+		CDuckPhysJoint Joint;
+		Joint.m_CustomCoreUID1 = pCore1->m_UID;
+		Joint.m_CustomCoreUID2 = pCore2->m_UID;
+		Joint.m_Force1 = 10;
+		Joint.m_Force2 = 2;
+		m_pWorld->m_aJoints.add(Joint);
+
 		m_CoreUID[0] = pCore1->m_UID;
 		m_CoreUID[1] = pCore2->m_UID;
 

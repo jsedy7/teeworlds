@@ -255,7 +255,7 @@ void CDuckWorldCore::CustomCore_Tick(CCustomCore *pThis)
 		// handle player <-> player collision
 		float Distance = distance(pThis->m_Pos, pCore->m_Pos);
 		vec2 Dir = normalize(pThis->m_Pos - pCore->m_Pos);
-		float MinDist = pCore->m_Radius + pThis->m_Radius + 2.0f;
+		float MinDist = pCore->m_Radius + pThis->m_Radius;
 		if(Distance < MinDist && Distance > 0.0f)
 		{
 			/*float a = (MinDist+g_CoreOuterRadius - Distance);
@@ -347,6 +347,11 @@ void CDuckWorldCore::CustomCore_Move(CCustomCore *pThis)
 					if(a > 0.0f)
 					{
 						pThis->m_Pos = LastPos;
+						// negate velocity vector based on impact
+						vec2 ImpactDir = normalize(pCore->m_Pos - Pos);
+						float ProjLength = dot(ImpactDir, pThis->m_Vel);
+						if(ProjLength > 0)
+							pThis->m_Vel -= ImpactDir * ProjLength;
 						return;
 					}
 					else
