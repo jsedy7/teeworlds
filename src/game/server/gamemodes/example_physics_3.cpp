@@ -50,7 +50,7 @@ struct CBee
 		CDuckPhysJoint Joint;
 		Joint.m_CustomCoreUID1 = pCore1->m_UID;
 		Joint.m_CustomCoreUID2 = pCore2->m_UID;
-		Joint.m_Force1 = 10;
+		Joint.m_Force1 = 4;
 		Joint.m_Force2 = 2;
 		m_pWorld->m_aJoints.add(Joint);
 

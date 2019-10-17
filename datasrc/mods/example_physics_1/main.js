@@ -8,7 +8,6 @@ var game = {
 
 const testCircle = MakeCircle(20);
 var circlMeshes = [];
-var cores = [];
 
 function MakeCircle(radius)
 {
@@ -76,7 +75,9 @@ function OnRender(clientLocalTime, intraTick)
 {
     TwRenderSetDrawSpace(Teeworlds.DRAW_SPACE_GAME_FOREGROUND);
 
-    cores = TwGetDuckCores();
+    var cores = TwPhysGetCores();
+    var joints = TwPhysGetJoints();
+
     for(var i = 0; i < cores.length; i++) {
         const core = cores[i];
         TwRenderSetColorF4(1, 1, 1, 1);
@@ -86,6 +87,17 @@ function OnRender(clientLocalTime, intraTick)
         TwRenderSetColorF4(1, 0, 1, 0.5);
         TwRenderQuadCentered(core.x, core.y, core.radius * 2, core.radius * 2);
     }
+
+    joints.forEach(function(joint) {
+        if(joint.core1_id === null || joint.core2_id === null)
+            return;
+
+        var core1 = cores[joint.core1_id];
+        var core2 = cores[joint.core2_id];
+
+        TwRenderSetColorF4(0, 0.2, 1, 0.85);
+        TwRenderDrawLine(core1.x, core1.y, core2.x, core2.y, 10);
+    });
 
     /*TwRenderSetTexture(-1);
     TwRenderSetColorF4(1, 1, 1, 1);
