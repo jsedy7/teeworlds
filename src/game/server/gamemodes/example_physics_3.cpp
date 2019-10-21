@@ -65,8 +65,8 @@ struct CBee
 	{
 		CCustomCore* pCore1 = m_pWorld->FindCustomCoreFromUID(m_CoreUID[0]);
 		CCustomCore* pCore2 = m_pWorld->FindCustomCoreFromUID(m_CoreUID[1]);
-		pCore1->m_Vel.y -= 0.6;
-		pCore2->m_Vel.y -= 0.6;
+		pCore1->m_Vel.y -= 1.8;
+		pCore2->m_Vel.y -= 1.6;
 	}
 
 	void Snap(CGameContext* pGameServer, int SnappinClient)
@@ -135,6 +135,7 @@ CGameControllerExamplePhys3::CGameControllerExamplePhys3(class CGameContext *pGa
 	mem_zero(m_aBeeIsAlive, sizeof(m_aBeeIsAlive));
 
 	SpawnBeeAt(vec2(1344, 680));
+	//SpawnBeeAt(vec2(1344, 780));
 }
 
 void CGameControllerExamplePhys3::OnPlayerConnect(CPlayer* pPlayer)

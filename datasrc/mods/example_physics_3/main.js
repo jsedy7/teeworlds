@@ -34,12 +34,19 @@ function OnRender(clientLocalTime, intraTick)
 
     var cores = TwPhysGetCores();
 
-    TwRenderSetTexture(TwGetModTexture("bee_body"));
-    TwRenderSetColorF4(1, 1, 1, 1);
+    const wingAnimSS = [
+        { x1: 0.5, y1: 0.0 },
+        { x1: 0.5, y1: 0.5 },
+        { x1: 0.5, y1: 0.0 },
+        { x1: 0.0, y1: 0.5 },
+    ];
 
     game.bees.forEach(function(bee) {
         var core1 = cores[bee.core1ID];
         var core2 = cores[bee.core2ID];
+
+        TwRenderSetTexture(TwGetModTexture("bee_body"));
+        TwRenderSetColorF4(1, 1, 1, 1);
 
         var beeDir = vec2Normalize(vec2Sub(core2, core1));
         var beeAngle = vec2Angle(beeDir);
@@ -65,6 +72,15 @@ function OnRender(clientLocalTime, intraTick)
         TwRenderSetQuadRotation(beeAngle + headAngleVar);
         TwRenderSetQuadSubSet(0, 0, 0.5, 0.5);
         TwRenderQuadCentered(core1.x + headOffset.x, core1.y + headOffset.y, 128, 128);
+
+        // wing
+        var wingOffset = vec2Rotate(vec2(15, -55), beeAngle);
+        var wingSize = 150;
+        var wingAnim = wingAnimSS[Math.floor(clientLocalTime * 20) % 4];
+        TwRenderSetTexture(TwGetModTexture("bee_wing_anim"));
+        TwRenderSetQuadSubSet(wingAnim.x1, wingAnim.y1, wingAnim.x1 + 0.5, wingAnim.y1 + 0.5);
+        TwRenderSetQuadRotation(beeAngle);
+        TwRenderQuadCentered(core1.x + wingOffset.x, core1.y + wingOffset.y, wingSize, wingSize);
     });
 
     if(isDebug) {
