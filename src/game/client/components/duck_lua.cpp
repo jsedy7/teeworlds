@@ -1,3 +1,5 @@
+// NOTE: Fonctions arguments start at 1 when using the Lua back-end (0 when using duktape)
+
 #include "duck_lua.h"
 #include "duck_bridge.h"
 
@@ -64,6 +66,125 @@ int CDuckLua::NativePrint(lua_State *L)
 	return 0;  /* no return value (= undefined) */
 }
 
+/*#
+`TwRenderQuad(x, y, width, height)`
+
+Draws a quad.
+
+**Parameters**
+
+* **x**: float
+* **y**: float
+* **width**: float
+* **height**: float
+
+**Returns**
+
+* None
+#*/
+int CDuckLua::NativeRenderQuad(lua_State *L)
+{
+	CheckArgumentCount(L, 4);
+
+	double x = lua_tonumber(L, 1);
+	double y = lua_tonumber(L, 2);
+	double Width = lua_tonumber(L, 3);
+	double Height = lua_tonumber(L, 4);
+
+	IGraphics::CQuadItem Quad(x, y, Width, Height);
+	This()->Bridge()->QueueDrawQuad(Quad);
+	return 0;
+}
+
+/*#
+`TwRenderQuadCentered(x, y, width, height)`
+
+Draws a quad centered.
+
+**Parameters**
+
+* **x**: float
+* **y**: float
+* **width**: float
+* **height**: float
+
+**Returns**
+
+* None
+#*/
+int CDuckLua::NativeRenderQuadCentered(lua_State *L)
+{
+	CheckArgumentCount(L, 4);
+
+	double x = lua_tonumber(L, 1);
+	double y = lua_tonumber(L, 2);
+	double Width = lua_tonumber(L, 3);
+	double Height = lua_tonumber(L, 4);
+
+	IGraphics::CQuadItem Quad(x, y, Width, Height);
+	This()->Bridge()->QueueDrawQuadCentered(Quad);
+}
+
+/*#
+`TwRenderSetColorU32(color)`
+
+| Set render color state as uint32 RGBA.
+| Example: ``0x7F0000FF`` is half transparent red.
+
+**Parameters**
+
+* **color**: int
+
+**Returns**
+
+* None
+#*/
+int CDuckLua::NativeRenderSetColorU32(lua_State *L)
+{
+	CheckArgumentCount(L, 1);
+
+	uint32_t x = (uint32_t)lua_tointeger(L, 1); // NOTE: this returns a int64
+
+	float aColor[4];
+	aColor[0] = (x & 0xFF) / 255.f;
+	aColor[1] = ((x >> 8) & 0xFF) / 255.f;
+	aColor[2] = ((x >> 16) & 0xFF) / 255.f;
+	aColor[3] = ((x >> 24) & 0xFF) / 255.f;
+
+	This()->Bridge()->QueueSetColor(aColor);
+	return 0;
+}
+
+/*#
+`TwRenderSetColorF4(r, g, b, a)`
+
+| Set render color state as float RGBA.
+
+**Parameters**
+
+* **r**: float (0.0 - 1.0)
+* **g**: float (0.0 - 1.0)
+* **b**: float (0.0 - 1.0)
+* **a**: float (0.0 - 1.0)
+
+**Returns**
+
+* None
+#*/
+int CDuckLua::NativeRenderSetColorF4(lua_State *L)
+{
+	CheckArgumentCount(L, 4);
+
+	float aColor[4] = {1, 1, 1, 1};
+	aColor[0] = lua_tonumber(L, 1);
+	aColor[1] = lua_tonumber(L, 2);
+	aColor[2] = lua_tonumber(L, 3);
+	aColor[3] = lua_tonumber(L, 4);
+
+	This()->Bridge()->QueueSetColor(aColor);
+	return 0;
+}
+
 bool CDuckLua::LoadScriptFile(const char *pFilePath, const char *pRelFilePath)
 {
 	IOHANDLE ScriptFile = io_open(pFilePath, IOFLAG_READ);
@@ -120,7 +241,10 @@ void CDuckLua::ResetLuaState()
 	lua_pushcfunction(L(), Native##fname);\
 	lua_setglobal(L(), "Tw" #fname)
 
-	//REGISTER_FUNC(Print, 1);
+	REGISTER_FUNC(RenderQuad, 4);
+	REGISTER_FUNC(RenderQuadCentered, 4);
+	REGISTER_FUNC(RenderSetColorU32, 1);
+	REGISTER_FUNC(RenderSetColorF4, 4);
 
 #undef REGISTER_FUNC
 }
@@ -181,7 +305,10 @@ CDuckLua::CDuckLua()
 void CDuckLua::Shutdown()
 {
 	if(m_pLuaState)
+	{
 		lua_close(m_pLuaState);
+		m_pLuaState = NULL;
+	}
 }
 
 void CDuckLua::OnMessage(int Msg, void *pRawMsg)

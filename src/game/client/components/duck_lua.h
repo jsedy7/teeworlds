@@ -26,6 +26,10 @@ class CDuckLua
 	bool _CheckArgumentCountImp(lua_State* L, int NumArgs, const char* pFuncName);
 
 	static int NativePrint(lua_State *L);
+	static int NativeRenderQuad(lua_State *L);
+	static int NativeRenderQuadCentered(lua_State *L);
+	static int NativeRenderSetColorU32(lua_State *L);
+	static int NativeRenderSetColorF4(lua_State *L);
 
 	bool LoadScriptFile(const char* pFilePath, const char* pRelFilePath);
 	void ResetLuaState();
