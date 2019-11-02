@@ -17,9 +17,9 @@
    id="svg8"
    inkscape:version="0.92.4 (5da689c313, 2019-01-14)"
    sodipodi:docname="bee_wing_anim.svg"
-   inkscape:export-filename="C:\Prog\Projets\teeworlds\build_genie\data\mods\example_physics_1\bee_body.png"
-   inkscape:export-xdpi="48.000004"
-   inkscape:export-ydpi="48.000004">
+   inkscape:export-filename="C:\Prog\Projets\teeworlds\build_genie\data\mods\example_physics_3\bee_wing_anim.png"
+   inkscape:export-xdpi="24.000002"
+   inkscape:export-ydpi="24.000002">
   <defs
      id="defs2" />
   <sodipodi:namedview
@@ -29,11 +29,11 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.70710678"
-     inkscape:cx="326.91268"
-     inkscape:cy="359.44846"
+     inkscape:zoom="1.4142136"
+     inkscape:cx="455.82598"
+     inkscape:cy="452.54805"
      inkscape:document-units="mm"
-     inkscape:current-layer="layer1"
+     inkscape:current-layer="g1099"
      showgrid="true"
      inkscape:snap-global="true"
      inkscape:window-width="2560"
@@ -59,7 +59,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -68,38 +68,6 @@
      inkscape:groupmode="layer"
      id="layer1"
      transform="translate(0,-26.066755)">
-    <rect
-       ry="0"
-       y="161.53343"
-       x="135.46667"
-       height="135.46666"
-       width="135.46666"
-       id="rect1114"
-       style="fill:#e9afaf;fill-opacity:1;stroke:none;stroke-width:3.17499995;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
-    <rect
-       ry="0"
-       y="161.53342"
-       x="0"
-       height="135.46666"
-       width="135.46666"
-       id="rect1112"
-       style="fill:#e9afaf;fill-opacity:1;stroke:none;stroke-width:3.17499995;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
-    <rect
-       ry="0"
-       y="26.066761"
-       x="135.46666"
-       height="135.46666"
-       width="135.46666"
-       id="rect1110"
-       style="fill:#e9afaf;fill-opacity:1;stroke:none;stroke-width:3.17499995;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
-    <rect
-       style="fill:#e9afaf;fill-opacity:1;stroke:none;stroke-width:3.17499995;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       id="rect1108"
-       width="135.46666"
-       height="135.46666"
-       x="0"
-       y="26.066761"
-       ry="0" />
     <image
        y="-151.08379"
        x="-1976.3855"
@@ -276,14 +244,6 @@
        cx="114.70409"
        id="ellipse4600"
        style="fill:#28170b;fill-opacity:1;stroke:none;stroke-width:1.04860008;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
-    <ellipse
-       style="fill:#afdde9;fill-opacity:1;stroke:none;stroke-width:1.15327907;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       id="ellipse877"
-       cx="99.217964"
-       cy="118.16409"
-       rx="49.64526"
-       ry="21.51807"
-       transform="rotate(9.1995692)" />
     <g
        id="g1092"
        transform="translate(5.3852085,153.69083)">
@@ -297,16 +257,6 @@
          rx="49.64526"
          ry="21.51807"
          transform="rotate(-66.797116)" />
-      <ellipse
-         transform="rotate(10.167876)"
-         ry="21.51807"
-         rx="49.64526"
-         cy="75.303719"
-         cx="226.19008"
-         id="ellipse955"
-         style="fill:#afdde9;fill-opacity:0.20560746;stroke:none;stroke-width:1.15327907;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-         inkscape:transform-center-x="-46.463169"
-         inkscape:transform-center-y="10.017694" />
       <ellipse
          inkscape:transform-center-y="-34.568081"
          inkscape:transform-center-x="-32.622522"
@@ -327,30 +277,10 @@
          style="fill:#afdde9;fill-opacity:0.45794391;stroke:none;stroke-width:1.15327907;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          inkscape:transform-center-x="-42.172614"
          inkscape:transform-center-y="-21.923782" />
-      <ellipse
-         inkscape:transform-center-y="-5.8002665"
-         inkscape:transform-center-x="-47.175619"
-         style="fill:#afdde9;fill-opacity:0.29906544;stroke:none;stroke-width:1.15327907;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-         id="ellipse961"
-         cx="192.08412"
-         cy="129.91225"
-         rx="49.64526"
-         ry="21.51807"
-         transform="rotate(-9.0084969)" />
     </g>
     <g
        id="g1099"
        transform="translate(-332.52484,153.49593)">
-      <ellipse
-         transform="rotate(-66.797116)"
-         ry="21.51807"
-         rx="49.64526"
-         cy="377.1712"
-         cx="95.280861"
-         id="ellipse1007"
-         style="fill:#afdde9;fill-opacity:0.20560746;stroke:none;stroke-width:1.15327907;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-         inkscape:transform-center-x="-20.239158"
-         inkscape:transform-center-y="-43.006469" />
       <ellipse
          inkscape:transform-center-y="10.017694"
          inkscape:transform-center-x="-46.463169"
@@ -361,16 +291,6 @@
          rx="49.64526"
          ry="21.51807"
          transform="rotate(10.167876)" />
-      <ellipse
-         transform="rotate(-48.657716)"
-         ry="21.51807"
-         rx="49.64526"
-         cy="343.63388"
-         cx="209.81485"
-         id="ellipse1011"
-         style="fill:#afdde9;fill-opacity:0.35046758;stroke:none;stroke-width:1.15327907;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-         inkscape:transform-center-x="-32.622522"
-         inkscape:transform-center-y="-34.568081" />
       <ellipse
          inkscape:transform-center-y="-21.923782"
          inkscape:transform-center-x="-42.172614"
@@ -406,16 +326,6 @@
          ry="21.51807"
          transform="rotate(-66.797116)" />
       <ellipse
-         transform="rotate(10.167876)"
-         ry="21.51807"
-         rx="49.64526"
-         cy="3.6740201"
-         cx="625.57587"
-         id="ellipse1079"
-         style="fill:#afdde9;fill-opacity:0.42523367;stroke:none;stroke-width:1.15327907;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-         inkscape:transform-center-x="-46.463169"
-         inkscape:transform-center-y="10.017694" />
-      <ellipse
          inkscape:transform-center-y="-34.568081"
          inkscape:transform-center-x="-32.622522"
          style="fill:#afdde9;fill-opacity:0.64953272;stroke:none;stroke-width:1.15327907;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
@@ -435,16 +345,40 @@
          style="fill:#afdde9;fill-opacity:1;stroke:none;stroke-width:1.15327907;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          inkscape:transform-center-x="-42.172614"
          inkscape:transform-center-y="-21.923782" />
+    </g>
+    <g
+       transform="translate(-536.10681,18.29385)"
+       id="g880">
       <ellipse
-         inkscape:transform-center-y="-5.8002665"
-         inkscape:transform-center-x="-47.175619"
-         style="fill:#afdde9;fill-opacity:0.66822426;stroke:none;stroke-width:1.15327907;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-         id="ellipse1085"
-         cx="592.83752"
-         cy="193.44626"
+         inkscape:transform-center-y="10.017694"
+         inkscape:transform-center-x="-46.463169"
+         style="fill:#afdde9;fill-opacity:0.42523367;stroke:none;stroke-width:1.15327907;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         id="ellipse872"
+         cx="625.57587"
+         cy="3.6740201"
          rx="49.64526"
          ry="21.51807"
-         transform="rotate(-9.0084969)" />
+         transform="rotate(10.167876)" />
+      <ellipse
+         inkscape:transform-center-y="-21.923782"
+         inkscape:transform-center-x="-42.172614"
+         style="fill:#afdde9;fill-opacity:1;stroke:none;stroke-width:1.15327907;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         id="ellipse876"
+         cx="491.40408"
+         cy="371.96124"
+         rx="49.64526"
+         ry="21.51807"
+         transform="rotate(-29.467175)" />
+      <ellipse
+         transform="rotate(-9.0084969)"
+         ry="21.51807"
+         rx="49.64526"
+         cy="193.44626"
+         cx="592.83752"
+         id="ellipse878"
+         style="fill:#afdde9;fill-opacity:0.66822426;stroke:none;stroke-width:1.15327907;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         inkscape:transform-center-x="-47.175619"
+         inkscape:transform-center-y="-5.8002665" />
     </g>
   </g>
 </svg>
