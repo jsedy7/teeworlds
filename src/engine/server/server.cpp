@@ -1818,6 +1818,16 @@ void CServer::SnapSetStaticsize(int ItemType, int Size)
 	m_SnapshotDelta.SetStaticsize(ItemType, Size);
 }
 
+#ifdef DUCK_JS_BACKEND
+#define MAIN_SCRIPT_FILE "main.js"
+#define SCRIPTFILE_EXT ".js"
+#endif
+
+#ifdef DUCK_LUA_BACKEND
+#define MAIN_SCRIPT_FILE "main.lua"
+#define SCRIPTFILE_EXT ".lua"
+#endif
+
 bool CServer::IsDuckDevMode() const
 {
 	return g_Config.m_SvDuckDev == 1;
@@ -1923,15 +1933,15 @@ bool CServer::CompressDuckModFolder(const char* pModPath)
 {
 	enum { STORAGE_TYPE_CURRENT_DIR=2 };
 
-	// find main.js
+	// find main script file
 	char aMainJsPath[512];
 	str_copy(aMainJsPath, pModPath, sizeof(aMainJsPath));
-	str_append(aMainJsPath, "/main.js", sizeof(aMainJsPath));
+	str_append(aMainJsPath, "/" MAIN_SCRIPT_FILE, sizeof(aMainJsPath));
 
 	IOHANDLE MainJsFile = Storage()->OpenFile(aMainJsPath, IOFLAG_READ, STORAGE_TYPE_CURRENT_DIR);
 	if(!MainJsFile)
 	{
-		dbg_msg("duck", "CompressMod: could not find main.js (%s)", aMainJsPath);
+		dbg_msg("duck", "CompressMod: could not find %s file (%s)", MAIN_SCRIPT_FILE, aMainJsPath);
 		return false;
 	}
 	io_close(MainJsFile);
@@ -1948,7 +1958,7 @@ bool CServer::CompressDuckModFolder(const char* pModPath)
 
 	// find valid and required files
 	const char* aRequiredFiles[] = {
-		"main.js",
+		MAIN_SCRIPT_FILE,
 		"mod_info.json"
 	};
 	const int RequiredFilesCount = sizeof(aRequiredFiles)/sizeof(aRequiredFiles[0]);
@@ -1961,7 +1971,7 @@ bool CServer::CompressDuckModFolder(const char* pModPath)
 	for(int i = 0; i < FileCount; i++)
 	{
 		dbg_msg("duck", "file='%s'", pFilePaths[i].m_aBuff);
-		if(str_endswith(pFilePaths[i].m_aBuff, ".js") || str_endswith(pFilePaths[i].m_aBuff, ".json") || str_endswith(pFilePaths[i].m_aBuff, ".png") || str_endswith(pFilePaths[i].m_aBuff, ".wv"))
+		if(str_endswith(pFilePaths[i].m_aBuff, SCRIPTFILE_EXT) || str_endswith(pFilePaths[i].m_aBuff, ".json") || str_endswith(pFilePaths[i].m_aBuff, ".png") || str_endswith(pFilePaths[i].m_aBuff, ".wv"))
 		{
 			const char* pRelPath = str_find(pFilePaths[i].m_aBuff, pModPath);
 			dbg_assert(pRelPath != 0, "base mod path should be found");

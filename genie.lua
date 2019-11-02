@@ -87,7 +87,9 @@ solution "Teeworlds"
 	defines {
 		"WIN64",
         "NO_VIZ",
-        "_WIN32_WINNT=0x0501"
+        "_WIN32_WINNT=0x0501",
+        --"DUCK_JS_BACKEND",
+        "DUCK_LUA_BACKEND",
 	}
 	
 	-- disable exception related warnings
@@ -172,7 +174,8 @@ project "teeworlds"
 		SDL2_include,
         freetype_include,
         curl_include,
-        zip_include
+        zip_include,
+        luajit_include
 	}
     
     links {
@@ -190,6 +193,7 @@ project "teeworlds"
         "freetype",
         "libcurl",
         "zip",
+        "lua51",
     }
     
     libdirs {
@@ -197,6 +201,7 @@ project "teeworlds"
         freetype_libdir,
         curl_libdir,
         zip_libdir,
+        luajit_libdir,
     }
     
     configuration {"Debug"}

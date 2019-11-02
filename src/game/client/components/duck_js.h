@@ -79,9 +79,10 @@ class CDuckJs
 	void ObjectSetMemberBool(const char *MemberName, bool Val);
 	void ObjectSetMember(const char* MemberName);
 
-	bool LoadJsScriptFile(const char* pJsFilePath, const char* pJsRelFilePath);
+	bool LoadScriptFile(const char* pJsFilePath, const char* pJsRelFilePath);
 
 	void ResetDukContext();
+	void Reset();
 
 	bool GetJsFunction(const char* Name);
 	void CallJsFunction(int NumArgs);
@@ -101,6 +102,12 @@ public:
 	void OnDuckSnapItem(int Msg, int SnapID, void* pRawMsg, int Size);
 	void OnInput(IInput::CEvent e);
 	void OnModLoaded();
+
+	void OnRender(float LocalTime, float IntraGameTick);
+	void OnUpdate(float LocalTime, float IntraGameTick);
+	bool DetectStackLeak();
+
+	inline bool IsLoaded() const { return m_pDukContext != NULL; }
 
 	friend class CDuckBridge;
 };

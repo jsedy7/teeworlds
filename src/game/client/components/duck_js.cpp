@@ -2523,7 +2523,7 @@ void CDuckJs::ObjectSetMember(const char* MemberName)
 	duk_put_prop_string(Ctx(), m_CurrentPushedObjID, MemberName);
 }
 
-bool CDuckJs::LoadJsScriptFile(const char* pJsFilePath, const char* pJsRelFilePath)
+bool CDuckJs::LoadScriptFile(const char* pJsFilePath, const char* pJsRelFilePath)
 {
 	IOHANDLE ScriptFile = io_open(pJsFilePath, IOFLAG_READ);
 	if(!ScriptFile)
@@ -2651,6 +2651,11 @@ void CDuckJs::ResetDukContext()
 	duk_pop(Ctx());
 
 	mem_free(aBuff);
+}
+
+void CDuckJs::Reset()
+{
+	ResetDukContext();
 }
 
 bool CDuckJs::GetJsFunction(const char *Name)
@@ -2796,6 +2801,38 @@ void CDuckJs::OnModLoaded()
 		CallJsFunction(0);
 		duk_pop(Ctx());
 	}
+}
+
+void CDuckJs::OnRender(float LocalTime, float IntraGameTick)
+{
+	// Call OnRender(LocalTime, IntraGameTick)
+	if(GetJsFunction("OnRender"))
+	{
+		duk_push_number(Ctx(), LocalTime);
+		duk_push_number(Ctx(), IntraGameTick);
+
+		CallJsFunction(2);
+
+		duk_pop(Ctx());
+	}
+}
+
+void CDuckJs::OnUpdate(float LocalTime, float IntraGameTick)
+{
+	if(GetJsFunction("OnUpdate"))
+	{
+		duk_push_number(Ctx(), LocalTime);
+		duk_push_number(Ctx(), IntraGameTick);
+
+		CallJsFunction(2);
+
+		duk_pop(Ctx());
+	}
+}
+
+bool CDuckJs::DetectStackLeak()
+{
+	return duk_get_top(Ctx()) != 0;
 }
 
 duk_idx_t DuktapePushCharacterCore(duk_context* pCtx, const CCharacterCore* pCharCore)

@@ -20,6 +20,16 @@
 
 #include <zip.h>
 
+#ifdef DUCK_JS_BACKEND
+#define MAIN_SCRIPT_FILE "main.js"
+#define SCRIPTFILE_EXT ".js"
+#endif
+
+#ifdef DUCK_LUA_BACKEND
+#define MAIN_SCRIPT_FILE "main.lua"
+#define SCRIPTFILE_EXT ".lua"
+#endif
+
 inline uint32_t hash_fnv1a(const void* pData, int DataSize)
 {
 	uint32_t Hash = 0x811c9dc5;
@@ -963,12 +973,13 @@ void CDuckBridge::RenderDrawSpace(DrawSpace::Enum Space)
 
 void CDuckBridge::CharacterCorePreTick(CCharacterCore** apCharCores)
 {
+#if 0
 	if(!IsLoaded())
 		return;
 
-	duk_context* pCtx = m_Js.Ctx();
+	duk_context* pCtx = m_Backend.Ctx();
 
-	if(!m_Js.GetJsFunction("OnCharacterCorePreTick")) {
+	if(!m_Backend.GetJsFunction("OnCharacterCorePreTick")) {
 		return;
 	}
 
@@ -993,9 +1004,9 @@ void CDuckBridge::CharacterCorePreTick(CCharacterCore** apCharCores)
 		duk_put_prop_index(pCtx, ArrayInputIdx, c);
 	}
 
-	m_Js.CallJsFunction(2);
+	m_Backend.CallJsFunction(2);
 
-	if(!m_Js.HasJsFunctionReturned()) {
+	if(!m_Backend.HasJsFunctionReturned()) {
 		duk_pop(pCtx);
 		return;
 	}
@@ -1029,16 +1040,18 @@ void CDuckBridge::CharacterCorePreTick(CCharacterCore** apCharCores)
 	}
 
 	duk_pop(pCtx);
+#endif
 }
 
 void CDuckBridge::CharacterCorePostTick(CCharacterCore** apCharCores)
 {
+#if 0
 	if(!IsLoaded())
 		return;
 
-	duk_context* pCtx = m_Js.Ctx();
+	duk_context* pCtx = m_Backend.Ctx();
 
-	if(!m_Js.GetJsFunction("OnCharacterCorePostTick")) {
+	if(!m_Backend.GetJsFunction("OnCharacterCorePostTick")) {
 		return;
 	}
 
@@ -1063,9 +1076,9 @@ void CDuckBridge::CharacterCorePostTick(CCharacterCore** apCharCores)
 		duk_put_prop_index(pCtx, ArrayInputIdx, c);
 	}
 
-	m_Js.CallJsFunction(2);
+	m_Backend.CallJsFunction(2);
 
-	if(!m_Js.HasJsFunctionReturned()) {
+	if(!m_Backend.HasJsFunctionReturned()) {
 		duk_pop(pCtx);
 		return;
 	}
@@ -1099,6 +1112,7 @@ void CDuckBridge::CharacterCorePostTick(CCharacterCore** apCharCores)
 	}
 
 	duk_pop(pCtx);
+#endif
 }
 
 void CDuckBridge::Predict(CWorldCore* pWorld)
@@ -1205,11 +1219,11 @@ void CDuckBridge::OnNewSnapshot()
 				m_Snap.m_aPhysicsLawsGroups.add(*(CNetObj_DuckPhysicsLawsGroup*)pData);
 			}
 
-			m_Js.OnDuckSnapItem(Type, ID, (void*)pData, Size);
+			m_Backend.OnDuckSnapItem(Type, ID, (void*)pData, Size);
 		}
 		else
 		{
-			m_Js.OnSnapItem(Item.m_Type, Item.m_ID, (void*)pData);
+			m_Backend.OnSnapItem(Item.m_Type, Item.m_ID, (void*)pData);
 		}
 	}
 
@@ -1225,7 +1239,7 @@ bool CDuckBridge::IsModAlreadyInstalled(const SHA256_DIGEST *pModSha256)
 	char aModMainJsPath[512];
 	str_copy(aModMainJsPath, "mods/", sizeof(aModMainJsPath));
 	str_append(aModMainJsPath, aSha256Str, sizeof(aModMainJsPath));
-	str_append(aModMainJsPath, "/main.js", sizeof(aModMainJsPath));
+	str_append(aModMainJsPath, "/" MAIN_SCRIPT_FILE, sizeof(aModMainJsPath));
 
 	IOHANDLE ModMainJs = Storage()->OpenFile(aModMainJsPath, IOFLAG_READ, IStorage::TYPE_SAVE);
 	if(ModMainJs)
@@ -1313,7 +1327,7 @@ bool CDuckBridge::ExtractAndInstallModZipBuffer(const CGrowBuffer *pHttpZipData,
 
 	// find required files
 	const char* aRequiredFiles[] = {
-		"main.js",
+		MAIN_SCRIPT_FILE,
 		"mod_info.json"
 	};
 	const int RequiredFilesCount = sizeof(aRequiredFiles)/sizeof(aRequiredFiles[0]);
@@ -1377,7 +1391,7 @@ bool CDuckBridge::ExtractAndInstallModZipBuffer(const CGrowBuffer *pHttpZipData,
 		else
 		{
 			// filter by extension
-			if(!(str_endswith(EntryStat.name, ".js") || str_endswith(EntryStat.name, ".json") || str_endswith(EntryStat.name, ".png") || str_endswith(EntryStat.name, ".wv")))
+			if(!(str_endswith(EntryStat.name, SCRIPTFILE_EXT) || str_endswith(EntryStat.name, ".json") || str_endswith(EntryStat.name, ".png") || str_endswith(EntryStat.name, ".wv")))
 				continue;
 
 			// TODO: verify file type? Might be very expensive to do so.
@@ -1605,7 +1619,7 @@ bool CDuckBridge::ExtractAndInstallModCompressedBuffer(const void *pCompBuff, in
 
 	// find required files
 	const char* aRequiredFiles[] = {
-		"main.js",
+		MAIN_SCRIPT_FILE,
 		"mod_info.json"
 	};
 	const int RequiredFilesCount = sizeof(aRequiredFiles)/sizeof(aRequiredFiles[0]);
@@ -1794,10 +1808,10 @@ bool CDuckBridge::LoadModFilesFromDisk(const SHA256_DIGEST *pModSha256)
 	for(int i = 0; i < FileCount; i++)
 	{
 		//dbg_msg("duck", "file='%s'", pFilePaths[i].m_aBuff);
-		if(str_endswith(pFilePaths[i].m_aBuff, ".js"))
+		if(str_endswith(pFilePaths[i].m_aBuff, SCRIPTFILE_EXT))
 		{
 			const char* pRelPath = pFilePaths[i].m_aBuff+ModRootDirLen+1;
-			bool Loaded = m_Js.LoadJsScriptFile(pFilePaths[i].m_aBuff, pRelPath);
+			bool Loaded = m_Backend.LoadScriptFile(pFilePaths[i].m_aBuff, pRelPath);
 		}
 		else if(str_endswith(pFilePaths[i].m_aBuff, ".png"))
 		{
@@ -1850,7 +1864,7 @@ bool CDuckBridge::LoadModFilesFromDisk(const SHA256_DIGEST *pModSha256)
 	}
 
 	m_IsModLoaded = true;
-	m_Js.OnModLoaded();
+	m_Backend.OnModLoaded();
 	return true;
 }
 
@@ -1911,7 +1925,7 @@ bool CDuckBridge::InstallAndLoadDuckModFromZipBuffer(const void *pBuffer, int Bu
 
 void CDuckBridge::OnInit()
 {
-	m_Js.m_pBridge = this;
+	m_Backend.m_pBridge = this;
 	m_CurrentDrawSpace = 0;
 	m_CurrentPacketFlags = -1;
 	m_RgGame.Init(this, DrawSpace::GAME);
@@ -1930,7 +1944,7 @@ void CDuckBridge::OnReset()
 
 void CDuckBridge::OnShutdown()
 {
-	m_Js.Shutdown();
+	m_Backend.Shutdown();
 }
 
 void CDuckBridge::OnRender()
@@ -1946,21 +1960,11 @@ void CDuckBridge::OnRender()
 
 	m_FrameAllocator.Clear(); // clear frame allocator
 
-	duk_context* pCtx = m_Js.Ctx();
-
 	const float LocalTime = Client()->LocalTime();
 	const float IntraGameTick = Client()->IntraGameTick();
 
 	// Call OnRender(LocalTime, IntraGameTick)
-	if(m_Js.GetJsFunction("OnRender"))
-	{
-		duk_push_number(pCtx, LocalTime);
-		duk_push_number(pCtx, IntraGameTick);
-
-		m_Js.CallJsFunction(2);
-
-		duk_pop(pCtx);
-	}
+	m_Backend.OnRender(LocalTime, IntraGameTick);
 
 	static float LastTime = LocalTime;
 	static float Accumulator = 0.0f;
@@ -1972,16 +1976,7 @@ void CDuckBridge::OnRender()
 	int UpdateCount = 0;
 	while(Accumulator > UPDATE_RATE)
 	{
-		// Call OnUpdate(LocalTime, IntraGameTick)
-		if(m_Js.GetJsFunction("OnUpdate"))
-		{
-			duk_push_number(pCtx, LocalTime);
-			duk_push_number(pCtx, IntraGameTick);
-
-			m_Js.CallJsFunction(2);
-
-			duk_pop(pCtx);
-		}
+		m_Backend.OnUpdate(LocalTime, IntraGameTick);
 
 		Accumulator -= UPDATE_RATE;
 		UpdateCount++;
@@ -1993,7 +1988,7 @@ void CDuckBridge::OnRender()
 	}
 
 	// detect stack leak
-	if(duk_get_top(m_Js.Ctx()) != 0)
+	if(m_Backend.DetectStackLeak())
 	{
 		JsError(JsErrorLvl::CRITICAL, "Stack leak");
 	}
@@ -2005,7 +2000,7 @@ void CDuckBridge::OnMessage(int Msg, void *pRawMsg)
 		return;
 	}
 
-	m_Js.OnMessage(Msg, pRawMsg);
+	m_Backend.OnMessage(Msg, pRawMsg);
 }
 
 bool CDuckBridge::OnMouseMove(float x, float y)
@@ -2035,7 +2030,7 @@ bool CDuckBridge::OnInput(IInput::CEvent e)
 		return false;
 	}
 
-	m_Js.OnInput(e);
+	m_Backend.OnInput(e);
 
 	if(m_IsMenuModeActive)
 		return true;
@@ -2044,7 +2039,7 @@ bool CDuckBridge::OnInput(IInput::CEvent e)
 
 void CDuckBridge::ModInit()
 {
-	m_Js.ResetDukContext();
+	m_Backend.Reset();
 	Reset();
 	m_IsModLoaded = false;
 	m_aJsErrors.clear();
@@ -2052,7 +2047,7 @@ void CDuckBridge::ModInit()
 
 void CDuckBridge::Unload()
 {
-	m_Js.Shutdown();
+	m_Backend.Shutdown();
 	Reset();
 	m_IsModLoaded = false;
 	m_DoUnloadModBecauseError = false;

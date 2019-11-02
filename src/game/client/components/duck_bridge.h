@@ -10,7 +10,13 @@
 #include <game/client/component.h>
 #include <generated/protocol.h>
 
+#ifdef DUCK_JS_BACKEND
 #include "duck_js.h"
+#endif
+
+#ifdef DUCK_LUA_BACKEND
+#include "duck_lua.h"
+#endif
 
 #define DUCK_VERSION 0x1
 
@@ -59,7 +65,13 @@ struct JsErrorLvl
 
 struct CDuckBridge : public CComponent
 {
-	CDuckJs m_Js;
+#ifdef DUCK_JS_BACKEND
+	CDuckJs m_Backend;
+#endif
+
+#ifdef DUCK_LUA_BACKEND
+	CDuckLua m_Backend;
+#endif
 
 	struct DrawSpace
 	{
@@ -446,7 +458,7 @@ struct CDuckBridge : public CComponent
 
 	void ModInit();
 	void Unload();
-	inline bool IsLoaded() const { return m_Js.m_pDukContext != 0 && m_IsModLoaded; }
+	inline bool IsLoaded() const { return m_Backend.IsLoaded() && m_IsModLoaded; }
 
 	inline int DuckVersion() const { return DUCK_VERSION; }
 
