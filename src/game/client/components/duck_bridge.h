@@ -463,4 +463,5 @@ struct CDuckBridge : public CComponent
 	inline int DuckVersion() const { return DUCK_VERSION; }
 
 	friend class CDuckJs;
+	friend class CDuckLua;
 };

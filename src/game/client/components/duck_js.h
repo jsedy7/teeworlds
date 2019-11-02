@@ -105,7 +105,7 @@ public:
 
 	void OnRender(float LocalTime, float IntraGameTick);
 	void OnUpdate(float LocalTime, float IntraGameTick);
-	bool DetectStackLeak();
+	bool IsStackLeaking();
 
 	inline bool IsLoaded() const { return m_pDukContext != NULL; }
 

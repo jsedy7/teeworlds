@@ -1988,7 +1988,7 @@ void CDuckBridge::OnRender()
 	}
 
 	// detect stack leak
-	if(m_Backend.DetectStackLeak())
+	if(m_Backend.IsStackLeaking())
 	{
 		JsError(JsErrorLvl::CRITICAL, "Stack leak");
 	}

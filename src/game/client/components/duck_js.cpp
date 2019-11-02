@@ -2830,7 +2830,7 @@ void CDuckJs::OnUpdate(float LocalTime, float IntraGameTick)
 	}
 }
 
-bool CDuckJs::DetectStackLeak()
+bool CDuckJs::IsStackLeaking()
 {
 	return duk_get_top(Ctx()) != 0;
 }
