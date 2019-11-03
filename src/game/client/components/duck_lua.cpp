@@ -54,6 +54,9 @@ int CDuckLua::NativePrint(lua_State *L)
 	CheckArgumentCount(L, 1);
 
 	const char* pStr = lua_tostring(L, 1);
+	if(!pStr)
+		return 0;
+
 	const int Len = str_length(pStr);
 	const int MaxLen = 128;
 	char aBuff[MaxLen+1];
@@ -140,6 +143,7 @@ int CDuckLua::NativeRenderQuadCentered(lua_State *L)
 
 	IGraphics::CQuadItem Quad(x, y, Width, Height);
 	This()->Bridge()->QueueDrawQuadCentered(Quad);
+	return 0;
 }
 
 /*#
@@ -2487,6 +2491,93 @@ int CDuckLua::NativeSetMenuModeActive(lua_State* L)
 }
 #endif
 
+// authorized base lib snippet copied from "minilua.c"
+namespace BaseLuaLib {
+
+static int luaB_type(lua_State*L)
+{
+	luaL_checkany(L,1);
+	lua_pushstring(L,luaL_typename(L,1));
+	return 1;
+}
+
+static int luaB_next(lua_State*L)
+{
+	luaL_checktype(L,1,5);
+	lua_settop(L,2);
+	if(lua_next(L,1))
+		return 2;
+	else {
+		lua_pushnil(L);
+		return 1;
+	}
+}
+
+static int luaB_pairs(lua_State*L)
+{
+	luaL_checktype(L,1,5);
+	lua_pushvalue(L,lua_upvalueindex(1));
+	lua_pushvalue(L,1);
+	lua_pushnil(L);
+	return 3;
+}
+
+static int ipairsaux(lua_State*L)
+{
+	int i = luaL_checkint(L, 2);
+	luaL_checktype(L, 1, 5);
+	i++;
+	lua_pushinteger(L, i);
+	lua_rawgeti(L, 1, i);
+	return (lua_isnil(L, -1)) ? 0:2;
+}
+
+static int luaB_ipairs(lua_State* L)
+{
+	luaL_checktype(L, 1, 5);
+	lua_pushvalue(L, lua_upvalueindex(1));
+	lua_pushvalue(L, 1);
+	lua_pushinteger(L, 0);
+	return 3;
+}
+
+static void auxopen(lua_State* L, const char*name, lua_CFunction f, lua_CFunction u)
+{
+	lua_pushcfunction(L, u);
+	lua_pushcclosure(L, f, 1);
+	lua_setfield(L, -2, name);
+}
+
+static const luaL_Reg base_funcs[]={
+	//{"assert",luaB_assert},
+	//{"error",luaB_error},
+	//{"loadfile",luaB_loadfile},
+	//{"loadstring",luaB_loadstring},
+	//{"next",luaB_next},
+	//{"pcall",luaB_pcall},
+	//{"rawget",luaB_rawget},
+	//{"setfenv",luaB_setfenv},
+	//{"setmetatable",luaB_setmetatable},
+	//{"tonumber",luaB_tonumber},
+	{"type", luaB_type},
+	//{"unpack",luaB_unpack},
+	{NULL,NULL}
+};
+
+static void base_open(lua_State* L)
+{
+	lua_pushvalue(L, (-10002));
+	lua_setglobal(L, "_G");
+	luaL_register(L, "_G", base_funcs);
+	lua_pushliteral(L, "Lua 5.1");
+	lua_setglobal(L, "_VERSION");
+	auxopen(L, "ipairs", luaB_ipairs, ipairsaux);
+	auxopen(L, "pairs", luaB_pairs, luaB_next);
+	lua_settop(L, 0); // pop stack
+}
+
+}
+
 bool CDuckLua::LoadScriptFile(const char *pFilePath, const char *pRelFilePath)
 {
 	IOHANDLE ScriptFile = io_open(pFilePath, IOFLAG_READ);
@@ -2589,6 +2680,8 @@ void CDuckLua::ResetLuaState()
 		lua_close(m_pLuaState);
 
 	m_pLuaState = luaL_newstate();
+	BaseLuaLib::base_open(L()); // open base lib
+
 
 #define REGISTER_FUNC_PLAIN(fname, luaname) \
 	lua_pushcfunction(L(), Native##fname);\
