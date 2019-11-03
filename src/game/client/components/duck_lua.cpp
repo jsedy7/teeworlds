@@ -49,6 +49,35 @@ bool CDuckLua::_CheckArgumentCountImp(lua_State* L, int NumArgs, const char* pFu
 
 #define CheckArgumentCount(L, num) if(!This()->_CheckArgumentCountImp(L, num, __FUNCTION__ + 16)) { return 0; }
 
+static void LuaGetPropString(lua_State* L, int Index, const char* pPropName, char* pOut, int OutSize)
+{
+	lua_getfield(L, Index, pPropName);
+	const char* pStr = lua_tostring(L, -1);
+	str_copy(pOut, pStr, OutSize);
+	lua_pop(L, 1);
+}
+
+static void LuaGetPropInteger(lua_State* L, int Index, const char* pPropName, int64_t* pOut)
+{
+	lua_getfield(L, Index, pPropName);
+	*pOut = lua_tointeger(L, -1);
+	lua_pop(L, 1);
+}
+
+static void LuaGetPropNumber(lua_State* L, int Index, const char* pPropName, double* pOut)
+{
+	lua_getfield(L, Index, pPropName);
+	*pOut = lua_tonumber(L, -1);
+	lua_pop(L, 1);
+}
+
+static void LuaSetTablePropNumber(lua_State* L, int Index, const char* pPropName, double Num)
+{
+	lua_pushstring(L, pPropName);
+	lua_pushnumber(L, Num);
+	lua_settable(L, Index - 2);
+}
+
 int CDuckLua::NativePrint(lua_State *L)
 {
 	CheckArgumentCount(L, 1);
@@ -379,7 +408,6 @@ int CDuckLua::NativeRenderSetTeeSkin(lua_State* L)
 	return 0;
 }
 
-#if 0
 /*#
 `TwRenderSetFreeform(array_vertices)`
 
@@ -405,20 +433,27 @@ int CDuckLua::NativeRenderSetFreeform(lua_State* L)
 	float CurrentFreeform[sizeof(IGraphics::CFreeformItem)/sizeof(float)];
 	const int FfFloatCount = sizeof(CurrentFreeform)/sizeof(CurrentFreeform[0]);
 
-	const int ArrayLength = min((int)duk_get_length(ctx, 0), (int)CDuckBridge::CRenderSpace::FREEFORM_MAX_COUNT * FfFloatCount);
+	if(!lua_istable(L, 1))
+	{
+		LUA_ERR("TwRenderSetFreeform(arg1): arg1 is not a table");
+		return 0;
+	}
+
+	const int ArrayLength = min((int)lua_objlen(L, 1), (int)CDuckBridge::CRenderSpace::FREEFORM_MAX_COUNT * FfFloatCount);
+
 	for(int i = 0; i < ArrayLength; i++)
 	{
-		if(duk_get_prop_index(ctx, 0, i))
-		{
-			CurrentFreeform[VertCount++] = duk_to_number(ctx, -1);
+		lua_rawgeti(L, 1, i+1);
 
-			if(VertCount >= FfFloatCount)
-			{
-				VertCount = 0;
-				aFreeformBuffer[FreeformCount++] = *(IGraphics::CFreeformItem*)CurrentFreeform;
-			}
+		CurrentFreeform[VertCount++] = lua_tonumber(L, -1);
+
+		if(VertCount >= FfFloatCount)
+		{
+			VertCount = 0;
+			aFreeformBuffer[FreeformCount++] = *(IGraphics::CFreeformItem*)CurrentFreeform;
 		}
-		duk_pop(ctx);
+
+		lua_pop(L, 1);
 	}
 
 	if(VertCount > 0)
@@ -449,10 +484,10 @@ int CDuckLua::NativeRenderSetDrawSpace(lua_State* L)
 {
 	CheckArgumentCount(L, 1);
 
-	int ds = duk_to_int(ctx, 0);
+	int ds = lua_tointeger(L, 1);
 	if(!(ds >= 0 && ds < CDuckBridge::DrawSpace::_COUNT))
 	{
-		JS_ERR("TwRenderSetDrawSpace(): Draw space undefined");
+		LUA_ERR("TwRenderSetDrawSpace(arg1): Draw space undefined");
 		return 0;
 	}
 
@@ -488,6 +523,9 @@ int CDuckLua::NativeRenderSetDrawSpace(lua_State* L)
 #*/
 int CDuckLua::NativeRenderDrawTeeBodyAndFeet(lua_State* L)
 {
+	LUA_ERR("TwRenderDrawTeeBodyAndFeet is deprecated");
+
+#if 0
 	CheckArgumentCount(L, 1);
 
 	/*
@@ -533,6 +571,7 @@ int CDuckLua::NativeRenderDrawTeeBodyAndFeet(lua_State* L)
 	TeeDrawInfo.m_Emote = Emote;
 	//dbg_msg("duk", "DrawTeeBodyAndFeet( tee = { size: %g, pos_x: %g, pos_y: %g }", Size, PosX, PosY);
 	This()->Bridge()->QueueDrawTeeBodyAndFeet(TeeDrawInfo);
+#endif
 	return 0;
 }
 
@@ -563,6 +602,9 @@ int CDuckLua::NativeRenderDrawTeeBodyAndFeet(lua_State* L)
 #*/
 int CDuckLua::NativeRenderDrawTeeHand(lua_State* L)
 {
+	LUA_ERR("TwRenderDrawTeeHand is deprecated");
+
+#if 0
 	CheckArgumentCount(L, 1);
 
 	/*
@@ -604,6 +646,7 @@ int CDuckLua::NativeRenderDrawTeeHand(lua_State* L)
 	TeeHandInfo.m_Offset[1] = OffY;
 	//dbg_msg("duk", "NativeRenderDrawTeeHand( hand = { size: %g, angle_dir: %g, angle_off: %g, pos_x: %g, pos_y: %g, off_x: %g, off_y: %g }", Size, AngleDir, AngleOff, PosX, PosY, OffX, OffY);
 	This()->Bridge()->QueueDrawTeeHand(TeeHandInfo);
+#endif
 	return 0;
 }
 
@@ -626,8 +669,8 @@ int CDuckLua::NativeRenderDrawFreeform(lua_State* L)
 	CheckArgumentCount(L, 2);
 
 	vec2 Pos;
-	Pos.x = duk_to_number(ctx, 0);
-	Pos.y = duk_to_number(ctx, 1);
+	Pos.x = lua_tonumber(L, 1);
+	Pos.y = lua_tonumber(L, 2);
 
 	This()->Bridge()->QueueDrawFreeform(Pos);
 	return 0;
@@ -639,23 +682,23 @@ int CDuckLua::NativeRenderDrawFreeform(lua_State* L)
 | Draw text.
 | Example:
 
-.. code-block:: js
+.. code-block:: lua
 
 	TwRenderDrawText({
-		str: "This a text",
-		font_size: 10,
-		color: [1, 0, 1, 1], // rgba (0.0 - 1.0)
-		rect: [100, 25, 200, 100], // x y width height
+		text = "This a text",
+		font_size = 10,
+		color = {1, 0, 1, 1}, // rgba (0.0 - 1.0)
+		rect = {100, 25, 200, 100}, // x y width height
 	});
 
 **Parameters**
 
 * **text**:
 
-.. code-block:: js
+.. code-block:: lua
 
-	var text = {
-		str: string,
+	local text = {
+		text: string,
 		font_size: float,
 		color: float[4],
 		rect: float[4],
@@ -669,63 +712,67 @@ int CDuckLua::NativeRenderDrawText(lua_State* L)
 {
 	CheckArgumentCount(L, 1);
 
-	if(!duk_is_object(ctx, 0))
+	if(!lua_istable(L, 1))
 	{
-		JS_ERR("TwRenderDrawText(text) text is not an object");
+		LUA_ERR("TwRenderDrawText(arg1): arg1 is not a table");
 		return 0;
 	}
 
 	char* pText = 0;
-	float FontSize = 10.0f;
+	double FontSize = 10.0f;
 	float aColors[4] = {1, 1, 1, 1};
 	float aRect[4] = { 0, 0, -1, -1};
 
-	if(duk_get_prop_string(ctx, 0, "str"))
+	lua_getfield(L, 1, "text");
+	const char* pStr = lua_tostring(L, -1);
+	if(pStr)
 	{
-		const char* pStr = duk_to_string(ctx, -1);
 		int Len = min(str_length(pStr), 1024*1024); // 1MB max
-		pText = (char*)This()->Bridge()->m_FrameAllocator.Alloc(Len+1);(Len+1);
+		pText = (char*)This()->Bridge()->m_FrameAllocator.Alloc(Len+1);
 		str_copy(pText, pStr, Len+1);
 	}
 	else
 	{
-		duk_pop(ctx);
-		JS_ERR("TwRenderDrawText(text) text.str is null");
+		LUA_ERR("TwRenderDrawText(arg1) arg1.text is null");
 		return 0;
 	}
-	duk_pop(ctx);
+	lua_pop(L, 1);
 
-	DukGetFloatProp(ctx, 0, "font_size", &FontSize);
+	LuaGetPropNumber(L, 1, "font_size", &FontSize);
 
 	// get colors
-	if(duk_get_prop_string(ctx, 0, "color"))
+	lua_getfield(L, 1, "color");
+	if(!lua_istable(L, -1))
 	{
-		for(int i = 0; i < 4; i++)
-		{
-			if(duk_get_prop_index(ctx, -1, i))
-				aColors[i] = duk_to_number(ctx, -1);
-			duk_pop(ctx);
-		}
-	}
-	duk_pop(ctx);
-
-	// get rect
-	if(duk_get_prop_string(ctx, 0, "rect"))
-	{
-		for(int i = 0; i < 4; i++)
-		{
-			if(duk_get_prop_index(ctx, -1, i))
-				aRect[i] = duk_to_number(ctx, -1);
-			duk_pop(ctx);
-		}
-	}
-	else
-	{
-		duk_pop(ctx);
-		JS_ERR("TwRenderDrawText(text) text.rect is undefined");
+		LUA_ERR("TwRenderDrawText(arg1) arg1.color is not a table");
 		return 0;
 	}
-	duk_pop(ctx);
+
+	for(int i = 0; i < 4; i++)
+	{
+		lua_rawgeti(L, -1, i+1);
+		aColors[i] = lua_tonumber(L, -1);
+		lua_pop(L, 1);
+	}
+	lua_pop(L, 1);
+
+	// get rect
+	lua_getfield(L, 1, "rect");
+	if(!lua_istable(L, -1))
+	{
+		LUA_ERR("TwRenderDrawText(arg1) arg1.rect is not a table");
+		return 0;
+	}
+
+	const int Len = min(4, (int)lua_objlen(L, -1));
+	for(int i = 0; i < Len; i++)
+	{
+		lua_rawgeti(L, -1, i+1);
+		aRect[i] = lua_tonumber(L, -1);
+		lua_pop(L, 1);
+	}
+
+	lua_pop(L, 1);
 
 	This()->Bridge()->QueueDrawText(pText, FontSize, aRect, aColors);
 	return 0;
@@ -735,9 +782,9 @@ int CDuckLua::NativeRenderDrawCircle(lua_State* L)
 {
 	CheckArgumentCount(L, 3);
 
-	float x = duk_to_number(ctx, 0);
-	float y = duk_to_number(ctx, 1);
-	float Radius = duk_to_number(ctx, 2);
+	float x = lua_tonumber(L, 1);
+	float y = lua_tonumber(L, 2);
+	float Radius = lua_tonumber(L, 3);
 
 	This()->Bridge()->QueueDrawCircle(vec2(x, y), Radius);
 	return 0;
@@ -747,15 +794,16 @@ int CDuckLua::NativeRenderDrawLine(lua_State* L)
 {
 	CheckArgumentCount(L, 5);
 
-	float Pos1X = duk_to_number(ctx, 0);
-	float Pos1Y = duk_to_number(ctx, 1);
-	float Pos2X = duk_to_number(ctx, 2);
-	float Pos2Y = duk_to_number(ctx, 3);
-	float Thickness = duk_to_number(ctx, 4);
+	float Pos1X = lua_tonumber(L, 1);
+	float Pos1Y = lua_tonumber(L, 2);
+	float Pos2X = lua_tonumber(L, 3);
+	float Pos2Y = lua_tonumber(L, 4);
+	float Thickness = lua_tonumber(L, 5);
 
 	This()->Bridge()->QueueDrawLine(vec2(Pos1X, Pos1Y), vec2(Pos2X, Pos2Y), Thickness);
 	return 0;
 }
+
 
 /*#
 `TwGetBaseTexture(image_id)`
@@ -775,30 +823,9 @@ int CDuckLua::NativeGetBaseTexture(lua_State* L)
 {
 	CheckArgumentCount(L, 1);
 
-	int ImgID = duk_to_int(ctx, 0);
-
-	duk_push_int(ctx, *(int*)&g_pData->m_aImages[ImgID % NUM_IMAGES].m_Id);
+	int ImgID = lua_tointeger(L, 1);
+	lua_pushinteger(L, This()->Bridge()->GetBaseTextureHandle(ImgID));
 	return 1;
-}
-
-static void GetSpriteSubSet(const CDataSprite& Spr, float* pOutSubSet)
-{
-	int x = Spr.m_X;
-	int y = Spr.m_Y;
-	int w = Spr.m_W;
-	int h = Spr.m_H;
-	int cx = Spr.m_pSet->m_Gridx;
-	int cy = Spr.m_pSet->m_Gridy;
-
-	float x1 = x/(float)cx;
-	float x2 = (x+w-1/32.0f)/(float)cx;
-	float y1 = y/(float)cy;
-	float y2 = (y+h-1/32.0f)/(float)cy;
-
-	pOutSubSet[0] = x1;
-	pOutSubSet[1] = y1;
-	pOutSubSet[2] = x2;
-	pOutSubSet[3] = y2;
 }
 
 /*#
@@ -828,17 +855,15 @@ int CDuckLua::NativeGetSpriteSubSet(lua_State* L)
 {
 	CheckArgumentCount(L, 1);
 
-	int SpriteID = duk_to_int(ctx, 0);
-
-	CDataSprite Spr = g_pData->m_aSprites[SpriteID % NUM_SPRITES];
+	int SpriteID = lua_tointeger(L, 1);
 	float aSubSet[4];
-	GetSpriteSubSet(Spr, aSubSet);
+	This()->Bridge()->GetBaseSpritSubset(SpriteID, aSubSet);
 
-	This()->PushObject();
-	This()->ObjectSetMemberFloat("x1", aSubSet[0]);
-	This()->ObjectSetMemberFloat("y1", aSubSet[1]);
-	This()->ObjectSetMemberFloat("x2", aSubSet[2]);
-	This()->ObjectSetMemberFloat("y2", aSubSet[3]);
+	lua_newtable(L);
+	LuaSetTablePropNumber(L, -1, "x1", aSubSet[0]);
+	LuaSetTablePropNumber(L, -1, "y1", aSubSet[1]);
+	LuaSetTablePropNumber(L, -1, "x2", aSubSet[2]);
+	LuaSetTablePropNumber(L, -1, "y2", aSubSet[3]);
 	return 1;
 }
 
@@ -860,21 +885,13 @@ int CDuckLua::NativeGetSpriteScale(lua_State* L)
 {
 	CheckArgumentCount(L, 1);
 
-	int SpriteID = duk_to_int(ctx, 0);
+	int SpriteID = lua_tointeger(L, 1);
+	float aScale[2];
+	This()->Bridge()->GetBaseSpritScale(SpriteID, aScale);
 
-	CDataSprite Spr = g_pData->m_aSprites[SpriteID % NUM_SPRITES];
-	int x = Spr.m_X;
-	int y = Spr.m_Y;
-	int w = Spr.m_W;
-	int h = Spr.m_H;
-
-	float f = sqrtf(h*h + w*w);
-	float ScaleW = w/f;
-	float ScaleH = h/f;
-
-	This()->PushObject();
-	This()->ObjectSetMemberFloat("w", ScaleW);
-	This()->ObjectSetMemberFloat("h", ScaleH);
+	lua_newtable(L);
+	LuaSetTablePropNumber(L, -1, "w", aScale[0]);
+	LuaSetTablePropNumber(L, -1, "h", aScale[0]);
 	return 1;
 }
 
@@ -894,6 +911,11 @@ int CDuckLua::NativeGetSpriteScale(lua_State* L)
 #*/
 int CDuckLua::NativeGetWeaponSpec(lua_State* L)
 {
+	LUA_ERR("TwGetWeaponSpec is deprecated");
+	// TODO: find a better way to expose client data
+	return 0;
+
+#if 0
 	CheckArgumentCount(L, 1);
 
 	int WeaponID = clamp((int)duk_to_int(ctx, 0), 0, NUM_WEAPONS-1);
@@ -1038,6 +1060,7 @@ int CDuckLua::NativeGetWeaponSpec(lua_State* L)
 		case WEAPON_GUN:
 
 	}*/
+#endif
 	return 1;
 }
 
@@ -1059,12 +1082,20 @@ int CDuckLua::NativeGetModTexture(lua_State* L)
 {
 	CheckArgumentCount(L, 1);
 
-	const char* pTextureName = duk_get_string(ctx, 0);
-	IGraphics::CTextureHandle Handle = This()->Bridge()->GetTextureFromName(pTextureName);
-	duk_push_int(ctx, *(int*)&Handle);
+	const char* pTextureName = lua_tostring(L, 1);
+	if(pTextureName)
+	{
+		IGraphics::CTextureHandle Handle = This()->Bridge()->GetTextureFromName(pTextureName);
+		lua_pushinteger(L, *(int*)&Handle);
+	}
+	else
+	{
+		lua_pushinteger(L, -1);
+	}
 	return 1;
 }
 
+#if 0
 /*#
 `TwGetClientSkinInfo(client_id)`
 
@@ -2698,6 +2729,49 @@ void CDuckLua::ResetLuaState()
 	REGISTER_FUNC(RenderQuadCentered, 4);
 	REGISTER_FUNC(RenderSetColorU32, 1);
 	REGISTER_FUNC(RenderSetColorF4, 4);
+	REGISTER_FUNC(RenderSetTexture, 1);
+	REGISTER_FUNC(RenderSetQuadSubSet, 4);
+	REGISTER_FUNC(RenderSetQuadRotation, 1);
+	REGISTER_FUNC(RenderSetTeeSkin, 1);
+	REGISTER_FUNC(RenderSetFreeform, 1);
+	REGISTER_FUNC(RenderSetDrawSpace, 1);
+	REGISTER_FUNC(RenderDrawTeeBodyAndFeet, 1);
+	REGISTER_FUNC(RenderDrawTeeHand, 1);
+	REGISTER_FUNC(RenderDrawFreeform, 2);
+	REGISTER_FUNC(RenderDrawText, 1);
+	REGISTER_FUNC(RenderDrawCircle, 3);
+	REGISTER_FUNC(RenderDrawLine, 5);
+	REGISTER_FUNC(GetBaseTexture, 1);
+	REGISTER_FUNC(GetSpriteSubSet, 1);
+	REGISTER_FUNC(GetSpriteScale, 1);
+	REGISTER_FUNC(GetWeaponSpec, 1);
+	/*REGISTER_FUNC(GetModTexture, 1);
+	REGISTER_FUNC(GetClientSkinInfo, 1);
+	REGISTER_FUNC(GetClientCharacterCores, 0);
+	REGISTER_FUNC(GetStandardSkinInfo, 0);
+	REGISTER_FUNC(GetSkinPartTexture, 2);
+	REGISTER_FUNC(GetCursorPosition, 0);
+	REGISTER_FUNC(GetUiScreenRect, 0);
+	REGISTER_FUNC(GetScreenSize, 0);
+	REGISTER_FUNC(GetCamera, 0);
+	REGISTER_FUNC(GetUiMousePos, 0);
+	REGISTER_FUNC(GetPixelScale, 0);
+	REGISTER_FUNC(PhysGetCores, 0);
+	REGISTER_FUNC(PhysGetJoints, 0);
+	REGISTER_FUNC(PhysSetTileCollisionFlags, 3);
+	REGISTER_FUNC(DirectionFromAngle, 1);
+	REGISTER_FUNC(CollisionSetStaticBlock, 2);
+	REGISTER_FUNC(CollisionClearStaticBlock, 1);
+	REGISTER_FUNC(SetHudPartsShown, 1);
+	REGISTER_FUNC(NetSendPacket, 1);
+	REGISTER_FUNC(NetPacketUnpack, 2);
+	REGISTER_FUNC(AddWeapon, 1);
+	REGISTER_FUNC(PlaySoundAt, 3);
+	REGISTER_FUNC(PlaySoundGlobal, 1);
+	REGISTER_FUNC(PlayMusic, 1);
+	REGISTER_FUNC(RandomInt, 2);
+	REGISTER_FUNC(CalculateTextSize, 1);
+	REGISTER_FUNC(SetMenuModeActive, 1);*/
 
 #undef REGISTER_FUNC_PLAIN
 #undef REGISTER_FUNC

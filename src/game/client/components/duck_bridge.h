@@ -421,6 +421,10 @@ struct CDuckBridge : public CComponent
 	vec2 GetCameraPos();
 	float GetCameraZoom();
 	vec2 GetUiMousePos();
+	int GetBaseTextureHandle(int ImgID);
+	void GetBaseSpritSubset(int SpriteID, float *pSubSet);
+	void GetBaseSpritScale(int SpriteID, float* pOutScale);
+
 	void SetMenuModeActive(bool Active);
 
 	vec2 CalculateTextSize(const char* pStr, float FontSize, float LineWidth);

@@ -679,6 +679,55 @@ vec2 CDuckBridge::GetUiMousePos()
 	return Pos;
 }
 
+int CDuckBridge::GetBaseTextureHandle(int ImgID)
+{
+	ImgID = clamp(ImgID, 0, NUM_IMAGES-1);
+	return *(int*)&g_pData->m_aImages[ImgID].m_Id;
+}
+
+static void GetSpriteSubSet(const CDataSprite& Spr, float* pOutSubSet)
+{
+	int x = Spr.m_X;
+	int y = Spr.m_Y;
+	int w = Spr.m_W;
+	int h = Spr.m_H;
+	int cx = Spr.m_pSet->m_Gridx;
+	int cy = Spr.m_pSet->m_Gridy;
+
+	float x1 = x/(float)cx;
+	float x2 = (x+w-1/32.0f)/(float)cx;
+	float y1 = y/(float)cy;
+	float y2 = (y+h-1/32.0f)/(float)cy;
+
+	pOutSubSet[0] = x1;
+	pOutSubSet[1] = y1;
+	pOutSubSet[2] = x2;
+	pOutSubSet[3] = y2;
+}
+
+void CDuckBridge::GetBaseSpritSubset(int SpriteID, float* pSubSet)
+{
+	SpriteID = clamp(SpriteID, 0, NUM_SPRITES-1);
+	CDataSprite Spr = g_pData->m_aSprites[SpriteID];
+	GetSpriteSubSet(Spr, pSubSet);
+}
+
+void CDuckBridge::GetBaseSpritScale(int SpriteID, float *pOutScale)
+{
+	SpriteID = clamp(SpriteID, 0, NUM_SPRITES-1);
+	CDataSprite Spr = g_pData->m_aSprites[SpriteID];
+	int x = Spr.m_X;
+	int y = Spr.m_Y;
+	int w = Spr.m_W;
+	int h = Spr.m_H;
+
+	float f = sqrtf(h*h + w*w);
+	float ScaleW = w/f;
+	float ScaleH = h/f;
+	pOutScale[0] = ScaleW;
+	pOutScale[1] = ScaleH;
+}
+
 void CDuckBridge::SetMenuModeActive(bool Active)
 {
 	m_IsMenuModeActive = Active;
