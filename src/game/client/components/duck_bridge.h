@@ -415,15 +415,17 @@ struct CDuckBridge : public CComponent
 	void PlaySoundGlobal(const char* pSoundName);
 	void PlayMusic(const char* pSoundName);
 
-	CUIRect GetUiScreenRect();
-	vec2 GetScreenSize();
-	vec2 GetPixelScale();
-	vec2 GetCameraPos();
-	float GetCameraZoom();
-	vec2 GetUiMousePos();
-	int GetBaseTextureHandle(int ImgID);
-	void GetBaseSpritSubset(int SpriteID, float *pSubSet);
-	void GetBaseSpritScale(int SpriteID, float* pOutScale);
+	CUIRect GetUiScreenRect() const;
+	vec2 GetScreenSize() const;
+	vec2 GetPixelScale() const;
+	vec2 GetCameraPos() const;
+	float GetCameraZoom() const;
+	vec2 GetUiMousePos() const;
+	int GetBaseTextureHandle(int ImgID) const;
+	void GetBaseSpritSubset(int SpriteID, float *pSubSet) const;
+	void GetBaseSpritScale(int SpriteID, float* pOutScale) const;
+	bool GetSkinPart(int PartID, const char *pPartName, IGraphics::CTextureHandle *pOrgText, IGraphics::CTextureHandle *pColorText) const;
+	vec2 GetLocalCursorPos() const;
 
 	void SetMenuModeActive(bool Active);
 

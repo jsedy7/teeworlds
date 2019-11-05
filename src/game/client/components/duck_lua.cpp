@@ -71,6 +71,13 @@ static void LuaGetPropNumber(lua_State* L, int Index, const char* pPropName, dou
 	lua_pop(L, 1);
 }
 
+static void LuaSetTablePropInteger(lua_State* L, int Index, const char* pPropName, int Num)
+{
+	lua_pushstring(L, pPropName);
+	lua_pushinteger(L, Num);
+	lua_settable(L, Index - 2);
+}
+
 static void LuaSetTablePropNumber(lua_State* L, int Index, const char* pPropName, double Num)
 {
 	lua_pushstring(L, pPropName);
@@ -842,9 +849,9 @@ int CDuckLua::NativeGetBaseTexture(lua_State* L)
 
 * **subset**:
 
-.. code-block:: js
+.. code-block:: lua
 
-	var subset = {
+	local subset = {
 		x1: float,
 		y1: float,
 		x2: float,
@@ -1095,7 +1102,6 @@ int CDuckLua::NativeGetModTexture(lua_State* L)
 	return 1;
 }
 
-#if 0
 /*#
 `TwGetClientSkinInfo(client_id)`
 
@@ -1109,71 +1115,76 @@ int CDuckLua::NativeGetModTexture(lua_State* L)
 
 * **skin**
 
-.. code-block:: js
+.. code-block:: lua
 
-	var skin = {
-		textures: [
+	local skin = {
+		textures = {
 			texid_body: int,
 			texid_marking: int,
 			texid_decoration: int,
 			texid_hands: int,
 			texid_feet: int,
 			texid_eyes: int
-		],
+		},
 
-		colors: [
+		colors = {
 			color_body: {r, g, b ,a},
 			color_marking: {r, g, b ,a},
 			color_decoration: {r, g, b ,a},
 			color_hands: {r, g, b ,a},
 			color_feet: {r, g, b ,a},
 			color_eyes
-		]
-	};
+		}
+	}
 #*/
 int CDuckLua::NativeGetClientSkinInfo(lua_State* L)
 {
 	CheckArgumentCount(L, 1);
 
-	const int ClientID = clamp((int)duk_to_int(ctx, 0), 0, MAX_CLIENTS-1);
+	const int ClientID = clamp((int)lua_tointeger(L, 1), 0, MAX_CLIENTS-1);
 	if(!This()->Bridge()->m_pClient->m_aClients[ClientID].m_Active)
 	{
-		duk_push_null(ctx);
+		lua_pushnil(L);
+		dbg_msg("duck", "nil");
 		return 1; // client not active, return null
 	}
 
 	const CTeeRenderInfo& RenderInfo = This()->Bridge()->m_pClient->m_aClients[ClientID].m_RenderInfo;
 
-	This()->PushObject();
+	lua_newtable(L);
 
-	duk_idx_t ArrayIdx = duk_push_array(ctx);
+	lua_pushstring(L, "textures");
+	lua_createtable(L, NUM_SKINPARTS, 0);
 	for(int i = 0; i < NUM_SKINPARTS; i++)
 	{
-		duk_push_int(ctx, *(int*)&RenderInfo.m_aTextures[i]);
-		duk_put_prop_index(ctx, ArrayIdx, i);
+		lua_pushinteger(L, *(int*)&RenderInfo.m_aTextures[i]);
+		lua_rawseti(L, -2, i+1);
 	}
-	This()->ObjectSetMember("textures");
+	lua_settable(L, -3);
 
-	ArrayIdx = duk_push_array(ctx);
+	lua_pushstring(L, "colors");
+	lua_createtable(L, NUM_SKINPARTS, 0);
 	for(int i = 0; i < NUM_SKINPARTS; i++)
 	{
+		lua_createtable(L, 4, 0);
+
 		const vec4 Color = RenderInfo.m_aColors[i];
-		duk_idx_t ColorObj = duk_push_object(ctx);
-		duk_push_number(ctx, Color.r);
-		duk_put_prop_string(ctx, ColorObj, "r");
-		duk_push_number(ctx, Color.g);
-		duk_put_prop_string(ctx, ColorObj, "g");
-		duk_push_number(ctx, Color.b);
-		duk_put_prop_string(ctx, ColorObj, "b");
-		duk_push_number(ctx, Color.a);
-		duk_put_prop_string(ctx, ColorObj, "a");
+		lua_pushnumber(L, Color.r);
+		lua_rawseti(L, -2, 1);
+		lua_pushnumber(L, Color.g);
+		lua_rawseti(L, -2, 2);
+		lua_pushnumber(L, Color.b);
+		lua_rawseti(L, -2, 3);
+		lua_pushnumber(L, Color.a);
+		lua_rawseti(L, -2, 4);
 
-		duk_put_prop_index(ctx, ArrayIdx, i);
+		lua_rawseti(L, -2, i+1);
 	}
-	This()->ObjectSetMember("colors");
+	lua_settable(L, -3);
 
 	return 1;
 }
+
 
 /*#
 `TwGetClientCharacterCores()`
@@ -1221,7 +1232,7 @@ int CDuckLua::NativeGetClientCharacterCores(lua_State* L)
 
 	float IntraTick = pClient->IntraGameTick();
 
-	duk_idx_t ArrayIdx = duk_push_array(ctx);
+	lua_createtable(L, MAX_CLIENTS, 0);
 	const CGameClient::CSnapState::CCharacterInfo* pSnapCharacters = pGameClient->m_Snap.m_aCharacters;
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
@@ -1249,26 +1260,27 @@ int CDuckLua::NativeGetClientCharacterCores(lua_State* L)
 			vec2 Vel = mix(vec2(Prev.m_VelX/256.0f, Prev.m_VelY/256.0f), vec2(Cur.m_VelX/256.0f, Cur.m_VelY/256.0f), IntraTick);
 			vec2 HookPos = mix(vec2(Prev.m_HookX, Prev.m_HookY), vec2(Cur.m_HookX, Cur.m_HookY), IntraTick);
 
-			duk_idx_t ObjIdx = duk_push_object(ctx);
-			DukSetIntProp(ctx, ObjIdx, "tick", Cur.m_Tick);
-			DukSetFloatProp(ctx, ObjIdx, "vel_x", Vel.x);
-			DukSetFloatProp(ctx, ObjIdx, "vel_y", Vel.y);
-			DukSetFloatProp(ctx, ObjIdx, "angle", Angle);
-			DukSetIntProp(ctx, ObjIdx, "direction", Cur.m_Direction);
-			DukSetIntProp(ctx, ObjIdx, "jumped", Cur.m_Jumped);
-			DukSetIntProp(ctx, ObjIdx, "hooked_player", Cur.m_HookedPlayer);
-			DukSetIntProp(ctx, ObjIdx, "hook_state", Cur.m_HookState);
-			DukSetIntProp(ctx, ObjIdx, "hook_tick", Cur.m_HookTick);
-			DukSetFloatProp(ctx, ObjIdx, "hook_x", HookPos.x);
-			DukSetFloatProp(ctx, ObjIdx, "hook_y", HookPos.y);
-			DukSetFloatProp(ctx, ObjIdx, "hook_dx", Cur.m_HookDx/256.f);
-			DukSetFloatProp(ctx, ObjIdx, "hook_dy", Cur.m_HookDy/256.f);
-			DukSetFloatProp(ctx, ObjIdx, "pos_x", Position.x);
-			DukSetFloatProp(ctx, ObjIdx, "pos_y", Position.y);
+			lua_newtable(L);
+			LuaSetTablePropInteger(L, -1, "tick", Cur.m_Tick);
+			LuaSetTablePropNumber(L, -1, "vel_x", Vel.x);
+			LuaSetTablePropNumber(L, -1, "vel_y", Vel.y);
+			LuaSetTablePropNumber(L, -1, "angle", Angle);
+			LuaSetTablePropInteger(L, -1, "direction", Cur.m_Direction);
+			LuaSetTablePropInteger(L, -1, "jumped", Cur.m_Jumped);
+			LuaSetTablePropInteger(L, -1, "hooked_player", Cur.m_HookedPlayer);
+			LuaSetTablePropInteger(L, -1, "hook_state", Cur.m_HookState);
+			LuaSetTablePropInteger(L, -1, "hook_tick", Cur.m_HookTick);
+			LuaSetTablePropNumber(L, -1, "hook_x", HookPos.x);
+			LuaSetTablePropNumber(L, -1, "hook_y", HookPos.y);
+			LuaSetTablePropNumber(L, -1, "hook_dx", Cur.m_HookDx/256.f);
+			LuaSetTablePropNumber(L, -1, "hook_dy", Cur.m_HookDy/256.f);
+			LuaSetTablePropNumber(L, -1, "pos_x", Position.x);
+			LuaSetTablePropNumber(L, -1, "pos_y", Position.y);
 		}
 		else
-			duk_push_null(ctx);
-		duk_put_prop_index(ctx, ArrayIdx, i);
+			lua_pushnil(L);
+
+		lua_rawseti(L, -2, i + 1);
 	}
 
 	return 1;
@@ -1312,6 +1324,11 @@ int CDuckLua::NativeGetClientCharacterCores(lua_State* L)
 #*/
 int CDuckLua::NativeGetStandardSkinInfo(lua_State* L)
 {
+	LUA_ERR("TwGetStandardSkinInfo is deprecated");
+	// TODO: find a better way to expose client data
+	return 0;
+
+#if 0
 	CheckArgumentCount(L, 0);
 
 	// TODO: make an actual standard skin info
@@ -1344,9 +1361,11 @@ int CDuckLua::NativeGetStandardSkinInfo(lua_State* L)
 		duk_put_prop_index(ctx, ArrayIdx, i);
 	}
 	This()->ObjectSetMember("colors");
+#endif
 
 	return 1;
 }
+
 
 /*#
 `TwGetSkinPartTexture(part_id, part_name)`
@@ -1368,22 +1387,29 @@ int CDuckLua::NativeGetSkinPartTexture(lua_State* L)
 {
 	CheckArgumentCount(L, 2);
 
-	int Part = clamp((int)duk_to_int(ctx, 0), 0, NUM_SKINPARTS-1);
-	const char* PartName = duk_to_string(ctx, 1);
-
-	int SkinPartID = This()->Bridge()->m_pClient->m_pSkins->FindSkinPart(Part, PartName, true);
-	if(SkinPartID < 0)
+	int Part = clamp((int)lua_tointeger(L, 1), 0, NUM_SKINPARTS-1);
+	const char* PartName = lua_tostring(L, 2);
+	if(!PartName)
 	{
-		duk_push_null(ctx);
+		LUA_ERR("TwGetSkinPartTexture(part_id, part_name): part_name is invalid");
+		return 0;
+	}
+
+	IGraphics::CTextureHandle OrgText;
+	IGraphics::CTextureHandle ColorText;
+	bool Found = This()->Bridge()->GetSkinPart(Part, PartName, &OrgText, &ColorText);
+
+	if(!Found)
+	{
+		lua_pushnil(L);
 		return 1;
 	}
 
-	duk_idx_t ArrayIdx = duk_push_array(ctx);
-
-	duk_push_int(ctx, *(int*)&This()->Bridge()->m_pClient->m_pSkins->GetSkinPart(Part, SkinPartID)->m_OrgTexture);
-	duk_put_prop_index(ctx, ArrayIdx, 0);
-	duk_push_int(ctx, *(int*)&This()->Bridge()->m_pClient->m_pSkins->GetSkinPart(Part, SkinPartID)->m_ColorTexture);
-	duk_put_prop_index(ctx, ArrayIdx, 1);
+	lua_createtable(L, 2, 0);
+	lua_pushinteger(L, *(int*)&OrgText);
+	lua_rawseti(L, -2, 1);
+	lua_pushinteger(L, *(int*)&ColorText);
+	lua_rawseti(L, -2, 2);
 	return 1;
 }
 
@@ -1405,11 +1431,11 @@ int CDuckLua::NativeGetCursorPosition(lua_State* L)
 {
 	CheckArgumentCount(L, 0);
 
-	const vec2 CursorPos = This()->Bridge()->m_pClient->m_pControls->m_TargetPos;
+	const vec2 CursorPos = This()->Bridge()->GetLocalCursorPos();
 
-	This()->PushObject();
-	DukSetFloatProp(ctx, 0, "x", CursorPos.x);
-	DukSetFloatProp(ctx, 0, "y", CursorPos.y);
+	lua_createtable(L, 0, 2);
+	LuaSetTablePropNumber(L, -1, "x", CursorPos.x);
+	LuaSetTablePropNumber(L, -1, "y", CursorPos.y);
 	return  1;
 }
 
@@ -1432,11 +1458,11 @@ int CDuckLua::NativeGetUiScreenRect(lua_State* L)
 	CheckArgumentCount(L, 0);
 	CUIRect Rect = This()->Bridge()->GetUiScreenRect();
 
-	This()->PushObject();
-	This()->ObjectSetMemberFloat("x", Rect.x);
-	This()->ObjectSetMemberFloat("y", Rect.y);
-	This()->ObjectSetMemberFloat("w", Rect.w);
-	This()->ObjectSetMemberFloat("h", Rect.h);
+	lua_createtable(L, 0, 4);
+	LuaSetTablePropNumber(L, -1, "x", Rect.x);
+	LuaSetTablePropNumber(L, -1, "y", Rect.y);
+	LuaSetTablePropNumber(L, -1, "w", Rect.w);
+	LuaSetTablePropNumber(L, -1, "h", Rect.h);
 	return 1;
 }
 
@@ -1459,9 +1485,9 @@ int CDuckLua::NativeGetScreenSize(lua_State* L)
 	CheckArgumentCount(L, 0);
 	vec2 Size = This()->Bridge()->GetScreenSize();
 
-	This()->PushObject();
-	This()->ObjectSetMemberFloat("w", Size.x);
-	This()->ObjectSetMemberFloat("h", Size.y);
+	lua_createtable(L, 0, 2);
+	LuaSetTablePropNumber(L, -1, "w", Size.x);
+	LuaSetTablePropNumber(L, -1, "h", Size.y);
 	return 1;
 }
 
@@ -1484,10 +1510,10 @@ int CDuckLua::NativeGetCamera(lua_State* L)
 	CheckArgumentCount(L, 0);
 	vec2 Pos = This()->Bridge()->GetCameraPos();
 
-	This()->PushObject();
-	This()->ObjectSetMemberFloat("x", Pos.x);
-	This()->ObjectSetMemberFloat("y", Pos.y);
-	This()->ObjectSetMemberFloat("zoom", This()->Bridge()->GetCameraZoom());
+	lua_createtable(L, 0, 3);
+	LuaSetTablePropNumber(L, -1, "x", Pos.x);
+	LuaSetTablePropNumber(L, -1, "y", Pos.y);
+	LuaSetTablePropNumber(L, -1, "zoom", This()->Bridge()->GetCameraZoom());
 	return 1;
 }
 
@@ -1510,9 +1536,9 @@ int CDuckLua::NativeGetUiMousePos(lua_State* L)
 	CheckArgumentCount(L, 0);
 	vec2 Pos = This()->Bridge()->GetUiMousePos();
 
-	This()->PushObject();
-	This()->ObjectSetMemberFloat("x", Pos.x);
-	This()->ObjectSetMemberFloat("y", Pos.y);
+	lua_createtable(L, 0, 2);
+	LuaSetTablePropNumber(L, -1, "x", Pos.x);
+	LuaSetTablePropNumber(L, -1, "y", Pos.y);
 	return 1;
 }
 
@@ -1543,13 +1569,13 @@ int CDuckLua::NativeGetPixelScale(lua_State* L)
 	CheckArgumentCount(L, 0);
 	vec2 Scale = This()->Bridge()->GetPixelScale();
 
-	This()->PushObject();
-	This()->ObjectSetMemberFloat("x", Scale.x);
-	This()->ObjectSetMemberFloat("y", Scale.y);
+	lua_createtable(L, 0, 2);
+	LuaSetTablePropNumber(L, -1, "x", Scale.x);
+	LuaSetTablePropNumber(L, -1, "y", Scale.y);
 	return 1;
 }
 
-
+#if 0
 /*#
 `TwPhysGetCores()`
 
@@ -2745,12 +2771,12 @@ void CDuckLua::ResetLuaState()
 	REGISTER_FUNC(GetSpriteSubSet, 1);
 	REGISTER_FUNC(GetSpriteScale, 1);
 	REGISTER_FUNC(GetWeaponSpec, 1);
-	/*REGISTER_FUNC(GetModTexture, 1);
+	REGISTER_FUNC(GetModTexture, 1);
 	REGISTER_FUNC(GetClientSkinInfo, 1);
 	REGISTER_FUNC(GetClientCharacterCores, 0);
 	REGISTER_FUNC(GetStandardSkinInfo, 0);
 	REGISTER_FUNC(GetSkinPartTexture, 2);
-	REGISTER_FUNC(GetCursorPosition, 0);
+	/*REGISTER_FUNC(GetCursorPosition, 0);
 	REGISTER_FUNC(GetUiScreenRect, 0);
 	REGISTER_FUNC(GetScreenSize, 0);
 	REGISTER_FUNC(GetCamera, 0);

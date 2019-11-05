@@ -598,17 +598,17 @@ void CDuckBridge::PlayMusic(const char *pSoundName)
 	Sound()->Play(CSounds::CHN_MUSIC, m_aSounds[ID].m_Handle, ISound::FLAG_LOOP);
 }
 
-CUIRect CDuckBridge::GetUiScreenRect()
+CUIRect CDuckBridge::GetUiScreenRect() const
 {
 	return *UI()->Screen();
 }
 
-vec2 CDuckBridge::GetScreenSize()
+vec2 CDuckBridge::GetScreenSize() const
 {
 	return vec2(Graphics()->ScreenWidth(), Graphics()->ScreenHeight());
 }
 
-vec2 CDuckBridge::GetPixelScale()
+vec2 CDuckBridge::GetPixelScale() const
 {
 	float OriScreenX0, OriScreenY0, OriScreenX1, OriScreenY1;
 	float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
@@ -657,17 +657,17 @@ vec2 CDuckBridge::GetPixelScale()
 	return vec2(1.0/FakeToScreenX, 1.0/FakeToScreenY);
 }
 
-vec2 CDuckBridge::GetCameraPos()
+vec2 CDuckBridge::GetCameraPos() const
 {
 	return *m_pClient->m_pCamera->GetCenter();
 }
 
-float CDuckBridge::GetCameraZoom()
+float CDuckBridge::GetCameraZoom() const
 {
 	return m_pClient->m_pCamera->GetZoom();
 }
 
-vec2 CDuckBridge::GetUiMousePos()
+vec2 CDuckBridge::GetUiMousePos() const
 {
 	vec2 Pos = m_MousePos;
 	Pos.x = clamp(Pos.x, 0.0f, (float)Graphics()->ScreenWidth());
@@ -679,7 +679,7 @@ vec2 CDuckBridge::GetUiMousePos()
 	return Pos;
 }
 
-int CDuckBridge::GetBaseTextureHandle(int ImgID)
+int CDuckBridge::GetBaseTextureHandle(int ImgID) const
 {
 	ImgID = clamp(ImgID, 0, NUM_IMAGES-1);
 	return *(int*)&g_pData->m_aImages[ImgID].m_Id;
@@ -705,14 +705,14 @@ static void GetSpriteSubSet(const CDataSprite& Spr, float* pOutSubSet)
 	pOutSubSet[3] = y2;
 }
 
-void CDuckBridge::GetBaseSpritSubset(int SpriteID, float* pSubSet)
+void CDuckBridge::GetBaseSpritSubset(int SpriteID, float* pSubSet) const
 {
 	SpriteID = clamp(SpriteID, 0, NUM_SPRITES-1);
 	CDataSprite Spr = g_pData->m_aSprites[SpriteID];
 	GetSpriteSubSet(Spr, pSubSet);
 }
 
-void CDuckBridge::GetBaseSpritScale(int SpriteID, float *pOutScale)
+void CDuckBridge::GetBaseSpritScale(int SpriteID, float *pOutScale) const
 {
 	SpriteID = clamp(SpriteID, 0, NUM_SPRITES-1);
 	CDataSprite Spr = g_pData->m_aSprites[SpriteID];
@@ -726,6 +726,18 @@ void CDuckBridge::GetBaseSpritScale(int SpriteID, float *pOutScale)
 	float ScaleH = h/f;
 	pOutScale[0] = ScaleW;
 	pOutScale[1] = ScaleH;
+}
+
+bool CDuckBridge::GetSkinPart(int PartID, const char *pPartName, IGraphics::CTextureHandle *pOrgText, IGraphics::CTextureHandle *pColorText) const
+{
+	int SkinPartID = m_pClient->m_pSkins->FindSkinPart(PartID, pPartName, true);
+	if(SkinPartID < 0)
+		return false;
+
+	const CSkins::CSkinPart* pSkinPart = m_pClient->m_pSkins->GetSkinPart(PartID, SkinPartID);
+	*pColorText = pSkinPart->m_OrgTexture;
+	*pOrgText = pSkinPart->m_ColorTexture;
+	return true;
 }
 
 void CDuckBridge::SetMenuModeActive(bool Active)
