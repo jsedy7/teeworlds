@@ -740,6 +740,11 @@ bool CDuckBridge::GetSkinPart(int PartID, const char *pPartName, IGraphics::CTex
 	return true;
 }
 
+vec2 CDuckBridge::GetLocalCursorPos() const
+{
+	return m_pClient->m_pControls->m_TargetPos;
+}
+
 void CDuckBridge::SetMenuModeActive(bool Active)
 {
 	m_IsMenuModeActive = Active;
