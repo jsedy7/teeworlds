@@ -53,22 +53,27 @@ bool CDuckLua::_CheckArgumentCountImp(lua_State* L, int NumArgs, const char* pFu
 static void LuaGetPropString(lua_State *L, int Index, const char *pPropName, char *pOut, int OutSize)
 {
 	lua_getfield(L, Index, pPropName);
-	const char* pStr = lua_tostring(L, -1);
-	str_copy(pOut, pStr, OutSize);
+	if(!lua_isnil(L, -1))
+	{
+		const char* pStr = lua_tostring(L, -1);
+		str_copy(pOut, pStr, OutSize);
+	}
 	lua_pop(L, 1);
 }
 
 static void LuaGetPropInteger(lua_State *L, int Index, const char *pPropName, int64_t *pOut)
 {
 	lua_getfield(L, Index, pPropName);
-	*pOut = lua_tointeger(L, -1);
+	if(!lua_isnil(L, -1))
+		*pOut = lua_tointeger(L, -1);
 	lua_pop(L, 1);
 }
 
 static void LuaGetPropNumber(lua_State *L, int Index, const char *pPropName, double *pOut)
 {
 	lua_getfield(L, Index, pPropName);
-	*pOut = lua_tonumber(L, -1);
+	if(!lua_isnil(L, -1))
+		*pOut = lua_tonumber(L, -1);
 	lua_pop(L, 1);
 }
 
