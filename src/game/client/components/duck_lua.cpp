@@ -2883,7 +2883,19 @@ void CDuckLua::OnDuckSnapItem(int Msg, int SnapID, void *pRawMsg, int Size)
 
 void CDuckLua::OnInput(IInput::CEvent e)
 {
+	if(GetFunctionRef(OnInput))
+	{
+		// make event
+		lua_createtable(L(), 0, 4);
+		LuaSetTablePropInteger(L(), -1, "key", e.m_Key);
+		LuaSetTablePropInteger(L(), -1, "pressed", e.m_Flags&IInput::FLAG_PRESS ? 1:0);
+		LuaSetTablePropInteger(L(), -1, "released", e.m_Flags&IInput::FLAG_RELEASE ? 1:0);
+		LuaSetTablePropString(L(), -1, "text", e.m_aText);
 
+
+		// call OnInput(event)
+		CallFunction(1, 0);
+	}
 }
 
 void CDuckLua::OnModLoaded()
