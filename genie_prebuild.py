@@ -13,7 +13,7 @@ datasrc = glob.glob(os.path.join(script_dir, 'datasrc') + '/**', recursive=True)
 copyList = []
 
 for f in datasrc:
-    if f.endswith(('.png', '.wv', '.ttf', '.txt', '.map', '.rules', '.json', '.js')):
+    if f.endswith(('.png', '.wv', '.ttf', '.txt', '.map', '.rules', '.json')):
         copyList.append(f)
 
 # make 'data' directory
@@ -58,6 +58,8 @@ generate_source('client_content_header', 'client_data.h')
 # DUCK
 print('******* netobj_js : ' + os.path.join(generated_dir, 'netobj_js.cpp'))
 os.system('python datasrc/netobj_js.py > ' + os.path.join(generated_dir, 'netobj_js.cpp'))
+print('******* netobj_lua : ' + os.path.join(generated_dir, 'netobj_lua.cpp'))
+os.system('python datasrc/netobj_lua.py > ' + os.path.join(generated_dir, 'netobj_lua.cpp'))
 
 def c_hash(list, output):
     os.system('python scripts/cmd5.py ' + ' '.join(list) + ' > ' + os.path.join(generated_dir, output))

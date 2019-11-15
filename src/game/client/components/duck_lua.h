@@ -107,6 +107,10 @@ class CDuckLua
 	bool GetFunctionFromRef(int Ref, const char *Name);
 	void CallFunction(int ArgCount, int ReturnCount);
 
+	bool MakeVanillaLuaNetMessage(int MsgID, void* pRawMsg);
+	bool MakeVanillaLuaNetObj(int MsgID, void* pRawMsg);
+	void GetContentEnumsAsLua();
+
 public:
 	CDuckLua();
 	void Shutdown();

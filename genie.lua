@@ -10,7 +10,7 @@ print(GENERATED_DIR)
 
 local files_GENERATED_COMMON_SRC = { GENERATED_DIR.."/protocol.h", GENERATED_DIR.."/protocol.cpp", GENERATED_DIR.."/nethash.cpp" }
 local files_GENERATED_SERVER_SRC = { GENERATED_DIR.."/server_data.h", GENERATED_DIR.."/server_data.cpp" }
-local files_GENERATED_CLIENT_SRC = { GENERATED_DIR.."/client_data.h", GENERATED_DIR.."/client_data.cpp", GENERATED_DIR.."/netobj_js.cpp" }
+local files_GENERATED_CLIENT_SRC = { GENERATED_DIR.."/client_data.h", GENERATED_DIR.."/client_data.cpp", GENERATED_DIR.."/netobj_js.cpp"}
 local files_ENGINE_COMMON_SRC = { "src/base/**.h", "src/base/**.c", "src/engine/**.h", "src/engine/shared/**.cpp" }
 local files_ENGINE_SERVER_CPP = { "src/engine/server/*.h", "src/engine/server/*.cpp" }
 local files_ENGINE_CLIENT_CPP = { "src/engine/client/*.h", "src/engine/client/*.cpp", "src/engine/client/*.c" }

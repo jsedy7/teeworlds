@@ -49,7 +49,8 @@ bool CDuckLua::_CheckArgumentCountImp(lua_State* L, int NumArgs, const char* pFu
 
 #define CheckArgumentCount(L, num) if(!This()->_CheckArgumentCountImp(L, num, __FUNCTION__ + 16)) { return 0; }
 
-static void LuaGetPropString(lua_State* L, int Index, const char* pPropName, char* pOut, int OutSize)
+
+static void LuaGetPropString(lua_State *L, int Index, const char *pPropName, char *pOut, int OutSize)
 {
 	lua_getfield(L, Index, pPropName);
 	const char* pStr = lua_tostring(L, -1);
@@ -57,56 +58,64 @@ static void LuaGetPropString(lua_State* L, int Index, const char* pPropName, cha
 	lua_pop(L, 1);
 }
 
-static void LuaGetPropInteger(lua_State* L, int Index, const char* pPropName, int64_t* pOut)
+static void LuaGetPropInteger(lua_State *L, int Index, const char *pPropName, int64_t *pOut)
 {
 	lua_getfield(L, Index, pPropName);
 	*pOut = lua_tointeger(L, -1);
 	lua_pop(L, 1);
 }
 
-static void LuaGetPropNumber(lua_State* L, int Index, const char* pPropName, double* pOut)
+static void LuaGetPropNumber(lua_State *L, int Index, const char *pPropName, double *pOut)
 {
 	lua_getfield(L, Index, pPropName);
 	*pOut = lua_tonumber(L, -1);
 	lua_pop(L, 1);
 }
 
-static void LuaGetPropBool(lua_State* L, int Index, const char* pPropName, bool* pOut)
+static void LuaGetPropBool(lua_State *L, int Index, const char *pPropName, bool *pOut)
 {
 	lua_getfield(L, Index, pPropName);
-	*pOut = lua_toboolean(L, -1);
+	if(!lua_isnil(L, -1))
+		*pOut = lua_toboolean(L, -1);
 	lua_pop(L, 1);
 }
 
-static void LuaSetTablePropInteger(lua_State* L, int Index, const char* pPropName, int Num)
+static void LuaSetPropInteger(lua_State *L, int Index, const char *pPropName, int Num)
 {
 	lua_pushstring(L, pPropName);
 	lua_pushinteger(L, Num);
 	lua_rawset(L, Index - 2);
 }
 
-static void LuaSetTablePropNumber(lua_State* L, int Index, const char* pPropName, double Num)
+static void LuaSetPropNumber(lua_State *L, int Index, const char *pPropName, double Num)
 {
 	lua_pushstring(L, pPropName);
 	lua_pushnumber(L, Num);
 	lua_rawset(L, Index - 2);
 }
 
-static void LuaSetTablePropNil(lua_State* L, int Index, const char* pPropName)
+static void LuaSetPropNil(lua_State *L, int Index, const char *pPropName)
 {
 	lua_pushstring(L, pPropName);
 	lua_pushnil(L);
 	lua_rawset(L, Index - 2);
 }
 
-static void LuaSetTablePropString(lua_State* L, int Index, const char* pPropName, const char* pStr)
+static void LuaSetPropBool(lua_State *L, int Index, const char *pPropName, bool Val)
+{
+	lua_pushstring(L, pPropName);
+	lua_pushboolean(L, Val);
+	lua_rawset(L, Index - 2);
+}
+
+static void LuaSetPropString(lua_State *L, int Index, const char *pPropName, const char *pStr)
 {
 	lua_pushstring(L, pPropName);
 	lua_pushstring(L, pStr);
 	lua_rawset(L, Index - 2);
 }
 
-static void LuaSetTablePropStringN(lua_State* L, int Index, const char* pPropName, const char* pStr, int Len)
+static void LuaSetPropStringN(lua_State *L, int Index, const char *pPropName, const char *pStr, int Len)
 {
 	lua_pushstring(L, pPropName);
 	lua_pushlstring(L, pStr, Len);
@@ -939,10 +948,10 @@ int CDuckLua::NativeGetSpriteSubSet(lua_State* L)
 	This()->Bridge()->GetBaseSpritSubset(SpriteID, aSubSet);
 
 	lua_newtable(L);
-	LuaSetTablePropNumber(L, -1, "x1", aSubSet[0]);
-	LuaSetTablePropNumber(L, -1, "y1", aSubSet[1]);
-	LuaSetTablePropNumber(L, -1, "x2", aSubSet[2]);
-	LuaSetTablePropNumber(L, -1, "y2", aSubSet[3]);
+	LuaSetPropNumber(L, -1, "x1", aSubSet[0]);
+	LuaSetPropNumber(L, -1, "y1", aSubSet[1]);
+	LuaSetPropNumber(L, -1, "x2", aSubSet[2]);
+	LuaSetPropNumber(L, -1, "y2", aSubSet[3]);
 	return 1;
 }
 
@@ -969,8 +978,8 @@ int CDuckLua::NativeGetSpriteScale(lua_State* L)
 	This()->Bridge()->GetBaseSpritScale(SpriteID, aScale);
 
 	lua_newtable(L);
-	LuaSetTablePropNumber(L, -1, "w", aScale[0]);
-	LuaSetTablePropNumber(L, -1, "h", aScale[0]);
+	LuaSetPropNumber(L, -1, "w", aScale[0]);
+	LuaSetPropNumber(L, -1, "h", aScale[0]);
 	return 1;
 }
 
@@ -1334,21 +1343,21 @@ int CDuckLua::NativeGetClientCharacterCores(lua_State* L)
 			vec2 HookPos = mix(vec2(Prev.m_HookX, Prev.m_HookY), vec2(Cur.m_HookX, Cur.m_HookY), IntraTick);
 
 			lua_newtable(L);
-			LuaSetTablePropInteger(L, -1, "tick", Cur.m_Tick);
-			LuaSetTablePropNumber(L, -1, "vel_x", Vel.x);
-			LuaSetTablePropNumber(L, -1, "vel_y", Vel.y);
-			LuaSetTablePropNumber(L, -1, "angle", Angle);
-			LuaSetTablePropInteger(L, -1, "direction", Cur.m_Direction);
-			LuaSetTablePropInteger(L, -1, "jumped", Cur.m_Jumped);
-			LuaSetTablePropInteger(L, -1, "hooked_player", Cur.m_HookedPlayer);
-			LuaSetTablePropInteger(L, -1, "hook_state", Cur.m_HookState);
-			LuaSetTablePropInteger(L, -1, "hook_tick", Cur.m_HookTick);
-			LuaSetTablePropNumber(L, -1, "hook_x", HookPos.x);
-			LuaSetTablePropNumber(L, -1, "hook_y", HookPos.y);
-			LuaSetTablePropNumber(L, -1, "hook_dx", Cur.m_HookDx/256.f);
-			LuaSetTablePropNumber(L, -1, "hook_dy", Cur.m_HookDy/256.f);
-			LuaSetTablePropNumber(L, -1, "pos_x", Position.x);
-			LuaSetTablePropNumber(L, -1, "pos_y", Position.y);
+			LuaSetPropInteger(L, -1, "tick", Cur.m_Tick);
+			LuaSetPropNumber(L, -1, "vel_x", Vel.x);
+			LuaSetPropNumber(L, -1, "vel_y", Vel.y);
+			LuaSetPropNumber(L, -1, "angle", Angle);
+			LuaSetPropInteger(L, -1, "direction", Cur.m_Direction);
+			LuaSetPropInteger(L, -1, "jumped", Cur.m_Jumped);
+			LuaSetPropInteger(L, -1, "hooked_player", Cur.m_HookedPlayer);
+			LuaSetPropInteger(L, -1, "hook_state", Cur.m_HookState);
+			LuaSetPropInteger(L, -1, "hook_tick", Cur.m_HookTick);
+			LuaSetPropNumber(L, -1, "hook_x", HookPos.x);
+			LuaSetPropNumber(L, -1, "hook_y", HookPos.y);
+			LuaSetPropNumber(L, -1, "hook_dx", Cur.m_HookDx/256.f);
+			LuaSetPropNumber(L, -1, "hook_dy", Cur.m_HookDy/256.f);
+			LuaSetPropNumber(L, -1, "pos_x", Position.x);
+			LuaSetPropNumber(L, -1, "pos_y", Position.y);
 		}
 		else
 			lua_pushnil(L);
@@ -1508,8 +1517,8 @@ int CDuckLua::NativeGetCursorPosition(lua_State* L)
 	const vec2 CursorPos = This()->Bridge()->GetLocalCursorPos();
 
 	lua_createtable(L, 0, 2);
-	LuaSetTablePropNumber(L, -1, "x", CursorPos.x);
-	LuaSetTablePropNumber(L, -1, "y", CursorPos.y);
+	LuaSetPropNumber(L, -1, "x", CursorPos.x);
+	LuaSetPropNumber(L, -1, "y", CursorPos.y);
 	return  1;
 }
 
@@ -1533,10 +1542,10 @@ int CDuckLua::NativeGetUiScreenRect(lua_State* L)
 	CUIRect Rect = This()->Bridge()->GetUiScreenRect();
 
 	lua_createtable(L, 0, 4);
-	LuaSetTablePropNumber(L, -1, "x", Rect.x);
-	LuaSetTablePropNumber(L, -1, "y", Rect.y);
-	LuaSetTablePropNumber(L, -1, "w", Rect.w);
-	LuaSetTablePropNumber(L, -1, "h", Rect.h);
+	LuaSetPropNumber(L, -1, "x", Rect.x);
+	LuaSetPropNumber(L, -1, "y", Rect.y);
+	LuaSetPropNumber(L, -1, "w", Rect.w);
+	LuaSetPropNumber(L, -1, "h", Rect.h);
 	return 1;
 }
 
@@ -1560,8 +1569,8 @@ int CDuckLua::NativeGetScreenSize(lua_State* L)
 	vec2 Size = This()->Bridge()->GetScreenSize();
 
 	lua_createtable(L, 0, 2);
-	LuaSetTablePropNumber(L, -1, "w", Size.x);
-	LuaSetTablePropNumber(L, -1, "h", Size.y);
+	LuaSetPropNumber(L, -1, "w", Size.x);
+	LuaSetPropNumber(L, -1, "h", Size.y);
 	return 1;
 }
 
@@ -1585,9 +1594,9 @@ int CDuckLua::NativeGetCamera(lua_State* L)
 	vec2 Pos = This()->Bridge()->GetCameraPos();
 
 	lua_createtable(L, 0, 3);
-	LuaSetTablePropNumber(L, -1, "x", Pos.x);
-	LuaSetTablePropNumber(L, -1, "y", Pos.y);
-	LuaSetTablePropNumber(L, -1, "zoom", This()->Bridge()->GetCameraZoom());
+	LuaSetPropNumber(L, -1, "x", Pos.x);
+	LuaSetPropNumber(L, -1, "y", Pos.y);
+	LuaSetPropNumber(L, -1, "zoom", This()->Bridge()->GetCameraZoom());
 	return 1;
 }
 
@@ -1611,8 +1620,8 @@ int CDuckLua::NativeGetUiMousePos(lua_State* L)
 	vec2 Pos = This()->Bridge()->GetUiMousePos();
 
 	lua_createtable(L, 0, 2);
-	LuaSetTablePropNumber(L, -1, "x", Pos.x);
-	LuaSetTablePropNumber(L, -1, "y", Pos.y);
+	LuaSetPropNumber(L, -1, "x", Pos.x);
+	LuaSetPropNumber(L, -1, "y", Pos.y);
 	return 1;
 }
 
@@ -1644,8 +1653,8 @@ int CDuckLua::NativeGetPixelScale(lua_State* L)
 	vec2 Scale = This()->Bridge()->GetPixelScale();
 
 	lua_createtable(L, 0, 2);
-	LuaSetTablePropNumber(L, -1, "x", Scale.x);
-	LuaSetTablePropNumber(L, -1, "y", Scale.y);
+	LuaSetPropNumber(L, -1, "x", Scale.x);
+	LuaSetPropNumber(L, -1, "y", Scale.y);
 	return 1;
 }
 
@@ -1716,10 +1725,10 @@ int CDuckLua::NativePhysGetCores(lua_State* L)
 
 		vec2 Position = mix(PrevPos, CurPos, PredIntraTick);
 
-		LuaSetTablePropInteger(L, -1, "id", CurI);
-		LuaSetTablePropNumber(L, -1, "x", Position.x);
-		LuaSetTablePropNumber(L, -1, "y", Position.y);
-		LuaSetTablePropNumber(L, -1, "radius", Cores[CurI].m_Radius);
+		LuaSetPropInteger(L, -1, "id", CurI);
+		LuaSetPropNumber(L, -1, "x", Position.x);
+		LuaSetPropNumber(L, -1, "y", Position.y);
+		LuaSetPropNumber(L, -1, "radius", Cores[CurI].m_Radius);
 
 		lua_rawseti(L, -2, CurI + 1);
 	}
@@ -1778,14 +1787,14 @@ int CDuckLua::NativePhysGetJoints(lua_State* L)
 		CCustomCore* pCore2 = Bridge.m_WorldCorePredicted.FindCustomCoreFromUID(Joint.m_CustomCoreUID2);
 
 		if(pCore1)
-			LuaSetTablePropInteger(L, -1, "core1_id", pCore1 - aCores + 1);
+			LuaSetPropInteger(L, -1, "core1_id", pCore1 - aCores + 1);
 		else
-			LuaSetTablePropNil(L, -1, "core1_id");
+			LuaSetPropNil(L, -1, "core1_id");
 
 		if(pCore2)
-			LuaSetTablePropInteger(L, -1, "core2_id", pCore2 - aCores + 1);
+			LuaSetPropInteger(L, -1, "core2_id", pCore2 - aCores + 1);
 		else
-			LuaSetTablePropNil(L, -1, "core2_id");
+			LuaSetPropNil(L, -1, "core2_id");
 
 		lua_rawseti(L, -2, i + 1);
 	}
@@ -1848,8 +1857,8 @@ int CDuckLua::NativeDirectionFromAngle(lua_State* L)
 	vec2 Dir = direction(Angle);
 
 	lua_createtable(L, 0, 2);
-	LuaSetTablePropNumber(L, -1, "x", Dir.x);
-	LuaSetTablePropNumber(L, -1, "y", Dir.y);
+	LuaSetPropNumber(L, -1, "x", Dir.x);
+	LuaSetPropNumber(L, -1, "y", Dir.y);
 	return 1;
 }
 
@@ -2224,22 +2233,22 @@ int CDuckLua::NativeNetPacketUnpack(lua_State* L)
 		switch(vp.Type)
 		{
 			case T_INT32:
-				LuaSetTablePropInteger(L, -1, vp.aKey, *(int32_t*)vp.pValue);
+				LuaSetPropInteger(L, -1, vp.aKey, *(int32_t*)vp.pValue);
 				break;
 
 			case T_UINT32:
-				LuaSetTablePropInteger(L, -1, vp.aKey, *(uint32_t*)vp.pValue);
+				LuaSetPropInteger(L, -1, vp.aKey, *(uint32_t*)vp.pValue);
 				break;
 
 			case T_FLOAT:
-				LuaSetTablePropNumber(L, -1, vp.aKey, *(float*)vp.pValue);
+				LuaSetPropNumber(L, -1, vp.aKey, *(float*)vp.pValue);
 				break;
 
 			case T_STRING:
 			{
 				char aString[2048];
 				str_copy(aString, (const char*)vp.pValue, sizeof(aString));
-				LuaSetTablePropString(L, -1, vp.aKey, aString);
+				LuaSetPropString(L, -1, vp.aKey, aString);
 			} break;
 
 			default:
@@ -2470,7 +2479,7 @@ int CDuckLua::NativeCalculateTextSize(lua_State* L)
 	CheckArgumentCount(L, 1);
 
 	const int TableIdx = 1;
-	if(!lua_istable(L, 1))
+	if(!lua_istable(L, TableIdx))
 	{
 		LUA_ERR("TwCalculateTextSize(text) text is not an object");
 		return 0;
@@ -2481,7 +2490,7 @@ int CDuckLua::NativeCalculateTextSize(lua_State* L)
 	double LineWidth = -1;
 
 	lua_getfield(L, TableIdx, "text");
-	if(lua_isstring(L, TableIdx))
+	if(lua_isstring(L, -1))
 	{
 		const char* pStr = lua_tostring(L, -1);
 		int Len = min(str_length(pStr), 1024*1024); // 1MB max
@@ -2491,7 +2500,7 @@ int CDuckLua::NativeCalculateTextSize(lua_State* L)
 	else
 	{
 		lua_pop(L, 1);
-		LUA_ERR("TwCalculateTextSize(text) text.str is null");
+		LUA_ERR("TwCalculateTextSize(text) text.text is null");
 		return 0;
 	}
 	lua_pop(L, 1);
@@ -2502,8 +2511,8 @@ int CDuckLua::NativeCalculateTextSize(lua_State* L)
 	vec2 Size = This()->Bridge()->CalculateTextSize(pText, FontSize, LineWidth);
 
 	lua_createtable(L, 0, 2);
-	LuaSetTablePropNumber(L, -1, "w", Size.x);
-	LuaSetTablePropNumber(L, -1, "h", Size.y);
+	LuaSetPropNumber(L, -1, "w", Size.x);
+	LuaSetPropNumber(L, -1, "h", Size.y);
 	return 1;
 }
 
@@ -2725,6 +2734,10 @@ void CDuckLua::ResetLuaState()
 	lua_pushnumber(L(), 3.14159265359);
 	lua_setglobal(L(), "pi");
 
+	lua_newtable(L());
+	GetContentEnumsAsLua();
+	lua_setglobal(L(), "Teeworlds");
+
 #define REGISTER_FUNC_PLAIN(fname, luaname) \
 	lua_pushcfunction(L(), Native##fname);\
 	lua_setglobal(L(), #luaname)
@@ -2858,12 +2871,48 @@ void CDuckLua::Shutdown()
 
 void CDuckLua::OnMessage(int Msg, void *pRawMsg)
 {
+	if(GetFunctionRef(OnMessage))
+	{
+		if(MakeVanillaLuaNetMessage(Msg, pRawMsg))
+		{
+		}
+		else if(Msg == NETMSG_DUCK_NETOBJ)
+		{
+			CUnpacker* pUnpacker = (CUnpacker*)pRawMsg;
+			const int ObjID = pUnpacker->GetInt();
+			const int ObjSize = pUnpacker->GetInt();
+			const u8* pObjRawData = (u8*)pUnpacker->GetRaw(ObjSize);
+			//dbg_msg("duck", "DUK packed netobj, id=0x%x size=%d", ObjID, ObjSize);
 
+			// make netObj
+			lua_createtable(L(), 0, 2);
+			LuaSetPropInteger(L(), -1, "mod_id", ObjID);
+			LuaSetPropStringN(L(), -1, "raw", (const char*)pObjRawData, ObjSize);
+		}
+		else
+		{
+			// make netObj
+			lua_createtable(L(), 0, 2);
+			LuaSetPropInteger(L(), -1, "tw_id", Msg);
+			LuaSetPropString(L(), -1, "error", "Unknown message type");
+		}
+
+		// call OnMessage(netObj)
+		CallFunction(1, 0);
+	}
 }
 
 void CDuckLua::OnSnapItem(int Msg, int SnapID, void *pRawMsg)
 {
+	if(GetFunctionRef(OnSnap))
+	{
+		if(MakeVanillaLuaNetObj(Msg, pRawMsg))
+		{
+			lua_pushinteger(L(), SnapID);
 
+			CallFunction(2, 0);
+		}
+	}
 }
 
 void CDuckLua::OnDuckSnapItem(int Msg, int SnapID, void *pRawMsg, int Size)
@@ -2872,8 +2921,8 @@ void CDuckLua::OnDuckSnapItem(int Msg, int SnapID, void *pRawMsg, int Size)
 	{
 		// make netObj
 		lua_createtable(L(), 0, 2);
-		LuaSetTablePropInteger(L(), -1, "mod_id", Msg);
-		LuaSetTablePropStringN(L(), -1, "raw", (const char*)pRawMsg, Size);
+		LuaSetPropInteger(L(), -1, "mod_id", Msg);
+		LuaSetPropStringN(L(), -1, "raw", (const char*)pRawMsg, Size);
 
 		lua_pushinteger(L(), SnapID);
 
@@ -2887,10 +2936,12 @@ void CDuckLua::OnInput(IInput::CEvent e)
 	{
 		// make event
 		lua_createtable(L(), 0, 4);
-		LuaSetTablePropInteger(L(), -1, "key", e.m_Key);
-		LuaSetTablePropInteger(L(), -1, "pressed", e.m_Flags&IInput::FLAG_PRESS ? 1:0);
-		LuaSetTablePropInteger(L(), -1, "released", e.m_Flags&IInput::FLAG_RELEASE ? 1:0);
-		LuaSetTablePropString(L(), -1, "text", e.m_aText);
+		LuaSetPropInteger(L(), -1, "key", e.m_Key);
+		if(e.m_Flags&IInput::FLAG_PRESS)
+			LuaSetPropBool(L(), -1, "pressed", true);
+		if(e.m_Flags&IInput::FLAG_RELEASE)
+			LuaSetPropBool(L(), -1, "released", true);
+		LuaSetPropString(L(), -1, "text", e.m_aText);
 
 
 		// call OnInput(event)
@@ -2954,3 +3005,5 @@ bool CDuckLua::IsStackLeaking()
 {
 	return lua_gettop(L()) != 0;
 }
+
+#include <generated/netobj_lua.cpp>
