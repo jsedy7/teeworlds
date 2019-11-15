@@ -5,6 +5,7 @@ Import("other/sdl/sdl.lua")
 Import("other/freetype/freetype.lua")
 Import("other/curl/curl.lua")
 Import("other/libzip/libzip.lua")
+Import("other/luajit/luajit.lua")
 
 --- Setup Config -------
 config = NewConfig()
@@ -17,6 +18,7 @@ config:Add(SDL.OptFind("sdl", true))
 config:Add(FreeType.OptFind("freetype", true))
 config:Add(Curl.OptFind("curl", true))
 config:Add(Zip.OptFind("zip", true))
+config:Add(Lua.OptFind("lua", true))
 config:Finalize("config.lua")
 
 generated_src_dir = "build/src"
@@ -28,7 +30,7 @@ content_src_dir = "datasrc/"
 function Python(name)
 	if family == "windows" then
 		-- Python is usually registered for .py files in Windows
-		return str_replace(name, "/", "\\")
+		return "python " .. str_replace(name, "/", "\\")
 	end
 	return "python " .. name
 end
@@ -322,8 +324,16 @@ function SharedClientFiles()
 			"duck_netobj_js" .. " > " .. netobj_js,
 			Python("datasrc/netobj_js.py") ..  " > " .. netobj_js
 		)
-
 		AddDependency(client_content_source, netobj_js)
+
+		netobj_lua = PathJoin(generated_src_dir, Path("generated/netobj_lua.cpp"))
+		AddJob(
+			netobj_lua,
+			"duck_netobj_lua" .. " > " .. netobj_lua,
+			Python("datasrc/netobj_lua.py") ..  " > " .. netobj_lua
+		)
+		AddDependency(client_content_source, netobj_lua)
+
 		shared_client_files = {client_content_source, netobj_js}
 	end
 
@@ -362,6 +372,7 @@ function BuildClient(settings, family, platform)
 	config.freetype:Apply(settings)
 	config.curl:Apply(settings)
 	config.zip:Apply(settings)
+	config.lua:Apply(settings)
 	
 	local client = Compile(settings, Collect("src/engine/client/*.cpp", "src/engine/client/*.c"))
 	
@@ -398,7 +409,7 @@ end
 
 function BuildContent(settings, arch, conf)
 	local content = {}
-	table.insert(content, CopyToDir(settings.link.Output(settings, "data"), CollectRecursive(content_src_dir .. "*.png", content_src_dir .. "*.wv", content_src_dir .. "*.ttf", content_src_dir .. "*.txt", content_src_dir .. "*.map", content_src_dir .. "*.rules", content_src_dir .. "*.json", content_src_dir .. "*.js")))
+	table.insert(content, CopyToDir(settings.link.Output(settings, "data"), CollectRecursive(content_src_dir .. "*.png", content_src_dir .. "*.wv", content_src_dir .. "*.ttf", content_src_dir .. "*.txt", content_src_dir .. "*.map", content_src_dir .. "*.rules", content_src_dir .. "*.json")))
 	if family == "windows" then
 		if arch == "x86_64" then
 			_arch = "64"
@@ -443,6 +454,8 @@ function GenerateSettings(conf, arch, builddir, compiler)
 		settings.optimize = 1
 		settings.cc.defines:Add("CONF_RELEASE")
 	end
+
+	settings.cc.defines:Add("DUCK_LUA_BACKEND")
 	
 	-- Generate object files in {builddir}/objs/
 	settings.cc.Output = function (settings_, input)

@@ -31,6 +31,7 @@ class CRenderTools;
 class CGameClient;
 class CCharacterCore;
 class CTeeRenderInfo;
+struct CGrowBuffer;
 
 struct CMultiStackAllocator
 {
