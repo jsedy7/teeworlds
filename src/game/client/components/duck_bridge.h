@@ -431,7 +431,7 @@ struct CDuckBridge : public CComponent
 
 	vec2 CalculateTextSize(const char* pStr, float FontSize, float LineWidth);
 
-	void JsError(int ErrorLevel, const char* format, ...);
+	void ScriptError(int ErrorLevel, const char* format, ...);
 
 	// "entries"
 	void RenderDrawSpace(DrawSpace::Enum Space);

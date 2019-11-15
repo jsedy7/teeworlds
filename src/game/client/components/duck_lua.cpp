@@ -12,9 +12,9 @@ extern "C" {
 static CDuckLua* s_DuckLua = 0;
 inline CDuckLua* This() { return s_DuckLua; }
 
-#define LUA_WARN(fmt, ...) This()->Bridge()->JsError(JsErrorLvl::WARNING, fmt, __VA_ARGS__)
-#define LUA_ERR(fmt, ...) This()->Bridge()->JsError(JsErrorLvl::ERROR, fmt, __VA_ARGS__)
-#define LUA_CRIT(fmt, ...) This()->Bridge()->JsError(JsErrorLvl::CRITICAL, fmt, __VA_ARGS__)
+#define LUA_WARN(fmt, ...) This()->Bridge()->ScriptError(JsErrorLvl::WARNING, fmt, __VA_ARGS__)
+#define LUA_ERR(fmt, ...) This()->Bridge()->ScriptError(JsErrorLvl::ERROR, fmt, __VA_ARGS__)
+#define LUA_CRIT(fmt, ...) This()->Bridge()->ScriptError(JsErrorLvl::CRITICAL, fmt, __VA_ARGS__)
 
 #define GetFunctionRef(F) GetFunctionFromRef(m_FuncRef##F, #F)
 
@@ -71,18 +71,46 @@ static void LuaGetPropNumber(lua_State* L, int Index, const char* pPropName, dou
 	lua_pop(L, 1);
 }
 
+static void LuaGetPropBool(lua_State* L, int Index, const char* pPropName, bool* pOut)
+{
+	lua_getfield(L, Index, pPropName);
+	*pOut = lua_toboolean(L, -1);
+	lua_pop(L, 1);
+}
+
 static void LuaSetTablePropInteger(lua_State* L, int Index, const char* pPropName, int Num)
 {
 	lua_pushstring(L, pPropName);
 	lua_pushinteger(L, Num);
-	lua_settable(L, Index - 2);
+	lua_rawset(L, Index - 2);
 }
 
 static void LuaSetTablePropNumber(lua_State* L, int Index, const char* pPropName, double Num)
 {
 	lua_pushstring(L, pPropName);
 	lua_pushnumber(L, Num);
-	lua_settable(L, Index - 2);
+	lua_rawset(L, Index - 2);
+}
+
+static void LuaSetTablePropNil(lua_State* L, int Index, const char* pPropName)
+{
+	lua_pushstring(L, pPropName);
+	lua_pushnil(L);
+	lua_rawset(L, Index - 2);
+}
+
+static void LuaSetTablePropString(lua_State* L, int Index, const char* pPropName, const char* pStr)
+{
+	lua_pushstring(L, pPropName);
+	lua_pushstring(L, pStr);
+	lua_rawset(L, Index - 2);
+}
+
+static void LuaSetTablePropStringN(lua_State* L, int Index, const char* pPropName, const char* pStr, int Len)
+{
+	lua_pushstring(L, pPropName);
+	lua_pushlstring(L, pStr, Len);
+	lua_rawset(L, Index - 2);
 }
 
 int CDuckLua::NativePrint(lua_State *L)
@@ -120,6 +148,47 @@ int CDuckLua::NativeRequire(lua_State *L)
 	}
 
 	return 0;
+}
+
+int CDuckLua::NativeCos(lua_State *L)
+{
+	CheckArgumentCount(L, 1);
+	double a = lua_tonumber(L, 1);
+	lua_pushnumber(L, cos(a));
+	return 1;
+}
+
+int CDuckLua::NativeSin(lua_State *L)
+{
+	CheckArgumentCount(L, 1);
+	double a = lua_tonumber(L, 1);
+	lua_pushnumber(L, sin(a));
+	return 1;
+}
+
+int CDuckLua::NativeSqrt(lua_State *L)
+{
+	CheckArgumentCount(L, 1);
+	double a = lua_tonumber(L, 1);
+	lua_pushnumber(L, sqrt(a));
+	return 1;
+}
+
+int CDuckLua::NativeAtan2(lua_State *L)
+{
+	CheckArgumentCount(L, 2);
+	double a = lua_tonumber(L, 1);
+	double b = lua_tonumber(L, 2);
+	lua_pushnumber(L, atan2(a, b));
+	return 1;
+}
+
+int CDuckLua::NativeFloor(lua_State *L)
+{
+	CheckArgumentCount(L, 1);
+	double a = lua_tonumber(L, 1);
+	lua_pushinteger(L, floor(a));
+	return 1;
 }
 
 /*#
@@ -321,6 +390,7 @@ int CDuckLua::NativeRenderSetQuadRotation(lua_State* L)
 /*#
 `TwRenderSetTeeSkin(skin)`
 
+| **DEPRECATED**
 | Set tee skin for next tee draw call.
 
 **Parameters**
@@ -505,6 +575,7 @@ int CDuckLua::NativeRenderSetDrawSpace(lua_State* L)
 /*#
 `TwRenderDrawTeeBodyAndFeet(tee)`
 
+| **DEPRECATED**
 | Draws a tee without hands.
 
 **Parameters**
@@ -585,6 +656,7 @@ int CDuckLua::NativeRenderDrawTeeBodyAndFeet(lua_State* L)
 /*#
 `TwRenderDrawTeeHand(tee)`
 
+| **DEPRECATED**
 | Draws a tee hand.
 
 **Parameters**
@@ -905,6 +977,7 @@ int CDuckLua::NativeGetSpriteScale(lua_State* L)
 /*#
 `TwGetWeaponSpec(weapon_id)`
 
+| **DEPRECATED**
 | Get vanilla teeworlds weapon specifications.
 | TODO: example
 
@@ -1289,6 +1362,7 @@ int CDuckLua::NativeGetClientCharacterCores(lua_State* L)
 /*#
 `TwGetStandardSkinInfo()`
 
+| **DEPRECATED**
 | Get the standard skin info.
 
 **Parameters**
@@ -1575,7 +1649,7 @@ int CDuckLua::NativeGetPixelScale(lua_State* L)
 	return 1;
 }
 
-#if 0
+
 /*#
 `TwPhysGetCores()`
 
@@ -1590,15 +1664,15 @@ int CDuckLua::NativeGetPixelScale(lua_State* L)
 
 * **cores**:
 
-.. code-block:: js
+.. code-block:: lua
 
-	var cores = [
+	local cores = {
 		{
 			x: float,
 			y: float,
 		},
 		...
-	];
+	}
 
 #*/
 int CDuckLua::NativePhysGetCores(lua_State* L)
@@ -1616,10 +1690,10 @@ int CDuckLua::NativePhysGetCores(lua_State* L)
 	const int CountPrev = Bridge.m_WorldCorePredictedPrev.m_aCustomCores.size();
 	const CCustomCore* CoresPrev = Bridge.m_WorldCorePredictedPrev.m_aCustomCores.base_ptr();
 
-	duk_idx_t Array = duk_push_array(ctx);
+	lua_createtable(L, Count, 0);
 	for(int CurI = 0; CurI < Count; CurI++)
 	{
-		duk_idx_t ObjIdx = duk_push_object(ctx);
+		lua_createtable(L, 0, 4);
 
 		int PrevID = -1;
 		for(int PrevI = 0; PrevI < CountPrev; PrevI++)
@@ -1642,58 +1716,20 @@ int CDuckLua::NativePhysGetCores(lua_State* L)
 
 		vec2 Position = mix(PrevPos, CurPos, PredIntraTick);
 
-		DukSetIntProp(ctx, ObjIdx, "id", CurI);
-		DukSetFloatProp(ctx, ObjIdx, "x", Position.x);
-		DukSetFloatProp(ctx, ObjIdx, "y", Position.y);
-		DukSetFloatProp(ctx, ObjIdx, "radius", Cores[CurI].m_Radius);
+		LuaSetTablePropInteger(L, -1, "id", CurI);
+		LuaSetTablePropNumber(L, -1, "x", Position.x);
+		LuaSetTablePropNumber(L, -1, "y", Position.y);
+		LuaSetTablePropNumber(L, -1, "radius", Cores[CurI].m_Radius);
 
-		duk_put_prop_index(ctx, Array, CurI);
+		lua_rawseti(L, -2, CurI + 1);
 	}
-
-	/*const int Count = Bridge.m_Snap.m_aCustomCores.size();
-	const CNetObj_DuckCustomCore* Cores = Bridge.m_Snap.m_aCustomCores.base_ptr();
-	const int CountPrev = Bridge.m_SnapPrev.m_aCustomCores.size();
-	const CNetObj_DuckCustomCore* CoresPrev = Bridge.m_SnapPrev.m_aCustomCores.base_ptr();
-
-	duk_idx_t Array = duk_push_array(ctx);
-	for(int CurI = 0; CurI < Count; CurI++)
-	{
-		duk_idx_t ObjIdx = duk_push_object(ctx);
-
-		int PrevID = -1;
-		for(int PrevI = 0; PrevI < CountPrev; PrevI++)
-		{
-			if(CoresPrev[PrevI].m_UID == Cores[CurI].m_UID)
-			{
-				PrevID = PrevI;
-				break;
-			}
-		}
-
-		vec2 CurPos = vec2(Cores[CurI].m_PosX / 256.f, Cores[CurI].m_PosY / 256.f);
-		vec2 PrevPos;
-
-		// don't interpolate this one
-		if(PrevID == -1)
-			PrevPos = CurPos;
-		else
-			PrevPos = vec2(CoresPrev[PrevID].m_PosX / 256.f, CoresPrev[PrevID].m_PosY / 256.f);;
-
-		vec2 Position = mix(PrevPos, CurPos, IntraTick);
-
-		DukSetIntProp(ctx, ObjIdx, "id", CurI);
-		DukSetFloatProp(ctx, ObjIdx, "x", Position.x);
-		DukSetFloatProp(ctx, ObjIdx, "y", Position.y);
-		DukSetFloatProp(ctx, ObjIdx, "radius", Cores[CurI].m_Radius / 256.f);
-
-		duk_put_prop_index(ctx, Array, CurI);
-	}*/
 
 	return 1;
 }
 
+
 /*#
-`TwPhysGetCores()`
+`TwPhysGetJoints()`
 
 | Get physical joints.
 | *Work in progress*
@@ -1707,15 +1743,15 @@ int CDuckLua::NativePhysGetCores(lua_State* L)
 
 * **joints**:
 
-.. code-block:: js
+.. code-block:: lua
 
-	var joints = [
+	local joints = {
 		{
-			core1_id: int or null,
-			core2_id: int or null,
+			core1_id: int or nil,
+			core2_id: int or nil,
 		},
 		...
-	];
+	}
 
 #*/
 int CDuckLua::NativePhysGetJoints(lua_State* L)
@@ -1731,36 +1767,32 @@ int CDuckLua::NativePhysGetJoints(lua_State* L)
 	const CDuckPhysJoint* aJoints = Bridge.m_WorldCorePredicted.m_aJoints.base_ptr();
 	const CCustomCore* aCores = Bridge.m_WorldCorePredicted.m_aCustomCores.base_ptr();
 
-	duk_idx_t Array = duk_push_array(ctx);
+	lua_createtable(L, Count, 0);
 	for(int i = 0; i < Count; i++)
 	{
+		lua_createtable(L, 0, 2);
+
 		const CDuckPhysJoint& Joint = aJoints[i];
-		duk_idx_t ObjIdx = duk_push_object(ctx);
 
 		CCustomCore* pCore1 = Bridge.m_WorldCorePredicted.FindCustomCoreFromUID(Joint.m_CustomCoreUID1);
 		CCustomCore* pCore2 = Bridge.m_WorldCorePredicted.FindCustomCoreFromUID(Joint.m_CustomCoreUID2);
 
 		if(pCore1)
-			DukSetIntProp(ctx, ObjIdx, "core1_id", pCore1 - aCores);
+			LuaSetTablePropInteger(L, -1, "core1_id", pCore1 - aCores + 1);
 		else
-		{
-			duk_push_null(ctx);
-			duk_put_prop_string(ctx, ObjIdx, "core1_id");
-		}
+			LuaSetTablePropNil(L, -1, "core1_id");
 
 		if(pCore2)
-			DukSetIntProp(ctx, ObjIdx, "core2_id", pCore2 - aCores);
+			LuaSetTablePropInteger(L, -1, "core2_id", pCore2 - aCores + 1);
 		else
-		{
-			duk_push_null(ctx);
-			duk_put_prop_string(ctx, ObjIdx, "core2_id");
-		}
+			LuaSetTablePropNil(L, -1, "core2_id");
 
-		duk_put_prop_index(ctx, Array, i);
+		lua_rawseti(L, -2, i + 1);
 	}
 
 	return 1; // pop array
 }
+
 
 /*#
 `TwPhysSetTileCollisionFlags(tile_x, tile_y, flags)`
@@ -1785,9 +1817,9 @@ int CDuckLua::NativePhysSetTileCollisionFlags(lua_State* L)
 {
 	CheckArgumentCount(L, 3);
 
-	int Tx = duk_to_int(ctx, 0);
-	int Ty = duk_to_int(ctx, 1);
-	int Flags = duk_to_int(ctx, 2);
+	int Tx = lua_tointeger(L, 1);
+	int Ty = lua_tointeger(L, 2);
+	int Flags = lua_tointeger(L, 3);
 
 	This()->Bridge()->m_Collision.SetTileCollisionFlags(Tx, Ty, Flags);
 
@@ -1812,91 +1844,15 @@ int CDuckLua::NativeDirectionFromAngle(lua_State* L)
 {
 	CheckArgumentCount(L, 1);
 
-	float Angle = (float)duk_to_number(ctx, 0);
+	float Angle = (float)lua_tonumber(L, 1);
 	vec2 Dir = direction(Angle);
 
-	int DirObjIdx = duk_push_object(ctx);
-		duk_push_number(ctx, Dir.x);
-		duk_put_prop_string(ctx, DirObjIdx, "x");
-		duk_push_number(ctx, Dir.y);
-		duk_put_prop_string(ctx, DirObjIdx, "y");
-		return 1;
+	lua_createtable(L, 0, 2);
+	LuaSetTablePropNumber(L, -1, "x", Dir.x);
+	LuaSetTablePropNumber(L, -1, "y", Dir.y);
+	return 1;
 }
 
-/*#
-`TwCollisionSetStaticBlock(block_id, block)`
-
-| Creates or modify a collision block (rectangle).
-| Note: these are supposed to stay the same size and not move much, if at all.
-
-**Parameters**
-
-* **block_id**: int
-* **block**
-
-.. code-block:: js
-
-	var block = {
-		flags: int, // collision flags
-		pos_x, float,
-		pos_y, float,
-		width, float,
-		height, float,
-	};
-
-**Returns**
-
-* None
-
-#*/
-int CDuckLua::NativeCollisionSetStaticBlock(lua_State* L)
-{
-	CheckArgumentCount(L, 2);
-
-	int BlockId = duk_to_int(ctx, 0);
-	dbg_assert(0, "remove or implement");
-
-	/*CDuckCollision::CStaticBlock SolidBlock;
-	int Flags = -1;
-
-	DukGetIntProp(ctx, 1, "flags", &Flags);
-	SolidBlock.m_Flags = Flags;
-
-	DukGetFloatProp(ctx, 1, "pos_x", &SolidBlock.m_Pos.x);
-	DukGetFloatProp(ctx, 1, "pos_y", &SolidBlock.m_Pos.y);
-	DukGetFloatProp(ctx, 1, "width", &SolidBlock.m_Size.x);
-	DukGetFloatProp(ctx, 1, "height", &SolidBlock.m_Size.y);
-
-	if(BlockId >= 0)
-		This()->Bridge()->m_Collision.SetStaticBlock(BlockId, SolidBlock);*/
-	return 0;
-}
-
-/*#
-`TwCollisionClearStaticBlock(block_id)`
-
-| Removes a collision block.
-
-**Parameters**
-
-* **block_id**: int
-
-**Returns**
-
-* None
-
-#*/
-int CDuckLua::NativeCollisionClearStaticBlock(lua_State* L)
-{
-	CheckArgumentCount(L, 1);
-
-	dbg_assert(0, "remove or implement");
-
-	/*int BlockId = duk_to_int(ctx, 0);
-	if(BlockId >= 0)
-		This()->Bridge()->m_Collision.ClearStaticBlock(BlockId);*/
-	return 0;
-}
 
 /*#
 `TwSetHudPartsShown(hud)`
@@ -1948,17 +1904,22 @@ int CDuckLua::NativeSetHudPartsShown(lua_State* L)
 {
 	CheckArgumentCount(L, 1);
 
+	if(!lua_istable(L, 1)) {
+		LUA_ERR("TwSetHudPartsShown(hud): hud is not a table");
+		return 0;
+	}
+
 	CDuckBridge::CHudPartsShown hps = This()->Bridge()->m_HudPartsShown;
 
-	DukGetBoolProp(ctx, 0, "health", &hps.m_Health);
-	DukGetBoolProp(ctx, 0, "armor", &hps.m_Armor);
-	DukGetBoolProp(ctx, 0, "ammo", &hps.m_Ammo);
-	DukGetBoolProp(ctx, 0, "time", &hps.m_Time);
-	DukGetBoolProp(ctx, 0, "killfeed", &hps.m_KillFeed);
-	DukGetBoolProp(ctx, 0, "score", &hps.m_Score);
-	DukGetBoolProp(ctx, 0, "chat", &hps.m_Chat);
-	DukGetBoolProp(ctx, 0, "scoreboard", &hps.m_Scoreboard);
-	DukGetBoolProp(ctx, 0, "weapon_cursor", &hps.m_WeaponCursor);
+	LuaGetPropBool(L, 1, "health", &hps.m_Health);
+	LuaGetPropBool(L, 1, "armor", &hps.m_Armor);
+	LuaGetPropBool(L, 1, "ammo", &hps.m_Ammo);
+	LuaGetPropBool(L, 1, "time", &hps.m_Time);
+	LuaGetPropBool(L, 1, "killfeed", &hps.m_KillFeed);
+	LuaGetPropBool(L, 1, "score", &hps.m_Score);
+	LuaGetPropBool(L, 1, "chat", &hps.m_Chat);
+	LuaGetPropBool(L, 1, "scoreboard", &hps.m_Scoreboard);
+	LuaGetPropBool(L, 1, "weapon_cursor", &hps.m_WeaponCursor);
 
 	This()->Bridge()->SetHudPartsShown(hps);
 
@@ -1971,21 +1932,21 @@ int CDuckLua::NativeSetHudPartsShown(lua_State* L)
 | Send a packet.
 | Packet object needs to be formatted to add type information, example:
 
-.. code-block:: js
+.. code-block:: lua
 
-	var packet = {
-		net_id: 1478,
-		force_send_now: 0,
+	local packet = {
+		net_id = 1478,
+		force_send_now = 0,
 
-		i32_blockID: 1,
-		i32_flags:   5,
-		float_pos_x: 180,
-		float_pos_y: 20,
-		float_vel_x: 0,
-		float_vel_y: 0,
-		float_width: 1000,
-		float_height:200,
-	});
+		i32_blockID = 1,
+		i32_flags = 5,
+		float_pos_x = 180,
+		float_pos_y = 20,
+		float_vel_x = 0,
+		float_vel_y = 0,
+		float_width = 1000,
+		float_height = 200,
+	}
 
 
 | The first 2 fields are required, the rest are in the form type_name: value.
@@ -2000,13 +1961,13 @@ int CDuckLua::NativeSetHudPartsShown(lua_State* L)
 
 * **packet**: user edited object based on:
 
-.. code-block:: js
+.. code-block:: lua
 
-	var packet = {
+	local packet = {
 		net_id: int,
 		force_send_now: int (0 or 1),
 		...
-	});
+	}
 
 **Returns**
 
@@ -2017,20 +1978,21 @@ int CDuckLua::NativeNetSendPacket(lua_State* L)
 {
 	CheckArgumentCount(L, 1);
 
-	if(!duk_is_object(ctx, 0))
+	if(!lua_istable(L, 1))
 	{
-		JS_ERR("TwNetSendPacket(packet) packet is not an object");
+		LUA_ERR("TwNetSendPacket(packet) packet is not an object");
 		return 0;
 	}
 
-	int NetID = -1;
-	int SendNow = 0;
-	DukGetIntProp(ctx, 0, "net_id", &NetID);
-	DukGetIntProp(ctx, 0, "force_send_now", &SendNow);
+	const int TableIndex = 1;
+	int64_t NetID = -1;
+	int64_t SendNow = 0;
+	LuaGetPropInteger(L, TableIndex, "net_id", &NetID);
+	LuaGetPropInteger(L, TableIndex, "force_send_now", &SendNow);
 
 	if(NetID <= 0)
 	{
-		JS_ERR("TwNetSendPacket(packet) net_id is invalid (%d)", NetID);
+		LUA_ERR("TwNetSendPacket(packet) net_id is invalid (%d)", NetID);
 		return 0;
 	}
 
@@ -2040,54 +2002,50 @@ int CDuckLua::NativeNetSendPacket(lua_State* L)
 	This()->Bridge()->PacketCreate(NetID, Flags);
 
 	// list properties
-	duk_enum(ctx, 0, DUK_ENUM_OWN_PROPERTIES_ONLY);
-
-	while(duk_next(ctx, -1 /*enum_idx*/, 0 /*get_value*/))
+	lua_pushnil(L); // first key
+	while(lua_next(L, TableIndex))
 	{
-		/* [ ... enum key ] */
-		const char* pKey = duk_get_string(ctx, -1);
+		const int KeyIdx = -2;
+		const int ValIdx = -1;
 
-		if(str_startswith(pKey, "i32_"))
+		// key is a string
+		if(lua_isstring(L, KeyIdx))
 		{
-			int Val;
-			DukGetIntProp(ctx, 0, pKey, &Val);
-			This()->Bridge()->PacketPackInt(Val);
-		}
-		else if(str_startswith(pKey, "u32_"))
-		{
-			int Val;
-			DukGetIntProp(ctx, 0, pKey, &Val);
-			This()->Bridge()->PacketPackInt(Val);
-		}
-		else if(str_startswith(pKey, "float_"))
-		{
-			float Val;
-			DukGetFloatProp(ctx, 0, pKey, &Val);
-			This()->Bridge()->PacketPackFloat(Val);
-		}
-		else if(str_startswith(pKey, "str"))
-		{
-			int Size;
-			if(sscanf(pKey+3, "%d_", &Size) == 1)
+			const char* pKey = lua_tostring(L, KeyIdx);
+
+			if(str_startswith(pKey, "i32_"))
 			{
-				char aStr[2048];
-
-				if(Size > sizeof(aStr))
+				This()->Bridge()->PacketPackInt(lua_tointeger(L, ValIdx));
+			}
+			else if(str_startswith(pKey, "u32_"))
+			{
+				This()->Bridge()->PacketPackInt(lua_tointeger(L, ValIdx));
+			}
+			else if(str_startswith(pKey, "float_"))
+			{
+				This()->Bridge()->PacketPackFloat(lua_tonumber(L, ValIdx));
+			}
+			else if(str_startswith(pKey, "str"))
+			{
+				u32 Size;
+				if(sscanf(pKey+3, "%u_", &Size) == 1)
 				{
-					JS_ERR("TwNetSendPacket(packet) string is too large (%d)", Size);
-					return 0;
-				}
+					char aStr[2048];
 
-				DukGetStringProp(ctx, 0, pKey, aStr, sizeof(aStr));
-				This()->Bridge()->PacketPackString(aStr, Size);
+					if(Size > sizeof(aStr))
+					{
+						LUA_ERR("TwNetSendPacket(packet) string is too large (%u)", Size);
+						return 0;
+					}
+
+					This()->Bridge()->PacketPackString(lua_tostring(L, ValIdx), Size);
+				}
 			}
 		}
 
-		duk_pop(ctx);  /* pop_key */
+		/* removes 'value'; keeps 'key' for next iteration */
+		lua_pop(L, 1);
 	}
-
-#undef ADD_PROP
-	duk_pop(ctx);  /* pop enum object */
 
 	This()->Bridge()->SendPacket();
 	return 0;
@@ -2099,25 +2057,25 @@ int CDuckLua::NativeNetSendPacket(lua_State* L)
 | Unpack packet based on template.
 | Each template field will be filled based on the specified type, for example this code:
 
-.. code-block:: js
+.. code-block:: lua
 
-	var block = TwNetPacketUnpack(packet, {
-		i32_blockID: 0,
-		i32_flags:   0,
-		float_pos_x: 0,
-		float_pos_y: 0,
-		float_vel_x: 0,
-		float_vel_y: 0,
-		float_width: 0,
-		float_height:0,
-	});
+	local block = TwNetPacketUnpack(packet, {
+		"i32_blockID",
+		"i32_flags",
+		"float_pos_x",
+		"float_pos_y",
+		"float_vel_x",
+		"float_vel_y",
+		"float_width",
+		"float_height"
+	}
 
 | Will fill the first field (blockID) with the first int in the packet. Same with flags, pos_x will get a float and so on.
 | The type is removed on return, so the resulting object looks like this:
 
-.. code-block:: js
+.. code-block:: lua
 
-	var block = {
+	local block = {
 		blockID: int,
 		flags: int,
 		pos_x: float,
@@ -2126,7 +2084,7 @@ int CDuckLua::NativeNetSendPacket(lua_State* L)
 		vel_y: float,
 		width: float,
 		height:float,
-	};
+	}
 
 | Supported types are:
 
@@ -2149,28 +2107,43 @@ int CDuckLua::NativeNetPacketUnpack(lua_State* L)
 {
 	CheckArgumentCount(L, 2);
 
-	if(!duk_is_object(ctx, 0))
+	const int PacketIdx = 1;
+	const int TemplateIdx = 2;
+
+	if(!lua_istable(L, PacketIdx))
 	{
-		JS_ERR("TwNetPacketUnpack(packet, template) packet is not an object");
+		LUA_ERR("TwNetPacketUnpack(packet, template) packet is not an object");
 		return 0;
 	}
 
-	if(!duk_is_object(ctx, 1))
+	if(!lua_istable(L, TemplateIdx))
 	{
-		JS_ERR("TwNetPacketUnpack(packet, template) template is not an object");
+		LUA_ERR("TwNetPacketUnpack(packet, template) template is not an object");
 		return 0;
 	}
 
-	if(!duk_get_prop_string(ctx, 0, "raw"))
+	lua_getfield(L, PacketIdx, "raw");
+	if(!lua_isstring(L, -1))
 	{
-		duk_pop(ctx);
-		JS_ERR("TwNetPacketUnpack(packet, template) can't unpack");
+		lua_pop(L, 1);
+		LUA_ERR("TwNetPacketUnpack(packet, template) can't unpack");
 		return 0;
 	}
 
-	duk_size_t RawBufferSize;
-	const u8* pRawBuffer = (u8*)duk_get_buffer(ctx, -1, &RawBufferSize);
-	duk_pop(ctx);
+	size_t RawBufferSize;
+	const u8* pStr = (u8*)lua_tolstring(L, -1, &RawBufferSize);
+
+	u8 aRawBuff[2048];
+	if(RawBufferSize > sizeof(aRawBuff))
+	{
+		lua_pop(L, 1);
+		LUA_ERR("TwNetPacketUnpack(packet, template) packet too large");
+		return 0;
+	}
+
+	mem_move(aRawBuff, pStr, RawBufferSize);
+
+	lua_pop(L, 1);
 
 	int Cursor = 0;
 
@@ -2192,53 +2165,57 @@ int CDuckLua::NativeNetPacketUnpack(lua_State* L)
 
 #define ADD_PROP(NAMEOFF, TYPE, SIZE) CKeyValuePair vp;\
 	str_copy(vp.aKey, pKey + NAMEOFF, sizeof(vp.aKey));\
-	vp.pValue = pRawBuffer + Cursor;\
+	vp.pValue = aRawBuff + Cursor;\
 	vp.Type = TYPE;\
 	vp.Size = SIZE;\
 	Cursor += SIZE;\
 	if(Cursor > RawBufferSize) {\
-		JS_ERR("TwNetPacketUnpack(net_obj, template) template is too large (%d > %d)", Cursor, RawBufferSize);\
+		LUA_ERR("TwNetPacketUnpack(net_obj, template) template is too large (%d > %d)", Cursor, RawBufferSize);\
 		return 0;\
 	}\
 	aProperties.add(vp)
 
 	// list properties
-	duk_enum(ctx, 1, DUK_ENUM_OWN_PROPERTIES_ONLY);
-
-	while(duk_next(ctx, -1 /*enum_idx*/, 0 /*get_value*/))
+	const int count = lua_objlen(L, TemplateIdx); // first key
+	for(int i = 1; i <= count ; i++)
 	{
-		/* [ ... enum key ] */
-		const char* pKey = duk_get_string(ctx, -1);
+		const int ValIdx = -1;
+		lua_rawgeti(L, TemplateIdx, i);
 
-		if(str_startswith(pKey, "i32_"))
+		// key is a string
+		if(lua_isstring(L, ValIdx))
 		{
-			ADD_PROP(4, T_INT32, 4);
-		}
-		else if(str_startswith(pKey, "u32_"))
-		{
-			ADD_PROP(4, T_UINT32, 4);
-		}
-		else if(str_startswith(pKey, "float_"))
-		{
-			ADD_PROP(6, T_FLOAT, 4);
-		}
-		else if(str_startswith(pKey, "str"))
-		{
-			int Size;
-			if(sscanf(pKey+3, "%d_", &Size) == 1)
+			const char* pKey = lua_tostring(L, ValIdx);
+
+			if(str_startswith(pKey, "i32_"))
 			{
-				int Offset = str_find(pKey, "_") - pKey + 1;
-				ADD_PROP(Offset, T_STRING, Size);
+				ADD_PROP(4, T_INT32, 4);
+			}
+			else if(str_startswith(pKey, "u32_"))
+			{
+				ADD_PROP(4, T_UINT32, 4);
+			}
+			else if(str_startswith(pKey, "float_"))
+			{
+				ADD_PROP(6, T_FLOAT, 4);
+			}
+			else if(str_startswith(pKey, "str"))
+			{
+				int Size;
+				if(sscanf(pKey+3, "%d_", &Size) == 1)
+				{
+					int Offset = str_find(pKey, "_") - pKey + 1;
+					ADD_PROP(Offset, T_STRING, Size);
+				}
 			}
 		}
 
-		duk_pop(ctx);  /* pop_key */
+		lua_pop(L, 1);
 	}
 
 #undef ADD_PROP
-	duk_pop(ctx);  /* pop enum object */
 
-	This()->PushObject();
+	lua_createtable(L, 0, aProperties.size());
 	for(int i = 0; i < aProperties.size(); i++)
 	{
 		const CKeyValuePair& vp = aProperties[i];
@@ -2247,35 +2224,36 @@ int CDuckLua::NativeNetPacketUnpack(lua_State* L)
 		switch(vp.Type)
 		{
 			case T_INT32:
-				This()->ObjectSetMemberInt(vp.aKey, *(int32_t*)vp.pValue);
+				LuaSetTablePropInteger(L, -1, vp.aKey, *(int32_t*)vp.pValue);
 				break;
 
 			case T_UINT32:
-				This()->ObjectSetMemberUint(vp.aKey, *(uint32_t*)vp.pValue);
+				LuaSetTablePropInteger(L, -1, vp.aKey, *(uint32_t*)vp.pValue);
 				break;
 
 			case T_FLOAT:
-				This()->ObjectSetMemberFloat(vp.aKey, *(float*)vp.pValue);
+				LuaSetTablePropNumber(L, -1, vp.aKey, *(float*)vp.pValue);
 				break;
 
 			case T_STRING:
 			{
 				char aString[2048];
 				str_copy(aString, (const char*)vp.pValue, sizeof(aString));
-				This()->ObjectSetMemberString(vp.aKey, aString);
+				LuaSetTablePropString(L, -1, vp.aKey, aString);
 			} break;
 
 			default:
-				JS_CRIT("Type not handled");
+				LUA_CRIT("Type not handled");
 				break;
 		}
 	}
 
 	if(Cursor < RawBufferSize)
-		JS_WARN("TwNetPacketUnpack() packet only partially unpacked (%d / %d)", Cursor, RawBufferSize);
+		LUA_WARN("TwNetPacketUnpack() packet only partially unpacked (%d / %d)", Cursor, RawBufferSize);
 
 	return 1;
 }
+
 
 /*#
 `TwAddWeapon(weapon)`
@@ -2307,6 +2285,10 @@ int CDuckLua::NativeNetPacketUnpack(lua_State* L)
 #*/
 int CDuckLua::NativeAddWeapon(lua_State* L)
 {
+	LUA_ERR("TwRenderSetTeeSkin is deprecated");
+	return 0;
+
+	/*
 	CheckArgumentCount(L, 1);
 
 	CDuckBridge::CWeaponCustomJs Wc;
@@ -2334,6 +2316,7 @@ int CDuckLua::NativeAddWeapon(lua_State* L)
 
 	This()->Bridge()->AddWeapon(Wc);
 	return 0;
+	*/
 }
 
 /*#
@@ -2356,9 +2339,9 @@ int CDuckLua::NativePlaySoundAt(lua_State* L)
 {
 	CheckArgumentCount(L, 3);
 
-	const char* pStr = duk_to_string(ctx, 0);
-	float x = duk_to_number(ctx, 1);
-	float y = duk_to_number(ctx, 2);
+	const char* pStr = lua_tostring(L, 1);
+	float x = lua_tonumber(L, 2);
+	float y = lua_tonumber(L, 3);
 
 	This()->Bridge()->PlaySoundAt(pStr, x, y);
 	return 0;
@@ -2382,8 +2365,7 @@ int CDuckLua::NativePlaySoundGlobal(lua_State* L)
 {
 	CheckArgumentCount(L, 1);
 
-	const char* pStr = duk_to_string(ctx, 0);
-
+	const char* pStr = lua_tostring(L, 1);
 	This()->Bridge()->PlaySoundGlobal(pStr);
 	return 0;
 }
@@ -2406,8 +2388,7 @@ int CDuckLua::NativePlayMusic(lua_State* L)
 {
 	CheckArgumentCount(L, 1);
 
-	const char* pStr = duk_to_string(ctx, 0);
-
+	const char* pStr = lua_tostring(L, 1);
 	This()->Bridge()->PlayMusic(pStr);
 	return 0;
 }
@@ -2432,8 +2413,8 @@ int CDuckLua::NativeRandomInt(lua_State* L)
 {
 	CheckArgumentCount(L, 2);
 
-	int Min = duk_to_int(ctx, 0);
-	int Max = duk_to_int(ctx, 1);
+	int Min = lua_tointeger(L, 1);
+	int Max = lua_tointeger(L, 2);
 	if(Min > Max)
 		tl_swap(Min, Max);
 
@@ -2446,9 +2427,10 @@ int CDuckLua::NativeRandomInt(lua_State* L)
 	XorShiftState = x;
 
 	int Val = x % (Max - Min + 1) + Min;
-	duk_push_int(ctx, Val);
+	lua_tointeger(L, Val);
 	return 1;
 }
+
 
 /*#
 `TwCalculateTextSize(text)`
@@ -2456,13 +2438,13 @@ int CDuckLua::NativeRandomInt(lua_State* L)
 | Calculate text size for the current draw space.
 | Example:
 
-.. code-block:: js
+.. code-block:: lua
 
-	var size = TwCalculateTextSize({
-		str: "Some text",
+	local size = TwCalculateTextSize({
+		text: "Some text",
 		font_size: 13,
 		line_width: 240
-	});
+	}
 
 | Note: this is not 100% accurate for now unfortunately...
 
@@ -2470,13 +2452,13 @@ int CDuckLua::NativeRandomInt(lua_State* L)
 
 * **text**:
 
-.. code-block:: js
+.. code-block:: lua
 
-	var text = {
+	local text = {
 		str: string,
 		font_size: float,
 		line_width: float
-	};
+	}
 
 **Returns**
 
@@ -2487,39 +2469,41 @@ int CDuckLua::NativeCalculateTextSize(lua_State* L)
 {
 	CheckArgumentCount(L, 1);
 
-	if(!duk_is_object(ctx, 0))
+	const int TableIdx = 1;
+	if(!lua_istable(L, 1))
 	{
-		JS_ERR("TwCalculateTextSize(text) text is not an object");
+		LUA_ERR("TwCalculateTextSize(text) text is not an object");
 		return 0;
 	}
 
 	char* pText = 0;
-	float FontSize = 10.0f;
-	float LineWidth = -1;
+	double FontSize = 10.0f;
+	double LineWidth = -1;
 
-	if(duk_get_prop_string(ctx, 0, "str"))
+	lua_getfield(L, TableIdx, "text");
+	if(lua_isstring(L, TableIdx))
 	{
-		const char* pStr = duk_to_string(ctx, -1);
+		const char* pStr = lua_tostring(L, -1);
 		int Len = min(str_length(pStr), 1024*1024); // 1MB max
 		pText = (char*)This()->Bridge()->m_FrameAllocator.Alloc(Len+1);
 		str_copy(pText, pStr, Len+1);
 	}
 	else
 	{
-		duk_pop(ctx);
-		JS_ERR("TwCalculateTextSize(text) text.str is null");
+		lua_pop(L, 1);
+		LUA_ERR("TwCalculateTextSize(text) text.str is null");
 		return 0;
 	}
-	duk_pop(ctx);
+	lua_pop(L, 1);
 
-	DukGetFloatProp(ctx, 0, "font_size", &FontSize);
-	DukGetFloatProp(ctx, 0, "line_width", &LineWidth);
+	LuaGetPropNumber(L, TableIdx, "font_size", &FontSize);
+	LuaGetPropNumber(L, TableIdx, "line_width", &LineWidth);
 
 	vec2 Size = This()->Bridge()->CalculateTextSize(pText, FontSize, LineWidth);
 
-	This()->PushObject();
-	This()->ObjectSetMemberFloat("w", Size.x);
-	This()->ObjectSetMemberFloat("h", Size.y);
+	lua_createtable(L, 0, 2);
+	LuaSetTablePropNumber(L, -1, "w", Size.x);
+	LuaSetTablePropNumber(L, -1, "h", Size.y);
 	return 1;
 }
 
@@ -2542,11 +2526,10 @@ int CDuckLua::NativeSetMenuModeActive(lua_State* L)
 {
 	CheckArgumentCount(L, 1);
 
-	bool Active = duk_to_boolean(ctx, 0);
+	bool Active = lua_toboolean(L, 1);
 	This()->Bridge()->SetMenuModeActive(Active);
 	return 0;
 }
-#endif
 
 // authorized base lib snippet copied from "minilua.c"
 namespace BaseLuaLib {
@@ -2739,6 +2722,8 @@ void CDuckLua::ResetLuaState()
 	m_pLuaState = luaL_newstate();
 	BaseLuaLib::base_open(L()); // open base lib
 
+	lua_pushnumber(L(), 3.14159265359);
+	lua_setglobal(L(), "pi");
 
 #define REGISTER_FUNC_PLAIN(fname, luaname) \
 	lua_pushcfunction(L(), Native##fname);\
@@ -2750,6 +2735,11 @@ void CDuckLua::ResetLuaState()
 
 	REGISTER_FUNC_PLAIN(Print, print);
 	REGISTER_FUNC_PLAIN(Require, require);
+	REGISTER_FUNC_PLAIN(Cos, cos);
+	REGISTER_FUNC_PLAIN(Sin, sin);
+	REGISTER_FUNC_PLAIN(Sqrt, sqrt);
+	REGISTER_FUNC_PLAIN(Atan2, atan2);
+	REGISTER_FUNC_PLAIN(Floor, floor);
 
 	REGISTER_FUNC(RenderQuad, 4);
 	REGISTER_FUNC(RenderQuadCentered, 4);
@@ -2776,7 +2766,7 @@ void CDuckLua::ResetLuaState()
 	REGISTER_FUNC(GetClientCharacterCores, 0);
 	REGISTER_FUNC(GetStandardSkinInfo, 0);
 	REGISTER_FUNC(GetSkinPartTexture, 2);
-	/*REGISTER_FUNC(GetCursorPosition, 0);
+	REGISTER_FUNC(GetCursorPosition, 0);
 	REGISTER_FUNC(GetUiScreenRect, 0);
 	REGISTER_FUNC(GetScreenSize, 0);
 	REGISTER_FUNC(GetCamera, 0);
@@ -2786,8 +2776,6 @@ void CDuckLua::ResetLuaState()
 	REGISTER_FUNC(PhysGetJoints, 0);
 	REGISTER_FUNC(PhysSetTileCollisionFlags, 3);
 	REGISTER_FUNC(DirectionFromAngle, 1);
-	REGISTER_FUNC(CollisionSetStaticBlock, 2);
-	REGISTER_FUNC(CollisionClearStaticBlock, 1);
 	REGISTER_FUNC(SetHudPartsShown, 1);
 	REGISTER_FUNC(NetSendPacket, 1);
 	REGISTER_FUNC(NetPacketUnpack, 2);
@@ -2797,7 +2785,7 @@ void CDuckLua::ResetLuaState()
 	REGISTER_FUNC(PlayMusic, 1);
 	REGISTER_FUNC(RandomInt, 2);
 	REGISTER_FUNC(CalculateTextSize, 1);
-	REGISTER_FUNC(SetMenuModeActive, 1);*/
+	REGISTER_FUNC(SetMenuModeActive, 1);
 
 #undef REGISTER_FUNC_PLAIN
 #undef REGISTER_FUNC
@@ -2880,7 +2868,17 @@ void CDuckLua::OnSnapItem(int Msg, int SnapID, void *pRawMsg)
 
 void CDuckLua::OnDuckSnapItem(int Msg, int SnapID, void *pRawMsg, int Size)
 {
+	if(GetFunctionRef(OnSnap))
+	{
+		// make netObj
+		lua_createtable(L(), 0, 2);
+		LuaSetTablePropInteger(L(), -1, "mod_id", Msg);
+		LuaSetTablePropStringN(L(), -1, "raw", (const char*)pRawMsg, Size);
 
+		lua_pushinteger(L(), SnapID);
+
+		CallFunction(2, 0);
+	}
 }
 
 void CDuckLua::OnInput(IInput::CEvent e)
@@ -2911,8 +2909,7 @@ void CDuckLua::OnModLoaded()
 
 	SEARCH_FUNCTION(OnLoad);
 	SEARCH_FUNCTION(OnMessage);
-	SEARCH_FUNCTION(OnSnapItem);
-	SEARCH_FUNCTION(OnDuckSnapItem);
+	SEARCH_FUNCTION(OnSnap);
 	SEARCH_FUNCTION(OnInput);
 	SEARCH_FUNCTION(OnRender);
 	SEARCH_FUNCTION(OnUpdate);

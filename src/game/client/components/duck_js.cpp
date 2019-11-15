@@ -14,9 +14,9 @@
 static CDuckJs* s_DuckJs = 0;
 inline CDuckJs* This() { return s_DuckJs; }
 
-#define JS_WARN(fmt, ...) This()->Bridge()->JsError(JsErrorLvl::WARNING, fmt, __VA_ARGS__)
-#define JS_ERR(fmt, ...) This()->Bridge()->JsError(JsErrorLvl::ERROR, fmt, __VA_ARGS__)
-#define JS_CRIT(fmt, ...) This()->Bridge()->JsError(JsErrorLvl::CRITICAL, fmt, __VA_ARGS__)
+#define JS_WARN(fmt, ...) This()->Bridge()->ScriptError(JsErrorLvl::WARNING, fmt, __VA_ARGS__)
+#define JS_ERR(fmt, ...) This()->Bridge()->ScriptError(JsErrorLvl::ERROR, fmt, __VA_ARGS__)
+#define JS_CRIT(fmt, ...) This()->Bridge()->ScriptError(JsErrorLvl::CRITICAL, fmt, __VA_ARGS__)
 
 bool CDuckJs::_CheckArgumentCountImp(duk_context* pCtx, int NumArgs, const char* pFuncName)
 {

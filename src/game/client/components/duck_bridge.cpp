@@ -450,6 +450,8 @@ void CDuckBridge::AddSkinPart(const char *pPart, const char *pName, IGraphics::C
 
 void CDuckBridge::AddWeapon(const CWeaponCustomJs &WcJs)
 {
+	// TODO: remove
+
 	if(WcJs.WeaponID < NUM_WEAPONS || WcJs.WeaponID >= NUM_WEAPONS_DUCK)
 	{
 		dbg_msg("duck", "ERROR: AddWeapon() :: Weapon ID = %d out of bounds", WcJs.WeaponID);
@@ -800,7 +802,7 @@ vec2 CDuckBridge::CalculateTextSize(const char *pStr, float FontSize, float Line
 	return vec2(Width, Height);
 }
 
-void CDuckBridge::JsError(int ErrorLevel, const char *format, ...)
+void CDuckBridge::ScriptError(int ErrorLevel, const char *format, ...)
 {
 	char aBuffer[1024];
 
@@ -817,7 +819,7 @@ void CDuckBridge::JsError(int ErrorLevel, const char *format, ...)
 	else if(ErrorLevel == JsErrorLvl::CRITICAL)
 		pErrorStr = "CRITICAL";
 
-	dbg_msg("duck_js", "[%s] %.*s", pErrorStr, Len, aBuffer);
+	dbg_msg("script", "[%s] %.*s", pErrorStr, Len, aBuffer);
 
 	// send error to server
 	PacketCreate(0x10001, MSGFLAG_VITAL|MSGFLAG_FLUSH);
@@ -1876,7 +1878,7 @@ bool CDuckBridge::LoadModFilesFromDisk(const SHA256_DIGEST *pModSha256)
 
 			if(!Loaded)
 			{
-				JsError(JsErrorLvl::CRITICAL, "error loading png image '%s'", pTextureName);
+				ScriptError(JsErrorLvl::CRITICAL, "error loading png image '%s'", pTextureName);
 				continue;
 			}
 
@@ -2045,7 +2047,7 @@ void CDuckBridge::OnRender()
 	// detect stack leak
 	if(m_Backend.IsStackLeaking())
 	{
-		JsError(JsErrorLvl::CRITICAL, "Stack leak");
+		ScriptError(JsErrorLvl::CRITICAL, "Stack leak");
 	}
 }
 

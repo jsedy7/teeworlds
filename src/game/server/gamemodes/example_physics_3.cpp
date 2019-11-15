@@ -83,6 +83,8 @@ struct CBee
 		pBee->m_Core1ID = Core1ID;
 		pBee->m_Core2ID = Core2ID;
 		pBee->m_Health = m_Health;
+
+		//dbg_msg("bee", "%d %d %d", pBee->m_Core1ID, pBee->m_Core2ID, pBee->m_Health);
 	}
 };
 
