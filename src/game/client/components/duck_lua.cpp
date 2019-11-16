@@ -1867,7 +1867,7 @@ int CDuckLua::NativePhysGetCores(lua_State* L)
 	lua_createtable(L, Count, 0);
 	for(int CurI = 0; CurI < Count; CurI++)
 	{
-		lua_createtable(L, 0, 4);
+		lua_createtable(L, 0, 6);
 
 		int PrevID = -1;
 		for(int PrevI = 0; PrevI < CountPrev; PrevI++)
@@ -1881,18 +1881,29 @@ int CDuckLua::NativePhysGetCores(lua_State* L)
 
 		vec2 CurPos = Cores[CurI].m_Pos;
 		vec2 PrevPos;
+		vec2 CurVel = Cores[CurI].m_Vel;
+		vec2 PrevVel;
 
 		// don't interpolate this one
 		if(PrevID == -1)
+		{
 			PrevPos = CurPos;
+			PrevVel = CurVel;
+		}
 		else
+		{
 			PrevPos = CoresPrev[PrevID].m_Pos;
+			PrevVel = CoresPrev[PrevID].m_Vel;
+		}
 
 		vec2 Position = mix(PrevPos, CurPos, PredIntraTick);
+		vec2 Velocity = mix(PrevVel, CurVel, PredIntraTick);
 
 		LuaSetPropInteger(L, -1, "id", CurI);
 		LuaSetPropNumber(L, -1, "x", Position.x);
 		LuaSetPropNumber(L, -1, "y", Position.y);
+		LuaSetPropNumber(L, -1, "vel_x", Velocity.x);
+		LuaSetPropNumber(L, -1, "vel_y", Velocity.y);
 		LuaSetPropNumber(L, -1, "radius", Cores[CurI].m_Radius);
 
 		lua_rawseti(L, -2, CurI + 1);
@@ -3100,7 +3111,7 @@ void CDuckLua::OnInput(IInput::CEvent e)
 	if(GetFunctionRef(OnInput))
 	{
 		// make event
-		lua_createtable(L(), 0, 4);
+		lua_createtable(L(), 0, 3);
 		LuaSetPropInteger(L(), -1, "key", e.m_Key);
 		if(e.m_Flags&IInput::FLAG_PRESS)
 			LuaSetPropBool(L(), -1, "pressed", true);

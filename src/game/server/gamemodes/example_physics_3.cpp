@@ -28,12 +28,38 @@ struct CNetObj_Bee
 	int m_Health;
 };
 
+uint32_t xorshift32()
+{
+	static uint32_t state = time(0);
+	uint32_t x = state;
+	x ^= x << 13;
+	x ^= x >> 17;
+	x ^= x << 5;
+	return state = x;
+}
+
+float randFloat(float fmin, float fmax)
+{
+	return fmin + ((double)xorshift32() / 0xFFFFFFFF) * (fmax - fmin);
+}
+
+const float BeeMaxVelX = 1.2;
+const float BeeMinVelX = 0;
+const float BeeMaxVelY = 1.2;
+const float BeeMinVelY = -0.2;
+
 struct CBee
 {
 	int m_CoreUID[2];
 	CDuckWorldCore* m_pWorld;
 	int m_Health;
 	int m_BeeID;
+	int m_FlightTickCount;
+	int m_FlightTickTotal;
+	vec2 m_LastVelY;
+	vec2 m_TargetVelY;
+	float m_LastVelX;
+	float m_TargetVelX;
 
 	void Create(CDuckWorldCore* pWorld, vec2 Pos, int BeePlgUID, int BeeID)
 	{
@@ -59,14 +85,42 @@ struct CBee
 
 		m_Health = 10;
 		m_BeeID = BeeID;
+
+		m_FlightTickCount = 0;
+		m_LastVelY = vec2(BeeMaxVelY, BeeMaxVelY);
+		m_TargetVelY = m_LastVelY;
+		m_LastVelX = BeeMaxVelX;
+		m_TargetVelX = m_LastVelX;
 	}
 
 	void Tick()
 	{
+		m_FlightTickCount--;
+		if(m_FlightTickCount <= 0)
+		{
+			m_FlightTickTotal = 20 + xorshift32() % 60;
+			m_FlightTickCount = m_FlightTickTotal;
+			m_LastVelY = m_TargetVelY;
+			m_TargetVelY = vec2(randFloat(BeeMinVelY, BeeMaxVelY), randFloat(BeeMinVelY, BeeMaxVelY));
+			m_LastVelX = m_TargetVelX;
+			m_TargetVelX = randFloat(BeeMinVelX, BeeMaxVelX);
+		}
+
+		const float a = (float)m_FlightTickCount/m_FlightTickTotal;
+		vec2 MoveVel = mix(m_LastVelY, m_TargetVelY, a);
+
 		CCustomCore* pCore1 = m_pWorld->FindCustomCoreFromUID(m_CoreUID[0]);
 		CCustomCore* pCore2 = m_pWorld->FindCustomCoreFromUID(m_CoreUID[1]);
-		pCore1->m_Vel.y -= 1.8;
-		pCore2->m_Vel.y -= 1.6;
+		pCore1->m_Vel.y -= MoveVel.x;
+		pCore2->m_Vel.y -= MoveVel.y;
+
+		vec2 Dir = normalize(pCore1->m_Pos - pCore2->m_Pos);
+		float VelX = sign(Dir.x) * mix(m_LastVelX, m_TargetVelX, a);
+		pCore1->m_Vel.x += VelX;
+		pCore2->m_Vel.x += VelX;
+
+		/*if(pCore1->m_Pos.x > pCore2->m_Pos.x)
+			tl_swap(m_CoreUID[0], m_CoreUID[1]);*/
 	}
 
 	void Snap(CGameContext* pGameServer, int SnappinClient)
@@ -137,7 +191,9 @@ CGameControllerExamplePhys3::CGameControllerExamplePhys3(class CGameContext *pGa
 	mem_zero(m_aBeeIsAlive, sizeof(m_aBeeIsAlive));
 
 	SpawnBeeAt(vec2(1344, 680));
-	//SpawnBeeAt(vec2(1344, 780));
+	SpawnBeeAt(vec2(1344, 780));
+	SpawnBeeAt(vec2(1244, 680));
+	SpawnBeeAt(vec2(1444, 780));
 }
 
 void CGameControllerExamplePhys3::OnPlayerConnect(CPlayer* pPlayer)
