@@ -37,6 +37,7 @@ class CDuckLua
 	inline CDuckBridge* Bridge() { return m_pBridge; }
 
 	bool _CheckArgumentCountImp(lua_State* L, int NumArgs, const char* pFuncName);
+	void PrintToConsole(const char* pStr, int Len);
 
 	static int NativePrint(lua_State *L);
 	static int NativeRequire(lua_State *L);

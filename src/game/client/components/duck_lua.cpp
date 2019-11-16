@@ -127,24 +127,91 @@ static void LuaSetPropStringN(lua_State *L, int Index, const char *pPropName, co
 	lua_rawset(L, Index - 2);
 }
 
-int CDuckLua::NativePrint(lua_State *L)
+void CDuckLua::PrintToConsole(const char* pStr, int Len)
 {
-	CheckArgumentCount(L, 1);
-
-	const char* pStr = lua_tostring(L, 1);
-	if(!pStr)
-		return 0;
-
-	const int Len = str_length(pStr);
 	const int MaxLen = 128;
 	char aBuff[MaxLen+1];
 
 	for(int i = 0; i < Len; i += MaxLen)
 	{
 		str_copy(aBuff, pStr + i, min(Len-i+1, MaxLen+1));
-		This()->Bridge()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "mod", aBuff);
+		Bridge()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "mod", aBuff);
 	}
-	return 0;  /* no return value (= undefined) */
+}
+
+static void TableToStr(lua_State *L, char* pStr, int MaxLen)
+{
+	char* pCur = pStr;
+
+#define APPEND(STR, STRLEN) if(pCur-pStr < MaxLen) { str_append(pCur, STR, MaxLen - (pCur-pStr)); pCur += STRLEN; }
+
+	APPEND("{ ", 2);
+
+	lua_pushnil(L);  /* first key */
+	while(lua_next(L, -2) != 0)
+	{
+		APPEND("[", 1);
+		if(lua_type(L, -2) == LUA_TSTRING)
+		{
+			size_t Len;
+			const char* pKey = lua_tolstring(L, -2, &Len);
+			APPEND(pKey, Len);
+
+		}
+		else
+		{
+			char aNum[16];
+			str_format(aNum, sizeof(aNum), "%d", lua_tointeger(L, -2));
+			APPEND(aNum, str_length(aNum));
+		}
+		APPEND("] = ", 4);
+
+		if(lua_istable(L, -1))
+		{
+			TableToStr(L, pCur, MaxLen - (pCur-pStr));
+		}
+		else
+		{
+			const bool IsString = lua_type(L, -1) == LUA_TSTRING;
+			if(IsString)
+				APPEND("\"", 1);
+
+			size_t Len;
+			const char* pVal = lua_tolstring(L, -1, &Len);
+			APPEND(pVal, Len);
+
+			if(IsString)
+				APPEND("\"", 1);
+		}
+
+		APPEND(", ", 2);
+
+		lua_pop(L, 1);
+	}
+
+	APPEND("}", 1);
+
+#undef APPEND
+}
+
+int CDuckLua::NativePrint(lua_State *L)
+{
+	CheckArgumentCount(L, 1);
+
+	if(lua_istable(L, 1))
+	{
+		static char aBuff[1024*1024]; // 1MB
+		TableToStr(L, aBuff, sizeof(aBuff));
+		This()->PrintToConsole(aBuff, str_length(aBuff));
+		return 0;
+	}
+
+	const char* pStr = lua_tostring(L, 1);
+	if(!pStr)
+		return 0;
+
+	This()->PrintToConsole(pStr, str_length(pStr));
+	return 0;
 }
 
 int CDuckLua::NativeRequire(lua_State *L)
