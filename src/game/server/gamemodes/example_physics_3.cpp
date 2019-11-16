@@ -39,13 +39,13 @@ struct CBee
 	{
 		m_pWorld = pWorld;
 
-		CCustomCore* pCore1 = m_pWorld->AddCustomCore(35);
+		CCustomCore* pCore1 = m_pWorld->AddCustomCore(26.25);
 		pCore1->m_PlgUID = BeePlgUID;
 		pCore1->m_Pos = Pos;
 
-		CCustomCore* pCore2 = m_pWorld->AddCustomCore(35);
+		CCustomCore* pCore2 = m_pWorld->AddCustomCore(26.25);
 		pCore2->m_PlgUID = BeePlgUID;
-		pCore2->m_Pos = Pos + vec2(70, 0);
+		pCore2->m_Pos = Pos + vec2(36, 0);
 
 		CDuckPhysJoint Joint;
 		Joint.m_CustomCoreUID1 = pCore1->m_UID;

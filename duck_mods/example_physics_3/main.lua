@@ -7,8 +7,56 @@ local game = {
 }
 
 function OnLoad()
-    print("TEEEEEEEEEEEEEST")
-    print(_VERSION)
+end
+
+function DrawBee(core1, core2, scale, LocalTime)
+    if not core1 or not core2 then
+        return
+    end
+
+    local wingAnimSS = {
+        { x1= 0.5, y1= 0.5 },
+        { x1= 0.5, y1= 0.0 },
+        { x1= 0.0, y1= 0.5 },
+        { x1= 0.0, y1= 0.0 },
+    }
+
+    TwRenderSetTexture(TwGetModTexture("bee_body"))
+    TwRenderSetColorF4(1, 1, 1, 1)
+
+    local beeDir = vec2Normalize(vec2Sub(core2, core1))
+    local beeAngle = vec2Angle(beeDir)
+
+    -- tail
+    local tailDir = vec2Normalize(vec2Sub(vec2(core2.x, core2.y - (20*scale) * beeDir.x), core1))
+    local tailAngle = vec2Angle(tailDir)
+    local tailOffset = vec2Rotate(vec2(-8*scale, 0), tailAngle)
+    local tailSizeVar = (sin(LocalTime * 5) * 2) * 0.5 * 4
+
+    TwRenderSetQuadRotation(tailAngle)
+    TwRenderSetQuadSubSet(0.5, 0, 1, 0.5)
+    TwRenderQuadCentered(core2.x + tailOffset.x, core2.y + tailOffset.y, (128*scale) + tailSizeVar, (128*scale) + tailSizeVar)
+
+    -- middle
+    TwRenderSetQuadRotation(beeAngle)
+    TwRenderSetQuadSubSet(0.5, 0.5, 1, 1)
+    TwRenderQuadCentered(core1.x, core1.y, (128*scale), (128*scale))
+
+    -- head
+    local headOffset = vec2Rotate(vec2(-72*scale, 0), beeAngle)
+    local headAngleVar = sin(LocalTime * 3) * pi * 0.05
+    TwRenderSetQuadRotation(beeAngle + headAngleVar)
+    TwRenderSetQuadSubSet(0, 0, 0.5, 0.5)
+    TwRenderQuadCentered(core1.x + headOffset.x, core1.y + headOffset.y, (128*scale), (128*scale))
+
+    -- wing
+    local wingOffset = vec2Rotate(vec2(15*scale, -55*scale), beeAngle)
+    local wingSize = 150*scale
+    local wingAnim = wingAnimSS[floor(LocalTime * 40) % #wingAnimSS + 1]
+    TwRenderSetTexture(TwGetModTexture("bee_wing_anim"))
+    TwRenderSetQuadSubSet(wingAnim.x1, wingAnim.y1, wingAnim.x1 + 0.5, wingAnim.y1 + 0.5)
+    TwRenderSetQuadRotation(beeAngle)
+    TwRenderQuadCentered(core1.x + wingOffset.x, core1.y + wingOffset.y, wingSize, wingSize)
 end
 
 function OnRender(LocalTime, IntraGameTick)
@@ -37,13 +85,6 @@ function OnRender(LocalTime, IntraGameTick)
     TwRenderDrawCircle(32 * 32, 32 * 30, 50)
     TwRenderDrawLine(32 * 32, 32 * 30, 32 * 64, 32 * 30, 10)
 
-    local wingAnimSS = {
-        { x1= 0.5, y1= 0.5 },
-        { x1= 0.5, y1= 0.0 },
-        { x1= 0.0, y1= 0.5 },
-        { x1= 0.0, y1= 0.0 },
-    }
-
     local cores = TwPhysGetCores()
     local joints = TwPhysGetJoints()
 
@@ -55,43 +96,8 @@ function OnRender(LocalTime, IntraGameTick)
         local core2 = cores[bee.core2ID+1]
 
         if core1 ~= nil and core2 ~= nil then
-            --PrintTable(bee)
-            TwRenderSetTexture(TwGetModTexture("bee_body"))
-            TwRenderSetColorF4(1, 1, 1, 1)
-
-            local beeDir = vec2Normalize(vec2Sub(core2, core1))
-            local beeAngle = vec2Angle(beeDir)
-
-            -- tail
-            local tailDir = vec2Normalize(vec2Sub(vec2(core2.x, core2.y - 20 * beeDir.x), core1))
-            local tailAngle = vec2Angle(tailDir)
-            local tailOffset = vec2Rotate(vec2(-8, 0), tailAngle)
-            local tailSizeVar = (sin(LocalTime * 5) * 2) * 0.5 * 4
-
-            TwRenderSetQuadRotation(tailAngle)
-            TwRenderSetQuadSubSet(0.5, 0, 1, 0.5)
-            TwRenderQuadCentered(core2.x + tailOffset.x, core2.y + tailOffset.y, 128 + tailSizeVar, 128 + tailSizeVar)
-
-            -- middle
-            TwRenderSetQuadRotation(beeAngle)
-            TwRenderSetQuadSubSet(0.5, 0.5, 1, 1)
-            TwRenderQuadCentered(core1.x, core1.y, 128, 128)
-
-            -- head
-            local headOffset = vec2Rotate(vec2(-72, 0), beeAngle)
-            local headAngleVar = sin(LocalTime * 3) * pi * 0.05
-            TwRenderSetQuadRotation(beeAngle + headAngleVar)
-            TwRenderSetQuadSubSet(0, 0, 0.5, 0.5)
-            TwRenderQuadCentered(core1.x + headOffset.x, core1.y + headOffset.y, 128, 128)
-
-            -- wing
-            local wingOffset = vec2Rotate(vec2(15, -55), beeAngle)
-            local wingSize = 150
-            local wingAnim = wingAnimSS[floor(LocalTime * 40) % #wingAnimSS + 1]
-            TwRenderSetTexture(TwGetModTexture("bee_wing_anim"))
-            TwRenderSetQuadSubSet(wingAnim.x1, wingAnim.y1, wingAnim.x1 + 0.5, wingAnim.y1 + 0.5)
-            TwRenderSetQuadRotation(beeAngle)
-            TwRenderQuadCentered(core1.x + wingOffset.x, core1.y + wingOffset.y, wingSize, wingSize)
+            --print(bee)
+            DrawBee(core1, core2, 0.75, LocalTime)
         end
     end
 
@@ -135,7 +141,7 @@ function OnSnap(packet, snapID)
 end
 
 function OnInput(event)
-    if event.key == 112 and event.released == 1 then
+    if event.key == 112 and event.released then
         isDebug = not isDebug
     end
 end

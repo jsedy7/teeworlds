@@ -33,7 +33,7 @@ function DrawBackpackIcon(itemsNotSeenCount)
     TwRenderSetColorF4(1, 1, 1, 1)
     TwRenderQuadCentered(25, 25, width, width)
 
-    if itemsNotSeenCount then
+    if itemsNotSeenCount > 0 then
         local fontSize = 11
         local text = "" .. itemsNotSeenCount
 
