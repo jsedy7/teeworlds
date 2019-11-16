@@ -194,6 +194,19 @@ static void TableToStr(lua_State *L, char* pStr, int MaxLen)
 #undef APPEND
 }
 
+/*#
+`print(arg1)`
+
+Prints arg1 to console.
+
+**Parameters**
+
+* **arg1**: any
+
+**Returns**
+
+* None
+#*/
 int CDuckLua::NativePrint(lua_State *L)
 {
 	CheckArgumentCount(L, 1);
@@ -201,6 +214,7 @@ int CDuckLua::NativePrint(lua_State *L)
 	if(lua_istable(L, 1))
 	{
 		static char aBuff[1024*1024]; // 1MB
+		aBuff[0] = 0;
 		TableToStr(L, aBuff, sizeof(aBuff));
 		This()->PrintToConsole(aBuff, str_length(aBuff));
 		return 0;
@@ -214,6 +228,19 @@ int CDuckLua::NativePrint(lua_State *L)
 	return 0;
 }
 
+/*#
+`require(file)`
+
+Includes lua script file.
+
+**Parameters**
+
+* **file**: string
+
+**Returns**
+
+* None
+#*/
 int CDuckLua::NativeRequire(lua_State *L)
 {
 	CheckArgumentCount(L, 1);
@@ -231,6 +258,19 @@ int CDuckLua::NativeRequire(lua_State *L)
 	return 0;
 }
 
+/*#
+`cos(angle)`
+
+Returns cosine of angle (radians).
+
+**Parameters**
+
+* **angle**: float
+
+**Returns**
+
+* **cosine**: float
+#*/
 int CDuckLua::NativeCos(lua_State *L)
 {
 	CheckArgumentCount(L, 1);
@@ -239,6 +279,19 @@ int CDuckLua::NativeCos(lua_State *L)
 	return 1;
 }
 
+/*#
+`sin(angle)`
+
+Returns sine of angle (radians).
+
+**Parameters**
+
+* **angle**: float
+
+**Returns**
+
+* **sine**: float
+#*/
 int CDuckLua::NativeSin(lua_State *L)
 {
 	CheckArgumentCount(L, 1);
@@ -247,6 +300,19 @@ int CDuckLua::NativeSin(lua_State *L)
 	return 1;
 }
 
+/*#
+`sqrt(value)`
+
+Returns square root of value.
+
+**Parameters**
+
+* **value**: float
+
+**Returns**
+
+* **result**: float
+#*/
 int CDuckLua::NativeSqrt(lua_State *L)
 {
 	CheckArgumentCount(L, 1);
@@ -255,6 +321,20 @@ int CDuckLua::NativeSqrt(lua_State *L)
 	return 1;
 }
 
+/*#
+`atan2(y, x)`
+
+Returns atan2 of y, x.
+
+**Parameters**
+
+* **y**: float
+* **x**: float
+
+**Returns**
+
+* **result**: float
+#*/
 int CDuckLua::NativeAtan2(lua_State *L)
 {
 	CheckArgumentCount(L, 2);
@@ -264,6 +344,19 @@ int CDuckLua::NativeAtan2(lua_State *L)
 	return 1;
 }
 
+/*#
+`floor(num)`
+
+Returns floor of num.
+
+**Parameters**
+
+* **num**: float
+
+**Returns**
+
+* **result**: int
+#*/
 int CDuckLua::NativeFloor(lua_State *L)
 {
 	CheckArgumentCount(L, 1);

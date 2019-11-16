@@ -1,8 +1,8 @@
 
-Javascript API
+Lua API
 ==============
 
-The Js back end is based on `Duktape 2.4.0 <https://duktape.org>`_.
+The Lua back end is based on `LuaJit 2.0.5 <http://luajit.org/>`_.
 
 ==============
 Functions
@@ -14,18 +14,133 @@ print
 ---------------------------------------------------------------------
 .. code-block:: js
    
-   function print(str)
+   function print(arg1)
 
 
-Print a string to console.
+Prints arg1 to console.
 
 **Parameters**
 
-* **str**: string
+* **arg1**: any
 
 **Returns**
 
 * None
+
+|
+
+require
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function require(file)
+
+
+Includes lua script file.
+
+**Parameters**
+
+* **file**: string
+
+**Returns**
+
+* None
+
+|
+
+cos
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function cos(angle)
+
+
+Returns cosine of angle (radians).
+
+**Parameters**
+
+* **angle**: float
+
+**Returns**
+
+* **cosine**: float
+
+|
+
+sin
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function sin(angle)
+
+
+Returns sine of angle (radians).
+
+**Parameters**
+
+* **angle**: float
+
+**Returns**
+
+* **sine**: float
+
+|
+
+sqrt
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function sqrt(value)
+
+
+Returns square root of value.
+
+**Parameters**
+
+* **value**: float
+
+**Returns**
+
+* **result**: float
+
+|
+
+atan2
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function atan2(y, x)
+
+
+Returns atan2 of y, x.
+
+**Parameters**
+
+* **y**: float
+* **x**: float
+
+**Returns**
+
+* **result**: float
+
+|
+
+floor
+---------------------------------------------------------------------
+.. code-block:: js
+   
+   function floor(num)
+
+
+Returns floor of num.
+
+**Parameters**
+
+* **num**: float
+
+**Returns**
+
+* **result**: int
 
 |
 
@@ -183,6 +298,7 @@ TwRenderSetTeeSkin
    function TwRenderSetTeeSkin(skin)
 
 
+| **DEPRECATED**
 | Set tee skin for next tee draw call.
 
 **Parameters**
@@ -268,6 +384,7 @@ TwRenderDrawTeeBodyAndFeet
    function TwRenderDrawTeeBodyAndFeet(tee)
 
 
+| **DEPRECATED**
 | Draws a tee without hands.
 
 **Parameters**
@@ -300,6 +417,7 @@ TwRenderDrawTeeHand
    function TwRenderDrawTeeHand(tee)
 
 
+| **DEPRECATED**
 | Draws a tee hand.
 
 **Parameters**
@@ -354,23 +472,23 @@ TwRenderDrawText
 | Draw text.
 | Example:
 
-.. code-block:: js
+.. code-block:: lua
 
 	TwRenderDrawText({
-		str: "This a text",
-		font_size: 10,
-		color: [1, 0, 1, 1], // rgba (0.0 - 1.0)
-		rect: [100, 25, 200, 100], // x y width height
+		text = "This a text",
+		font_size = 10,
+		color = {1, 0, 1, 1}, // rgba (0.0 - 1.0)
+		rect = {100, 25, 200, 100}, // x y width height
 	});
 
 **Parameters**
 
 * **text**:
 
-.. code-block:: js
+.. code-block:: lua
 
-	var text = {
-		str: string,
+	local text = {
+		text: string,
 		font_size: float,
 		color: float[4],
 		rect: float[4],
@@ -420,9 +538,9 @@ TwGetSpriteSubSet
 
 * **subset**:
 
-.. code-block:: js
+.. code-block:: lua
 
-	var subset = {
+	local subset = {
 		x1: float,
 		y1: float,
 		x2: float,
@@ -458,6 +576,7 @@ TwGetWeaponSpec
    function TwGetWeaponSpec(weapon_id)
 
 
+| **DEPRECATED**
 | Get vanilla teeworlds weapon specifications.
 | TODO: example
 
@@ -508,27 +627,27 @@ TwGetClientSkinInfo
 
 * **skin**
 
-.. code-block:: js
+.. code-block:: lua
 
-	var skin = {
-		textures: [
+	local skin = {
+		textures = {
 			texid_body: int,
 			texid_marking: int,
 			texid_decoration: int,
 			texid_hands: int,
 			texid_feet: int,
 			texid_eyes: int
-		],
+		},
 
-		colors: [
+		colors = {
 			color_body: {r, g, b ,a},
 			color_marking: {r, g, b ,a},
 			color_decoration: {r, g, b ,a},
 			color_hands: {r, g, b ,a},
 			color_feet: {r, g, b ,a},
 			color_eyes
-		]
-	};
+		}
+	}
 
 |
 
@@ -582,6 +701,7 @@ TwGetStandardSkinInfo
    function TwGetStandardSkinInfo()
 
 
+| **DEPRECATED**
 | Get the standard skin info.
 
 **Parameters**
@@ -785,24 +905,24 @@ TwPhysGetCores
 
 * **cores**:
 
-.. code-block:: js
+.. code-block:: lua
 
-	var cores = [
+	local cores = {
 		{
 			x: float,
 			y: float,
 		},
 		...
-	];
+	}
 
 
 |
 
-TwPhysGetCores
+TwPhysGetJoints
 ---------------------------------------------------------------------
 .. code-block:: js
    
-   function TwPhysGetCores()
+   function TwPhysGetJoints()
 
 
 | Get physical joints.
@@ -817,15 +937,15 @@ TwPhysGetCores
 
 * **joints**:
 
-.. code-block:: js
+.. code-block:: lua
 
-	var joints = [
+	local joints = {
 		{
-			core1_id: int or null,
-			core2_id: int or null,
+			core1_id: int or nil,
+			core2_id: int or nil,
 		},
 		...
-	];
+	}
 
 
 |
@@ -871,58 +991,6 @@ TwDirectionFromAngle
 **Returns**
 
 * **dir**: { x: float, y: float }
-
-
-|
-
-TwCollisionSetStaticBlock
----------------------------------------------------------------------
-.. code-block:: js
-   
-   function TwCollisionSetStaticBlock(block_id, block)
-
-
-| Creates or modify a collision block (rectangle).
-| Note: these are supposed to stay the same size and not move much, if at all.
-
-**Parameters**
-
-* **block_id**: int
-* **block**
-
-.. code-block:: js
-
-	var block = {
-		flags: int, // collision flags
-		pos_x, float,
-		pos_y, float,
-		width, float,
-		height, float,
-	};
-
-**Returns**
-
-* None
-
-
-|
-
-TwCollisionClearStaticBlock
----------------------------------------------------------------------
-.. code-block:: js
-   
-   function TwCollisionClearStaticBlock(block_id)
-
-
-| Removes a collision block.
-
-**Parameters**
-
-* **block_id**: int
-
-**Returns**
-
-* None
 
 
 |
@@ -989,21 +1057,21 @@ TwNetSendPacket
 | Send a packet.
 | Packet object needs to be formatted to add type information, example:
 
-.. code-block:: js
+.. code-block:: lua
 
-	var packet = {
-		net_id: 1478,
-		force_send_now: 0,
+	local packet = {
+		net_id = 1478,
+		force_send_now = 0,
 
-		i32_blockID: 1,
-		i32_flags:   5,
-		float_pos_x: 180,
-		float_pos_y: 20,
-		float_vel_x: 0,
-		float_vel_y: 0,
-		float_width: 1000,
-		float_height:200,
-	});
+		i32_blockID = 1,
+		i32_flags = 5,
+		float_pos_x = 180,
+		float_pos_y = 20,
+		float_vel_x = 0,
+		float_vel_y = 0,
+		float_width = 1000,
+		float_height = 200,
+	}
 
 
 | The first 2 fields are required, the rest are in the form type_name: value.
@@ -1018,13 +1086,13 @@ TwNetSendPacket
 
 * **packet**: user edited object based on:
 
-.. code-block:: js
+.. code-block:: lua
 
-	var packet = {
+	local packet = {
 		net_id: int,
 		force_send_now: int (0 or 1),
 		...
-	});
+	}
 
 **Returns**
 
@@ -1043,25 +1111,25 @@ TwNetPacketUnpack
 | Unpack packet based on template.
 | Each template field will be filled based on the specified type, for example this code:
 
-.. code-block:: js
+.. code-block:: lua
 
-	var block = TwNetPacketUnpack(packet, {
-		i32_blockID: 0,
-		i32_flags:   0,
-		float_pos_x: 0,
-		float_pos_y: 0,
-		float_vel_x: 0,
-		float_vel_y: 0,
-		float_width: 0,
-		float_height:0,
-	});
+	local block = TwNetPacketUnpack(packet, {
+		"i32_blockID",
+		"i32_flags",
+		"float_pos_x",
+		"float_pos_y",
+		"float_vel_x",
+		"float_vel_y",
+		"float_width",
+		"float_height"
+	}
 
 | Will fill the first field (blockID) with the first int in the packet. Same with flags, pos_x will get a float and so on.
 | The type is removed on return, so the resulting object looks like this:
 
-.. code-block:: js
+.. code-block:: lua
 
-	var block = {
+	local block = {
 		blockID: int,
 		flags: int,
 		pos_x: float,
@@ -1070,7 +1138,7 @@ TwNetPacketUnpack
 		vel_y: float,
 		width: float,
 		height:float,
-	};
+	}
 
 | Supported types are:
 
@@ -1219,13 +1287,13 @@ TwCalculateTextSize
 | Calculate text size for the current draw space.
 | Example:
 
-.. code-block:: js
+.. code-block:: lua
 
-	var size = TwCalculateTextSize({
-		str: "Some text",
+	local size = TwCalculateTextSize({
+		text: "Some text",
 		font_size: 13,
 		line_width: 240
-	});
+	}
 
 | Note: this is not 100% accurate for now unfortunately...
 
@@ -1233,13 +1301,13 @@ TwCalculateTextSize
 
 * **text**:
 
-.. code-block:: js
+.. code-block:: lua
 
-	var text = {
+	local text = {
 		str: string,
 		font_size: float,
 		line_width: float
-	};
+	}
 
 **Returns**
 
