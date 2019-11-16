@@ -58,7 +58,7 @@ CGameControllerTEST::CGameControllerTEST(class CGameContext *pGameServer)
 	m_pGameType = "TEST";
 
 	// load duck mod
-	if(!Server()->LoadDuckMod("", "", "data/mods/test"))
+	if(!Server()->LoadDuckMod("", "", "mods/test"))
 	{
 		dbg_msg("server", "failed to load duck mod");
 	}

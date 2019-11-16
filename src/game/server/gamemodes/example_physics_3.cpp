@@ -119,7 +119,7 @@ CGameControllerExamplePhys3::CGameControllerExamplePhys3(class CGameContext *pGa
 	str_copy(g_Config.m_SvMap, "duck_ex_phys_3", sizeof(g_Config.m_SvMap)); // force map
 
 	// load duck mod
-	if(!Server()->LoadDuckMod("", "", "data/mods/example_physics_3"))
+	if(!Server()->LoadDuckMod("", "", "mods/example_physics_3"))
 	{
 		dbg_msg("server", "failed to load duck mod");
 	}

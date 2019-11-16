@@ -451,7 +451,7 @@ void CDuckBridge::AddSkinPart(const char *pPart, const char *pName, IGraphics::C
 void CDuckBridge::AddWeapon(const CWeaponCustomJs &WcJs)
 {
 	// TODO: remove
-
+#if 0
 	if(WcJs.WeaponID < NUM_WEAPONS || WcJs.WeaponID >= NUM_WEAPONS_DUCK)
 	{
 		dbg_msg("duck", "ERROR: AddWeapon() :: Weapon ID = %d out of bounds", WcJs.WeaponID);
@@ -512,6 +512,7 @@ void CDuckBridge::AddWeapon(const CWeaponCustomJs &WcJs)
 	Wc.Recoil = WcJs.Recoil;
 
 	m_aWeapons.add(Wc);
+#endif
 }
 
 CDuckBridge::CWeaponCustom *CDuckBridge::FindWeapon(int WeaponID)

@@ -218,7 +218,7 @@ CGameControllerExampleUI1::CGameControllerExampleUI1(class CGameContext *pGameSe
 	str_copy(g_Config.m_SvMap, "dm1", sizeof(g_Config.m_SvMap)); // force dm1
 
 	// load duck mod
-	if(!Server()->LoadDuckMod("", "", "data/mods/example_ui_1"))
+	if(!Server()->LoadDuckMod("", "", "mods/example_ui_1"))
 	{
 		dbg_msg("server", "failed to load duck mod");
 	}
