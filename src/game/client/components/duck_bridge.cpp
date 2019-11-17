@@ -528,6 +528,9 @@ CDuckBridge::CWeaponCustom *CDuckBridge::FindWeapon(int WeaponID)
 
 void CDuckBridge::PlaySoundAt(const char *pSoundName, float x, float y)
 {
+	if(!g_Config.m_SndEnable)
+		return;
+
 	int Len = str_length(pSoundName);
 	const uint32_t Hash = hash_fnv1a(pSoundName, Len);
 	const int SoundCount = m_aSounds.size();
@@ -553,6 +556,9 @@ void CDuckBridge::PlaySoundAt(const char *pSoundName, float x, float y)
 
 void CDuckBridge::PlaySoundGlobal(const char *pSoundName)
 {
+	if(!g_Config.m_SndEnable)
+		return;
+
 	int Len = str_length(pSoundName);
 	const uint32_t Hash = hash_fnv1a(pSoundName, Len);
 	const int SoundCount = m_aSounds.size();

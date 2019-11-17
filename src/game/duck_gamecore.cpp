@@ -374,11 +374,10 @@ void CDuckWorldCore::Joint_Tick(CDuckPhysJoint *pThis)
 	CCustomCore* pCore1 = FindCustomCoreFromUID(pThis->m_CustomCoreUID1);
 	CCustomCore* pCore2 = FindCustomCoreFromUID(pThis->m_CustomCoreUID2);
 
-	// handle hook influence
 	if(pCore1 && pCore2)
 	{
 		float Distance = distance(pCore1->m_Pos, pCore2->m_Pos);
-		if(Distance > (pCore1->m_Radius + pCore2->m_Radius + g_CoreOuterRadius))
+		if(pThis->m_Force1 != 0 && Distance > (pCore1->m_Radius + pCore2->m_Radius + g_CoreOuterRadius))
 		{
 			/*float Accel = m_pBaseWorldCore->m_Tuning.m_HookDragAccel * (Distance/m_pBaseWorldCore->m_Tuning.m_HookLength);
 			float DragSpeed = m_pBaseWorldCore->m_Tuning.m_HookDragSpeed;
@@ -394,6 +393,13 @@ void CDuckWorldCore::Joint_Tick(CDuckPhysJoint *pThis)
 			vec2 Dir = normalize(pCore2->m_Pos - pCore1->m_Pos);
 			pCore1->m_Vel += Dir * pThis->m_Force1;
 			pCore2->m_Vel += Dir * -pThis->m_Force1;
+		}
+		if(pThis->m_MaxDist > 0 && Distance > pThis->m_MaxDist)
+		{
+			vec2 Dir = normalize(pCore2->m_Pos - pCore1->m_Pos);
+			float Diff = (Distance - pThis->m_MaxDist);
+			pCore1->m_Vel += Dir * Diff;
+			pCore2->m_Vel += Dir * -Diff;
 		}
 	}
 }

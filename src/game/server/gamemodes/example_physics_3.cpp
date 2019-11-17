@@ -61,6 +61,11 @@ struct CBee
 	float m_LastVelX;
 	float m_TargetVelX;
 
+	inline CDuckCollision* Collision()
+	{
+		return m_pWorld->m_pCollision;
+	}
+
 	void Create(CDuckWorldCore* pWorld, vec2 Pos, int BeePlgUID, int BeeID)
 	{
 		m_pWorld = pWorld;
@@ -76,8 +81,9 @@ struct CBee
 		CDuckPhysJoint Joint;
 		Joint.m_CustomCoreUID1 = pCore1->m_UID;
 		Joint.m_CustomCoreUID2 = pCore2->m_UID;
-		Joint.m_Force1 = 4;
-		Joint.m_Force2 = 2;
+		//Joint.m_Force1 = 4;
+		//Joint.m_Force2 = 2;
+		Joint.m_MaxDist = 60;
 		m_pWorld->m_aJoints.add(Joint);
 
 		m_CoreUID[0] = pCore1->m_UID;
@@ -95,6 +101,14 @@ struct CBee
 
 	void Tick()
 	{
+		/*{
+		CCustomCore* pCore1 = m_pWorld->FindCustomCoreFromUID(m_CoreUID[0]);
+		CCustomCore* pCore2 = m_pWorld->FindCustomCoreFromUID(m_CoreUID[1]);
+		pCore1->m_Vel.y -= 1.8;
+		pCore2->m_Vel.y -= 1.8;
+		return; // TODO: remove
+		}*/
+
 		m_FlightTickCount--;
 		if(m_FlightTickCount <= 0)
 		{
@@ -118,6 +132,21 @@ struct CBee
 		float VelX = sign(Dir.x) * mix(m_LastVelX, m_TargetVelX, a);
 		pCore1->m_Vel.x += VelX;
 		pCore2->m_Vel.x += VelX;
+
+		// turn around
+		if(Collision()->CheckPoint(pCore1->m_Pos + vec2((pCore1->m_Radius + 5) * sign(pCore1->m_Vel.x), 0)))
+		{
+			m_TargetVelX = -m_TargetVelX;
+		}
+
+		// try to be horizontal
+		if(abs(Dir.x) < 0.5)
+		{
+			//float f = randFloat(0, 0.5);
+			//f *= (xorshift32() & 1) * 2 - 1;
+			pCore2->m_Vel.x -= VelX * 1.5;
+			//pCore2->m_Vel.x -= VelX;
+		}
 
 		/*if(pCore1->m_Pos.x > pCore2->m_Pos.x)
 			tl_swap(m_CoreUID[0], m_CoreUID[1]);*/

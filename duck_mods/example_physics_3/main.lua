@@ -6,7 +6,32 @@ local game = {
     bees = {}
 }
 
+local Sprite = {
+    BeeHead = { 0, 0, 0.5, 0.5 },
+    BeeTail = { 0.5, 0, 1, 0.5 },
+    BeeMiddle = { 0.5, 0.5, 1, 1 },
+    BeeLeg1 = { 0, 0.5, 0.125, 1 },
+    BeeLeg2 = { 0.125, 0.5, 0.25, 1 },
+    BeeLeg3 = { 0.25, 0.5, 0.5, 1 },
+}
+
 function OnLoad()
+end
+
+function SelectSprite(spriteID, flipX, flipY)
+    local sprite = Sprite[spriteID]
+    local x1, y1, x2, y2 = sprite[1], sprite[2], sprite[3], sprite[4]
+    if flipX then
+        local temp = x1
+        x1 = x2
+        x2 = temp
+    end
+    if flipY then
+        local temp = y1
+        y1 = y2
+        y2 = temp
+    end
+    TwRenderSetQuadSubSet(x1, y1, x2, y2)
 end
 
 function DrawBee(core1, core2, scale, LocalTime)
@@ -18,6 +43,7 @@ function DrawBee(core1, core2, scale, LocalTime)
     if core1.x > core2.x then
         flipY = -1;
     end
+    local flipSpriteY = flipY ~= 1
 
     local wingAnimSS = {
         { x1= 0.5, y1= 0.5 },
@@ -36,35 +62,45 @@ function DrawBee(core1, core2, scale, LocalTime)
     local tailDir = vec2Normalize(vec2Sub(vec2(core2.x, core2.y - (20*scale*flipY) * beeDir.x), core1))
     local tailAngle = vec2Angle(tailDir)
     local tailOffset = vec2Rotate(vec2(-8*scale, 0), tailAngle)
-    local tailSizeVar = (sin(LocalTime * 5) * 2) * 0.5 * 4
+    local tailSizeVar = (sin(LocalTime * 5) * 2) * 0.5 * 4 * scale
 
     TwRenderSetQuadRotation(tailAngle)
-    if flipY == 1 then
-        TwRenderSetQuadSubSet(0.5, 0, 1, 0.5)
-    else
-        TwRenderSetQuadSubSet(0.5, 0.5, 1, 0)
-    end
+    SelectSprite("BeeTail", false, flipSpriteY)
     TwRenderQuadCentered(core2.x + tailOffset.x, core2.y + tailOffset.y, (128*scale) + tailSizeVar, (128*scale) + tailSizeVar)
 
     -- middle
     TwRenderSetQuadRotation(beeAngle)
-    if flipY == 1 then
-        TwRenderSetQuadSubSet(0.5, 0.5, 1, 1)
-    else
-        TwRenderSetQuadSubSet(0.5, 1, 1, 0.5)
-    end
+    SelectSprite("BeeMiddle", false, flipSpriteY)
     TwRenderQuadCentered(core1.x, core1.y, (128*scale), (128*scale))
 
     -- head
     local headOffset = vec2Rotate(vec2(-72*scale, 0), beeAngle)
     local headAngleVar = sin(LocalTime * 3) * pi * 0.05
     TwRenderSetQuadRotation(beeAngle + headAngleVar)
-    if flipY == 1 then
-        TwRenderSetQuadSubSet(0, 0, 0.5, 0.5)
-    else
-        TwRenderSetQuadSubSet(0, 0.5, 0.5, 0)
-    end
+    SelectSprite("BeeHead", false, flipSpriteY)
     TwRenderQuadCentered(core1.x + headOffset.x, core1.y + headOffset.y, (128*scale), (128*scale))
+
+    -- legs
+    local leg1HeightVar = -(sin(LocalTime * 2.2) + 1.0) * 0.5 * (10 * scale)
+    local leg1Offset = vec2Rotate(vec2(-32*scale, (60*scale + leg1HeightVar*0.5) * flipY), beeAngle)
+    local leg1AngleVar = sin(LocalTime * 2) * pi * 0.02
+    TwRenderSetQuadRotation(beeAngle + leg1AngleVar)
+    SelectSprite("BeeLeg1", false, flipSpriteY)
+    TwRenderQuadCentered(core1.x + leg1Offset.x, core1.y + leg1Offset.y, (32*scale), (128*scale) + leg1HeightVar)
+
+    local leg2HeightVar = -(sin((LocalTime+1) * 2.3) + 1.0) * 0.5 * (14 * scale)
+    local leg2Offset = vec2Rotate(vec2(-10*scale, (50*scale + leg2HeightVar*0.5) * flipY), beeAngle)
+    local leg2AngleVar = sin((LocalTime+1) * 2) * pi * 0.02
+    TwRenderSetQuadRotation(beeAngle + leg2AngleVar)
+    SelectSprite("BeeLeg2", false, flipSpriteY)
+    TwRenderQuadCentered(core1.x + leg2Offset.x, core1.y + leg2Offset.y, (32*scale), (128*scale) + leg2HeightVar)
+
+    local leg3HeightVar = -(sin((LocalTime+2) * 2.15) + 1.0) * 0.5 * (22 * scale)
+    local leg3Offset = vec2Rotate(vec2(12*scale, (45*scale + leg3HeightVar*0.5) * flipY), beeAngle)
+    local leg3AngleVar = sin((LocalTime+2) * 2) * pi * 0.02
+    TwRenderSetQuadRotation(beeAngle + leg2AngleVar)
+    SelectSprite("BeeLeg3", false, flipSpriteY)
+    TwRenderQuadCentered(core1.x + leg3Offset.x, core1.y + leg3Offset.y, (64*scale), (128*scale) + leg3HeightVar)
 
     -- wing
     local wingOffset = vec2Rotate(vec2(15*scale, -55*scale*flipY), beeAngle)

@@ -30,8 +30,8 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="0.70710678"
-     inkscape:cx="473.8939"
-     inkscape:cy="922.72736"
+     inkscape:cx="563.62089"
+     inkscape:cy="1156.9943"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      showgrid="true"
@@ -209,15 +209,15 @@
     <ellipse
        style="fill:#28170b;fill-opacity:1;stroke:none;stroke-width:1.22655642;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="path935"
-       cx="59.434845"
-       cy="206.3477"
+       cx="47.237759"
+       cy="207.0712"
        rx="6.5336165"
        ry="28.628674"
        transform="matrix(0.99823992,0.0593049,0.02053066,0.99978922,0,0)" />
     <ellipse
        style="fill:#28170b;fill-opacity:1;stroke:none;stroke-width:1.39065218;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="path937"
-       cx="64.345222"
+       cx="52.18446"
        cy="251.58447"
        rx="5.5311384"
        ry="19.981258" />

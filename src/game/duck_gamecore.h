@@ -50,6 +50,7 @@ struct CNetObj_DuckPhysJoint
 	int m_Force2;
 	int m_CustomCoreUID1;
 	int m_CustomCoreUID2;
+	int m_MaxDist;
 };
 
 struct CCharCoreExtra
@@ -188,6 +189,16 @@ struct CDuckPhysJoint
 	float m_Force2;
 	int m_CustomCoreUID1;
 	int m_CustomCoreUID2;
+	float m_MaxDist;
+
+	CDuckPhysJoint()
+	{
+		m_Force1 = 0;
+		m_Force2 = 0;
+		m_CustomCoreUID1 = 0;
+		m_CustomCoreUID2 = 0;
+		m_MaxDist = 0;
+	}
 
 	void Read(const CNetObj_DuckPhysJoint& NetObj)
 	{
@@ -199,6 +210,7 @@ struct CDuckPhysJoint
 		m_Force2 = NetObj.m_Force2 / 256.f;
 		m_CustomCoreUID1 = NetObj.m_CustomCoreUID1;
 		m_CustomCoreUID2 = NetObj.m_CustomCoreUID2;
+		m_MaxDist = NetObj.m_MaxDist / 256.f;
 	}
 
 	void Write(CNetObj_DuckPhysJoint* pNetObj)
@@ -211,6 +223,7 @@ struct CDuckPhysJoint
 		pNetObj->m_Force2 = m_Force2 * 256;
 		pNetObj->m_CustomCoreUID1 = m_CustomCoreUID1;
 		pNetObj->m_CustomCoreUID2 = m_CustomCoreUID2;
+		pNetObj->m_MaxDist = m_MaxDist * 256;
 	}
 };
 
