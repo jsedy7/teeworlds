@@ -3,7 +3,8 @@ require("utils.lua")
 
 local isDebug = false
 local game = {
-    bees = {}
+    bees = {},
+    beesSound = {}
 }
 
 local Sprite = {
@@ -116,6 +117,32 @@ function DrawBee(core1, core2, scale, LocalTime)
     TwRenderQuadCentered(core1.x + wingOffset.x, core1.y + wingOffset.y, wingSize, wingSize)
 end
 
+local lastLocalTime = 0
+local bzzSounds = {
+    "bzzz-01",
+    "bzzz-02",
+    "bzzz-03",
+    "bzzz-04",
+}
+
+function OnUpdate(LocalTime)
+    local delta = LocalTime - lastLocalTime
+    lastLocalTime = LocalTime
+
+    local cores = TwPhysGetCores()
+
+    for k,bee in pairs(game.bees) do
+        local snd = game.beesSound[k]
+        snd.cooldown = snd.cooldown - delta
+        if snd.cooldown < 0 then
+            snd.cooldown = 4.5
+            local core1 = cores[bee.core1ID+1]
+            local sndID = 1 + floor(LocalTime*LocalTime) % #bzzSounds
+            TwPlaySoundAt(bzzSounds[sndID], core1.x, core1.y)
+        end
+    end
+end
+
 function OnRender(LocalTime, IntraGameTick)
     TwRenderSetDrawSpace(0)
 
@@ -193,7 +220,13 @@ function OnSnap(packet, snapID)
             "i32_health",
         })
 
+        local sound = {
+            cooldown = 0.0
+        }
         game.bees[snapID] = bee
+        if not game.beesSound[snapID] then
+            game.beesSound[snapID] = sound
+        end
     end
 end
 

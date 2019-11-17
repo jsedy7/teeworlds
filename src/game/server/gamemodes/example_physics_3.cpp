@@ -220,9 +220,9 @@ CGameControllerExamplePhys3::CGameControllerExamplePhys3(class CGameContext *pGa
 	mem_zero(m_aBeeIsAlive, sizeof(m_aBeeIsAlive));
 
 	SpawnBeeAt(vec2(1344, 680));
-	SpawnBeeAt(vec2(1344, 780));
-	SpawnBeeAt(vec2(1244, 680));
-	SpawnBeeAt(vec2(1444, 780));
+	//SpawnBeeAt(vec2(1344, 780));
+	//SpawnBeeAt(vec2(1244, 680));
+	//SpawnBeeAt(vec2(1444, 780));
 }
 
 void CGameControllerExamplePhys3::OnPlayerConnect(CPlayer* pPlayer)

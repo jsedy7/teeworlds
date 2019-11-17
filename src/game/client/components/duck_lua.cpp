@@ -2612,7 +2612,7 @@ int CDuckLua::NativeRandomInt(lua_State* L)
 	XorShiftState = x;
 
 	int Val = x % (Max - Min + 1) + Min;
-	lua_tointeger(L, Val);
+	lua_pushinteger(L, Val);
 	return 1;
 }
 
@@ -3174,7 +3174,12 @@ void CDuckLua::OnRender(float LocalTime, float IntraGameTick)
 
 void CDuckLua::OnUpdate(float LocalTime, float IntraGameTick)
 {
+	if(GetFunctionRef(OnUpdate))
+	{
+		lua_pushnumber(L(), LocalTime);
 
+		CallFunction(1, 0);
+	}
 }
 
 bool CDuckLua::IsStackLeaking()
