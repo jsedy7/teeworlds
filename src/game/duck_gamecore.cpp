@@ -445,40 +445,38 @@ void CDuckWorldCore::Snap(CGameContext *pGameServer, int SnappingClient)
 	const int JointCount = m_aJoints.size();
 	const int PlgCount = m_aPhysicsLawsGroups.size();
 
-	for(int PlayerID = 0; PlayerID < MAX_CLIENTS; PlayerID++)
+
+	if(!pGameServer->m_apPlayers[SnappingClient])
+		return;
+	if(pGameServer->m_apPlayers[SnappingClient]->IsDummy())
+		return;
+
+	for(int i = 0; i < CoreCount; i++)
 	{
-		if(!pGameServer->m_apPlayers[PlayerID])
+		CNetObj_DuckCustomCore* pData = pGameServer->DuckSnapNewItem<CNetObj_DuckCustomCore>(m_aCustomCores[i].m_UID);
+		m_aCustomCores[i].Write(pData);
+	}
+
+	for(int i = 0; i < JointCount; i++)
+	{
+		CNetObj_DuckPhysJoint* pData = pGameServer->DuckSnapNewItem<CNetObj_DuckPhysJoint>(i);
+		m_aJoints[i].Write(pData);
+	}
+
+	for(int i = 0; i < PlgCount; i++)
+	{
+		CNetObj_DuckPhysicsLawsGroup* pData = pGameServer->DuckSnapNewItem<CNetObj_DuckPhysicsLawsGroup>(i);
+		m_aPhysicsLawsGroups[i].Write(pData);
+	}
+
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		// FIXME: fix GetCharacter() linker error
+		if(!pGameServer->m_apPlayers[i] || pGameServer->m_apPlayers[i]->IsDummy()/* || !pGameServer->m_apPlayers[p]->GetCharacter()*/)
 			continue;
-		if(pGameServer->m_apPlayers[PlayerID]->IsDummy())
-			continue;
 
-		for(int i = 0; i < CoreCount; i++)
-		{
-			CNetObj_DuckCustomCore* pData = pGameServer->DuckSnapNewItem<CNetObj_DuckCustomCore>(m_aCustomCores[i].m_UID);
-			m_aCustomCores[i].Write(pData);
-		}
-
-		for(int i = 0; i < JointCount; i++)
-		{
-			CNetObj_DuckPhysJoint* pData = pGameServer->DuckSnapNewItem<CNetObj_DuckPhysJoint>(i);
-			m_aJoints[i].Write(pData);
-		}
-
-		for(int i = 0; i < PlgCount; i++)
-		{
-			CNetObj_DuckPhysicsLawsGroup* pData = pGameServer->DuckSnapNewItem<CNetObj_DuckPhysicsLawsGroup>(i);
-			m_aPhysicsLawsGroups[i].Write(pData);
-		}
-
-		for(int i = 0; i < MAX_CLIENTS; i++)
-		{
-			// FIXME: fix GetCharacter() linker error
-			if(!pGameServer->m_apPlayers[i] || pGameServer->m_apPlayers[PlayerID]->IsDummy()/* || !pGameServer->m_apPlayers[p]->GetCharacter()*/)
-				continue;
-
-			CNetObj_DuckCharCoreExtra* pData = pGameServer->DuckSnapNewItem<CNetObj_DuckCharCoreExtra>(pGameServer->m_apPlayers[PlayerID]->GetCID());
-			m_aBaseCoreExtras[i].Write(pData);
-		}
+		CNetObj_DuckCharCoreExtra* pData = pGameServer->DuckSnapNewItem<CNetObj_DuckCharCoreExtra>(pGameServer->m_apPlayers[i]->GetCID());
+		m_aBaseCoreExtras[i].Write(pData);
 	}
 }
 
