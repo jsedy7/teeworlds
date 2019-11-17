@@ -5,6 +5,7 @@
 #include <game/server/gamecontext.h>
 #include <game/server/player.h>
 #include <game/server/entities/character.h>
+#include <game/server/entities/projectile.h>
 
 // TODO: move
 inline bool NetworkClipped(CGameContext* pGameServer, int SnappingClient, vec2 CheckPos)
@@ -26,6 +27,12 @@ struct CNetObj_Bee
 	int m_Core1ID;
 	int m_Core2ID;
 	int m_Health;
+};
+
+struct CNetObj_Hive
+{
+	enum { NET_ID = 0x2 };
+	int m_CoreID;
 };
 
 uint32_t xorshift32()
@@ -140,16 +147,11 @@ struct CBee
 		}
 
 		// try to be horizontal
+		// lift up the butt
 		if(abs(Dir.x) < 0.5)
 		{
-			//float f = randFloat(0, 0.5);
-			//f *= (xorshift32() & 1) * 2 - 1;
 			pCore2->m_Vel.x -= VelX * 1.5;
-			//pCore2->m_Vel.x -= VelX;
 		}
-
-		/*if(pCore1->m_Pos.x > pCore2->m_Pos.x)
-			tl_swap(m_CoreUID[0], m_CoreUID[1]);*/
 	}
 
 	void Snap(CGameContext* pGameServer, int SnappinClient)
@@ -171,9 +173,75 @@ struct CBee
 	}
 };
 
+struct CHive
+{
+	int m_HiveID;
+	int m_CoreUID;
+	CDuckWorldCore* m_pWorld;
+	int m_Hits;
+
+	void Create(CDuckWorldCore* pWorld, vec2 Pos, int HivePlgUID, int HiveID)
+	{
+		m_pWorld = pWorld;
+		CCustomCore* pCore1 = m_pWorld->AddCustomCore(50);
+		pCore1->m_PlgUID = HivePlgUID;
+		pCore1->m_Pos = Pos;
+		m_CoreUID = pCore1->m_UID;
+
+		m_HiveID = HiveID;
+		m_Hits = 3;
+	}
+
+	void Tick(CGameControllerExamplePhys3* pController)
+	{
+		CCustomCore* pCore1 = m_pWorld->FindCustomCoreFromUID(m_CoreUID);
+		pCore1->m_Vel = vec2(0,0);
+
+		CGameWorld* pGameWorld = &pController->GameServer()->m_World;
+		IServer* pServer = pController->GameServer()->Server();
+
+		CProjectile *p = (CProjectile *)pGameWorld->FindFirst(CGameWorld::ENTTYPE_PROJECTILE);
+		for(; p; p = (CProjectile *)p->TypeNext())
+		{
+			int StartTick = *(int*)((char*)p + sizeof(CEntity) + 40);
+			float Ct = (pServer->Tick()-StartTick)/(float)pServer->TickSpeed();
+			vec2 ProjPos = p->GetPos(Ct);
+			int From = p->GetOwner();
+
+			if(distance(p->GetPos(Ct), pCore1->m_Pos) < pCore1->m_Radius + p->GetProximityRadius())
+			{
+				p->MarkForDestroy();
+				m_Hits--;
+
+				int64 Mask = CmaskOne(From);
+				pController->GameServer()->CreateSound(pController->GameServer()->m_apPlayers[From]->m_ViewPos, SOUND_HIT, Mask);
+
+				if(m_Hits <= 0)
+				{
+					m_Hits = 3;
+					pController->GameServer()->CreateDamage(pCore1->m_Pos, From, ProjPos, 1, 0, false);
+					pController->GameServer()->CreateSound(pCore1->m_Pos, SOUND_PLAYER_PAIN_LONG);
+					pController->SpawnBeeAt(pCore1->m_Pos + vec2(0, pCore1->m_Radius + 100));
+				}
+			}
+		}
+	}
+
+	void Snap(CGameContext* pGameServer, int SnappinClient)
+	{
+		int CoreID;
+		CCustomCore* pCore1 = m_pWorld->FindCustomCoreFromUID(m_CoreUID, &CoreID);
+
+		CNetObj_Hive* pHive = pGameServer->DuckSnapNewItem<CNetObj_Hive>(m_HiveID);
+		pHive->m_CoreID = CoreID;
+	}
+};
+
 #define MAX_BEES 64
+#define MAX_HIVES 2
 static CBee m_aBees[MAX_BEES];
 static bool m_aBeeIsAlive[MAX_BEES];
+static CHive m_aHives[MAX_HIVES];
 
 void CGameControllerExamplePhys3::SpawnBeeAt(vec2 Pos)
 {
@@ -209,20 +277,24 @@ CGameControllerExamplePhys3::CGameControllerExamplePhys3(class CGameContext *pGa
 
 	CDuckCollision* pCollision = (CDuckCollision*)GameServer()->Collision();
 	m_DuckWorldCore.Init(&GameServer()->m_World.m_Core, pCollision);
-	CPhysicsLawsGroup* pPlg = m_DuckWorldCore.AddPhysicLawsGroup();
-	//pPlg->m_Gravity = 0.0;
-	//pPlg->m_Elasticity = 0.9;
-	pPlg->m_AirFriction = 0.95;
-	pPlg->m_GroundFriction = 1.0;
 
-	m_BeePlgUID = pPlg->m_UID;
-	//m_BeePlgUID = -1;
+	CPhysicsLawsGroup* pPlgBee = m_DuckWorldCore.AddPhysicLawsGroup();
+	pPlgBee->m_AirFriction = 0.95;
+	pPlgBee->m_GroundFriction = 1.0;
+	m_BeePlgUID = pPlgBee->m_UID;
+
+	CPhysicsLawsGroup* pPlgHive = m_DuckWorldCore.AddPhysicLawsGroup();
+	pPlgHive->m_Gravity = 0.0;
+	pPlgHive->m_AirFriction = 0;
+	pPlgHive->m_GroundFriction = 0;
+	m_HivePlgUID = pPlgBee->m_UID;
+
 	mem_zero(m_aBeeIsAlive, sizeof(m_aBeeIsAlive));
 
-	SpawnBeeAt(vec2(1344, 680));
-	//SpawnBeeAt(vec2(1344, 780));
-	//SpawnBeeAt(vec2(1244, 680));
-	//SpawnBeeAt(vec2(1444, 780));
+	//SpawnBeeAt(vec2(1344, 680));
+
+	m_aHives[0].Create(&m_DuckWorldCore, vec2(1312, 638), m_HivePlgUID, 0);
+	m_aHives[1].Create(&m_DuckWorldCore, vec2(1344, 1790), m_HivePlgUID, 1);
 }
 
 void CGameControllerExamplePhys3::OnPlayerConnect(CPlayer* pPlayer)
@@ -242,6 +314,11 @@ void CGameControllerExamplePhys3::Tick()
 			m_aBees[i].Tick();
 		}
 	}
+
+	for(int i = 0; i < MAX_HIVES; i++)
+	{
+		m_aHives[i].Tick(this);
+	}
 }
 
 void CGameControllerExamplePhys3::Snap(int SnappingClient)
@@ -254,6 +331,11 @@ void CGameControllerExamplePhys3::Snap(int SnappingClient)
 		if(m_aBeeIsAlive[i]) {
 			m_aBees[i].Snap(GameServer(), SnappingClient);
 		}
+	}
+
+	for(int i = 0; i < MAX_HIVES; i++)
+	{
+		m_aHives[i].Snap(GameServer(), SnappingClient);
 	}
 }
 

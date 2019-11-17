@@ -9,6 +9,7 @@ class CGameControllerExamplePhys3 : public IGameController
 
 	CDuckWorldCore m_DuckWorldCore;
 	int m_BeePlgUID;
+	int m_HivePlgUID;
 
 	void SpawnBeeAt(vec2 Pos);
 
@@ -19,4 +20,6 @@ public:
 	virtual void Tick();
 	virtual void Snap(int SnappingClient);
 	virtual void OnDuckMessage(int MsgID, CUnpacker *pUnpacker, int ClientID);
+
+	friend struct CHive;
 };

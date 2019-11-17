@@ -4,7 +4,8 @@ require("utils.lua")
 local isDebug = false
 local game = {
     bees = {},
-    beesSound = {}
+    beesSound = {},
+    hives = {}
 }
 
 local Sprite = {
@@ -117,6 +118,19 @@ function DrawBee(core1, core2, scale, LocalTime)
     TwRenderQuadCentered(core1.x + wingOffset.x, core1.y + wingOffset.y, wingSize, wingSize)
 end
 
+function DrawHive(x, y, scale, LocalTime)
+    TwRenderSetTexture(TwGetModTexture("hive"))
+    TwRenderSetColorF4(1, 1, 1, 1)
+    TwRenderSetQuadSubSet(0, 0, 1, 1)
+
+    if floor(LocalTime) % 7 < 1 then
+        local angle = sin(LocalTime * 50) * pi * 0.05
+        TwRenderSetQuadRotation(angle)
+    end
+
+    TwRenderQuadCentered(x, y, (128)*scale, (128)*scale)
+end
+
 local lastLocalTime = 0
 local bzzSounds = {
     "bzzz-01",
@@ -133,8 +147,9 @@ function OnUpdate(LocalTime)
 
     for k,bee in pairs(game.bees) do
         local snd = game.beesSound[k]
+        local core1 = cores[bee.core1ID+1]
         snd.cooldown = snd.cooldown - delta
-        if snd.cooldown < 0 then
+        if snd.cooldown < 0 and core1 then
             snd.cooldown = 4.5
             local core1 = cores[bee.core1ID+1]
             local sndID = 1 + floor(LocalTime*LocalTime) % #bzzSounds
@@ -144,31 +159,6 @@ function OnUpdate(LocalTime)
 end
 
 function OnRender(LocalTime, IntraGameTick)
-    TwRenderSetDrawSpace(0)
-
-    TwRenderSetColorF4(1, 0, 0, 1)
-    TwRenderQuad(0, 0, 500, 500)
-
-    TwRenderSetColorF4(0, 1, 0, 1)
-    TwRenderSetFreeform({
-        0, 0,
-        50, 0,
-        0, 50,
-        50, 50
-    })
-    TwRenderDrawFreeform(30 * 32, 30 * 32)
-
-    TwRenderDrawText({
-        text = "Hello from Lua",
-        font_size = 40,
-        color = {1, 1, 1, 1},
-        rect = {32 * 30, 32 * 31}
-    })
-
-    TwRenderSetColorF4(1, 0.5, 1, 1)
-    TwRenderDrawCircle(32 * 32, 32 * 30, 50)
-    TwRenderDrawLine(32 * 32, 32 * 30, 32 * 64, 32 * 30, 10)
-
     local cores = TwPhysGetCores()
     local joints = TwPhysGetJoints()
 
@@ -182,6 +172,15 @@ function OnRender(LocalTime, IntraGameTick)
         if core1 ~= nil and core2 ~= nil then
             --print(bee)
             DrawBee(core1, core2, 0.75, LocalTime)
+        end
+    end
+
+    for k,hive in pairs(game.hives) do
+        local core1 = cores[hive.coreID+1]
+
+        if core1 ~= nil then
+            --print(hive)
+            DrawHive(core1.x, core1.y, 1, LocalTime)
         end
     end
 
@@ -227,6 +226,12 @@ function OnSnap(packet, snapID)
         if not game.beesSound[snapID] then
             game.beesSound[snapID] = sound
         end
+    elseif packet.mod_id == 0x2 then
+        local hive = TwNetPacketUnpack(packet, {
+            "i32_coreID",
+        })
+
+        game.hives[snapID] = hive
     end
 end
 
