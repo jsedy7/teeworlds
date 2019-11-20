@@ -255,7 +255,8 @@ void CGameControllerExamplePhys3::SpawnBeeAt(vec2 Pos)
 		}
 	}
 
-	dbg_assert(BeeID != -1, "way too many bees dude");
+	if(BeeID == -1)
+		return;
 
 	CBee Bee;
 	Bee.Create(&m_DuckWorldCore, Pos, m_BeePlgUID, BeeID);
