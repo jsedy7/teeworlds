@@ -940,8 +940,10 @@ int CDuckLua::NativeRenderDrawFreeform(lua_State* L)
 	TwRenderDrawText({
 		text = "This a text",
 		font_size = 10,
+		line_width = -1,
+		pos = {10, 20},
 		color = {1, 0, 1, 1}, // rgba (0.0 - 1.0)
-		rect = {100, 25, 200, 100}, // x y width height
+		clip = {100, 25, 200, 100}, // x y width height
 	});
 
 **Parameters**
@@ -953,8 +955,10 @@ int CDuckLua::NativeRenderDrawFreeform(lua_State* L)
 	local text = {
 		text: string,
 		font_size: float,
+		line_width: float,
+		pos: float[2],
 		color: float[4],
-		rect: float[4],
+		clip: float[4],
 	};
 
 **Returns**
@@ -972,7 +976,9 @@ int CDuckLua::NativeRenderDrawText(lua_State* L)
 	}
 
 	char* pText = 0;
-	double FontSize = 10.0f;
+	double FontSize = 10.0;
+	double LineWidth = -1;
+	float aPos[2] = { 0, 0 };
 	float aColors[4] = {1, 1, 1, 1};
 	float aRect[4] = { 0, 0, -1, -1};
 
@@ -992,42 +998,67 @@ int CDuckLua::NativeRenderDrawText(lua_State* L)
 	lua_pop(L, 1);
 
 	LuaGetPropNumber(L, 1, "font_size", &FontSize);
+	LuaGetPropNumber(L, 1, "line_width", &LineWidth);
+
+	// get position
+	lua_getfield(L, 1, "pos");
+	if(!lua_istable(L, -1))
+	{
+		LUA_ERR("TwRenderDrawText(arg1) arg1.pos is not a table");
+		return 0;
+	}
+
+	const int PosLen = min(2, (int)lua_objlen(L, -1));
+	for(int i = 0; i < PosLen; i++)
+	{
+		lua_rawgeti(L, -1, i+1);
+		aPos[i] = lua_tonumber(L, -1);
+		lua_pop(L, 1);
+	}
+	lua_pop(L, 1);
 
 	// get colors
 	lua_getfield(L, 1, "color");
-	if(!lua_istable(L, -1))
+	if(!lua_isnil(L, -1))
 	{
-		LUA_ERR("TwRenderDrawText(arg1) arg1.color is not a table");
-		return 0;
-	}
+		if(!lua_istable(L, -1))
+		{
+			LUA_ERR("TwRenderDrawText(arg1) arg1.color is not a table");
+			return 0;
+		}
 
-	for(int i = 0; i < 4; i++)
-	{
-		lua_rawgeti(L, -1, i+1);
-		aColors[i] = lua_tonumber(L, -1);
-		lua_pop(L, 1);
-	}
-	lua_pop(L, 1);
-
-	// get rect
-	lua_getfield(L, 1, "rect");
-	if(!lua_istable(L, -1))
-	{
-		LUA_ERR("TwRenderDrawText(arg1) arg1.rect is not a table");
-		return 0;
-	}
-
-	const int Len = min(4, (int)lua_objlen(L, -1));
-	for(int i = 0; i < Len; i++)
-	{
-		lua_rawgeti(L, -1, i+1);
-		aRect[i] = lua_tonumber(L, -1);
+		const int ColorLen = min(4, (int)lua_objlen(L, -1));
+		for(int i = 0; i < ColorLen; i++)
+		{
+			lua_rawgeti(L, -1, i+1);
+			aColors[i] = lua_tonumber(L, -1);
+			lua_pop(L, 1);
+		}
 		lua_pop(L, 1);
 	}
 
-	lua_pop(L, 1);
+	// get clip
+	lua_getfield(L, 1, "clip");
+	if(!lua_isnil(L, -1))
+	{
+		if(!lua_istable(L, -1))
+		{
+			LUA_ERR("TwRenderDrawText(arg1) arg1.clip is not a table");
+			return 0;
+		}
 
-	This()->Bridge()->QueueDrawText(pText, FontSize, aRect, aColors);
+		const int Len = min(4, (int)lua_objlen(L, -1));
+		for(int i = 0; i < Len; i++)
+		{
+			lua_rawgeti(L, -1, i+1);
+			aRect[i] = lua_tonumber(L, -1);
+			lua_pop(L, 1);
+		}
+
+		lua_pop(L, 1);
+	}
+
+	This()->Bridge()->QueueDrawText(pText, FontSize, LineWidth, aPos, aRect, aColors);
 	return 0;
 }
 

@@ -57,7 +57,7 @@ function DrawBackpackIcon(itemsNotSeenCount)
             text = text,
             font_size = fontSize,
             color = {1, 1, 1, 1},
-            rect = {notifX+Margin, notifY+Margin-2}
+            pos = {notifX+Margin, notifY+Margin-2}
         })
 
         local promtX = 28
@@ -151,21 +151,23 @@ function DrawBackpackInventory()
                 text = "Potato",
                 font_size = 13,
                 color = {1, 1, 1, 1},
-                rect = {descRect.x + descRect.w/2 - headerTextSize.w/2, descRect.y + headerHeight/2 - headerTextSize.h/2}
+                pos = {descRect.x + descRect.w/2 - headerTextSize.w/2, descRect.y + headerHeight/2 - headerTextSize.h/2}
             })
 
             TwRenderDrawText({
                 text = "+10 health points on consumption when cooked",
                 font_size = 10,
                 color = {0.3, 1, 0.2, 1},
-                rect = {descRect.x + 10, descRect.y + headerHeight + 5, descRect.w - 20}
+                pos = { descRect.x + 10, descRect.y + headerHeight + 5 },
+                line_width = descRect.w - 20
             })
 
             TwRenderDrawText({
                 text = "The potato is considered as the fourth most important crop behind the corn, wheat, and rice. The average American eats 140 pounds of potatoes per year.",
                 font_size = 10,
                 color = {1, 1, 1, 1},
-                rect = {descRect.x + 10, descRect.y + headerHeight + 50, descRect.w - 20}
+                pos = {descRect.x + 10, descRect.y + headerHeight + 50, descRect.w - 20},
+                line_width = descRect.w - 20
             })
 
             local raritySize = TwCalculateTextSize({
@@ -177,7 +179,7 @@ function DrawBackpackInventory()
                 text = "common",
                 font_size = 10,
                 color = {0.4, 0.4, 0.4, 1},
-                rect = {descRect.x + descRect.w/2 - raritySize.w/2, descRect.y + descRect.h - raritySize.h - 5}
+                pos = {descRect.x + descRect.w/2 - raritySize.w/2, descRect.y + descRect.h - raritySize.h - 5}
             })
         end
     end
@@ -243,7 +245,7 @@ function DrawItemNotification(posX, posY, startTime, clientLocalTime)
         text = text,
         font_size = fontSize,
         color = {1, 1, 1, alpha},
-        rect = {posX - size.w/2, bgY + Margin}
+        pos = {posX - size.w/2, bgY + Margin}
     })
 end
 
@@ -369,7 +371,8 @@ function OnRender(clientLocalTime, intraTick)
             text = npc.dialog_line.text,
             font_size = fontSize,
             color = {1, 1, 1, 1},
-            rect = {bubbleX+Margin, bubbleY+Margin, bubbleTextW}
+            pos = {bubbleX+Margin, bubbleY+Margin},
+            line_width = bubbleTextW
         })
 
         local question = npc.question
@@ -421,7 +424,7 @@ function OnRender(clientLocalTime, intraTick)
                 text = question.answer1,
                 font_size = fontSize,
                 color = {1, 1, 1, 1},
-                rect = { firstRect.x + 10, firstRect.y + firstRect.h/2 - textSize1.h/2}
+                pos = { firstRect.x + 10, firstRect.y + firstRect.h/2 - textSize1.h/2}
             })
 
             local color = {0.5, 0, 0, 1}
@@ -436,7 +439,7 @@ function OnRender(clientLocalTime, intraTick)
                 text = question.answer2,
                 font_size = fontSize,
                 color = {1, 1, 1, 1},
-                rect = { secondRect.x + 10, secondRect.y + secondRect.h/2 - textSize2.h/2}
+                pos = { secondRect.x + 10, secondRect.y + secondRect.h/2 - textSize2.h/2}
             })
 
             TwRenderSetTexture(-1)

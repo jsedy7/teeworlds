@@ -116,7 +116,9 @@ struct CDuckBridge : public CComponent
 		const char* m_pStr;
 		float m_aColors[4];
 		float m_FontSize;
-		float m_aRect[4];
+		float m_LineWidth;
+		float m_aPos[2];
+		float m_aClip[4];
 	};
 
 	struct CRenderCmd
@@ -393,7 +395,7 @@ struct CDuckBridge : public CComponent
 	void QueueDrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo);
 	void QueueDrawTeeHand(const CTeeDrawHand& Hand);
 	void QueueDrawFreeform(vec2 Pos);
-	void QueueDrawText(const char* pStr, float FontSize, float *pRect, float *pColors);
+	void QueueDrawText(const char* pStr, float FontSize, float LineWidth, float *pPos, float *pClip, float *pColors);
 	void QueueDrawCircle(vec2 Pos, float Radius);
 	void QueueDrawLine(vec2 Pos1, vec2 Pos2, float Thickness);
 

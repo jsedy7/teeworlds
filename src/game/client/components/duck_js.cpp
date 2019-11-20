@@ -648,6 +648,9 @@ duk_ret_t CDuckJs::NativeRenderDrawText(duk_context *ctx)
 {
 	CheckArgumentCount(ctx, 1);
 
+	dbg_assert(0, "update implementation");
+
+#if 0
 	if(!duk_is_object(ctx, 0))
 	{
 		JS_ERR("TwRenderDrawText(text) text is not an object");
@@ -707,6 +710,7 @@ duk_ret_t CDuckJs::NativeRenderDrawText(duk_context *ctx)
 	duk_pop(ctx);
 
 	This()->Bridge()->QueueDrawText(pText, FontSize, aRect, aColors);
+#endif
 	return 0;
 }
 

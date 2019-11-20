@@ -477,8 +477,10 @@ TwRenderDrawText
 	TwRenderDrawText({
 		text = "This a text",
 		font_size = 10,
+		line_width = -1,
+		pos = {10, 20},
 		color = {1, 0, 1, 1}, // rgba (0.0 - 1.0)
-		rect = {100, 25, 200, 100}, // x y width height
+		clip = {100, 25, 200, 100}, // x y width height
 	});
 
 **Parameters**
@@ -490,8 +492,10 @@ TwRenderDrawText
 	local text = {
 		text: string,
 		font_size: float,
+		line_width: float,
+		pos: float[2],
 		color: float[4],
-		rect: float[4],
+		clip: float[4],
 	};
 
 **Returns**
