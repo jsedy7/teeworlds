@@ -8,28 +8,9 @@
 typedef uint32_t u32;
 typedef int32_t i32;
 
-struct ModNetID
-{
-	enum Enum {
-		TEST=0,
-		DEBUG_RECT,
-		MAP_RECT_SET_SOLID,
-
-		_COUNT
-	};
-};
-
-struct CNetObj_Test
-{
-	enum { NET_ID = ModNetID::TEST };
-
-	i32 ClientID;
-	float Value1;
-};
-
 struct CNetObj_DebugRect
 {
-	enum { NET_ID = ModNetID::DEBUG_RECT };
+	enum { NET_ID = 0x1 };
 
 	int id;
 	float x;
@@ -41,7 +22,7 @@ struct CNetObj_DebugRect
 
 struct CNetObj_MapRectSetSolid
 {
-	enum { NET_ID = ModNetID::MAP_RECT_SET_SOLID };
+	enum { NET_ID = 0x2 };
 
 	i32 solid;
 	i32 hookable;
@@ -157,38 +138,6 @@ void CGameControllerExamplePhys2::Tick()
 
 	static int CooldownTick = 0;
 	CooldownTick++;
-
-	/*if(CooldownTick >= SERVER_TICK_SPEED)
-	{
-		CooldownTick = 0;
-		CNetObj_Test Test;
-		Test.ClientID = random_int();
-		Test.Value1 = (double)random_int() / (int)0x7FFFFFFF;
-
-		SendDukNetObj(Test);
-		dbg_msg("duck_mod", "sending ClientID=%d Value1=%g", Test.ClientID, Test.Value1);
-	}*/
-
-	/*if(GameServer()->GetPlayerChar(0))
-	{
-		CNetObj_Rect Rect;
-		vec2 Pos = GameServer()->GetPlayerChar(0)->GetPos();
-
-		Rect.x = Pos.x + 10.0f;
-		Rect.y = Pos.y - 10.0f;
-		Rect.w = 100.0f;
-		Rect.h = 50.0f;
-
-		SendDukNetObj(Rect, 0);
-	}*/
-
-	/*static bool s_SetSolid = false;
-	if(CooldownTick >= SERVER_TICK_SPEED * 5)
-	{
-		CooldownTick = 0;
-		s_SetSolid ^= 1;
-		FlipSolidRect(23, 44, 40, 1, s_SetSolid);
-	}*/
 
 	for(int bpi = 0; bpi < BUTTON_PAIR_COUNT; bpi++)
 	{

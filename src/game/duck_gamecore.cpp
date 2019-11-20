@@ -46,6 +46,11 @@ void CDuckWorldCore::Reset()
 void CDuckWorldCore::Tick()
 {
 	const int JointCount = m_aJoints.size();
+	const int CoreCount = m_aCustomCores.size();
+
+	if(JointCount + CoreCount == 0)
+		return;
+
 	for(int i = 0; i < JointCount; i++)
 	{
 		Joint_Tick(&m_aJoints[i]);
@@ -63,15 +68,14 @@ void CDuckWorldCore::Tick()
 		CharacterCore_ExtraTick(aBaseCores[i], &m_aBaseCoreExtras[i], true);
 	}
 
-	const int AdditionnalCount = m_aCustomCores.size();
-	for(int i = 0; i < AdditionnalCount; i++)
+	for(int i = 0; i < CoreCount; i++)
 	{
 		if(m_aCustomCores[i].m_UID < 0)
 			continue;
 		CustomCore_Tick(&m_aCustomCores[i]);
 	}
 
-	for(int i = 0; i < AdditionnalCount; i++)
+	for(int i = 0; i < CoreCount; i++)
 	{
 		if(m_aCustomCores[i].m_UID < 0)
 			continue;
