@@ -8,6 +8,7 @@
 #include <game/duck_collision.h>
 #include <game/duck_gamecore.h>
 #include <game/client/component.h>
+#include <game/client/animstate.h>
 #include <generated/protocol.h>
 
 #ifdef DUCK_JS_BACKEND
@@ -81,6 +82,8 @@ struct CDuckBridge : public CComponent
 			GAME=0,
 			GAME_FOREGROUND,
 			HUD,
+			PLAYER,
+			PLAYER_END = MAX_CLIENTS-1,
 			_COUNT
 		};
 	};
@@ -436,8 +439,8 @@ struct CDuckBridge : public CComponent
 
 	void ScriptError(int ErrorLevel, const char* format, ...);
 
-	// "entries"
-	void RenderDrawSpace(DrawSpace::Enum Space);
+	bool RenderSetDrawSpace(int Space);
+	void RenderDrawSpace(int Space);
 	void CharacterCorePreTick(CCharacterCore** apCharCores);
 	void CharacterCorePostTick(CCharacterCore** apCharCores);
 	void Predict(CWorldCore *pWorld);
@@ -446,6 +449,8 @@ struct CDuckBridge : public CComponent
 	void RenderWeaponAmmo(int WeaponID, vec2 Pos);
 
 	void OnNewSnapshot();
+	bool OnRenderPlayer(const CNetObj_Character *pPrevChar, const CNetObj_Character *pPlayerChar, const CNetObj_PlayerInfo *pPrevInfo, const CNetObj_PlayerInfo *pPlayerInfo, int ClientID);
+	void OnUpdatePlayer(const CNetObj_Character *pPrevChar, const CNetObj_Character *pPlayerChar, const CNetObj_PlayerInfo *pPrevInfo, const CNetObj_PlayerInfo *pPlayerInfo, int ClientID);
 
 	// mod installation
 	bool IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256);

@@ -38,7 +38,7 @@ def EmitMembers(obj):
 
 print("// generated")
 print("")
-print("bool CDuckLua::MakeVanillaLuaNetMessage(int MsgID, void* pRawMsg)\n{")
+print("bool CDuckLua::MakeVanillaLuaNetMessage(int MsgID, const void* pRawMsg)\n{")
 
 for obj in network.Messages:
     print("\tif(MsgID == %s)" % obj.enum_name)
@@ -66,7 +66,7 @@ print("\treturn false;")
 print("}\n")
 
 print("")
-print("bool CDuckLua::MakeVanillaLuaNetObj(int MsgID, void* pRawMsg)\n{")
+print("bool CDuckLua::MakeVanillaLuaNetObj(int MsgID, const void* pRawMsg)\n{")
 
 for obj in network.Objects:
     print("\tif(MsgID == %s)" % obj.enum_name)

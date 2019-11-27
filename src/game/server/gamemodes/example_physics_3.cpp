@@ -148,7 +148,7 @@ struct CBee
 
 		// try to be horizontal
 		// lift up the butt
-		if(abs(Dir.x) < 0.5)
+		if(fabs(Dir.x) < 0.5)
 		{
 			pCore2->m_Vel.x -= VelX * 1.5;
 		}

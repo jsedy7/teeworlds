@@ -429,13 +429,12 @@ duk_ret_t CDuckJs::NativeRenderSetDrawSpace(duk_context *ctx)
 	CheckArgumentCount(ctx, 1);
 
 	int ds = duk_to_int(ctx, 0);
-	if(!(ds >= 0 && ds < CDuckBridge::DrawSpace::_COUNT))
+
+	if(!This()->Bridge()->RenderSetDrawSpace(ds))
 	{
 		JS_ERR("TwRenderSetDrawSpace(): Draw space undefined");
 		return 0;
 	}
-
-	This()->Bridge()->m_CurrentDrawSpace = ds;
 	return 0;
 }
 

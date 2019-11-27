@@ -17,6 +17,7 @@
 #include <game/client/components/effects.h>
 #include <game/client/components/sounds.h>
 #include <game/client/components/controls.h>
+#include <game/client/components/duck_bridge.h>
 
 #include "players.h"
 
@@ -518,6 +519,10 @@ void CPlayers::OnRender()
 		}
 	}
 
+	const bool IsDuckLoaded = m_pClient->DuckBridge()->IsLoaded();
+	CDuckBridge* pBridge = m_pClient->DuckBridge();
+
+
 	// render other players in two passes, first pass we render the other, second pass we render our self
 	for(int p = 0; p < 4; p++)
 	{
@@ -549,13 +554,27 @@ void CPlayers::OnRender()
 							i
 						);
 				else
-					RenderPlayer(
-							&PrevChar,
-							&CurChar,
-							(const CNetObj_PlayerInfo *)pPrevInfo,
-							(const CNetObj_PlayerInfo *)pInfo,
-							i
-						);
+				{
+					if(!IsDuckLoaded || !pBridge->OnRenderPlayer(&PrevChar, &CurChar, (const CNetObj_PlayerInfo *)pPrevInfo, (const CNetObj_PlayerInfo *)pInfo, i))
+					{
+						RenderPlayer(
+								&PrevChar,
+								&CurChar,
+								(const CNetObj_PlayerInfo *)pPrevInfo,
+								(const CNetObj_PlayerInfo *)pInfo,
+								i
+							);
+					}
+					else if(IsDuckLoaded)
+					{
+						pBridge->OnUpdatePlayer(&PrevChar, &CurChar, (const CNetObj_PlayerInfo *)pPrevInfo, (const CNetObj_PlayerInfo *)pInfo, i);
+					}
+
+					if(IsDuckLoaded)
+					{
+						pBridge->RenderDrawSpace(CDuckBridge::DrawSpace::PLAYER + i);
+					}
+				}
 			}
 		}
 	}

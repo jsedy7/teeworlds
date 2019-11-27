@@ -736,13 +736,11 @@ int CDuckLua::NativeRenderSetDrawSpace(lua_State* L)
 	CheckArgumentCount(L, 1);
 
 	int ds = lua_tointeger(L, 1);
-	if(!(ds >= 0 && ds < CDuckBridge::DrawSpace::_COUNT))
+
+	if(!This()->Bridge()->RenderSetDrawSpace(ds))
 	{
 		LUA_ERR("TwRenderSetDrawSpace(arg1): Draw space undefined");
-		return 0;
 	}
-
-	This()->Bridge()->m_CurrentDrawSpace = ds;
 	return 0;
 }
 
@@ -3058,7 +3056,10 @@ void CDuckLua::CallFunction(int ArgCount, int ReturnCount)
 		lua_pop(L(), 1);
 	}
 
-	DBG_DETECTSTACKLEAK();
+	if(lua_gettop(L()) > ReturnCount)
+	{
+		DBG_DETECTSTACKLEAK();
+	}
 }
 
 CDuckLua::CDuckLua()
@@ -3182,6 +3183,7 @@ void CDuckLua::OnModLoaded()
 	SEARCH_FUNCTION(OnSnap);
 	SEARCH_FUNCTION(OnInput);
 	SEARCH_FUNCTION(OnRender);
+	SEARCH_FUNCTION(OnRenderPlayer);
 	SEARCH_FUNCTION(OnUpdate);
 
 #undef SEARCH_FUNCTION
@@ -3190,6 +3192,54 @@ void CDuckLua::OnModLoaded()
 	{
 		CallFunction(0, 0);
 	}
+}
+
+static void AnimKeyframeLuaPush(lua_State* L, const CAnimKeyframe& Kf)
+{
+	lua_createtable(L, 0, 4);
+	LuaSetPropNumber(L, -1, "time", Kf.m_Time);
+	LuaSetPropNumber(L, -1, "x", Kf.m_X);
+	LuaSetPropNumber(L, -1, "y", Kf.m_Y);
+	LuaSetPropNumber(L, -1, "angle", Kf.m_Time);
+}
+
+bool CDuckLua::OnRenderPlayer(CAnimState* pState, vec2 Pos, int ClientID)
+{
+	if(GetFunctionRef(OnRenderPlayer))
+	{
+		// Argument 1 : AnimState
+		lua_createtable(L(), 0, 4);
+
+		lua_pushstring(L(), "body");
+		AnimKeyframeLuaPush(L(), *pState->GetBody());
+		lua_rawset(L(), -3);
+
+		lua_pushstring(L(), "backfoot");
+		AnimKeyframeLuaPush(L(), *pState->GetBackFoot());
+		lua_rawset(L(), -3);
+
+		lua_pushstring(L(), "frontfoot");
+		AnimKeyframeLuaPush(L(), *pState->GetFrontFoot());
+		lua_rawset(L(), -3);
+
+		lua_pushstring(L(), "attach");
+		AnimKeyframeLuaPush(L(), *pState->GetFrontFoot());
+		lua_rawset(L(), -3);
+
+		// Argument 2 : Position
+		lua_createtable(L(), 0, 2);
+		LuaSetPropNumber(L(), -1, "x", Pos.x);
+		LuaSetPropNumber(L(), -1, "y", Pos.y);
+
+		lua_pushinteger(L(), ClientID);
+		CallFunction(3, 1);
+
+		bool r = lua_toboolean(L(), -1);
+		lua_pop(L(), 1);
+		return r;
+	}
+
+	return false;
 }
 
 void CDuckLua::OnRender(float LocalTime, float IntraGameTick)

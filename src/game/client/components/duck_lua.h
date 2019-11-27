@@ -1,11 +1,15 @@
 #pragma once
 #include <base/tl/array.h>
+#include <base/vmath.h>
 #include <engine/input.h>
 #include <stdint.h>
 
 struct CGrowBuffer;
 struct CDuckBridge;
 struct lua_State;
+struct CNetObj_Character;
+struct CNetObj_PlayerInfo;
+struct CAnimState;
 
 class CDuckLua
 {
@@ -31,6 +35,7 @@ class CDuckLua
 	int m_FuncRefOnSnap;
 	int m_FuncRefOnInput;
 	int m_FuncRefOnRender;
+	int m_FuncRefOnRenderPlayer;
 	int m_FuncRefOnUpdate;
 
 	inline lua_State* L() { return m_pLuaState; }
@@ -108,8 +113,8 @@ class CDuckLua
 	bool GetFunctionFromRef(int Ref, const char *Name);
 	void CallFunction(int ArgCount, int ReturnCount);
 
-	bool MakeVanillaLuaNetMessage(int MsgID, void* pRawMsg);
-	bool MakeVanillaLuaNetObj(int MsgID, void* pRawMsg);
+	bool MakeVanillaLuaNetMessage(int MsgID, const void* pRawMsg);
+	bool MakeVanillaLuaNetObj(int MsgID, const void* pRawMsg);
 	void GetContentEnumsAsLua();
 
 public:
@@ -120,6 +125,7 @@ public:
 	void OnDuckSnapItem(int Msg, int SnapID, void* pRawMsg, int Size);
 	void OnInput(IInput::CEvent e);
 	void OnModLoaded();
+	bool OnRenderPlayer(CAnimState *pState, vec2 Pos, int ClientID);
 
 	inline bool IsLoaded() const { return m_pLuaState != NULL; }
 
