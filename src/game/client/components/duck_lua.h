@@ -126,7 +126,7 @@ public:
 	void OnDuckSnapItem(int Msg, int SnapID, void* pRawMsg, int Size);
 	void OnInput(IInput::CEvent e);
 	void OnModLoaded();
-	bool OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2 Pos, int ClientID);
+	bool OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2 Pos, vec2 Dir, int Emote, int ClientID);
 
 	inline bool IsLoaded() const { return m_pLuaState != NULL; }
 

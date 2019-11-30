@@ -3203,7 +3203,7 @@ static void AnimKeyframeLuaPush(lua_State* L, const CAnimKeyframe& Kf)
 	LuaSetPropNumber(L, -1, "angle", Kf.m_Angle);
 }
 
-bool CDuckLua::OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2 Pos, int ClientID)
+bool CDuckLua::OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2 Pos, vec2 Dir, int Emote, int ClientID)
 {
 	if(GetFunctionRef(OnRenderPlayer))
 	{
@@ -3265,10 +3265,18 @@ bool CDuckLua::OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2
 		LuaSetPropNumber(L(), -1, "x", Pos.x);
 		LuaSetPropNumber(L(), -1, "y", Pos.y);
 
-		// Argument 4 : ClientID
+		// Argument 4 : Direction
+		lua_createtable(L(), 0, 2);
+		LuaSetPropNumber(L(), -1, "x", Dir.x);
+		LuaSetPropNumber(L(), -1, "y", Dir.y);
+
+		// Argument 5 : Emote
+		lua_pushinteger(L(), Emote);
+
+		// Argument 6 : ClientID
 		lua_pushinteger(L(), ClientID);
 
-		CallFunction(4, 1);
+		CallFunction(6, 1);
 
 		bool r = lua_toboolean(L(), -1);
 		lua_pop(L(), 1);
