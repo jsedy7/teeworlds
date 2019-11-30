@@ -12,9 +12,9 @@ extern "C" {
 static CDuckLua* s_DuckLua = 0;
 inline CDuckLua* This() { return s_DuckLua; }
 
-#define LUA_WARN(fmt, ...) This()->Bridge()->ScriptError(JsErrorLvl::WARNING, fmt, __VA_ARGS__)
-#define LUA_ERR(fmt, ...) This()->Bridge()->ScriptError(JsErrorLvl::ERROR, fmt, __VA_ARGS__)
-#define LUA_CRIT(fmt, ...) This()->Bridge()->ScriptError(JsErrorLvl::CRITICAL, fmt, __VA_ARGS__)
+#define LUA_WARN(fmt, ...) This()->Bridge()->ScriptError(JsErrorLvl::WARNING, fmt, ##__VA_ARGS__)
+#define LUA_ERR(fmt, ...) This()->Bridge()->ScriptError(JsErrorLvl::ERROR, fmt, ##__VA_ARGS__)
+#define LUA_CRIT(fmt, ...) This()->Bridge()->ScriptError(JsErrorLvl::CRITICAL, fmt, ##__VA_ARGS__)
 
 #define GetFunctionRef(F) GetFunctionFromRef(m_FuncRef##F, #F)
 
