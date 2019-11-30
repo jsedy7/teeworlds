@@ -3200,10 +3200,10 @@ static void AnimKeyframeLuaPush(lua_State* L, const CAnimKeyframe& Kf)
 	LuaSetPropNumber(L, -1, "time", Kf.m_Time);
 	LuaSetPropNumber(L, -1, "x", Kf.m_X);
 	LuaSetPropNumber(L, -1, "y", Kf.m_Y);
-	LuaSetPropNumber(L, -1, "angle", Kf.m_Time);
+	LuaSetPropNumber(L, -1, "angle", Kf.m_Angle);
 }
 
-bool CDuckLua::OnRenderPlayer(CAnimState* pState, vec2 Pos, int ClientID)
+bool CDuckLua::OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2 Pos, int ClientID)
 {
 	if(GetFunctionRef(OnRenderPlayer))
 	{
@@ -3214,11 +3214,11 @@ bool CDuckLua::OnRenderPlayer(CAnimState* pState, vec2 Pos, int ClientID)
 		AnimKeyframeLuaPush(L(), *pState->GetBody());
 		lua_rawset(L(), -3);
 
-		lua_pushstring(L(), "backfoot");
+		lua_pushstring(L(), "backFoot");
 		AnimKeyframeLuaPush(L(), *pState->GetBackFoot());
 		lua_rawset(L(), -3);
 
-		lua_pushstring(L(), "frontfoot");
+		lua_pushstring(L(), "frontFoot");
 		AnimKeyframeLuaPush(L(), *pState->GetFrontFoot());
 		lua_rawset(L(), -3);
 
@@ -3226,13 +3226,49 @@ bool CDuckLua::OnRenderPlayer(CAnimState* pState, vec2 Pos, int ClientID)
 		AnimKeyframeLuaPush(L(), *pState->GetFrontFoot());
 		lua_rawset(L(), -3);
 
-		// Argument 2 : Position
+		// Argument 2 : tee render info
+		lua_createtable(L(), 0, 14);
+		lua_pushstring(L(), "textures");
+			lua_createtable(L(), 6, 0);
+			for(int i = 0; i < NUM_SKINPARTS; i++)
+			{
+				lua_pushinteger(L(), pTeeInfo->m_aTextures[i].Id());
+				lua_rawseti(L(), -2, i+1);
+			}
+		lua_rawset(L(), -3);
+
+		lua_pushstring(L(), "colors");
+			lua_createtable(L(), 6, 0);
+			for(int i = 0; i < NUM_SKINPARTS; i++)
+			{
+				vec4 Color = pTeeInfo->m_aColors[i];
+
+				lua_createtable(L(), 4, 0);
+					lua_pushnumber(L(), Color.r);
+					lua_rawseti(L(), -2, 1);
+					lua_pushnumber(L(), Color.g);
+					lua_rawseti(L(), -2, 2);
+					lua_pushnumber(L(), Color.b);
+					lua_rawseti(L(), -2, 3);
+					lua_pushnumber(L(), Color.a);
+					lua_rawseti(L(), -2, 4);
+
+				lua_rawseti(L(), -2, i+1);
+			}
+		lua_rawset(L(), -3);
+
+		LuaSetPropNumber(L(), -1, "size", pTeeInfo->m_Size);
+		LuaSetPropInteger(L(), -1, "got_airjump", pTeeInfo->m_GotAirJump);
+
+		// Argument 3 : Position
 		lua_createtable(L(), 0, 2);
 		LuaSetPropNumber(L(), -1, "x", Pos.x);
 		LuaSetPropNumber(L(), -1, "y", Pos.y);
 
+		// Argument 4 : ClientID
 		lua_pushinteger(L(), ClientID);
-		CallFunction(3, 1);
+
+		CallFunction(4, 1);
 
 		bool r = lua_toboolean(L(), -1);
 		lua_pop(L(), 1);

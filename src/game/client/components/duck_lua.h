@@ -10,6 +10,7 @@ struct lua_State;
 struct CNetObj_Character;
 struct CNetObj_PlayerInfo;
 struct CAnimState;
+struct CTeeRenderInfo;
 
 class CDuckLua
 {
@@ -125,7 +126,7 @@ public:
 	void OnDuckSnapItem(int Msg, int SnapID, void* pRawMsg, int Size);
 	void OnInput(IInput::CEvent e);
 	void OnModLoaded();
-	bool OnRenderPlayer(CAnimState *pState, vec2 Pos, int ClientID);
+	bool OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2 Pos, int ClientID);
 
 	inline bool IsLoaded() const { return m_pLuaState != NULL; }
 
