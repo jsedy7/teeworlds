@@ -43,7 +43,7 @@ print("bool CDuckLua::MakeVanillaLuaNetMessage(int MsgID, const void* pRawMsg)\n
 for obj in network.Messages:
     print("\tif(MsgID == %s)" % obj.enum_name)
     print("\t{")
-    print("\t\tconst %s& Obj = *(%s*)pRawMsg;" % (obj.struct_name, obj.struct_name))
+    print("\t\tconst %s& Obj = *(%s*)pRawMsg; \t(void)Obj;" % (obj.struct_name, obj.struct_name))
     print("\t\tlua_newtable(L());")
     print('\t\tLuaSetPropInteger(L(), -1, "tw_msg_id", %s);' % (obj.enum_name))
     print('\t\tLuaSetPropString(L(), -1, "tw_name", "%s");' % (obj.struct_name))
@@ -71,7 +71,7 @@ print("bool CDuckLua::MakeVanillaLuaNetObj(int MsgID, const void* pRawMsg)\n{")
 for obj in network.Objects:
     print("\tif(MsgID == %s)" % obj.enum_name)
     print("\t{")
-    print("\t\tconst %s& Obj = *(%s*)pRawMsg;" % (obj.struct_name, obj.struct_name))
+    print("\t\tconst %s& Obj = *(%s*)pRawMsg; \t(void)Obj;" % (obj.struct_name, obj.struct_name))
     print("\t\tlua_newtable(L());")
     print('\t\tLuaSetPropInteger(L(), -1, "tw_netobj_id", %s);' % (obj.enum_name))
     print('\t\tLuaSetPropString(L(), -1, "tw_name", "%s");' % (obj.struct_name))
