@@ -1,3 +1,5 @@
+#include <float.h>
+
 #include "duck_bridge.h"
 #include "duck_js.h"
 
