@@ -27,6 +27,12 @@ Originally written by Magnus Auvinen.
 Building on Linux or macOS
 ==========================
 
+Installing Duck extra dependencies
+-----------------------
+    # Debian/Ubuntu
+    sudo apt install duck libcurl4-openssl-dev libzip-dev liblua5.3-dev libluajit-5.1-dev
+
+
 Installing dependencies
 -----------------------
 
