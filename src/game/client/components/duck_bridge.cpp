@@ -1380,7 +1380,7 @@ bool CDuckBridge::OnRenderPlayer(const CNetObj_Character *pPrevChar, const CNetO
 	else if(!WantOtherDir)
 		State.Add(&g_pData->m_aAnimations[ANIM_WALK], WalkTime, 1.0f);
 
-	/*
+
 	static float s_LastGameTickTime = Client()->GameTickTime();
 	if(m_pClient->m_Snap.m_pGameData && !(m_pClient->m_Snap.m_pGameData->m_GameStateFlags&GAMESTATEFLAG_PAUSED))
 		s_LastGameTickTime = Client()->GameTickTime();
@@ -1394,9 +1394,9 @@ bool CDuckBridge::OnRenderPlayer(const CNetObj_Character *pPrevChar, const CNetO
 		float ct = (Client()->PrevGameTick()-Cur.m_AttackTick)/(float)SERVER_TICK_SPEED + s_LastGameTickTime;
 		State.Add(&g_pData->m_aAnimations[ANIM_NINJA_SWING], clamp(ct*2.0f,0.0f,1.0f), 1.0f);
 	}
-*/
 
-	/*// draw gun
+	// draw gun
+	float Recoil = 0.0f;
 	{
 		Graphics()->TextureSet(g_pData->m_aImages[IMAGE_GAME].m_Id);
 		Graphics()->QuadsBegin();
@@ -1407,7 +1407,6 @@ bool CDuckBridge::OnRenderPlayer(const CNetObj_Character *pPrevChar, const CNetO
 		RenderTools()->SelectSprite(g_pData->m_Weapons.m_aId[iw].m_pSpriteBody, Direction.x < 0 ? SPRITE_FLAG_FLIP_Y : 0);
 
 		vec2 Dir = Direction;
-		float Recoil = 0.0f;
 		vec2 p;
 		if (Cur.m_Weapon == WEAPON_HAMMER)
 		{
@@ -1449,15 +1448,6 @@ bool CDuckBridge::OnRenderPlayer(const CNetObj_Character *pPrevChar, const CNetO
 			{
 				int IteX = random_int() % g_pData->m_Weapons.m_aId[iw].m_NumSpriteMuzzles;
 				static int s_LastIteX = IteX;
-				if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
-				{
-					const IDemoPlayer::CInfo *pInfo = DemoPlayer()->BaseInfo();
-					if(pInfo->m_Paused)
-						IteX = s_LastIteX;
-					else
-						s_LastIteX = IteX;
-				}
-				else
 				{
 					if(m_pClient->m_Snap.m_pGameData && m_pClient->m_Snap.m_pGameData->m_GameStateFlags&GAMESTATEFLAG_PAUSED)
 						IteX = s_LastIteX;
@@ -1511,15 +1501,6 @@ bool CDuckBridge::OnRenderPlayer(const CNetObj_Character *pPrevChar, const CNetO
 
 				int IteX = random_int() % g_pData->m_Weapons.m_aId[iw].m_NumSpriteMuzzles;
 				static int s_LastIteX = IteX;
-				if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
-				{
-					const IDemoPlayer::CInfo *pInfo = DemoPlayer()->BaseInfo();
-					if(pInfo->m_Paused)
-						IteX = s_LastIteX;
-					else
-						s_LastIteX = IteX;
-				}
-				else
 				{
 					if(m_pClient->m_Snap.m_pGameData && m_pClient->m_Snap.m_pGameData->m_GameStateFlags&GAMESTATEFLAG_PAUSED)
 						IteX = s_LastIteX;
@@ -1550,7 +1531,6 @@ bool CDuckBridge::OnRenderPlayer(const CNetObj_Character *pPrevChar, const CNetO
 		}
 
 	}
-	*/
 
 	/*
 	if(pInfo.m_PlayerFlags&PLAYERFLAG_CHATTING)
@@ -1600,8 +1580,17 @@ bool CDuckBridge::OnRenderPlayer(const CNetObj_Character *pPrevChar, const CNetO
 		Graphics()->QuadsEnd();
 	}*/
 
+	const int iw = clamp(Cur.m_Weapon, 0, NUM_WEAPONS-1);
+
+	CWeaponSpriteInfo WeaponSprite;
+	WeaponSprite.m_ID = Cur.m_Weapon;
+	WeaponSprite.m_OffX = g_pData->m_Weapons.m_aId[iw].m_Offsetx;
+	WeaponSprite.m_OffY = g_pData->m_Weapons.m_aId[iw].m_Offsety;
+	WeaponSprite.m_VisualSize = g_pData->m_Weapons.m_aId[iw].m_VisualSize;
+	WeaponSprite.m_Recoil = Recoil;
+
 	RenderSetDrawSpace(DrawSpace::PLAYER + ClientID);
-	return m_Backend.OnRenderPlayer(&State, &RenderInfo, Position, Direction, Cur.m_Emote, ClientID);
+	return m_Backend.OnRenderPlayer(&State, &RenderInfo, Position, Direction, Cur.m_Emote, &WeaponSprite, ClientID);
 }
 
 void CDuckBridge::OnUpdatePlayer(const CNetObj_Character *pPrevChar, const CNetObj_Character *pPlayerChar, const CNetObj_PlayerInfo *pPrevInfo, const CNetObj_PlayerInfo *pPlayerInfo, int ClientID)

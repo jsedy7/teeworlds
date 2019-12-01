@@ -7,11 +7,24 @@ end
 function OnRender(LocalTime, intraTick)
 end
 
-function SelectSprite(SpriteSet, x, y, w, h)
+function SelectSprite(SpriteSet, x, y, w, h, flipX, flipY)
     local x1 = x/SpriteSet.cx
     local x2 = (x + w - 1/32)/SpriteSet.cx
     local y1 = y/SpriteSet.cy
     local y2 = (y + h - 1/32)/SpriteSet.cy
+
+    if flipX then
+        local temp = x1
+        x1 = x2
+        x2 = temp
+    end
+
+    if flipY then
+        local temp = y1
+        y1 = y2
+        y2 = temp
+    end
+
     TwRenderSetQuadSubSet( x1, y1, x2, y2 )
 end
 
@@ -65,6 +78,13 @@ function DrawTee(AnimState, TeeInfo, Pos, Dir, EmoteID)
     backFoot.y = Pos.y + (backFoot.y * animScale)
     local backFootW = baseSize/2.1
 
+    local feetColor = copy(TeeInfo.colors[SkinPart.Feet])
+    if TeeInfo.got_airjump == 0 then
+        feetColor[1] = feetColor[1] * 0.5
+        feetColor[2] = feetColor[2] * 0.5
+        feetColor[3] = feetColor[3] * 0.5
+    end
+
     -- BACK
 
     -- back body
@@ -74,10 +94,12 @@ function DrawTee(AnimState, TeeInfo, Pos, Dir, EmoteID)
     TwRenderQuadCentered(body.x, body.y, baseSize, baseSize)
 
     -- decoration
-    SetTexture(SkinPart.Decoration)
-    TwRenderSetColorF4(1, 1, 1, 1)
-    SelectSprite({ cx = 2, cy = 1 }, 1, 0, 1, 1)
-    TwRenderQuadCentered(body.x, body.y, baseSize, baseSize)
+    if TeeInfo.textures[SkinPart.Decoration] ~= nil then
+        SetTexture(SkinPart.Decoration)
+        TwRenderSetColorF4(1, 1, 1, 1)
+        SelectSprite({ cx = 2, cy = 1 }, 1, 0, 1, 1)
+        TwRenderQuadCentered(body.x, body.y, baseSize, baseSize)
+    end
 
     -- front foot
     SetTexture(SkinPart.Feet)
@@ -95,16 +117,18 @@ function DrawTee(AnimState, TeeInfo, Pos, Dir, EmoteID)
 
     -- back foot
     SetTexture(SkinPart.Feet)
-    SetColor(SkinPart.Feet)
+    TwRenderSetColorF4(feetColor[1], feetColor[2], feetColor[3], feetColor[4])
     TwRenderSetQuadRotation(backFoot.angle*pi*2)
     SelectSprite({ cx = 2, cy = 1}, 0, 0, 1, 1)
     TwRenderQuadCentered(backFoot.x, backFoot.y, backFootW, backFootW)
 
     -- decoration
-    SetTexture(SkinPart.Decoration)
-    SetColor(SkinPart.Decoration)
-    SelectSprite({ cx = 2, cy = 1 }, 0, 0, 1, 1)
-    TwRenderQuadCentered(body.x, body.y, baseSize, baseSize)
+    if TeeInfo.textures[SkinPart.Decoration] ~= nil then
+        SetTexture(SkinPart.Decoration)
+        SetColor(SkinPart.Decoration)
+        SelectSprite({ cx = 2, cy = 1 }, 0, 0, 1, 1)
+        TwRenderQuadCentered(body.x, body.y, baseSize, baseSize)
+    end
 
     -- body
     SetTexture(SkinPart.Body)
@@ -164,18 +188,77 @@ function DrawTee(AnimState, TeeInfo, Pos, Dir, EmoteID)
 
     -- front foot
     SetTexture(SkinPart.Feet)
-    SetColor(SkinPart.Feet)
+    TwRenderSetColorF4(feetColor[1], feetColor[2], feetColor[3], feetColor[4])
     TwRenderSetQuadRotation(frontFoot.angle*pi*2)
     SelectSprite({ cx = 2, cy = 1}, 0, 0, 1, 1)
     TwRenderQuadCentered(frontFoot.x, frontFoot.y, frontFootW, frontFootW)
 end
 
-function OnRenderPlayer(AnimState, TeeInfo, Pos, Dir, EmoteID, ClientID)
+function DrawSprite(x, y, visualSize, cw, ch)
+    local f = sqrt(ch*ch + cw*cw)
+    local wScale = cw/f
+    local hScale = ch/f
+    TwRenderQuadCentered(x, y, visualSize*wScale, visualSize*hScale)
+end
+
+function DrawWeapon(AnimState, TeeInfo, Pos, Dir, WeaponSprite)
+    local baseSize = TeeInfo.size
+    local animScale = baseSize/64
+    local gameSS = { cx = 32, cy = 16 }
+    local weapCell = {
+        [1] = { 2, 4, 4, 2 },
+        [2] = { 2, 6, 8, 2 },
+        [3] = { 2, 8, 7, 2 },
+        [4] = { 2, 12, 7, 3 },
+    }
+
+    if WeaponSprite.id == 0 then -- Hammer
+        local posX = AnimState.attach.x * animScale + Pos.x
+        local posY = AnimState.attach.y * animScale + Pos.y
+        posY = posY + WeaponSprite.off_y
+        if Dir.x < 0 then
+            TwRenderSetQuadRotation(-pi/2 - AnimState.attach.angle*pi*2)
+            posX = posX - WeaponSprite.off_x
+        else
+            TwRenderSetQuadRotation(-pi/2 + AnimState.attach.angle*pi*2)
+        end
+
+        TwRenderSetTexture(TwGetBaseTexture(Teeworlds.IMAGE_GAME))
+        TwRenderSetColorF4(1, 1, 1, 1)
+        SelectSprite(gameSS, 2, 1, 4, 3)
+        DrawSprite(posX, posY, WeaponSprite.visual_size, 4, 3)
+
+    elseif WeaponSprite.id >= 1 and WeaponSprite.id < 5 then -- Gun, Shotgun, Grenade
+        local posX = Pos.x + Dir.x * WeaponSprite.off_x - Dir.x*WeaponSprite.recoil*10
+        local posY = Pos.y + Dir.y * WeaponSprite.off_x - Dir.y*WeaponSprite.recoil*10
+        posY = posY + WeaponSprite.off_y
+        
+        TwRenderSetTexture(TwGetBaseTexture(Teeworlds.IMAGE_GAME))
+        TwRenderSetColorF4(1, 1, 1, 1)
+        local flipY = false
+        if Dir.x < 0 then
+            flipY = true
+        end
+        local cell = weapCell[WeaponSprite.id]
+        SelectSprite(gameSS, cell[1], cell[2], cell[3], cell[4], false, flipY)
+
+        TwRenderSetQuadRotation(AnimState.attach.angle*pi*2 + atan2(Dir.y, Dir.x))
+        DrawSprite(posX, posY, WeaponSprite.visual_size, cell[3], cell[4])
+    end
+end
+
+function OnRenderPlayer(AnimState, TeeInfo, Pos, Dir, EmoteID, WeaponSprite, ClientID)
     local basePosX = Pos.x
 
+    -- draw weapon
+    
+
     Pos.x = basePosX + 64
+    DrawWeapon(AnimState, TeeInfo, Pos, Dir, WeaponSprite)
     DrawTee(AnimState, TeeInfo, Pos, Dir, EmoteID)
+
     Pos.x = basePosX - 64
+    DrawWeapon(AnimState, TeeInfo, Pos, Dir, WeaponSprite)
     DrawTee(AnimState, TeeInfo, Pos, Dir, EmoteID)
     return true
 end

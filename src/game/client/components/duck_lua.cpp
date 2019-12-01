@@ -3203,7 +3203,7 @@ static void AnimKeyframeLuaPush(lua_State* L, const CAnimKeyframe& Kf)
 	LuaSetPropNumber(L, -1, "angle", Kf.m_Angle);
 }
 
-bool CDuckLua::OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2 Pos, vec2 Dir, int Emote, int ClientID)
+bool CDuckLua::OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2 Pos, vec2 Dir, int Emote, const CWeaponSpriteInfo *pWeaponSprite, int ClientID)
 {
 	if(GetFunctionRef(OnRenderPlayer))
 	{
@@ -3223,7 +3223,7 @@ bool CDuckLua::OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2
 		lua_rawset(L(), -3);
 
 		lua_pushstring(L(), "attach");
-		AnimKeyframeLuaPush(L(), *pState->GetFrontFoot());
+		AnimKeyframeLuaPush(L(), *pState->GetAttach());
 		lua_rawset(L(), -3);
 
 		// Argument 2 : tee render info
@@ -3232,7 +3232,10 @@ bool CDuckLua::OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2
 			lua_createtable(L(), 6, 0);
 			for(int i = 0; i < NUM_SKINPARTS; i++)
 			{
-				lua_pushinteger(L(), pTeeInfo->m_aTextures[i].Id());
+				if(pTeeInfo->m_aTextures[i].IsValid())
+					lua_pushinteger(L(), pTeeInfo->m_aTextures[i].Id());
+				else
+					lua_pushnil(L());
 				lua_rawseti(L(), -2, i+1);
 			}
 		lua_rawset(L(), -3);
@@ -3273,10 +3276,18 @@ bool CDuckLua::OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2
 		// Argument 5 : Emote
 		lua_pushinteger(L(), Emote);
 
-		// Argument 6 : ClientID
+		// Argument 6 : WeaponSprite
+		lua_createtable(L(), 0, 5);
+		LuaSetPropInteger(L(), -1, "id", pWeaponSprite->m_ID);
+		LuaSetPropNumber(L(), -1, "off_x", pWeaponSprite->m_OffX);
+		LuaSetPropNumber(L(), -1, "off_y", pWeaponSprite->m_OffY);
+		LuaSetPropNumber(L(), -1, "visual_size", pWeaponSprite->m_VisualSize);
+		LuaSetPropNumber(L(), -1, "recoil", pWeaponSprite->m_Recoil);
+
+		// Argument 7 : ClientID
 		lua_pushinteger(L(), ClientID);
 
-		CallFunction(6, 1);
+		CallFunction(7, 1);
 
 		bool r = lua_toboolean(L(), -1);
 		lua_pop(L(), 1);

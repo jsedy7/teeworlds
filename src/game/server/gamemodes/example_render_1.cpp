@@ -7,7 +7,6 @@ CGameControllerExampleRender1::CGameControllerExampleRender1(CGameContext *pGame
 : IGameController(pGameServer)
 {
 	m_pGameType = "EXRDR1";
-	str_copy(g_Config.m_SvMap, "dm1", sizeof(g_Config.m_SvMap)); // force map
 
 	// load duck mod
 	if(!Server()->LoadDuckMod("", "", "mods/example_render_1"))

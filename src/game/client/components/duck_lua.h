@@ -11,6 +11,7 @@ struct CNetObj_Character;
 struct CNetObj_PlayerInfo;
 struct CAnimState;
 struct CTeeRenderInfo;
+struct CWeaponSpriteInfo;
 
 class CDuckLua
 {
@@ -126,7 +127,7 @@ public:
 	void OnDuckSnapItem(int Msg, int SnapID, void* pRawMsg, int Size);
 	void OnInput(IInput::CEvent e);
 	void OnModLoaded();
-	bool OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2 Pos, vec2 Dir, int Emote, int ClientID);
+	bool OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2 Pos, vec2 Dir, int Emote, const CWeaponSpriteInfo *pWeaponSprite, int ClientID);
 
 	inline bool IsLoaded() const { return m_pLuaState != NULL; }
 
