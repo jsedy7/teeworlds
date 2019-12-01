@@ -1584,9 +1584,6 @@ bool CDuckBridge::OnRenderPlayer(const CNetObj_Character *pPrevChar, const CNetO
 
 	CWeaponSpriteInfo WeaponSprite;
 	WeaponSprite.m_ID = Cur.m_Weapon;
-	WeaponSprite.m_OffX = g_pData->m_Weapons.m_aId[iw].m_Offsetx;
-	WeaponSprite.m_OffY = g_pData->m_Weapons.m_aId[iw].m_Offsety;
-	WeaponSprite.m_VisualSize = g_pData->m_Weapons.m_aId[iw].m_VisualSize;
 	WeaponSprite.m_Recoil = Recoil;
 
 	RenderSetDrawSpace(DrawSpace::PLAYER + ClientID);

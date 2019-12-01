@@ -137,10 +137,12 @@ function DrawTee(AnimState, TeeInfo, Pos, Dir, EmoteID)
     TwRenderQuadCentered(body.x, body.y, baseSize, baseSize)
 
     -- marking
-    SetTexture(SkinPart.Marking)
-    SetColor(SkinPart.Marking)
-    SelectSprite({ cx = 1, cy = 1 }, 0, 0, 1, 1)
-    TwRenderQuadCentered(body.x, body.y, baseSize, baseSize)
+    if TeeInfo.textures[SkinPart.Marking] ~= nil then
+        SetTexture(SkinPart.Marking)
+        SetColor(SkinPart.Marking)
+        SelectSprite({ cx = 1, cy = 1 }, 0, 0, 1, 1)
+        TwRenderQuadCentered(body.x, body.y, baseSize, baseSize)
+    end
 
     SetTexture(SkinPart.Body) -- back to body texture
 
@@ -202,36 +204,41 @@ function DrawSprite(x, y, visualSize, cw, ch)
 end
 
 function DrawWeapon(AnimState, TeeInfo, Pos, Dir, WeaponSprite)
-    local baseSize = TeeInfo.size
-    local animScale = baseSize/64
+    local scale = TeeInfo.size/64 -- TODO: scale properly
     local gameSS = { cx = 32, cy = 16 }
-    local weapCell = {
-        [1] = { 2, 4, 4, 2 },
-        [2] = { 2, 6, 8, 2 },
-        [3] = { 2, 8, 7, 2 },
-        [4] = { 2, 12, 7, 3 },
+    local weapSpecs = {
+        [0] = { 2, 1, 4, 3,   offX = 4, offY = -20, size = 96 }, -- Hammer
+        [1] = { 2, 4, 4, 2,   offX = 32, offY = -4, size = 64 }, -- Gun
+        [2] = { 2, 6, 8, 2,   offX = 24, offY = -2, size = 96 }, -- Shotgun
+        [3] = { 2, 8, 7, 2,   offX = 24, offY = -2, size = 96 }, -- Grenade
+        [4] = { 2, 12, 7, 3,  offX = 24, offY = -2, size = 92 }, -- Laser
     }
 
     if WeaponSprite.id == 0 then -- Hammer
-        local posX = AnimState.attach.x * animScale + Pos.x
-        local posY = AnimState.attach.y * animScale + Pos.y
-        posY = posY + WeaponSprite.off_y
+        local ws = weapSpecs[0]
+
+        local posX = AnimState.attach.x * scale + Pos.x
+        local posY = AnimState.attach.y * scale + Pos.y
+        posY = posY + ws.offY
         if Dir.x < 0 then
             TwRenderSetQuadRotation(-pi/2 - AnimState.attach.angle*pi*2)
-            posX = posX - WeaponSprite.off_x
+            posX = posX - ws.offX
         else
             TwRenderSetQuadRotation(-pi/2 + AnimState.attach.angle*pi*2)
         end
 
         TwRenderSetTexture(TwGetBaseTexture(Teeworlds.IMAGE_GAME))
         TwRenderSetColorF4(1, 1, 1, 1)
-        SelectSprite(gameSS, 2, 1, 4, 3)
-        DrawSprite(posX, posY, WeaponSprite.visual_size, 4, 3)
+        
+        SelectSprite(gameSS, ws[1], ws[2], ws[3], ws[4])
+        DrawSprite(posX, posY, ws.size, ws[3], ws[4])
 
-    elseif WeaponSprite.id >= 1 and WeaponSprite.id < 5 then -- Gun, Shotgun, Grenade
-        local posX = Pos.x + Dir.x * WeaponSprite.off_x - Dir.x*WeaponSprite.recoil*10
-        local posY = Pos.y + Dir.y * WeaponSprite.off_x - Dir.y*WeaponSprite.recoil*10
-        posY = posY + WeaponSprite.off_y
+    elseif WeaponSprite.id >= 1 and WeaponSprite.id < 5 then -- Gun, Shotgun, Grenade, Laser
+        local ws = weapSpecs[WeaponSprite.id]
+
+        local posX = Pos.x + Dir.x * ws.offX - Dir.x*WeaponSprite.recoil*10
+        local posY = Pos.y + Dir.y * ws.offX - Dir.y*WeaponSprite.recoil*10
+        posY = posY + ws.offY
         
         TwRenderSetTexture(TwGetBaseTexture(Teeworlds.IMAGE_GAME))
         TwRenderSetColorF4(1, 1, 1, 1)
@@ -239,19 +246,16 @@ function DrawWeapon(AnimState, TeeInfo, Pos, Dir, WeaponSprite)
         if Dir.x < 0 then
             flipY = true
         end
-        local cell = weapCell[WeaponSprite.id]
-        SelectSprite(gameSS, cell[1], cell[2], cell[3], cell[4], false, flipY)
+        
+        SelectSprite(gameSS, ws[1], ws[2], ws[3], ws[4], false, flipY)
 
         TwRenderSetQuadRotation(AnimState.attach.angle*pi*2 + atan2(Dir.y, Dir.x))
-        DrawSprite(posX, posY, WeaponSprite.visual_size, cell[3], cell[4])
+        DrawSprite(posX, posY, ws.size, ws[3], ws[4])
     end
 end
 
 function OnRenderPlayer(AnimState, TeeInfo, Pos, Dir, EmoteID, WeaponSprite, ClientID)
     local basePosX = Pos.x
-
-    -- draw weapon
-    
 
     Pos.x = basePosX + 64
     DrawWeapon(AnimState, TeeInfo, Pos, Dir, WeaponSprite)

@@ -68,9 +68,6 @@ struct JsErrorLvl
 struct CWeaponSpriteInfo
 {
 	int m_ID;
-	float m_OffX;
-	float m_OffY;
-	float m_VisualSize;
 	float m_Recoil;
 };
 

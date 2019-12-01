@@ -3279,9 +3279,6 @@ bool CDuckLua::OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2
 		// Argument 6 : WeaponSprite
 		lua_createtable(L(), 0, 5);
 		LuaSetPropInteger(L(), -1, "id", pWeaponSprite->m_ID);
-		LuaSetPropNumber(L(), -1, "off_x", pWeaponSprite->m_OffX);
-		LuaSetPropNumber(L(), -1, "off_y", pWeaponSprite->m_OffY);
-		LuaSetPropNumber(L(), -1, "visual_size", pWeaponSprite->m_VisualSize);
 		LuaSetPropNumber(L(), -1, "recoil", pWeaponSprite->m_Recoil);
 
 		// Argument 7 : ClientID
