@@ -214,6 +214,18 @@ function DrawWeapon(AnimState, TeeInfo, Pos, Dir, WeaponSprite)
         [4] = { 2, 12, 7, 3,  offX = 24, offY = -2, size = 92 }, -- Laser
     }
 
+    local weapAngleOff = {
+        [1] = -3*pi/4, -- Gun
+        [2] = -pi/2, -- Shotgun
+        [3] = -pi/2, -- Grenade
+    }
+
+    local weapPostRotOff = {
+        [1] = { x = -15, y = 4 }, -- Gun
+        [2] = { x = -5, y = 4 }, -- Shotgun
+        [3] = { x = -4, y = 7 }, -- Grenade
+    }
+
     if WeaponSprite.id == 0 then -- Hammer
         local ws = weapSpecs[0]
 
@@ -249,8 +261,49 @@ function DrawWeapon(AnimState, TeeInfo, Pos, Dir, WeaponSprite)
         
         SelectSprite(gameSS, ws[1], ws[2], ws[3], ws[4], false, flipY)
 
-        TwRenderSetQuadRotation(AnimState.attach.angle*pi*2 + atan2(Dir.y, Dir.x))
+        local angle = atan2(Dir.y, Dir.x)
+        TwRenderSetQuadRotation(AnimState.attach.angle*pi*2 + angle)
         DrawSprite(posX, posY, ws.size, ws[3], ws[4])
+
+        if WeaponSprite.id < 4 then
+            -- draw hand
+            local baseSize = TeeInfo.size/64 * 15
+            local handPosX = posX + Dir.x
+            local handPosY = posY + Dir.y
+            
+            if Dir.x < 0 then
+                angle = angle - weapAngleOff[WeaponSprite.id]
+            else
+                angle = angle + weapAngleOff[WeaponSprite.id]
+            end
+
+            local DirX = Dir
+            local DirY = { x = -Dir.y, y = Dir.x }
+            if Dir.x < 0 then
+                DirY.x = -DirY.x
+                DirY.y = -DirY.y
+            end
+
+            local postRotOffset = weapPostRotOff[WeaponSprite.id]
+            handPosX = handPosX + DirX.x * postRotOffset.x + DirY.x * postRotOffset.y
+            handPosY = handPosY + DirX.y * postRotOffset.x + DirY.y * postRotOffset.y
+            local handSS = { cx = 2, cy = 1 }
+
+            TwRenderSetTexture(TeeInfo.textures[4]) -- hand texture
+            
+            -- outline
+            TwRenderSetColorF4(1, 1, 1, 1)
+            TwRenderSetQuadRotation(angle)
+            SelectSprite(handSS, 1, 0, 1, 1)
+            TwRenderQuadCentered(handPosX, handPosY, baseSize*2, baseSize*2)
+
+            -- hand
+            local color = TeeInfo.colors[4]
+            TwRenderSetColorF4(color[1], color[2], color[3], color[4])
+            TwRenderSetQuadRotation(angle)
+            SelectSprite(handSS, 0, 0, 1, 1)
+            TwRenderQuadCentered(handPosX, handPosY, baseSize*2, baseSize*2)
+        end
     end
 end
 
