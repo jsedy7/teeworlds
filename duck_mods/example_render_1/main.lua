@@ -36,7 +36,13 @@ function copy(t)
     return r
 end
 
-function DrawTee(AnimState, TeeInfo, Pos, Dir, EmoteID)
+function DrawTee(Player)
+    local anim = Player.anim
+    local tee = Player.tee
+    local Pos = Player.pos
+    local Dir = Player.dir
+    local EmoteID = Player.emote
+
     local SkinPart = {
         Body = 1,
         Marking = 2,
@@ -47,17 +53,17 @@ function DrawTee(AnimState, TeeInfo, Pos, Dir, EmoteID)
     }
 
     function SetTexture(ID)
-        TwRenderSetTexture(TeeInfo.textures[ID])
+        TwRenderSetTexture(tee.textures[ID])
     end
     function SetColor(ID)
-        local color = TeeInfo.colors[ID]
+        local color = tee.colors[ID]
         TwRenderSetColorF4(color[1], color[2], color[3], color[4])
     end
 
-    --print(AnimState)
-    --print(TeeInfo)
-    local body = copy(AnimState.body)
-    local baseSize = TeeInfo.size
+    --print(anim)
+    --print(tee)
+    local body = copy(anim.body)
+    local baseSize = tee.size
     local animScale = baseSize/64
 
     body.x = Pos.x + (body.x * animScale)
@@ -68,18 +74,18 @@ function DrawTee(AnimState, TeeInfo, Pos, Dir, EmoteID)
         cy = 2
     }
 
-    local frontFoot = copy(AnimState.frontFoot)
+    local frontFoot = copy(anim.frontFoot)
     frontFoot.x = Pos.x + (frontFoot.x * animScale)
     frontFoot.y = Pos.y + (frontFoot.y * animScale)
     local frontFootW = baseSize/2.1
 
-    local backFoot = copy(AnimState.backFoot)
+    local backFoot = copy(anim.backFoot)
     backFoot.x = Pos.x + (backFoot.x * animScale)
     backFoot.y = Pos.y + (backFoot.y * animScale)
     local backFootW = baseSize/2.1
 
-    local feetColor = copy(TeeInfo.colors[SkinPart.Feet])
-    if TeeInfo.got_airjump == 0 then
+    local feetColor = copy(tee.colors[SkinPart.Feet])
+    if tee.got_airjump == 0 then
         feetColor[1] = feetColor[1] * 0.5
         feetColor[2] = feetColor[2] * 0.5
         feetColor[3] = feetColor[3] * 0.5
@@ -94,7 +100,7 @@ function DrawTee(AnimState, TeeInfo, Pos, Dir, EmoteID)
     TwRenderQuadCentered(body.x, body.y, baseSize, baseSize)
 
     -- decoration
-    if TeeInfo.textures[SkinPart.Decoration] ~= nil then
+    if tee.textures[SkinPart.Decoration] ~= nil then
         SetTexture(SkinPart.Decoration)
         TwRenderSetColorF4(1, 1, 1, 1)
         SelectSprite({ cx = 2, cy = 1 }, 1, 0, 1, 1)
@@ -123,7 +129,7 @@ function DrawTee(AnimState, TeeInfo, Pos, Dir, EmoteID)
     TwRenderQuadCentered(backFoot.x, backFoot.y, backFootW, backFootW)
 
     -- decoration
-    if TeeInfo.textures[SkinPart.Decoration] ~= nil then
+    if tee.textures[SkinPart.Decoration] ~= nil then
         SetTexture(SkinPart.Decoration)
         SetColor(SkinPart.Decoration)
         SelectSprite({ cx = 2, cy = 1 }, 0, 0, 1, 1)
@@ -137,7 +143,7 @@ function DrawTee(AnimState, TeeInfo, Pos, Dir, EmoteID)
     TwRenderQuadCentered(body.x, body.y, baseSize, baseSize)
 
     -- marking
-    if TeeInfo.textures[SkinPart.Marking] ~= nil then
+    if tee.textures[SkinPart.Marking] ~= nil then
         SetTexture(SkinPart.Marking)
         SetColor(SkinPart.Marking)
         SelectSprite({ cx = 1, cy = 1 }, 0, 0, 1, 1)
@@ -203,8 +209,14 @@ function DrawSprite(x, y, visualSize, cw, ch)
     TwRenderQuadCentered(x, y, visualSize*wScale, visualSize*hScale)
 end
 
-function DrawWeapon(AnimState, TeeInfo, Pos, Dir, WeaponSprite)
-    local scale = TeeInfo.size/64 -- TODO: scale properly
+function DrawWeapon(Player)
+    local anim = Player.anim
+    local tee = Player.tee
+    local Pos = Player.pos
+    local Dir = Player.dir
+    local weapon = Player.weapon
+
+    local scale = tee.size/64 -- TODO: scale properly
     local gameSS = { cx = 32, cy = 16 }
     local weapSpecs = {
         [0] = { 2, 1, 4, 3,   offX = 4, offY = -20, size = 96 }, -- Hammer
@@ -226,17 +238,17 @@ function DrawWeapon(AnimState, TeeInfo, Pos, Dir, WeaponSprite)
         [3] = { x = -4, y = 7 }, -- Grenade
     }
 
-    if WeaponSprite.id == 0 then -- Hammer
+    if weapon.id == 0 then -- Hammer
         local ws = weapSpecs[0]
 
-        local posX = AnimState.attach.x * scale + Pos.x
-        local posY = AnimState.attach.y * scale + Pos.y
+        local posX = anim.attach.x * scale + Pos.x
+        local posY = anim.attach.y * scale + Pos.y
         posY = posY + ws.offY
         if Dir.x < 0 then
-            TwRenderSetQuadRotation(-pi/2 - AnimState.attach.angle*pi*2)
+            TwRenderSetQuadRotation(-pi/2 - anim.attach.angle*pi*2)
             posX = posX - ws.offX
         else
-            TwRenderSetQuadRotation(-pi/2 + AnimState.attach.angle*pi*2)
+            TwRenderSetQuadRotation(-pi/2 + anim.attach.angle*pi*2)
         end
 
         TwRenderSetTexture(TwGetBaseTexture(Teeworlds.IMAGE_GAME))
@@ -245,11 +257,11 @@ function DrawWeapon(AnimState, TeeInfo, Pos, Dir, WeaponSprite)
         SelectSprite(gameSS, ws[1], ws[2], ws[3], ws[4])
         DrawSprite(posX, posY, ws.size, ws[3], ws[4])
 
-    elseif WeaponSprite.id >= 1 and WeaponSprite.id < 5 then -- Gun, Shotgun, Grenade, Laser
-        local ws = weapSpecs[WeaponSprite.id]
+    elseif weapon.id >= 1 and weapon.id < 5 then -- Gun, Shotgun, Grenade, Laser
+        local ws = weapSpecs[weapon.id]
 
-        local posX = Pos.x + Dir.x * ws.offX - Dir.x*WeaponSprite.recoil*10
-        local posY = Pos.y + Dir.y * ws.offX - Dir.y*WeaponSprite.recoil*10
+        local posX = Pos.x + Dir.x * ws.offX - Dir.x*weapon.recoil*10
+        local posY = Pos.y + Dir.y * ws.offX - Dir.y*weapon.recoil*10
         posY = posY + ws.offY
         
         TwRenderSetTexture(TwGetBaseTexture(Teeworlds.IMAGE_GAME))
@@ -262,19 +274,19 @@ function DrawWeapon(AnimState, TeeInfo, Pos, Dir, WeaponSprite)
         SelectSprite(gameSS, ws[1], ws[2], ws[3], ws[4], false, flipY)
 
         local angle = atan2(Dir.y, Dir.x)
-        TwRenderSetQuadRotation(AnimState.attach.angle*pi*2 + angle)
+        TwRenderSetQuadRotation(anim.attach.angle*pi*2 + angle)
         DrawSprite(posX, posY, ws.size, ws[3], ws[4])
 
-        if WeaponSprite.id < 4 then
+        if weapon.id < 4 then
             -- draw hand
-            local baseSize = TeeInfo.size/64 * 15
+            local baseSize = tee.size/64 * 15
             local handPosX = posX + Dir.x
             local handPosY = posY + Dir.y
             
             if Dir.x < 0 then
-                angle = angle - weapAngleOff[WeaponSprite.id]
+                angle = angle - weapAngleOff[weapon.id]
             else
-                angle = angle + weapAngleOff[WeaponSprite.id]
+                angle = angle + weapAngleOff[weapon.id]
             end
 
             local DirX = Dir
@@ -284,12 +296,12 @@ function DrawWeapon(AnimState, TeeInfo, Pos, Dir, WeaponSprite)
                 DirY.y = -DirY.y
             end
 
-            local postRotOffset = weapPostRotOff[WeaponSprite.id]
+            local postRotOffset = weapPostRotOff[weapon.id]
             handPosX = handPosX + DirX.x * postRotOffset.x + DirY.x * postRotOffset.y
             handPosY = handPosY + DirX.y * postRotOffset.x + DirY.y * postRotOffset.y
             local handSS = { cx = 2, cy = 1 }
 
-            TwRenderSetTexture(TeeInfo.textures[4]) -- hand texture
+            TwRenderSetTexture(tee.textures[4]) -- hand texture
             
             -- outline
             TwRenderSetColorF4(1, 1, 1, 1)
@@ -298,7 +310,7 @@ function DrawWeapon(AnimState, TeeInfo, Pos, Dir, WeaponSprite)
             TwRenderQuadCentered(handPosX, handPosY, baseSize*2, baseSize*2)
 
             -- hand
-            local color = TeeInfo.colors[4]
+            local color = tee.colors[4]
             TwRenderSetColorF4(color[1], color[2], color[3], color[4])
             TwRenderSetQuadRotation(angle)
             SelectSprite(handSS, 0, 0, 1, 1)
@@ -307,15 +319,40 @@ function DrawWeapon(AnimState, TeeInfo, Pos, Dir, WeaponSprite)
     end
 end
 
-function OnRenderPlayer(AnimState, TeeInfo, Pos, Dir, EmoteID, WeaponSprite, ClientID)
-    local basePosX = Pos.x
+local localTime = 0
 
-    Pos.x = basePosX + 64
-    DrawWeapon(AnimState, TeeInfo, Pos, Dir, WeaponSprite)
-    DrawTee(AnimState, TeeInfo, Pos, Dir, EmoteID)
+function OnRenderPlayer(Player)
+    local tee = Player.tee
 
-    Pos.x = basePosX - 64
-    DrawWeapon(AnimState, TeeInfo, Pos, Dir, WeaponSprite)
-    DrawTee(AnimState, TeeInfo, Pos, Dir, EmoteID)
+    function Color(r_, g_ ,b_)
+        return {
+            r = r_,
+            g = g_,
+            b = b_,
+        }
+    end
+
+    function Palette(t, a, b, c, d)
+        local r = a.r + b.r * cos(6.28318 * (c.r * t + d.r))
+        local g = a.g + b.g * cos(6.28318 * (c.g * t + d.g))
+        local b = a.b + b.b * cos(6.28318 * (c.b * t + d.b))
+        return Color(r, g, b)
+    end  
+
+    local rainbow = Palette(localTime * 0.2, Color(0.5,0.5,0.5), Color(0.5,0.5,0.5), Color(0.8,0.8,0.8), Color(0.21,0.54,0.88))
+    
+    tee.colors[1] = {
+        rainbow.r,
+        rainbow.g,
+        rainbow.b,
+        1
+    }
+
+    DrawWeapon(Player)
+    DrawTee(Player)
     return true
+end
+
+function OnRender(LocalTime)
+    localTime = LocalTime
 end

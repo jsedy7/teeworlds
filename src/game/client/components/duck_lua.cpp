@@ -127,6 +127,16 @@ static void LuaSetPropStringN(lua_State *L, int Index, const char *pPropName, co
 	lua_rawset(L, Index - 2);
 }
 
+static void LuaBeginProperty(lua_State *L, const char *pPropName)
+{
+	lua_pushstring(L, pPropName);
+}
+
+static void LuaFinishProperty(lua_State *L)
+{
+	lua_rawset(L, -3);
+}
+
 void CDuckLua::PrintToConsole(const char* pStr, int Len)
 {
 	const int MaxLen = 128;
@@ -3207,84 +3217,114 @@ bool CDuckLua::OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2
 {
 	if(GetFunctionRef(OnRenderPlayer))
 	{
-		// Argument 1 : AnimState
-		lua_createtable(L(), 0, 4);
+		lua_createtable(L(), 0, 7);
 
-		lua_pushstring(L(), "body");
-		AnimKeyframeLuaPush(L(), *pState->GetBody());
-		lua_rawset(L(), -3);
+		// AnimState
+		LuaBeginProperty(L(), "anim");
 
-		lua_pushstring(L(), "backFoot");
-		AnimKeyframeLuaPush(L(), *pState->GetBackFoot());
-		lua_rawset(L(), -3);
+			lua_createtable(L(), 0, 4);
 
-		lua_pushstring(L(), "frontFoot");
-		AnimKeyframeLuaPush(L(), *pState->GetFrontFoot());
-		lua_rawset(L(), -3);
+			lua_pushstring(L(), "body");
+			AnimKeyframeLuaPush(L(), *pState->GetBody());
+			lua_rawset(L(), -3);
 
-		lua_pushstring(L(), "attach");
-		AnimKeyframeLuaPush(L(), *pState->GetAttach());
-		lua_rawset(L(), -3);
+			lua_pushstring(L(), "backFoot");
+			AnimKeyframeLuaPush(L(), *pState->GetBackFoot());
+			lua_rawset(L(), -3);
 
-		// Argument 2 : tee render info
-		lua_createtable(L(), 0, 14);
-		lua_pushstring(L(), "textures");
-			lua_createtable(L(), 6, 0);
-			for(int i = 0; i < NUM_SKINPARTS; i++)
-			{
-				if(pTeeInfo->m_aTextures[i].IsValid())
-					lua_pushinteger(L(), pTeeInfo->m_aTextures[i].Id());
-				else
-					lua_pushnil(L());
-				lua_rawseti(L(), -2, i+1);
-			}
-		lua_rawset(L(), -3);
+			lua_pushstring(L(), "frontFoot");
+			AnimKeyframeLuaPush(L(), *pState->GetFrontFoot());
+			lua_rawset(L(), -3);
 
-		lua_pushstring(L(), "colors");
-			lua_createtable(L(), 6, 0);
-			for(int i = 0; i < NUM_SKINPARTS; i++)
-			{
-				vec4 Color = pTeeInfo->m_aColors[i];
+			lua_pushstring(L(), "attach");
+			AnimKeyframeLuaPush(L(), *pState->GetAttach());
+			lua_rawset(L(), -3);
 
-				lua_createtable(L(), 4, 0);
-					lua_pushnumber(L(), Color.r);
-					lua_rawseti(L(), -2, 1);
-					lua_pushnumber(L(), Color.g);
-					lua_rawseti(L(), -2, 2);
-					lua_pushnumber(L(), Color.b);
-					lua_rawseti(L(), -2, 3);
-					lua_pushnumber(L(), Color.a);
-					lua_rawseti(L(), -2, 4);
+		LuaFinishProperty(L());
 
-				lua_rawseti(L(), -2, i+1);
-			}
-		lua_rawset(L(), -3);
+		// tee render info
+		LuaBeginProperty(L(), "tee");
 
-		LuaSetPropNumber(L(), -1, "size", pTeeInfo->m_Size);
-		LuaSetPropInteger(L(), -1, "got_airjump", pTeeInfo->m_GotAirJump);
+			lua_createtable(L(), 0, 14);
+			lua_pushstring(L(), "textures");
+				lua_createtable(L(), 6, 0);
+				for(int i = 0; i < NUM_SKINPARTS; i++)
+				{
+					if(pTeeInfo->m_aTextures[i].IsValid())
+						lua_pushinteger(L(), pTeeInfo->m_aTextures[i].Id());
+					else
+						lua_pushnil(L());
+					lua_rawseti(L(), -2, i+1);
+				}
+			lua_rawset(L(), -3);
 
-		// Argument 3 : Position
-		lua_createtable(L(), 0, 2);
-		LuaSetPropNumber(L(), -1, "x", Pos.x);
-		LuaSetPropNumber(L(), -1, "y", Pos.y);
+			lua_pushstring(L(), "colors");
+				lua_createtable(L(), 6, 0);
+				for(int i = 0; i < NUM_SKINPARTS; i++)
+				{
+					vec4 Color = pTeeInfo->m_aColors[i];
 
-		// Argument 4 : Direction
-		lua_createtable(L(), 0, 2);
-		LuaSetPropNumber(L(), -1, "x", Dir.x);
-		LuaSetPropNumber(L(), -1, "y", Dir.y);
+					lua_createtable(L(), 4, 0);
+						lua_pushnumber(L(), Color.r);
+						lua_rawseti(L(), -2, 1);
+						lua_pushnumber(L(), Color.g);
+						lua_rawseti(L(), -2, 2);
+						lua_pushnumber(L(), Color.b);
+						lua_rawseti(L(), -2, 3);
+						lua_pushnumber(L(), Color.a);
+						lua_rawseti(L(), -2, 4);
 
-		// Argument 5 : Emote
-		lua_pushinteger(L(), Emote);
+					lua_rawseti(L(), -2, i+1);
+				}
+			lua_rawset(L(), -3);
 
-		// Argument 6 : WeaponSprite
-		lua_createtable(L(), 0, 5);
-		LuaSetPropInteger(L(), -1, "id", pWeaponSprite->m_ID);
-		LuaSetPropNumber(L(), -1, "recoil", pWeaponSprite->m_Recoil);
+			LuaSetPropNumber(L(), -1, "size", pTeeInfo->m_Size);
+			LuaSetPropInteger(L(), -1, "got_airjump", pTeeInfo->m_GotAirJump);
 
-		// Argument 7 : ClientID
-		lua_pushinteger(L(), ClientID);
+		LuaFinishProperty(L());
 
-		CallFunction(7, 1);
+		// Position
+		LuaBeginProperty(L(), "pos");
+
+			lua_createtable(L(), 0, 2);
+			LuaSetPropNumber(L(), -1, "x", Pos.x);
+			LuaSetPropNumber(L(), -1, "y", Pos.y);
+
+		LuaFinishProperty(L());
+
+		// Direction
+		LuaBeginProperty(L(), "dir");
+
+			lua_createtable(L(), 0, 2);
+			LuaSetPropNumber(L(), -1, "x", Dir.x);
+			LuaSetPropNumber(L(), -1, "y", Dir.y);
+
+		LuaFinishProperty(L());
+
+		// Emote
+		LuaBeginProperty(L(), "emote");
+
+			lua_pushinteger(L(), Emote);
+
+		LuaFinishProperty(L());
+
+		// WeaponSprite
+		LuaBeginProperty(L(), "weapon");
+
+			lua_createtable(L(), 0, 2);
+			LuaSetPropInteger(L(), -1, "id", pWeaponSprite->m_ID);
+			LuaSetPropNumber(L(), -1, "recoil", pWeaponSprite->m_Recoil);
+
+		LuaFinishProperty(L());
+
+		// ClientID
+		LuaBeginProperty(L(), "clientID");
+
+			lua_pushinteger(L(), ClientID);
+
+		LuaFinishProperty(L());
+
+		CallFunction(1, 1);
 
 		bool r = lua_toboolean(L(), -1);
 		lua_pop(L(), 1);

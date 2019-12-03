@@ -1395,6 +1395,7 @@ bool CDuckBridge::OnRenderPlayer(const CNetObj_Character *pPrevChar, const CNetO
 		State.Add(&g_pData->m_aAnimations[ANIM_NINJA_SWING], clamp(ct*2.0f,0.0f,1.0f), 1.0f);
 	}
 
+#if 0 // TESTING PURPOSES
 	// draw gun
 	float Recoil = 0.0f;
 	{
@@ -1579,6 +1580,21 @@ bool CDuckBridge::OnRenderPlayer(const CNetObj_Character *pPrevChar, const CNetO
 		Graphics()->QuadsDraw(&QuadItem, 1);
 		Graphics()->QuadsEnd();
 	}*/
+
+#endif
+
+
+	float Recoil = 0;
+	if(Cur.m_Weapon >= WEAPON_GUN && Cur.m_Weapon <= WEAPON_GRENADE)
+	{
+		static float s_LastIntraTick = IntraTick;
+		if(m_pClient->m_Snap.m_pGameData && !(m_pClient->m_Snap.m_pGameData->m_GameStateFlags&GAMESTATEFLAG_PAUSED))
+			s_LastIntraTick = IntraTick;
+
+		float a = (Client()->GameTick()-Cur.m_AttackTick+s_LastIntraTick)/5.0f;
+		if(a < 1)
+			Recoil = sinf(a*pi);
+	}
 
 	const int iw = clamp(Cur.m_Weapon, 0, NUM_WEAPONS-1);
 
