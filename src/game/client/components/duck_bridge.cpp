@@ -89,55 +89,6 @@ void CMultiStackAllocator::Clear()
 	m_CurrentStack = 0;
 }
 
-
-void CDuckBridge::DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo)
-{
-	CAnimState State;
-	State.Set(&g_pData->m_aAnimations[ANIM_BASE], 0);
-
-	CTeeRenderInfo RenderInfo;
-	mem_move(RenderInfo.m_aTextures, SkinInfo.m_aTextures, sizeof(RenderInfo.m_aTextures));
-	mem_move(RenderInfo.m_aColors, SkinInfo.m_aColors, sizeof(RenderInfo.m_aColors));
-	RenderInfo.m_Size = TeeDrawInfo.m_Size;
-	RenderInfo.m_GotAirJump = TeeDrawInfo.m_GotAirJump;
-
-	vec2 Direction = direction(TeeDrawInfo.m_Angle);
-	vec2 Pos = vec2(TeeDrawInfo.m_Pos[0], TeeDrawInfo.m_Pos[1]);
-	int Emote = TeeDrawInfo.m_Emote;
-
-	const float WalkTimeMagic = 100.0f;
-	float WalkTime =
-		((Pos.x >= 0)
-			? fmod(Pos.x, WalkTimeMagic)
-			: WalkTimeMagic - fmod(-Pos.x, WalkTimeMagic))
-		/ WalkTimeMagic;
-
-	if(TeeDrawInfo.m_IsWalking)
-		State.Add(&g_pData->m_aAnimations[ANIM_WALK], WalkTime, 1.0f);
-	else
-	{
-		if(TeeDrawInfo.m_IsGrounded)
-			State.Add(&g_pData->m_aAnimations[ANIM_IDLE], 0, 1.0f); // TODO: some sort of time here
-		else
-			State.Add(&g_pData->m_aAnimations[ANIM_INAIR], 0, 1.0f); // TODO: some sort of time here
-	}
-
-	RenderTools()->RenderTee(&State, &RenderInfo, Emote, Direction, Pos);
-}
-
-void CDuckBridge::DrawTeeHand(const CDuckBridge::CTeeDrawHand& Hand, const CTeeSkinInfo& SkinInfo)
-{
-	CTeeRenderInfo RenderInfo;
-	mem_move(RenderInfo.m_aTextures, SkinInfo.m_aTextures, sizeof(RenderInfo.m_aTextures));
-	mem_move(RenderInfo.m_aColors, SkinInfo.m_aColors, sizeof(RenderInfo.m_aColors));
-	RenderInfo.m_Size = Hand.m_Size;
-	vec2 Pos(Hand.m_Pos[0], Hand.m_Pos[1]);
-	vec2 Offset(Hand.m_Offset[0], Hand.m_Offset[1]);
-	vec2 Dir = direction(Hand.m_AngleDir);
-
-	RenderTools()->RenderTeeHand(&RenderInfo, Pos, Dir, Hand.m_AngleOff, Offset);
-}
-
 CDuckBridge::CDuckBridge() : m_CurrentPacket(0, 0) // We have to do this, CMsgPacker can't be uninitialized apparently...
 {
 
@@ -203,14 +154,6 @@ void CDuckBridge::QueueSetQuadRotation(float Angle)
 	CRenderCmd Cmd;
 	Cmd.m_Type = CRenderCmd::SET_QUAD_ROTATION;
 	Cmd.m_QuadRotation = Angle;
-	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
-}
-
-void CDuckBridge::QueueSetTeeSkin(const CTeeSkinInfo& SkinInfo)
-{
-	CRenderCmd Cmd;
-	Cmd.m_Type = CRenderCmd::SET_TEE_SKIN;
-	Cmd.m_TeeSkinInfo = SkinInfo;
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
@@ -306,22 +249,6 @@ void CDuckBridge::QueueDrawQuadCentered(IGraphics::CQuadItem Quad)
 	CRenderCmd Cmd;
 	Cmd.m_Type = CDuckBridge::CRenderCmd::DRAW_QUAD_CENTERED;
 	mem_move(Cmd.m_Quad, &Quad, sizeof(Cmd.m_Quad));
-	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
-}
-
-void CDuckBridge::QueueDrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo)
-{
-	CRenderCmd Cmd;
-	Cmd.m_Type = CDuckBridge::CRenderCmd::DRAW_TEE_BODYANDFEET;
-	Cmd.m_TeeBodyAndFeet = TeeDrawInfo;
-	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
-}
-
-void CDuckBridge::QueueDrawTeeHand(const CDuckBridge::CTeeDrawHand& Hand)
-{
-	CRenderCmd Cmd;
-	Cmd.m_Type = CDuckBridge::CRenderCmd::DRAW_TEE_HAND;
-	Cmd.m_TeeHand = Hand;
 	m_aRenderCmdList[m_CurrentDrawSpace].add(Cmd);
 }
 
@@ -879,10 +806,12 @@ void CDuckBridge::RenderDrawSpace(int Space)
 	int FakeID = -12345;
 	IGraphics::CTextureHandle FakeTexture = *(IGraphics::CTextureHandle*)&FakeID;
 	IGraphics::CTextureHandle CurrentTexture;
+	int CurrentTextureWrap = CRenderSpace::WRAP_CLAMP;
 
 	int FlushCount = 0;
 
 	Graphics()->TextureClear();
+	Graphics()->WrapClamp();
 	Graphics()->QuadsBegin();
 
 	for(int i = 0; i < CmdCount; i++)
@@ -899,16 +828,16 @@ void CDuckBridge::RenderDrawSpace(int Space)
 				RenderSpace.m_WantTextureID = Cmd.m_TextureID;
 			} break;
 
+			case CRenderCmd::SET_TEXTURE_WRAP: {
+				RenderSpace.m_TextureWrap = Cmd.m_TextureWrap;
+			} break;
+
 			case CRenderCmd::SET_QUAD_SUBSET: {
 				mem_move(pWantQuadSubSet, Cmd.m_QuadSubSet, sizeof(Cmd.m_QuadSubSet));
 			} break;
 
 			case CRenderCmd::SET_QUAD_ROTATION: {
 				RenderSpace.m_WantQuadRotation = Cmd.m_QuadRotation;
-			} break;
-
-			case CRenderCmd::SET_TEE_SKIN: {
-				RenderSpace.m_CurrentTeeSkin = Cmd.m_TeeSkinInfo;
 			} break;
 
 			case CRenderCmd::SET_FREEFORM_VERTICES: {
@@ -936,6 +865,16 @@ void CDuckBridge::RenderDrawSpace(int Space)
 					}
 
 					Graphics()->QuadsBegin();
+				}
+
+				if(CurrentTextureWrap != RenderSpace.m_TextureWrap)
+				{
+					CurrentTextureWrap = RenderSpace.m_TextureWrap;
+
+					if(CurrentTextureWrap == CRenderSpace::WRAP_CLAMP)
+						Graphics()->WrapClamp();
+					else
+						Graphics()->WrapNormal();
 				}
 
 				Graphics()->SetColor(pWantColor[0] * pWantColor[3], pWantColor[1] * pWantColor[3], pWantColor[2] * pWantColor[3], pWantColor[3]);
@@ -972,24 +911,6 @@ void CDuckBridge::RenderDrawSpace(int Space)
 				else
 					Graphics()->QuadsDrawTL((IGraphics::CQuadItem*)&Cmd.m_Quad, 1);
 			} break;
-
-			case CRenderCmd::DRAW_TEE_BODYANDFEET:
-				Graphics()->QuadsEnd(); // Flush
-
-				DrawTeeBodyAndFeet(Cmd.m_TeeBodyAndFeet, RenderSpace.m_CurrentTeeSkin);
-				CurrentTexture = FakeTexture;
-
-				Graphics()->QuadsBegin();
-				break;
-
-			case CRenderCmd::DRAW_TEE_HAND:
-				Graphics()->QuadsEnd(); // Flush
-
-				DrawTeeHand(Cmd.m_TeeHand, RenderSpace.m_CurrentTeeSkin);
-				CurrentTexture = FakeTexture;
-
-				Graphics()->QuadsBegin();
-				break;
 
 			case CRenderCmd::DRAW_TEXT:
 			{
@@ -1040,6 +961,7 @@ void CDuckBridge::RenderDrawSpace(int Space)
 	}
 
 	Graphics()->QuadsEnd(); // flush
+	Graphics()->WrapNormal();
 	FlushCount++;
 
 	//dbg_msg("duck", "flush count = %d", FlushCount);

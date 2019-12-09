@@ -308,6 +308,7 @@ duk_ret_t CDuckJs::NativeRenderSetTeeSkin(duk_context* ctx)
 {
 	CheckArgumentCount(ctx, 1);
 
+#if 0
 	CDuckBridge::CTeeSkinInfo SkinInfo;
 
 	for(int i = 0; i < NUM_SKINPARTS; i++)
@@ -356,6 +357,7 @@ duk_ret_t CDuckJs::NativeRenderSetTeeSkin(duk_context* ctx)
 	duk_pop(ctx);
 
 	This()->Bridge()->QueueSetTeeSkin(SkinInfo);
+#endif
 	return 0;
 }
 
@@ -467,7 +469,7 @@ duk_ret_t CDuckJs::NativeRenderSetDrawSpace(duk_context *ctx)
 duk_ret_t CDuckJs::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 {
 	CheckArgumentCount(ctx, 1);
-
+#if 0
 	/*
 	 * tee = {
 	 *	size: float,
@@ -511,6 +513,7 @@ duk_ret_t CDuckJs::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 	TeeDrawInfo.m_Emote = Emote;
 	//dbg_msg("duk", "DrawTeeBodyAndFeet( tee = { size: %g, pos_x: %g, pos_y: %g }", Size, PosX, PosY);
 	This()->Bridge()->QueueDrawTeeBodyAndFeet(TeeDrawInfo);
+#endif
 	return 0;
 }
 
@@ -542,7 +545,7 @@ duk_ret_t CDuckJs::NativeRenderDrawTeeBodyAndFeet(duk_context *ctx)
 duk_ret_t CDuckJs::NativeRenderDrawTeeHand(duk_context* ctx)
 {
 	CheckArgumentCount(ctx, 1);
-
+#if 0
 	/*
 	 * hand = {
 	 *	size: float,
@@ -582,6 +585,7 @@ duk_ret_t CDuckJs::NativeRenderDrawTeeHand(duk_context* ctx)
 	TeeHandInfo.m_Offset[1] = OffY;
 	//dbg_msg("duk", "NativeRenderDrawTeeHand( hand = { size: %g, angle_dir: %g, angle_off: %g, pos_x: %g, pos_y: %g, off_x: %g, off_y: %g }", Size, AngleDir, AngleOff, PosX, PosY, OffX, OffY);
 	This()->Bridge()->QueueDrawTeeHand(TeeHandInfo);
+#endif
 	return 0;
 }
 

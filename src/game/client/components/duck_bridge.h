@@ -94,32 +94,6 @@ struct CDuckBridge : public CComponent
 		};
 	};
 
-	struct CTeeDrawBodyAndFeetInfo
-	{
-		float m_Size;
-		float m_Angle;
-		float m_Pos[2]; // vec2
-		bool m_IsWalking;
-		bool m_IsGrounded;
-		bool m_GotAirJump;
-		int m_Emote;
-	};
-
-	struct CTeeDrawHand
-	{
-		float m_Size;
-		float m_AngleDir;
-		float m_AngleOff;
-		float m_Pos[2]; // vec2
-		float m_Offset[2]; // vec2
-	};
-
-	struct CTeeSkinInfo
-	{
-		int m_aTextures[NUM_SKINPARTS];
-		float m_aColors[NUM_SKINPARTS][4];
-	};
-
 	struct CTextInfo
 	{
 		const char* m_pStr;
@@ -138,12 +112,10 @@ struct CDuckBridge : public CComponent
 			SET_TEXTURE,
 			SET_QUAD_SUBSET,
 			SET_QUAD_ROTATION,
-			SET_TEE_SKIN,
 			SET_FREEFORM_VERTICES,
+			SET_TEXTURE_WRAP,
 			DRAW_QUAD,
 			DRAW_QUAD_CENTERED,
-			DRAW_TEE_BODYANDFEET,
-			DRAW_TEE_HAND,
 			DRAW_FREEFORM,
 			DRAW_TEXT,
 		};
@@ -158,16 +130,13 @@ struct CDuckBridge : public CComponent
 			float m_QuadSubSet[4];
 			float m_QuadRotation;
 			float m_FreeformPos[2];
+			int m_TextureWrap; // 0 = clamp, 1 = repeat
 
 			struct {
 				const float* m_pFreeformQuads;
 				int m_FreeformQuadCount;
 			};
 
-			// TODO: this is kinda big...
-			CTeeDrawBodyAndFeetInfo m_TeeBodyAndFeet;
-			CTeeDrawHand m_TeeHand;
-			CTeeSkinInfo m_TeeSkinInfo;
 			CTextInfo m_Text;
 		};
 	};
@@ -175,16 +144,18 @@ struct CDuckBridge : public CComponent
 	struct CRenderSpace
 	{
 		enum {
-			FREEFORM_MAX_COUNT=256
+			FREEFORM_MAX_COUNT=256,
+			WRAP_CLAMP = 0,
+			WRAP_REPEAT = 1,
 		};
 
 		float m_aWantColor[4];
 		float m_aWantQuadSubSet[4];
 		int m_WantTextureID;
 		float m_WantQuadRotation;
-		CTeeSkinInfo m_CurrentTeeSkin;
 		IGraphics::CFreeformItem m_aFreeformQuads[FREEFORM_MAX_COUNT];
 		int m_FreeformQuadCount;
+		int m_TextureWrap;
 
 		CRenderSpace()
 		{
@@ -196,15 +167,7 @@ struct CDuckBridge : public CComponent
 			m_aWantQuadSubSet[1] = 0;
 			m_aWantQuadSubSet[2] = 1;
 			m_aWantQuadSubSet[3] = 1;
-
-			for(int i = 0; i < NUM_SKINPARTS; i++)
-			{
-				m_CurrentTeeSkin.m_aTextures[i] = -1;
-				m_CurrentTeeSkin.m_aColors[i][0] = 1.0f;
-				m_CurrentTeeSkin.m_aColors[i][1] = 1.0f;
-				m_CurrentTeeSkin.m_aColors[i][2] = 1.0f;
-				m_CurrentTeeSkin.m_aColors[i][3] = 1.0f;
-			}
+			m_TextureWrap = WRAP_CLAMP;
 		}
 	};
 
@@ -386,9 +349,6 @@ struct CDuckBridge : public CComponent
 	CSnapState m_SnapPrev;
 	CSnapState m_Snap;
 
-	void DrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo, const CTeeSkinInfo& SkinInfo);
-	void DrawTeeHand(const CTeeDrawHand& Hand, const CTeeSkinInfo& SkinInfo);
-
 	CDuckBridge();
 
 	void Reset();
@@ -397,12 +357,9 @@ struct CDuckBridge : public CComponent
 	void QueueSetTexture(int TextureID);
 	void QueueSetQuadSubSet(const float* pSubSet);
 	void QueueSetQuadRotation(float Angle);
-	void QueueSetTeeSkin(const CTeeSkinInfo& SkinInfo);
 	void QueueSetFreeform(const IGraphics::CFreeformItem* pFreeform, int FreeformCount);
 	void QueueDrawQuad(IGraphics::CQuadItem Quad);
 	void QueueDrawQuadCentered(IGraphics::CQuadItem Quad);
-	void QueueDrawTeeBodyAndFeet(const CTeeDrawBodyAndFeetInfo& TeeDrawInfo);
-	void QueueDrawTeeHand(const CTeeDrawHand& Hand);
 	void QueueDrawFreeform(vec2 Pos);
 	void QueueDrawText(const char* pStr, float FontSize, float LineWidth, float *pPos, float *pClip, float *pColors);
 	void QueueDrawCircle(vec2 Pos, float Radius);
