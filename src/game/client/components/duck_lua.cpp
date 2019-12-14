@@ -375,6 +375,31 @@ int CDuckLua::NativeFloor(lua_State *L)
 	return 1;
 }
 
+int CDuckLua::NativeFmod(lua_State *L)
+{
+	CheckArgumentCount(L, 2);
+	double a = lua_tonumber(L, 1);
+	double b = lua_tonumber(L, 2);
+	lua_pushnumber(L, fmod(a, b));
+	return 1;
+}
+
+int CDuckLua::NativeAbs(lua_State *L)
+{
+	CheckArgumentCount(L, 1);
+	if(lua_isnumber(L, 1))
+	{
+		double a = lua_tonumber(L, 1);
+		lua_pushnumber(L, fabs(a));
+	}
+	else
+	{
+		int64 a = lua_tointeger(L, 1);
+		lua_pushinteger(L, abs(a));
+	}
+	return 1;
+}
+
 /*#
 `TwRenderQuad(x, y, width, height)`
 
@@ -2968,6 +2993,8 @@ void CDuckLua::ResetLuaState()
 	REGISTER_FUNC_PLAIN(Sqrt, sqrt);
 	REGISTER_FUNC_PLAIN(Atan2, atan2);
 	REGISTER_FUNC_PLAIN(Floor, floor);
+	REGISTER_FUNC_PLAIN(Fmod, fmod);
+	REGISTER_FUNC_PLAIN(Abs, abs);
 
 	REGISTER_FUNC(RenderQuad, 4);
 	REGISTER_FUNC(RenderQuadCentered, 4);
