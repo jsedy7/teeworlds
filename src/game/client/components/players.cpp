@@ -555,7 +555,28 @@ void CPlayers::OnRender()
 						);
 				else
 				{
-					if(!IsDuckLoaded || !pBridge->OnRenderPlayer(&PrevChar, &CurChar, (const CNetObj_PlayerInfo *)pPrevInfo, (const CNetObj_PlayerInfo *)pInfo, i))
+					if(IsDuckLoaded)
+					{
+						bool Overwrite = pBridge->OnRenderPlayer(&PrevChar, &CurChar, (const CNetObj_PlayerInfo *)pPrevInfo, (const CNetObj_PlayerInfo *)pInfo, i);
+
+						if(Overwrite)
+						{
+							pBridge->RenderDrawSpace(CDuckBridge::DrawSpace::PLAYER + i);
+							pBridge->OnUpdatePlayer(&PrevChar, &CurChar, (const CNetObj_PlayerInfo *)pPrevInfo, (const CNetObj_PlayerInfo *)pInfo, i);
+						}
+						else
+						{
+							RenderPlayer(
+									&PrevChar,
+									&CurChar,
+									(const CNetObj_PlayerInfo *)pPrevInfo,
+									(const CNetObj_PlayerInfo *)pInfo,
+									i
+								);
+							pBridge->RenderDrawSpace(CDuckBridge::DrawSpace::PLAYER + i);
+						}
+					}
+					else
 					{
 						RenderPlayer(
 								&PrevChar,
@@ -564,15 +585,6 @@ void CPlayers::OnRender()
 								(const CNetObj_PlayerInfo *)pInfo,
 								i
 							);
-					}
-					else if(IsDuckLoaded)
-					{
-						pBridge->OnUpdatePlayer(&PrevChar, &CurChar, (const CNetObj_PlayerInfo *)pPrevInfo, (const CNetObj_PlayerInfo *)pInfo, i);
-					}
-
-					if(IsDuckLoaded)
-					{
-						pBridge->RenderDrawSpace(CDuckBridge::DrawSpace::PLAYER + i);
 					}
 				}
 			}

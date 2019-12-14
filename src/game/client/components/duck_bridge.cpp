@@ -9,6 +9,8 @@
 #include <game/client/components/controls.h>
 #include <game/client/components/sounds.h>
 #include <game/client/components/camera.h>
+#include <game/client/components/flow.h>
+#include <game/client/components/effects.h>
 
 #include <engine/external/zlib/zlib.h>
 #include <engine/external/pnglite/pnglite.h>
@@ -1530,7 +1532,6 @@ bool CDuckBridge::OnRenderPlayer(const CNetObj_Character *pPrevChar, const CNetO
 
 void CDuckBridge::OnUpdatePlayer(const CNetObj_Character *pPrevChar, const CNetObj_Character *pPlayerChar, const CNetObj_PlayerInfo *pPrevInfo, const CNetObj_PlayerInfo *pPlayerInfo, int ClientID)
 {
-	/*
 	// Originally copied from CPlayers::RenderPlayer(...)
 
 	CNetObj_Character Prev;
@@ -1578,9 +1579,8 @@ void CDuckBridge::OnUpdatePlayer(const CNetObj_Character *pPrevChar, const CNetO
 	vec2 Position = mix(vec2(Prev.m_X, Prev.m_Y), vec2(Player.m_X, Player.m_Y), IntraTick);
 	vec2 Vel = mix(vec2(Prev.m_VelX/256.0f, Prev.m_VelY/256.0f), vec2(Player.m_VelX/256.0f, Player.m_VelY/256.0f), IntraTick);
 
+	// particle flow interaction
 	m_pClient->m_pFlow->Add(Position, Vel*100.0f, 10.0f);
-
-	RenderInfo.m_GotAirJump = Player.m_Jumped&2?0:1;
 
 	bool Stationary = Player.m_VelX <= 1 && Player.m_VelX >= -1;
 	bool InAir = !Collision()->CheckPoint(Player.m_X, Player.m_Y+16);
@@ -1633,161 +1633,6 @@ void CDuckBridge::OnUpdatePlayer(const CNetObj_Character *pPrevChar, const CNetO
 		);
 	}
 
-	// draw gun
-	{
-		Graphics()->TextureSet(g_pData->m_aImages[IMAGE_GAME].m_Id);
-		Graphics()->QuadsBegin();
-		Graphics()->QuadsSetRotation(State.GetAttach()->m_Angle*pi*2+Angle);
-
-		// normal weapons
-		int iw = clamp(Player.m_Weapon, 0, NUM_WEAPONS-1);
-		RenderTools()->SelectSprite(g_pData->m_Weapons.m_aId[iw].m_pSpriteBody, Direction.x < 0 ? SPRITE_FLAG_FLIP_Y : 0);
-
-		vec2 Dir = Direction;
-		float Recoil = 0.0f;
-		vec2 p;
-		if (Player.m_Weapon == WEAPON_HAMMER)
-		{
-			// Static position for hammer
-			p = Position + vec2(State.GetAttach()->m_X, State.GetAttach()->m_Y);
-			p.y += g_pData->m_Weapons.m_aId[iw].m_Offsety;
-			// if attack is under way, bash stuffs
-			if(Direction.x < 0)
-			{
-				Graphics()->QuadsSetRotation(-pi/2-State.GetAttach()->m_Angle*pi*2);
-				p.x -= g_pData->m_Weapons.m_aId[iw].m_Offsetx;
-			}
-			else
-			{
-				Graphics()->QuadsSetRotation(-pi/2+State.GetAttach()->m_Angle*pi*2);
-			}
-			RenderTools()->DrawSprite(p.x, p.y, g_pData->m_Weapons.m_aId[iw].m_VisualSize);
-		}
-		else if (Player.m_Weapon == WEAPON_NINJA)
-		{
-			p = Position;
-			p.y += g_pData->m_Weapons.m_aId[iw].m_Offsety;
-
-			if(Direction.x < 0)
-			{
-				Graphics()->QuadsSetRotation(-pi/2-State.GetAttach()->m_Angle*pi*2);
-				p.x -= g_pData->m_Weapons.m_aId[iw].m_Offsetx;
-				m_pClient->m_pEffects->PowerupShine(p+vec2(32,0), vec2(32,12));
-			}
-			else
-			{
-				Graphics()->QuadsSetRotation(-pi/2+State.GetAttach()->m_Angle*pi*2);
-				m_pClient->m_pEffects->PowerupShine(p-vec2(32,0), vec2(32,12));
-			}
-			RenderTools()->DrawSprite(p.x, p.y, g_pData->m_Weapons.m_aId[iw].m_VisualSize);
-
-			// HADOKEN
-			if ((Client()->GameTick()-Player.m_AttackTick) <= (SERVER_TICK_SPEED / 6) && g_pData->m_Weapons.m_aId[iw].m_NumSpriteMuzzles)
-			{
-				int IteX = random_int() % g_pData->m_Weapons.m_aId[iw].m_NumSpriteMuzzles;
-				static int s_LastIteX = IteX;
-				if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
-				{
-					const IDemoPlayer::CInfo *pInfo = DemoPlayer()->BaseInfo();
-					if(pInfo->m_Paused)
-						IteX = s_LastIteX;
-					else
-						s_LastIteX = IteX;
-				}
-				else
-				{
-					if(m_pClient->m_Snap.m_pGameData && m_pClient->m_Snap.m_pGameData->m_GameStateFlags&GAMESTATEFLAG_PAUSED)
-						IteX = s_LastIteX;
-					else
-						s_LastIteX = IteX;
-				}
-				if(g_pData->m_Weapons.m_aId[iw].m_aSpriteMuzzles[IteX])
-				{
-					vec2 Dir = vec2(pPlayerChar->m_X,pPlayerChar->m_Y) - vec2(pPrevChar->m_X, pPrevChar->m_Y);
-					Dir = normalize(Dir);
-					float HadokenAngle = angle(Dir);
-					Graphics()->QuadsSetRotation(HadokenAngle );
-					//float offsety = -data->weapons[iw].muzzleoffsety;
-					RenderTools()->SelectSprite(g_pData->m_Weapons.m_aId[iw].m_aSpriteMuzzles[IteX], 0);
-					vec2 DirY(-Dir.y,Dir.x);
-					p = Position;
-					float OffsetX = g_pData->m_Weapons.m_aId[iw].m_Muzzleoffsetx;
-					p -= Dir * OffsetX;
-					RenderTools()->DrawSprite(p.x, p.y, 160.0f);
-				}
-			}
-		}
-		else
-		{
-			// TODO: should be an animation
-			Recoil = 0;
-			static float s_LastIntraTick = IntraTick;
-			if(m_pClient->m_Snap.m_pGameData && !(m_pClient->m_Snap.m_pGameData->m_GameStateFlags&GAMESTATEFLAG_PAUSED))
-				s_LastIntraTick = IntraTick;
-
-			float a = (Client()->GameTick()-Player.m_AttackTick+s_LastIntraTick)/5.0f;
-			if(a < 1)
-				Recoil = sinf(a*pi);
-			p = Position + Dir * g_pData->m_Weapons.m_aId[iw].m_Offsetx - Dir*Recoil*10.0f;
-			p.y += g_pData->m_Weapons.m_aId[iw].m_Offsety;
-			RenderTools()->DrawSprite(p.x, p.y, g_pData->m_Weapons.m_aId[iw].m_VisualSize);
-		}
-
-		if (Player.m_Weapon == WEAPON_GUN || Player.m_Weapon == WEAPON_SHOTGUN)
-		{
-			// check if we're firing stuff
-			if(g_pData->m_Weapons.m_aId[iw].m_NumSpriteMuzzles)//prev.attackticks)
-			{
-				float Alpha = 0.0f;
-				int Phase1Tick = (Client()->GameTick() - Player.m_AttackTick);
-				if (Phase1Tick < (g_pData->m_Weapons.m_aId[iw].m_Muzzleduration + 3))
-				{
-					float t = ((((float)Phase1Tick) + IntraTick)/(float)g_pData->m_Weapons.m_aId[iw].m_Muzzleduration);
-					Alpha = mix(2.0f, 0.0f, min(1.0f,max(0.0f,t)));
-				}
-
-				int IteX = random_int() % g_pData->m_Weapons.m_aId[iw].m_NumSpriteMuzzles;
-				static int s_LastIteX = IteX;
-				if(Client()->State() == IClient::STATE_DEMOPLAYBACK)
-				{
-					const IDemoPlayer::CInfo *pInfo = DemoPlayer()->BaseInfo();
-					if(pInfo->m_Paused)
-						IteX = s_LastIteX;
-					else
-						s_LastIteX = IteX;
-				}
-				else
-				{
-					if(m_pClient->m_Snap.m_pGameData && m_pClient->m_Snap.m_pGameData->m_GameStateFlags&GAMESTATEFLAG_PAUSED)
-						IteX = s_LastIteX;
-					else
-						s_LastIteX = IteX;
-				}
-				if (Alpha > 0.0f && g_pData->m_Weapons.m_aId[iw].m_aSpriteMuzzles[IteX])
-				{
-					float OffsetY = -g_pData->m_Weapons.m_aId[iw].m_Muzzleoffsety;
-					RenderTools()->SelectSprite(g_pData->m_Weapons.m_aId[iw].m_aSpriteMuzzles[IteX], Direction.x < 0 ? SPRITE_FLAG_FLIP_Y : 0);
-					if(Direction.x < 0)
-						OffsetY = -OffsetY;
-
-					vec2 DirY(-Dir.y,Dir.x);
-					vec2 MuzzlePos = p + Dir * g_pData->m_Weapons.m_aId[iw].m_Muzzleoffsetx + DirY * OffsetY;
-
-					RenderTools()->DrawSprite(MuzzlePos.x, MuzzlePos.y, g_pData->m_Weapons.m_aId[iw].m_VisualSize);
-				}
-			}
-		}
-		Graphics()->QuadsEnd();
-
-		switch (Player.m_Weapon)
-		{
-			case WEAPON_GUN: RenderTools()->RenderTeeHand(&RenderInfo, p, Direction, -3*pi/4, vec2(-15, 4)); break;
-			case WEAPON_SHOTGUN: RenderTools()->RenderTeeHand(&RenderInfo, p, Direction, -pi/2, vec2(-5, 4)); break;
-			case WEAPON_GRENADE: RenderTools()->RenderTeeHand(&RenderInfo, p, Direction, -pi/2, vec2(-4, 7)); break;
-		}
-
-	}
-
 	// render the "shadow" tee
 	if(m_pClient->m_LocalClientID == ClientID && g_Config.m_Debug)
 	{
@@ -1797,8 +1642,6 @@ void CDuckBridge::OnUpdatePlayer(const CNetObj_Character *pPrevChar, const CNetO
 			Ghost.m_aColors[p].a *= 0.5f;
 		RenderTools()->RenderTee(&State, &Ghost, Player.m_Emote, Direction, GhostPosition); // render ghost
 	}
-
-	RenderTools()->RenderTee(&State, &RenderInfo, Player.m_Emote, Direction, Position);
 
 	if(pInfo.m_PlayerFlags&PLAYERFLAG_CHATTING)
 	{
@@ -1810,6 +1653,7 @@ void CDuckBridge::OnUpdatePlayer(const CNetObj_Character *pPrevChar, const CNetO
 		Graphics()->QuadsEnd();
 	}
 
+	// emotes
 	if (m_pClient->m_aClients[ClientID].m_EmoticonStart != -1 && m_pClient->m_aClients[ClientID].m_EmoticonStart + 2 * Client()->GameTickSpeed() > Client()->GameTick())
 	{
 		Graphics()->TextureSet(g_pData->m_aImages[IMAGE_EMOTICONS].m_Id);
@@ -1842,8 +1686,6 @@ void CDuckBridge::OnUpdatePlayer(const CNetObj_Character *pPrevChar, const CNetO
 		Graphics()->QuadsDraw(&QuadItem, 1);
 		Graphics()->QuadsEnd();
 	}
-
-	*/
 }
 
 bool CDuckBridge::IsModAlreadyInstalled(const SHA256_DIGEST *pModSha256)
