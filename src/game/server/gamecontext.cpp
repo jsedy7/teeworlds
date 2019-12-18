@@ -22,12 +22,7 @@
 #include "gamecontext.h"
 #include "player.h"
 
-#include "gamemodes/test.h"
-#include "gamemodes/example_physics_1.h"
-#include "gamemodes/example_physics_2.h"
-#include "gamemodes/example_physics_3.h"
-#include "gamemodes/example_ui_1.h"
-#include "gamemodes/example_render_1.h"
+#include "gamemodes/xmas.h"
 
 enum
 {
@@ -1507,32 +1502,7 @@ void CGameContext::OnInit()
 	m_DuckCollision.Init(&m_Layers); // DUCK
 
 	// select gametype
-	if(str_comp_nocase(g_Config.m_SvGametype, "mod") == 0)
-		m_pController = new CGameControllerMOD(this);
-	else if(str_comp_nocase(g_Config.m_SvGametype, "ctf") == 0)
-		m_pController = new CGameControllerCTF(this);
-	else if(str_comp_nocase(g_Config.m_SvGametype, "lms") == 0)
-		m_pController = new CGameControllerLMS(this);
-	else if(str_comp_nocase(g_Config.m_SvGametype, "lts") == 0)
-		m_pController = new CGameControllerLTS(this);
-	else if(str_comp_nocase(g_Config.m_SvGametype, "tdm") == 0)
-		m_pController = new CGameControllerTDM(this);
-	else if(str_comp_nocase(g_Config.m_SvGametype, "duck") == 0)
-		m_pController = new CGameControllerExamplePhys2(this);
-	else if(str_comp_nocase(g_Config.m_SvGametype, "test") == 0)
-		m_pController = new CGameControllerTEST(this);
-	else if(str_comp_nocase(g_Config.m_SvGametype, "exui1") == 0)
-		m_pController = new CGameControllerExampleUI1(this);
-	else if(str_comp_nocase(g_Config.m_SvGametype, "exphys1") == 0)
-		m_pController = new CGameControllerExamplePhys1(this);
-	else if(str_comp_nocase(g_Config.m_SvGametype, "exphys2") == 0)
-		m_pController = new CGameControllerExamplePhys2(this);
-	else if(str_comp_nocase(g_Config.m_SvGametype, "exphys3") == 0)
-		m_pController = new CGameControllerExamplePhys3(this);
-	else if(str_comp_nocase(g_Config.m_SvGametype, "exrdr1") == 0)
-		m_pController = new CGameControllerExampleRender1(this);
-	else
-		m_pController = new CGameControllerDM(this);
+	m_pController = new CGameControllerXmas(this);
 
 	// create all entities from the game layer
 	CMapItemLayerTilemap *pTileMap = m_Layers.GameLayer();
