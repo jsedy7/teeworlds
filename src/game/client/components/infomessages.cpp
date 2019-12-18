@@ -9,6 +9,7 @@
 #include <game/client/gameclient.h>
 #include <game/client/animstate.h>
 #include "infomessages.h"
+#include "duck_bridge.h"
 
 #include "chat.h"
 #include "skins.h"
@@ -137,6 +138,9 @@ void CInfoMessages::OnMessage(int MsgType, void *pRawMsg)
 
 void CInfoMessages::OnRender()
 {
+	if(m_pClient->m_pDuckBridge->IsLoaded() && !m_pClient->m_pDuckBridge->m_HudPartsShown.m_KillFeed)
+		return;
+
 	float Width = 400*3.0f*Graphics()->ScreenAspect();
 	float Height = 400*3.0f;
 
