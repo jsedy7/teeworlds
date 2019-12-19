@@ -1692,7 +1692,7 @@ int CDuckLua::NativeGetStandardSkinInfo(lua_State* L)
 
 **Returns**
 
-* **texture_id**: int
+* **texture, color_texture**: int, int
 
 #*/
 int CDuckLua::NativeGetSkinPartTexture(lua_State* L)
@@ -1714,15 +1714,13 @@ int CDuckLua::NativeGetSkinPartTexture(lua_State* L)
 	if(!Found)
 	{
 		lua_pushnil(L);
-		return 1;
+		lua_pushnil(L);
+		return 2;
 	}
 
-	lua_createtable(L, 2, 0);
 	lua_pushinteger(L, *(int*)&OrgText);
-	lua_rawseti(L, -2, 1);
 	lua_pushinteger(L, *(int*)&ColorText);
-	lua_rawseti(L, -2, 2);
-	return 1;
+	return 2;
 }
 
 /*#
