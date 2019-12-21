@@ -2,7 +2,7 @@
 require("base.lua")
 require("draw.lua")
 
-local santa = nil
+local debug = false
 
 function OnLoad()
     print("Xmas");
@@ -19,10 +19,7 @@ function OnLoad()
     })
 end
 
-function OnRender(LocalTime, intraTick)
-    TwRenderSetDrawSpace(1)
-
---[[
+function DebugDraw()
     local cores = TwPhysGetCores()
     local joints = TwPhysGetJoints()
 
@@ -46,17 +43,25 @@ function OnRender(LocalTime, intraTick)
             TwRenderDrawLine(core1.x, core1.y, core2.x, core2.y, 10)
         end
     end
---]]
+end
 
+function OnRender(LocalTime, intraTick)
+    TwRenderSetDrawSpace(1)
+
+--
+    local cores = TwPhysGetCores()
+    local joints = TwPhysGetJoints()
+
+    local santa = cores[2]
     if santa then
-        DrawSantee(santa.posX, santa.posY)
+        DrawSantee(santa.x, santa.y)
 
         -- rein deers
         local reindeerPos = {}
         for r = 0,3,1 do
             reindeerPos[r+1] = {
-                x = santa.posX - 350 - 120*r,
-                y = santa.posY + 40 + sin(LocalTime + r) * 10,
+                x = santa.x - 350 - 120*r,
+                y = santa.y + 40 + sin(LocalTime + r) * 10,
             }
         end
 
@@ -65,8 +70,8 @@ function OnRender(LocalTime, intraTick)
         TwRenderSetTexture(-1)
         TwRenderSetColorF4(32/255, 12/255, 0, 1)
         TwRenderDrawLine(
-            santa.posX - 205,
-            santa.posY + 36,
+            santa.x - 205,
+            santa.y + 36,
             firstRd.x,
             firstRd.y,
             10
@@ -90,10 +95,24 @@ function OnRender(LocalTime, intraTick)
             DrawReindeer(rd1.x, rd1.y)
         end
 
+        -- bag
+        local bagCore = cores[1]
+        if bagCore then
+            TwRenderSetTexture(TwGetModTexture("red_bag"))
+            TwRenderSetColorF4(1, 1, 1, 1)
+            TwRenderSetQuadSubSet(0, 0, 1, 1)
+            TwRenderQuadCentered(bagCore.x, bagCore.y-20, 150, 150)
+        end
+
+        -- sledge
         TwRenderSetTexture(TwGetModTexture("sledge"))
         TwRenderSetColorF4(1, 1, 1, 1)
         TwRenderSetQuadSubSet(0, 0, 1, 1)
-        TwRenderQuadCentered(santa.posX+6, santa.posY+36, 600, 600/4)
+        TwRenderQuadCentered(santa.x+6, santa.y+36, 600, 600/4)
+    end
+
+    if debug then
+        DebugDraw()
     end
 end
 
@@ -103,5 +122,24 @@ function OnSnap(packet, snapID)
             "float_posX",
             "float_posY",
         })
+    end
+end
+
+function OnInput(event)
+    --print(event)
+    if event.released and event.key == 112 then -- p
+        local packet = {
+            net_id = 0x1,
+            force_send_now = 1,
+        }
+        TwNetSendPacket(packet)
+    end
+
+    if event.released and event.key == 109 then -- m
+        if debug then
+            debug = false
+        else
+            debug = true
+        end
     end
 end

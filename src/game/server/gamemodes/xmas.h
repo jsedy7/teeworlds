@@ -1,9 +1,11 @@
 #pragma once
 #include <game/server/gamecontroller.h>
 #include <game/gamecore.h>
+#include <game/duck_gamecore.h>
 
 class CGameControllerXmas : public IGameController
 {
+	CDuckWorldCore m_DuckWorldCore;
 
 	bool HasEnoughPlayers() const { return true; }
 
