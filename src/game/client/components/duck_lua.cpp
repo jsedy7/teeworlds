@@ -1095,6 +1095,21 @@ int CDuckLua::NativeRenderDrawText(lua_State* L)
 	return 0;
 }
 
+/*#
+`TwRenderDrawCircle(x, y, radius)`
+
+| Draws a circle.
+
+**Parameters**
+
+* **x**: number
+* **y**: number
+* **radius**: number
+
+**Returns**
+
+* None
+#*/
 int CDuckLua::NativeRenderDrawCircle(lua_State* L)
 {
 	CheckArgumentCount(L, 3);
@@ -1107,6 +1122,23 @@ int CDuckLua::NativeRenderDrawCircle(lua_State* L)
 	return 0;
 }
 
+/*#
+`TwRenderDrawLine(image_id)`
+
+| Draws a line.
+
+**Parameters**
+
+* **x1**: number
+* **y1**: number
+* **x2**: number
+* **y2**: number
+* **thickness**: number
+
+**Returns**
+
+* None
+#*/
 int CDuckLua::NativeRenderDrawLine(lua_State* L)
 {
 	CheckArgumentCount(L, 5);

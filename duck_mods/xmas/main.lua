@@ -52,18 +52,49 @@ function OnRender(LocalTime, intraTick)
         DrawSantee(santa.posX, santa.posY)
 
         -- rein deers
+        local reindeerPos = {}
         for r = 0,3,1 do
-            DrawReindeer(santa.posX - 250 - 120*r, santa.posY + sin(LocalTime + r) * 10)
+            reindeerPos[r+1] = {
+                x = santa.posX - 350 - 120*r,
+                y = santa.posY + 40 + sin(LocalTime + r) * 10,
+            }
         end
-    end
 
-    TwRenderSetDrawSpace(2)
-    TwRenderDrawText({
-        text = "HO HO HO",
-        font_size = 50,
-        pos = {50, 50},
-        color = {1, 1, 1, 1},
-    })
+        -- reins
+        local firstRd = reindeerPos[1]
+        TwRenderSetTexture(-1)
+        TwRenderSetColorF4(32/255, 12/255, 0, 1)
+        TwRenderDrawLine(
+            santa.posX - 205,
+            santa.posY + 36,
+            firstRd.x,
+            firstRd.y,
+            10
+        )
+
+        for r = 1,3,1 do
+            local rd1 = reindeerPos[r]
+            local rd2 = reindeerPos[r+1]
+            TwRenderDrawLine(
+                rd1.x,
+                rd1.y,
+                rd2.x,
+                rd2.y,
+                10
+            )
+        end
+        
+        -- deers
+        for r = 1,4,1 do
+            local rd1 = reindeerPos[r]
+            DrawReindeer(rd1.x, rd1.y)
+        end
+
+        TwRenderSetTexture(TwGetModTexture("sledge"))
+        TwRenderSetColorF4(1, 1, 1, 1)
+        TwRenderSetQuadSubSet(0, 0, 1, 1)
+        TwRenderQuadCentered(santa.posX+6, santa.posY+36, 600, 600/4)
+    end
 end
 
 function OnSnap(packet, snapID)
