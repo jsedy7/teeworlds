@@ -1,5 +1,6 @@
 -- main mod file
 require("base.lua")
+require("draw.lua")
 
 local santa = nil
 
@@ -14,6 +15,7 @@ function OnLoad()
         score = false,
         chat = true,
         scoreboard = true,
+        weapon_cursor = false
     })
 end
 
@@ -47,14 +49,12 @@ function OnRender(LocalTime, intraTick)
 --]]
 
     if santa then
-        local plySanta = CreateBasePlayer()
+        DrawSantee(santa.posX, santa.posY)
 
-        plySanta.pos = {
-            x = santa.posX,
-            y = santa.posY,
-        }
-        
-        DrawTee(plySanta)
+        -- rein deers
+        for r = 0,3,1 do
+            DrawReindeer(santa.posX - 250 - 120*r, santa.posY + sin(LocalTime + r) * 10)
+        end
     end
 
     TwRenderSetDrawSpace(2)
