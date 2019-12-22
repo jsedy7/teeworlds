@@ -7,9 +7,16 @@
 #include <game/server/entities/character.h>
 #include <base/color.h>
 
-inline float randFloat01()
+inline float RandFloat01()
 {
 	return (random_int()%100000)/100000.f;
+}
+
+inline int RandColor()
+{
+	vec3 hsl(RandFloat01(), RandFloat01()*0.5 + 0.5f, 0.2f + RandFloat01() * 0.8f);
+	vec3 rgb = HslToRgb(hsl);
+	return 0xFF000000 | int(rgb.b * 255) << 16 | int(rgb.g * 255) << 8 | int(rgb.r * 255);
 }
 
 struct CNetObj_Santa
@@ -33,8 +40,8 @@ struct CNetObj_Present
 	enum { NET_ID = 0x3 };
 	int m_CoreID;
 	int m_Tick;
-	int m_Color1;
-	int m_Color2;
+	int m_Color[4]; // body, marking, decoration, feer & hands
+	int m_PartID[3];
 };
 
 struct CSanta
@@ -50,11 +57,11 @@ struct CSanta
 	{
 		int m_CoreUID;
 		int m_StartTick;
-		int m_Color1;
-		int m_Color2;
+		int m_Color[4]; // body, marking, decoration, feer & hands
+		int m_PartID[3];
 	};
 
-	enum { MAX_PRESENTS = 128 };
+	enum { MAX_PRESENTS = 1024 };
 	CPresent m_aPresents[MAX_PRESENTS];
 	int m_PresentCount;
 
@@ -147,8 +154,8 @@ struct CSanta
 			m_pWorld->FindCustomCoreFromUID(m_aPresents[i].m_CoreUID, &pPresent->m_CoreID);
 			pPresent->m_CoreID++; // lua index
 			pPresent->m_Tick = m_pGameServer->Server()->Tick() - m_aPresents[i].m_StartTick;
-			pPresent->m_Color1 = m_aPresents[i].m_Color1;
-			pPresent->m_Color2 = m_aPresents[i].m_Color2;
+			mem_copy(pPresent->m_Color, m_aPresents[i].m_Color, sizeof(pPresent->m_Color));
+			mem_copy(pPresent->m_PartID, m_aPresents[i].m_PartID, sizeof(pPresent->m_PartID));
 		}
 	}
 
@@ -188,13 +195,18 @@ struct CSanta
 		Explosion.m_Color = 0xFF0000FF; // red
 
 		m_pGameServer->SendDuckNetObj(Explosion, -1);
+		m_pGameServer->CreateSound(Pos, SOUND_SHOTGUN_FIRE);
+		m_pGameServer->CreateSound(Pos, SOUND_SHOTGUN_FIRE);
+		m_pGameServer->CreateSound(Pos, SOUND_SHOTGUN_FIRE);
+		m_pGameServer->CreateSound(Pos, SOUND_SHOTGUN_FIRE);
 
-		const int Radius = 30;
+		const int Radius = 20;
 		const int Size = Radius*2;
-		const int Line = 4;
-		const int Rows = 10;
+		const int Line = 6;
+		const int Rows = 14;
 
 		m_PresentCount = Line*Rows;
+		dbg_assert(m_PresentCount <= MAX_PRESENTS, "");
 
 		for(int i = 0; i < m_PresentCount; i++)
 		{
@@ -205,16 +217,22 @@ struct CSanta
 			//pCore->m_Vel = vec2(0,0);
 
 			m_aPresents[i].m_CoreUID = pCore->m_UID;
-			m_aPresents[i].m_StartTick = m_pGameServer->Server()->Tick();
+			m_aPresents[i].m_StartTick = m_pGameServer->Server()->Tick() + random_int()%(SERVER_TICK_SPEED*5);
 
-			vec3 hsl(randFloat01(), randFloat01()*0.5 + 0.5f, 0.2f + randFloat01() * 0.8f);
-			vec3 hsl2 = vec3(fmod(hsl.h + randFloat01()*0.6f + 0.2f, 1.0f), randFloat01()*0.5 + 0.5f, 0.2f + randFloat01() * 0.8f);
+			vec3 hsl(RandFloat01(), RandFloat01()*0.5 + 0.5f, 0.2f + RandFloat01() * 0.8f);
+			vec3 hsl2 = vec3(fmod(hsl.h + RandFloat01()*0.5f + 0.2f, 1.0f), RandFloat01()*0.5 + 0.5f, 0.2f + RandFloat01() * 0.8f);
 
 			vec3 rgb = HslToRgb(hsl);
 			vec3 rgb2 = HslToRgb(hsl2);
 
-			m_aPresents[i].m_Color1 = 0xFF000000 | int(rgb.b * 255) << 16 | int(rgb.g * 255) << 8 | int(rgb.r * 255);
-			m_aPresents[i].m_Color2 = 0xFF000000 | int(rgb2.b * 255) << 16 | int(rgb2.g * 255) << 8 | int(rgb2.r * 255);
+			m_aPresents[i].m_Color[0] = 0xFF000000 | int(rgb.b * 255) << 16 | int(rgb.g * 255) << 8 | int(rgb.r * 255);
+			m_aPresents[i].m_Color[1] = 0xFF000000 | int(rgb2.b * 255) << 16 | int(rgb2.g * 255) << 8 | int(rgb2.r * 255);
+			m_aPresents[i].m_Color[2] = RandColor();
+			m_aPresents[i].m_Color[3] = RandColor();
+
+			m_aPresents[i].m_PartID[0] = 1 + random_int()%15;
+			m_aPresents[i].m_PartID[1] = 1 + random_int()%50;
+			m_aPresents[i].m_PartID[2] = 1 + random_int()%15;
 		}
 	}
 };

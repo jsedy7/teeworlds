@@ -249,3 +249,11 @@ function DrawReindeer(x, y, LocalTime)
     SelectSprite({ cx = 2, cy = 1 }, 0, 0, 1, 1, true)
     TwRenderQuadCentered(antlerX+20, antlerY, antlerW, antlerH)
 end
+
+function ColorU32ToF4(color)
+    local r = bit_and(color, 0xFF) / 0xFF
+    local g = bit_and(bit_rshift(color, 8), 0xFF) / 0xFF
+    local b = bit_and(bit_rshift(color, 16), 0xFF) / 0xFF
+    local a = bit_and(bit_rshift(color, 24), 0xFF) / 0xFF
+    return { r,g,b,a }
+end

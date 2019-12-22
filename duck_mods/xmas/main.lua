@@ -6,6 +6,7 @@ local debug = false
 local localtime = false
 local explosions = {}
 local presents = {}
+local presentPopped = {}
 
 function OnLoad()
     print("Xmas");
@@ -122,36 +123,146 @@ function OnRender(LocalTime, intraTick)
         TwRenderQuadCentered(santa.x+6, santa.y+36, 600, 600/4)
     end
 
-    -- do explosions
-    for k,exp in ipairs(explosions) do
-        local size = exp.radius*2 * ExplosionSizeFunction((LocalTime - exp.tstart) * 5)
-        TwRenderSetTexture(TwGetBaseTexture(Teeworlds.IMAGE_PARTICLES))
-        TwRenderSetColorU32(exp.color)
-        TwRenderSetQuadRotation(exp.angle)
-        SelectSprite({ cx = 8, cy = 8 }, 4, 1, 2, 2)
-        TwRenderQuadCentered(exp.x, exp.y, size, size)
+    -- draw presents / skins
+    local bodyParts = {
+        "bat",
+        "bear",
+        "beaver",
+        "dog",
+        "force",
+        "fox",
+        "hippo",
+        "kitty",
+        "koala",
+        "monkey",
+        "mouse",
+        "piglet",
+        "raccoon",
+        "spiky",
+        "standard",
+    }
 
-        if size < 0 then
-            explosions[k] = nil
-        end
-    end
+    local markings = {
+        "bear",
+        "belly1",
+        "belly2",
+        "blush",
+        "bug",
+        "cammo1",
+        "cammo2",
+        "cammostripes",
+        "coonfluff",
+        "donny",
+        "downdony",
+        "duodonny",
+        "fox",
+        "hipbel",
+        "lowcross",
+        "lowpaint",
+        "marksman",
+        "mice",
+        "mixture1",
+        "mixture2",
+        "monkey",
+        "panda1",
+        "panda2",
+        "purelove",
+        "saddo",
+        "setisu",
+        "sidemarks",
+        "singu",
+        "stripe",
+        "striped",
+        "stripes",
+        "stripes2",
+        "thunder",
+        "tiger1",
+        "tiger2",
+        "toptri",
+        "triangular",
+        "tricircular",
+        "tripledon",
+        "tritri",
+        "twinbelly",
+        "twincross",
+        "twintri",
+        "uppy",
+        "warpaint",
+        "warstripes",
+        "whisker",
+        "wildpaint",
+        "wildpatch",
+        "yinyang",
+    }
 
-    TwRenderSetTexture(TwGetModTexture("present"))
+    local texPresent = TwGetModTexture("present")
     local presentSS = { cx = 3, cy = 1 }
-    for _,p in pairs(presents) do
+    for k,p in ipairs(presents) do
         local pcore = cores[p.coreID]
         if pcore then
-            TwRenderSetColorF4(1, 1, 1, 1)
-            SelectSprite(presentSS, 2, 0, 1, 1)
-            TwRenderQuadCentered(pcore.x, pcore.y, 65, 65)
+            if p.tick < 50*3 then
+                presentPopped[k] = false
+            end
+            if presentPopped[k] then
+                local ply = CreateBasePlayer()
 
-            TwRenderSetColorU32(p.color1)
-            SelectSprite(presentSS, 1, 0, 1, 1)
-            TwRenderQuadCentered(pcore.x, pcore.y, 65, 65)
+                ply.pos = {
+                    x = pcore.x,
+                    y = pcore.y + 8,
+                }
+                
+                ply.tee.textures[1] = TwGetSkinPartTexture(0, bodyParts[p.part1])
+                ply.tee.textures[2] = TwGetSkinPartTexture(1, markings[p.part2])
 
-            TwRenderSetColorU32(p.color2)
-            SelectSprite(presentSS, 0, 0, 1, 1)
-            TwRenderQuadCentered(pcore.x, pcore.y, 65, 65)
+                ply.tee.colors[1] = ColorU32ToF4(p.color1)
+                ply.tee.colors[2] = ColorU32ToF4(p.color2)
+                ply.tee.colors[3] = ColorU32ToF4(p.color3)
+                ply.tee.colors[4] = ColorU32ToF4(p.color4)
+                ply.tee.colors[5] = ply.tee.colors[4]
+
+                local angle = k/10 * pi
+                ply.dir.x = cos(angle)
+                ply.dir.y = cos(angle)
+
+                if floor(p.tick/50 * 5) % 16 == 0 then
+                    ply.emote = 5
+                end -- blink
+
+                DrawTee(ply)
+            else
+                local pry = pcore.y - 8
+                TwRenderSetTexture(texPresent)
+                TwRenderSetColorF4(1, 1, 1, 1)
+                SelectSprite(presentSS, 2, 0, 1, 1)
+                TwRenderQuadCentered(pcore.x, pry, 65, 65)
+
+                TwRenderSetColorU32(p.color1)
+                SelectSprite(presentSS, 1, 0, 1, 1)
+                TwRenderQuadCentered(pcore.x, pry, 65, 65)
+
+                TwRenderSetColorU32(p.color2)
+                SelectSprite(presentSS, 0, 0, 1, 1)
+                TwRenderQuadCentered(pcore.x, pry, 65, 65)
+
+                if p.tick > 50*3 then
+                    TwPlaySoundAt("pop", pcore.x, pry)
+                    presentPopped[k] = true
+                end
+            end
+        end
+
+        -- do explosions
+        for k,exp in ipairs(explosions) do
+            local size = exp.radius*2 * ExplosionSizeFunction((LocalTime - exp.tstart) * 4)
+            TwRenderSetTexture(TwGetBaseTexture(Teeworlds.IMAGE_PARTICLES))
+            TwRenderSetColorU32(exp.color)
+            TwRenderSetQuadRotation(exp.angle)
+            SelectSprite({ cx = 8, cy = 8 }, 4, 1, 2, 2)
+            TwRenderQuadCentered(exp.x, exp.y, size, size)
+
+            if size < 0 then
+                explosions[k] = nil
+            end
         end
     end
 
@@ -173,6 +284,11 @@ function OnSnap(packet, snapID)
             "i32_tick",
             "i32_color1",
             "i32_color2",
+            "i32_color3",
+            "i32_color4",
+            "i32_part1",
+            "i32_part2",
+            "i32_part3",
         })
 
         presents[snapID+1] = p
@@ -223,6 +339,7 @@ function OnInput(event)
         TwNetSendPacket(packet)
         -- reset
         presents = {}
+        presentPopped = {}
     end
 
     if event.released and event.key == 109 then -- m
