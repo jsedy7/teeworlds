@@ -107,7 +107,7 @@ struct CSanta
 		pSantaCore->m_Vel = vec2(-10, 0);
 		pBagCore->m_PlgUID = m_PlgFlyUID;
 
-		m_BagHealth = 5;
+		m_BagHealth = 3;
 
 		for(int i = 0; i < m_PresentCount; i++)
 		{

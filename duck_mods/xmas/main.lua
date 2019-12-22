@@ -17,7 +17,7 @@ function OnLoad()
         time = false,
         killfeed = false,
         score = false,
-        chat = true,
+        chat = false,
         scoreboard = true,
         weapon_cursor = false
     })
@@ -222,7 +222,7 @@ function OnRender(LocalTime, intraTick)
 
                 local angle = k/10 * pi
                 ply.dir.x = cos(angle)
-                ply.dir.y = cos(angle)
+                ply.dir.y = sin(angle)
 
                 if floor(p.tick/50 * 5) % 16 == 0 then
                     ply.emote = 5
