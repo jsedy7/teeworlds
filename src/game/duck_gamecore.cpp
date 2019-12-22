@@ -31,6 +31,7 @@ void CDuckWorldCore::Init(CWorldCore *pBaseWorldCore, CDuckCollision *pDuckColli
 
 	m_aCustomCores.hint_size(256);
 	m_aJoints.hint_size(1024);
+	m_aPhysicsLawsGroups.hint_size(64);
 }
 
 void CDuckWorldCore::Reset()

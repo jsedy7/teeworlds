@@ -188,7 +188,10 @@ static void TableToStr(lua_State *L, char* pStr, int MaxLen)
 
 			size_t Len;
 			const char* pVal = lua_tolstring(L, -1, &Len);
-			APPEND(pVal, Len);
+			if(pVal)
+			{
+				APPEND(pVal, Len);
+			}
 
 			if(IsString)
 				APPEND("\"", 1);
