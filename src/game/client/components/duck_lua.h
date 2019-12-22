@@ -56,6 +56,11 @@ class CDuckLua
 	static int NativeFmod(lua_State *L);
 	static int NativeAbs(lua_State *L);
 
+	static int NativeAnd(lua_State *L);
+	static int NativeOr(lua_State *L);
+	static int NativeLShift(lua_State *L);
+	static int NativeRShift(lua_State *L);
+
 	static int NativeRenderQuad(lua_State *L);
 	static int NativeRenderQuadCentered(lua_State *L);
 	static int NativeRenderSetColorU32(lua_State *L);
