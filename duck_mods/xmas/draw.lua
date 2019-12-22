@@ -196,7 +196,7 @@ function DrawSantee(x, y)
     TwRenderQuadCentered(x, y-2, baseSize*1.1, baseSize*1.1)
 end
 
-function DrawReindeer(x, y)
+function DrawReindeer(x, y, LocalTime)
     local rdPly = CreateBasePlayer()
 
     rdPly.pos = {
@@ -213,6 +213,13 @@ function DrawReindeer(x, y)
     rdPly.tee.colors[2] = { 1, 0, 0, 1 }
     rdPly.tee.colors[5] = { 88/255, 52/255, 14/255, 1 }
     rdPly.tee.colors[6] = { 169/255, 51/255, 0, 1 }
+
+    local s = sin(LocalTime*4)
+    rdPly.anim.frontFoot.x = 3
+    rdPly.anim.frontFoot.y = rdPly.anim.frontFoot.y - s * 4 + 2
+    rdPly.anim.frontFoot.angle = -0.1 + s * 0.03
+    rdPly.anim.backFoot.y = rdPly.anim.backFoot.y - s * 4 + 2
+    rdPly.anim.backFoot.angle = -0.1 + s * 0.03
 
     local texAntler = TwGetModTexture("antler")
     local antlerX = rdPly.pos.x

@@ -16,4 +16,6 @@ public:
 	virtual void Tick();
 	virtual void Snap(int SnappingClient);
 	virtual void OnDuckMessage(int MsgID, CUnpacker *pUnpacker, int ClientID);
+
+	void OnCharacterHammerHit(vec2 Pos);
 };

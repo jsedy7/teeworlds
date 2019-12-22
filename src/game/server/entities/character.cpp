@@ -7,6 +7,8 @@
 #include <game/server/gamecontroller.h>
 #include <game/server/player.h>
 
+#include <game/server/gamemodes/xmas.h>
+
 #include "character.h"
 #include "laser.h"
 #include "projectile.h"
@@ -335,6 +337,8 @@ void CCharacter::FireWeapon()
 			// if we Hit anything, we have to wait for the reload
 			if(Hits)
 				m_ReloadTimer = Server()->TickSpeed()/3;
+
+			((CGameControllerXmas*)GameServer()->m_pController)->OnCharacterHammerHit(ProjStartPos);
 
 		} break;
 
