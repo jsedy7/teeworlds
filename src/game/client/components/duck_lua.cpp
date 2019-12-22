@@ -403,6 +403,42 @@ int CDuckLua::NativeAbs(lua_State *L)
 	return 1;
 }
 
+int CDuckLua::NativeAnd(lua_State *L)
+{
+	CheckArgumentCount(L, 2);
+	int64 a = lua_tointeger(L, 1);
+	int64 b = lua_tointeger(L, 2);
+	lua_pushinteger(L, a & b);
+	return 1;
+}
+
+int CDuckLua::NativeOr(lua_State *L)
+{
+	CheckArgumentCount(L, 2);
+	int64 a = lua_tointeger(L, 1);
+	int64 b = lua_tointeger(L, 2);
+	lua_pushinteger(L, a | b);
+	return 1;
+}
+
+int CDuckLua::NativeLShift(lua_State *L)
+{
+	CheckArgumentCount(L, 2);
+	int64 a = lua_tointeger(L, 1);
+	int64 b = max(0LL, lua_tointeger(L, 2));
+	lua_pushinteger(L, a << b);
+	return 1;
+}
+
+int CDuckLua::NativeRShift(lua_State *L)
+{
+	CheckArgumentCount(L, 2);
+	int64 a = lua_tointeger(L, 1);
+	int64 b = max(0LL, lua_tointeger(L, 2));
+	lua_pushinteger(L, a >> b);
+	return 1;
+}
+
 /*#
 `TwRenderQuad(x, y, width, height)`
 
@@ -2996,6 +3032,10 @@ void CDuckLua::ResetLuaState()
 	REGISTER_FUNC_PLAIN(Floor, floor);
 	REGISTER_FUNC_PLAIN(Fmod, fmod);
 	REGISTER_FUNC_PLAIN(Abs, abs);
+	REGISTER_FUNC_PLAIN(And, bit_and);
+	REGISTER_FUNC_PLAIN(Or, bit_or);
+	REGISTER_FUNC_PLAIN(LShift, bit_lshift);
+	REGISTER_FUNC_PLAIN(RShift, bit_rshift);
 
 	REGISTER_FUNC(RenderQuad, 4);
 	REGISTER_FUNC(RenderQuadCentered, 4);
