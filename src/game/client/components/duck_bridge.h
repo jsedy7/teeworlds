@@ -11,10 +11,6 @@
 #include <game/client/animstate.h>
 #include <generated/protocol.h>
 
-#ifdef DUCK_JS_BACKEND
-#include "duck_js.h"
-#endif
-
 #ifdef DUCK_LUA_BACKEND
 #include "duck_lua.h"
 #endif
@@ -453,3 +449,5 @@ inline uint32_t hash_fnv1a(const void* pData, int DataSize)
 	}
 	return Hash;
 }
+
+bool HttpRequestPage(const char* pUrl, CGrowBuffer* pHttpBuffer);

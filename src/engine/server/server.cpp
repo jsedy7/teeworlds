@@ -1822,11 +1822,6 @@ void CServer::SnapSetStaticsize(int ItemType, int Size)
 	m_SnapshotDelta.SetStaticsize(ItemType, Size);
 }
 
-#ifdef DUCK_JS_BACKEND
-#define MAIN_SCRIPT_FILE "main.js"
-#define SCRIPTFILE_EXT ".js"
-#endif
-
 #ifdef DUCK_LUA_BACKEND
 #define MAIN_SCRIPT_FILE "main.lua"
 #define SCRIPTFILE_EXT ".lua"

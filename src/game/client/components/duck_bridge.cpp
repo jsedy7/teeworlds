@@ -1,7 +1,6 @@
 #include <float.h>
 
 #include "duck_bridge.h"
-#include "duck_js.h"
 
 #include <game/client/animstate.h>
 #include <game/client/render.h>
@@ -23,11 +22,6 @@
 #include <engine/shared/compression.h>
 
 #include <zip.h>
-
-#ifdef DUCK_JS_BACKEND
-#define MAIN_SCRIPT_FILE "main.js"
-#define SCRIPTFILE_EXT ".js"
-#endif
 
 #ifdef DUCK_LUA_BACKEND
 #define MAIN_SCRIPT_FILE "main.lua"
