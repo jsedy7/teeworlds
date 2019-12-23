@@ -1,0 +1,41 @@
+Every player has the same weapon:
+"Charge beam weapon name McDuck"
+
+Able to press the fire button to charge the weapon (up to 100%).
+Like a laser, with no bounce. More charge == more power.
+If aimed at a surface, self propel instead (like instashield lasers). # Or maybe always self-propel? Could be interesting to test out.
+When hitting an enemy, does 1 damage, push enemy in the direction of the beam.
+More power == larger beam, more propulsion.
+
+Each player has a rechargeable shield. # Visible shield bubble
+Blocks 1 damage. # Should it block beam push as well?
+Recharges after X seconds. Let's say 5.
+
+Each player has 1 health.
+When a player's health reaches 0, becomes "stunned".
+Stunned == extremely slowed down, no hook, no shooting, no jump. # Electrified effect
+Stun status lasts X seconds. Try 2-3s at first.
+
+There is a ball and 2 goals, one for each team. Goal could be a circle.
+
+The ball.
+Is not subjected to gravity.
+Bounces on walls.
+Friction with air/walls. So it decelerates all the time and additionally when bouncing on walls.
+
+When a player touches the ball, he "grabs" it.
+The ball enter its "Charge beam weapon name McDuck". # Visually changes to indicate the player has the ball.
+The weapon then changes functionality.
+Firing it launches the ball. More power == more ball speed.
+The weapon reverts back to laser beam after the player shoots the ball.
+
+The ball can be shot by laser beams to alter its course.
+
+If a player is shot with the ball while his shield is down, the ball shoots automatically. # Speed will have to be tinkered with here.
+
+When the ball touches a goal, the opposing team gains a point, the game states then resets.
+
+The game starts with the ball in the center (or wherever the map designer put it).
+Players all spawn and are frozen and invulnerable. Hook is possible, as well as shooting.
+A countdown starts. 5..4..3..2..1..0.
+All players become no longer frozen / invulnerable, the game begins.
