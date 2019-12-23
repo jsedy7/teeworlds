@@ -425,7 +425,7 @@ int CDuckLua::NativeLShift(lua_State *L)
 {
 	CheckArgumentCount(L, 2);
 	int64 a = lua_tointeger(L, 1);
-	int64 b = max(0LL, lua_tointeger(L, 2));
+	int64 b = max(0LL, (long long int)lua_tointeger(L, 2));
 	lua_pushinteger(L, a << b);
 	return 1;
 }
@@ -434,7 +434,7 @@ int CDuckLua::NativeRShift(lua_State *L)
 {
 	CheckArgumentCount(L, 2);
 	int64 a = lua_tointeger(L, 1);
-	int64 b = max(0LL, lua_tointeger(L, 2));
+	int64 b = max(0LL, (long long int)lua_tointeger(L, 2));
 	lua_pushinteger(L, a >> b);
 	return 1;
 }
