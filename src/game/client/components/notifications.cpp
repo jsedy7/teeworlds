@@ -7,6 +7,7 @@
 
 #include <game/client/gameclient.h>
 #include <game/client/render.h>
+#include <game/client/components/sounds.h>
 
 #include "notifications.h"
 
@@ -69,4 +70,22 @@ void CNotifications::RenderSoundNotification()
 void CNotifications::OnRender()
 {
 	RenderSoundNotification();
+}
+
+void CNotifications::OnMessage(int MsgType, void *pRawMsg)
+{
+	if(MsgType == NETMSGTYPE_SV_CHECKPOINT)
+	{
+		CNetMsg_Sv_Checkpoint *pMsg = (CNetMsg_Sv_Checkpoint *)pRawMsg;
+		if(pMsg->m_Diff < 0)
+		{
+			m_pClient->m_pSounds->Play(CSounds::CHN_GUI, SOUND_RACE_CHECKPOINT_SLOW, 0);
+			dbg_msg("race", "CHEEEEEEEECKPOOOOOINT SLOOOOW");
+		}
+		else
+		{
+			m_pClient->m_pSounds->Play(CSounds::CHN_GUI, SOUND_RACE_CHECKPOINT_FAST, 0);
+			dbg_msg("race", "CHEEEEEEEECKPOOOOOINT FAAAAST");
+		}
+	}
 }

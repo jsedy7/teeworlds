@@ -201,7 +201,24 @@ int CMenus::DoButton_Menu(CButtonContainer *pBC, const char *pText, int Checked,
 		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 		TextRender()->TextOutlineColor(0.0f, 0.0f, 0.0f, 0.3f);
 	}
-	return UI()->DoButtonLogic(pBC->GetID(), pText, Checked, pRect);
+
+	const void* pLastActiveItem = UI()->GetActiveItem();
+
+	int Logic = UI()->DoButtonLogic(pBC->GetID(), pText, Checked, pRect);
+
+	if(UI()->NextHotItem() == pBC->GetID() && UI()->NextHotItem() != UI()->HotItem())
+	{
+		m_pClient->m_pSounds->Play(CSounds::CHN_GUI, SOUND_BUTTON_HOVER, 1);
+		dbg_msg("ui", "HOOOOOOOOOOOVEEEEEEEEEEEEEEEEEEEER");
+	}
+
+	if(UI()->GetActiveItem() == pBC->GetID() && pLastActiveItem != pBC->GetID())
+	{
+		m_pClient->m_pSounds->Play(CSounds::CHN_GUI, SOUND_BUTTON_CLICK, 0);
+		dbg_msg("ui", "CLIIIIIIIICK");
+	}
+
+	return Logic;
 }
 
 void CMenus::DoButton_KeySelect(CButtonContainer *pBC, const char *pText, int Checked, const CUIRect *pRect)
