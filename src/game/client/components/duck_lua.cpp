@@ -233,6 +233,16 @@ int CDuckLua::NativePrint(lua_State *L)
 		return 0;
 	}
 
+    if(lua_isboolean(L, 1))
+    {
+        bool b = lua_toboolean(L, 1);
+        if(b)
+            This()->PrintToConsole("true", 4);
+        else
+            This()->PrintToConsole("false", 5);
+        return 0;
+    }
+
 	const char* pStr = lua_tostring(L, 1);
 	if(!pStr)
 		return 0;
@@ -3585,7 +3595,7 @@ bool CDuckLua::OnBind(int Stroke, const char *pCmd)
     if(GetFunctionRef(OnBind))
     {
         lua_pushstring(L(), pCmd);
-        lua_pushboolean(L(), Stroke == 0); // pressed
+        lua_pushboolean(L(), int(Stroke == 1)); // pressed
 
         CallFunction(2, 1);
 
