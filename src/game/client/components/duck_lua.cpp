@@ -3439,7 +3439,8 @@ void CDuckLua::OnModLoaded()
 	SEARCH_FUNCTION(OnInput);
 	SEARCH_FUNCTION(OnRender);
 	SEARCH_FUNCTION(OnRenderPlayer);
-	SEARCH_FUNCTION(OnUpdate);
+    SEARCH_FUNCTION(OnUpdate);
+    SEARCH_FUNCTION(OnBind);
 
 #undef SEARCH_FUNCTION
 
@@ -3576,7 +3577,24 @@ bool CDuckLua::OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2
 		return r;
 	}
 
-	return false;
+    return false;
+}
+
+bool CDuckLua::OnBind(int Stroke, const char *pCmd)
+{
+    if(GetFunctionRef(OnBind))
+    {
+        lua_pushstring(L(), pCmd);
+        lua_pushboolean(L(), Stroke == 0); // pressed
+
+        CallFunction(2, 1);
+
+        bool r = lua_toboolean(L(), -1);
+        lua_pop(L(), 1);
+        return r;
+    }
+
+    return false;
 }
 
 void CDuckLua::OnRender(float LocalTime, float IntraGameTick)

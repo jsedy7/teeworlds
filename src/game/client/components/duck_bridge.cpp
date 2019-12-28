@@ -1679,7 +1679,12 @@ void CDuckBridge::OnUpdatePlayer(const CNetObj_Character *pPrevChar, const CNetO
 		IGraphics::CQuadItem QuadItem(Position.x, Position.y - 23 - 32*h, 64, 64*h);
 		Graphics()->QuadsDraw(&QuadItem, 1);
 		Graphics()->QuadsEnd();
-	}
+    }
+}
+
+bool CDuckBridge::OnBind(int Stroke, const char *pCmd)
+{
+    return m_Backend.OnBind(Stroke, pCmd);
 }
 
 bool CDuckBridge::IsModAlreadyInstalled(const SHA256_DIGEST *pModSha256)
