@@ -5,13 +5,12 @@
 
 class CGameControllerXmas : public IGameController
 {
-	CDuckWorldCore m_DuckWorldCore;
-
 	bool HasEnoughPlayers() const { return true; }
 
 public:
 	CGameControllerXmas(class CGameContext *pGameServer);
 
+	virtual void OnReset();
 	virtual void OnPlayerConnect(CPlayer* pPlayer);
 	virtual void Tick();
 	virtual void Snap(int SnappingClient);

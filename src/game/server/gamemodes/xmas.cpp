@@ -65,9 +65,9 @@ struct CSanta
 	CPresent m_aPresents[MAX_PRESENTS];
 	int m_PresentCount;
 
-	void Init(CDuckWorldCore* pWorld, CGameContext* pGameServer)
+	void Init(CGameContext* pGameServer)
 	{
-		m_pWorld = pWorld;
+		m_pWorld = &pGameServer->m_World.m_DuckCore;
 		m_pGameServer = pGameServer;
 
 		CCustomCore* pBagCore = m_pWorld->AddCustomCore(50);
@@ -251,10 +251,12 @@ CGameControllerXmas::CGameControllerXmas(class CGameContext *pGameServer)
 		dbg_msg("server", "failed to load duck mod");
 	}
 
-	CDuckCollision* pCollision = (CDuckCollision*)GameServer()->Collision();
-	m_DuckWorldCore.Init(&GameServer()->m_World.m_Core, pCollision);
+	santa.Init(GameServer());
+}
 
-	santa.Init(&m_DuckWorldCore, GameServer());
+void CGameControllerXmas::OnReset()
+{
+	santa.Init(GameServer());
 }
 
 void CGameControllerXmas::OnPlayerConnect(CPlayer* pPlayer)
@@ -264,15 +266,12 @@ void CGameControllerXmas::OnPlayerConnect(CPlayer* pPlayer)
 void CGameControllerXmas::Tick()
 {
 	IGameController::Tick();
-
-	m_DuckWorldCore.Tick();
 	santa.Tick();
 }
 
 void CGameControllerXmas::Snap(int SnappingClient)
 {
 	IGameController::Snap(SnappingClient);
-	m_DuckWorldCore.Snap(GameServer(), SnappingClient);
 	santa.Snap(GameServer(), SnappingClient);
 }
 
