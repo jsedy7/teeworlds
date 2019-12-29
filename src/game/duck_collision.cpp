@@ -6,6 +6,11 @@
 
 const float MinStaticPhysSize = 30; // actually the smallest boject right now is a map tile (32 x 32)
 
+void CDuckCollision::Init(CLayers *pLayers)
+{
+	CCollision::Init(pLayers);
+}
+
 void CDuckCollision::SetTileCollisionFlags(int Tx, int Ty, int Flags)
 {
 	if(!(Tx >= 0 && Tx < m_Width) || !(Ty >= 0 && Ty < m_Height))

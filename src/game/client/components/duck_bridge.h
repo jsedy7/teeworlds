@@ -85,7 +85,7 @@ struct CDuckBridge : public CComponent
 			GAME_FOREGROUND,
 			HUD,
 			PLAYER,
-			PLAYER_END = MAX_CLIENTS-1,
+			PLAYER_END = PLAYER + MAX_CLIENTS-1,
 			_COUNT
 		};
 	};

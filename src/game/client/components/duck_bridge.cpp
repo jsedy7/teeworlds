@@ -118,6 +118,12 @@ void CDuckBridge::Reset()
 	m_MousePos = vec2(Graphics()->ScreenWidth() * 0.5, Graphics()->ScreenHeight() * 0.5);
 	m_IsMenuModeActive = false;
 	m_DoUnloadModBecauseError = false;
+
+	for(int i = 0; i < DrawSpace::_COUNT; i++)
+	{
+		m_aRenderCmdList[i].hint_size(1024);
+		m_aRenderCmdList[i].set_size(0);
+	}
 }
 
 void CDuckBridge::QueueSetColor(const float* pColor)
@@ -790,6 +796,8 @@ bool CDuckBridge::RenderSetDrawSpace(int Space)
 
 void CDuckBridge::RenderDrawSpace(int Space)
 {
+	dbg_assert(Space >=0 && Space < DrawSpace::_COUNT, "Space is out of bounds");
+
 	const int CmdCount = m_aRenderCmdList[Space].size();
 	const CRenderCmd* aCmds = m_aRenderCmdList[Space].base_ptr();
 
