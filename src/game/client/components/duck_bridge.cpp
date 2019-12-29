@@ -1,7 +1,6 @@
 #include <float.h>
 
 #include "duck_bridge.h"
-#include "duck_js.h"
 
 #include <game/client/animstate.h>
 #include <game/client/render.h>
@@ -23,11 +22,6 @@
 #include <engine/shared/compression.h>
 
 #include <zip.h>
-
-#ifdef DUCK_JS_BACKEND
-#define MAIN_SCRIPT_FILE "main.js"
-#define SCRIPTFILE_EXT ".js"
-#endif
 
 #ifdef DUCK_LUA_BACKEND
 #define MAIN_SCRIPT_FILE "main.lua"
@@ -1685,7 +1679,12 @@ void CDuckBridge::OnUpdatePlayer(const CNetObj_Character *pPrevChar, const CNetO
 		IGraphics::CQuadItem QuadItem(Position.x, Position.y - 23 - 32*h, 64, 64*h);
 		Graphics()->QuadsDraw(&QuadItem, 1);
 		Graphics()->QuadsEnd();
-	}
+    }
+}
+
+bool CDuckBridge::OnBind(int Stroke, const char *pCmd)
+{
+    return m_Backend.OnBind(Stroke, pCmd);
 }
 
 bool CDuckBridge::IsModAlreadyInstalled(const SHA256_DIGEST *pModSha256)

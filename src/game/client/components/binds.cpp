@@ -4,6 +4,8 @@
 #include <engine/shared/config.h>
 #include "binds.h"
 
+#include <game/client/components/duck_bridge.h>
+
 const int CBinds::s_aaDefaultBindKeys[][2] = {
 	{KEY_F1, 0}, {KEY_F2, 0}, {KEY_TAB, 0}, {'e', 0}, {'u', 0}, {KEY_F10, 0}, {'s', CBinds::MODIFIER_CTRL},
 	{'a', 0}, {'d', 0},
@@ -132,6 +134,8 @@ bool CBinds::OnInput(IInput::CEvent Event)
 	}
 
 	bool rtn = false;
+    int Modifier, Stroke;
+
 	if(Event.m_Flags&IInput::FLAG_PRESS)
 	{
 		for(int m = 0; m < MODIFIER_COUNT; m++)
@@ -165,13 +169,15 @@ bool CBinds::OnInput(IInput::CEvent Event)
 						continue;
 				}
 
-				Console()->ExecuteLineStroked(1, m_aaaKeyBindings[Event.m_Key][m]);
+                Stroke = 1;
+                Modifier = m;
 				rtn = true;
 				break;		// always stop after triggering a +xxx bind
 			}
 			if((Mask&(1 << m)) && m_aaaKeyBindings[Event.m_Key][m][0])
 			{
-				Console()->ExecuteLineStroked(1, m_aaaKeyBindings[Event.m_Key][m]);
+                Stroke = 1;
+                Modifier = m;
 				rtn = true;
 			}
 		}
@@ -183,11 +189,25 @@ bool CBinds::OnInput(IInput::CEvent Event)
 		{
 			if(m_aaaKeyBindings[Event.m_Key][m][0])
 			{
-				Console()->ExecuteLineStroked(0, m_aaaKeyBindings[Event.m_Key][m]);
+                Stroke = 0;
+                Modifier = m;
 				rtn = true;
 			}
 		}
 	}
+
+    if(rtn)
+    {
+        if(m_pClient->DuckBridge()->IsLoaded())
+        {
+            bool Skip = m_pClient->DuckBridge()->OnBind(Stroke, m_aaaKeyBindings[Event.m_Key][Modifier]);
+            if(Skip)
+                return false;
+        }
+
+        Console()->ExecuteLineStroked(Stroke, m_aaaKeyBindings[Event.m_Key][Modifier]);
+    }
+
 	return rtn;
 }
 

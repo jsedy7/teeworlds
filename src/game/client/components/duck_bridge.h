@@ -11,10 +11,6 @@
 #include <game/client/animstate.h>
 #include <generated/protocol.h>
 
-#ifdef DUCK_JS_BACKEND
-#include "duck_js.h"
-#endif
-
 #ifdef DUCK_LUA_BACKEND
 #include "duck_lua.h"
 #endif
@@ -414,6 +410,7 @@ struct CDuckBridge : public CComponent
 	void OnNewSnapshot();
 	bool OnRenderPlayer(const CNetObj_Character *pPrevChar, const CNetObj_Character *pPlayerChar, const CNetObj_PlayerInfo *pPrevInfo, const CNetObj_PlayerInfo *pPlayerInfo, int ClientID);
 	void OnUpdatePlayer(const CNetObj_Character *pPrevChar, const CNetObj_Character *pPlayerChar, const CNetObj_PlayerInfo *pPrevInfo, const CNetObj_PlayerInfo *pPlayerInfo, int ClientID);
+    bool OnBind(int Stroke, const char* pCmd);
 
 	// mod installation
 	bool IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256);
@@ -453,3 +450,5 @@ inline uint32_t hash_fnv1a(const void* pData, int DataSize)
 	}
 	return Hash;
 }
+
+bool HttpRequestPage(const char* pUrl, CGrowBuffer* pHttpBuffer);
