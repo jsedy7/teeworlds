@@ -19,6 +19,7 @@ class CEntity
 private:
 	/* Friend classes */
 	friend class CGameWorld; // for entity list handling
+	friend class CDuckGameWorld; // for entity list handling
 
 	/* Identity */
 	class CGameWorld *m_pGameWorld;

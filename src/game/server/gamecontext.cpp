@@ -1499,7 +1499,6 @@ void CGameContext::OnInit()
 
 	m_Layers.Init(Kernel());
 	m_Collision.Init(&m_Layers);
-	m_DuckCollision.Init(&m_Layers); // DUCK
 
 	// select gametype
 	m_pController = new CGameControllerXmas(this);

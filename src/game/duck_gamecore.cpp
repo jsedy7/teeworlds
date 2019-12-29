@@ -36,12 +36,14 @@ void CDuckWorldCore::Init(CWorldCore *pBaseWorldCore, CDuckCollision *pDuckColli
 
 void CDuckWorldCore::Reset()
 {
-	m_aCustomCores.clear();
+	m_aCustomCores.set_size(0); // clear
 
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		m_aBaseCoreExtras[i].Reset();
 	}
+
+	m_NextUID = 0;
 }
 
 void CDuckWorldCore::Tick()
@@ -57,8 +59,8 @@ void CDuckWorldCore::Tick()
 		Joint_Tick(&m_aJoints[i]);
 	}
 
-	// base characters will Tick() and Move() before
-	// TODO: we need to tick before Move() somehow
+	// base characters will Tick() before
+	// TODO: make it after
 
 	CCharacterCore** aBaseCores = m_pBaseWorldCore->m_apCharacters;
 
@@ -75,6 +77,11 @@ void CDuckWorldCore::Tick()
 			continue;
 		CustomCore_Tick(&m_aCustomCores[i]);
 	}
+}
+
+void CDuckWorldCore::TickDefered()
+{
+	const int CoreCount = m_aCustomCores.size();
 
 	for(int i = 0; i < CoreCount; i++)
 	{
