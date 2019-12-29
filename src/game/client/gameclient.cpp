@@ -1503,7 +1503,8 @@ void CGameClient::OnPredict()
 	}
 
 	CDuckWorldCore DuckWorld;
-	if(m_pDuckBridge->IsLoaded())
+	const bool IsDuckLoaded = m_pDuckBridge->IsLoaded();
+	if(IsDuckLoaded)
 	{
 		DuckWorld.Init(&World, &m_pDuckBridge->m_Collision);
 
@@ -1572,6 +1573,11 @@ void CGameClient::OnPredict()
 				World.m_apCharacters[c]->Tick(false);
 		}
 
+		if(IsDuckLoaded)
+		{
+			DuckWorld.Tick();
+		}
+
 		//m_pDuckBridge->CharacterCorePostTick(World.m_apCharacters);
 
 		// move all players and quantize their data
@@ -1584,12 +1590,10 @@ void CGameClient::OnPredict()
 			World.m_apCharacters[c]->Quantize();
 		}
 
-		if(m_pDuckBridge->IsLoaded())
+		if(IsDuckLoaded)
 		{
-			DuckWorld.Tick();
+			DuckWorld.TickDefered();
 		}
-
-		//m_pDuckBridge->Predict(&World);
 
 		// check if we want to trigger effects
 		if(Tick > m_LastNewPredictedTick)

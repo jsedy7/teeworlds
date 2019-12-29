@@ -111,7 +111,6 @@ void CDuckBridge::Reset()
 			pSkins->RemoveSkinPart(spn.m_Type, Index);
 	}
 	m_aSkinPartsToUnload.clear();
-	m_Collision.Reset();
 
 	// FIXME: unload sounds
 	m_aSounds.clear();
