@@ -11,7 +11,7 @@
 #include <game/duck_collision.h>
 
 #include "eventhandler.h"
-#include "gameworld.h"
+#include "duck_gameworld.h"
 
 /*
 	Tick
@@ -39,10 +39,9 @@ class CGameContext : public IGameServer
 	IServer *m_pServer;
 	class IConsole *m_pConsole;
 	CLayers m_Layers;
-	CCollision m_Collision;
+	CDuckCollision m_Collision;
 	CNetObjHandler m_NetObjHandler;
 	CTuningParams m_Tuning;
-	CDuckCollision m_DuckCollision;
 
 	static void ConTuneParam(IConsole::IResult *pResult, void *pUserData);
 	static void ConTuneReset(IConsole::IResult *pResult, void *pUserData);
@@ -73,7 +72,7 @@ class CGameContext : public IGameServer
 public:
 	IServer *Server() const { return m_pServer; }
 	class IConsole *Console() { return m_pConsole; }
-	CCollision *Collision() { return &m_DuckCollision; }
+	CDuckCollision *Collision() { return &m_Collision; }
 	CTuningParams *Tuning() { return &m_Tuning; }
 
 	CGameContext();
@@ -85,7 +84,7 @@ public:
 	class CPlayer *m_apPlayers[MAX_CLIENTS];
 
 	class IGameController *m_pController;
-	CGameWorld m_World;
+	CDuckGameWorld m_World;
 
 	// helper functions
 	class CCharacter *GetPlayerChar(int ClientID);

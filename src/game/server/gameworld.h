@@ -146,6 +146,8 @@ public:
 
 	*/
 	void Tick();
+
+	friend class CDuckGameWorld;
 };
 
 #endif

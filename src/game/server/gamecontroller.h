@@ -165,7 +165,7 @@ public:
 	void OnPlayerInfoChange(class CPlayer *pPlayer);
 	void OnPlayerReadyChange(class CPlayer *pPlayer);
 
-	void OnReset();
+	virtual void OnReset();
 
 	virtual void OnDuckMessage(int MsgID, CUnpacker *pUnpacker, int ClientID) {}
 

@@ -237,9 +237,11 @@ struct CDuckWorldCore
 	array<CDuckPhysJoint> m_aJoints;
 	int m_NextUID;
 
-	void Init(CWorldCore* pBaseWorldCore, CDuckCollision* pDuckCollison);
+	void Init(CWorldCore* pBaseWorldCore, CDuckCollision *pDuckCollison);
 	void Reset();
 	void Tick();
+	void TickDefered();
+
 	void CharacterCore_ExtraTick(CCharacterCore* pThis, CCharCoreExtra *pThisExtra, bool UseInput);
 	void CustomCore_Tick(CCustomCore *pThis);
 	void CustomCore_Move(CCustomCore *pThis);
