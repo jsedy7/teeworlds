@@ -48,7 +48,7 @@ void CGameControllerExamplePhys2::FlipSolidRect(float Rx, float Ry, float Rw, fl
 	Flip.w = Rw;
 	Flip.h = Rh;
 
-	CDuckCollision* pCollision = (CDuckCollision*)GameServer()->Collision();
+	CDuckCollision* pCollision = GameServer()->Collision();
 
 	if(Solid)
 	{

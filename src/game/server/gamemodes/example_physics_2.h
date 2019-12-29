@@ -25,5 +25,5 @@ public:
 	CGameControllerExamplePhys2(class CGameContext *pGameServer);
 
 	virtual void Tick();
-	void OnPlayerConnect(class CPlayer *pPlayer);
+	virtual void OnPlayerConnect(class CPlayer *pPlayer);
 };

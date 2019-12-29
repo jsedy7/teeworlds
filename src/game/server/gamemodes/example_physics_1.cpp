@@ -18,31 +18,7 @@ CGameControllerExamplePhys1::CGameControllerExamplePhys1(class CGameContext *pGa
 		dbg_msg("server", "failed to load duck mod");
 	}
 
-	CDuckCollision* pCollision = (CDuckCollision*)GameServer()->Collision();
-	m_DuckWorldCore.Init(&GameServer()->m_World.m_Core, pCollision);
-
-	CPhysicsLawsGroup* pPlg = m_DuckWorldCore.AddPhysicLawsGroup();
-	pPlg->m_AirFriction = 1.0;
-	pPlg->m_GroundFriction = 1.0;
-
-	CCustomCore* pTestCore1 = m_DuckWorldCore.AddCustomCore(40);
-	pTestCore1->SetPhysicLawGroup(pPlg);
-	pTestCore1->m_Pos = vec2(500, 280);
-
-	CCustomCore* pTestCore2 = m_DuckWorldCore.AddCustomCore(30);
-	pTestCore2->SetPhysicLawGroup(pPlg);
-	pTestCore2->m_Pos = vec2(300, 280);
-
-	CCustomCore* pTestCore3 = m_DuckWorldCore.AddCustomCore(30);
-	pTestCore3->SetPhysicLawGroup(pPlg);
-	pTestCore3->m_Pos = vec2(400, 280);
-
-	CDuckPhysJoint Joint;
-	Joint.m_CustomCoreUID1 = pTestCore1->m_UID;
-	Joint.m_CustomCoreUID2 = pTestCore2->m_UID;
-	Joint.m_Force1 = 2;
-	Joint.m_Force2 = 0.1;
-	m_DuckWorldCore.m_aJoints.add(Joint);
+	Reset();
 }
 
 void CGameControllerExamplePhys1::OnPlayerConnect(CPlayer* pPlayer)
@@ -54,15 +30,46 @@ void CGameControllerExamplePhys1::OnPlayerConnect(CPlayer* pPlayer)
 void CGameControllerExamplePhys1::Tick()
 {
 	IGameController::Tick();
-	m_DuckWorldCore.Tick();
 }
 
 void CGameControllerExamplePhys1::Snap(int SnappingClient)
 {
 	IGameController::Snap(SnappingClient);
-	m_DuckWorldCore.Snap(GameServer(), SnappingClient);
 }
 
 void CGameControllerExamplePhys1::OnDuckMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 {
+}
+
+void CGameControllerExamplePhys1::OnReset()
+{
+	Reset();
+}
+
+void CGameControllerExamplePhys1::Reset()
+{
+	CDuckWorldCore* pDuckWorldCore = &GameServer()->m_World.m_DuckCore;
+
+	CPhysicsLawsGroup* pPlg = pDuckWorldCore->AddPhysicLawsGroup();
+	pPlg->m_AirFriction = 1.0;
+	pPlg->m_GroundFriction = 1.0;
+
+	CCustomCore* pTestCore1 = pDuckWorldCore->AddCustomCore(40);
+	pTestCore1->SetPhysicLawGroup(pPlg);
+	pTestCore1->m_Pos = vec2(500, 280);
+
+	CCustomCore* pTestCore2 = pDuckWorldCore->AddCustomCore(30);
+	pTestCore2->SetPhysicLawGroup(pPlg);
+	pTestCore2->m_Pos = vec2(300, 280);
+
+	CCustomCore* pTestCore3 = pDuckWorldCore->AddCustomCore(30);
+	pTestCore3->SetPhysicLawGroup(pPlg);
+	pTestCore3->m_Pos = vec2(400, 280);
+
+	CDuckPhysJoint Joint;
+	Joint.m_CustomCoreUID1 = pTestCore1->m_UID;
+	Joint.m_CustomCoreUID2 = pTestCore2->m_UID;
+	Joint.m_Force1 = 2;
+	Joint.m_Force2 = 0.1;
+	pDuckWorldCore->m_aJoints.add(Joint);
 }

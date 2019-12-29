@@ -259,9 +259,30 @@ void CGameControllerExamplePhys3::SpawnBeeAt(vec2 Pos)
 		return;
 
 	CBee Bee;
-	Bee.Create(&m_DuckWorldCore, Pos, m_BeePlgUID, BeeID);
+	Bee.Create(&GameServer()->m_World.m_DuckCore, Pos, m_BeePlgUID, BeeID);
 	m_aBees[BeeID] = Bee;
 	m_aBeeIsAlive[BeeID] = true;
+}
+
+void CGameControllerExamplePhys3::Reset()
+{
+	CPhysicsLawsGroup* pPlgBee = GameServer()->m_World.m_DuckCore.AddPhysicLawsGroup();
+	pPlgBee->m_AirFriction = 0.95;
+	pPlgBee->m_GroundFriction = 1.0;
+	m_BeePlgUID = pPlgBee->m_UID;
+
+	CPhysicsLawsGroup* pPlgHive = GameServer()->m_World.m_DuckCore.AddPhysicLawsGroup();
+	pPlgHive->m_Gravity = 0.0;
+	pPlgHive->m_AirFriction = 0;
+	pPlgHive->m_GroundFriction = 0;
+	m_HivePlgUID = pPlgBee->m_UID;
+
+	mem_zero(m_aBeeIsAlive, sizeof(m_aBeeIsAlive));
+
+	//SpawnBeeAt(vec2(1344, 680));
+
+	m_aHives[0].Create(&GameServer()->m_World.m_DuckCore, vec2(1312, 638), m_HivePlgUID, 0);
+	m_aHives[1].Create(&GameServer()->m_World.m_DuckCore, vec2(1344, 1790), m_HivePlgUID, 1);
 }
 
 CGameControllerExamplePhys3::CGameControllerExamplePhys3(class CGameContext *pGameServer)
@@ -276,38 +297,12 @@ CGameControllerExamplePhys3::CGameControllerExamplePhys3(class CGameContext *pGa
 		dbg_msg("server", "failed to load duck mod");
 	}
 
-	CDuckCollision* pCollision = (CDuckCollision*)GameServer()->Collision();
-	m_DuckWorldCore.Init(&GameServer()->m_World.m_Core, pCollision);
-
-	CPhysicsLawsGroup* pPlgBee = m_DuckWorldCore.AddPhysicLawsGroup();
-	pPlgBee->m_AirFriction = 0.95;
-	pPlgBee->m_GroundFriction = 1.0;
-	m_BeePlgUID = pPlgBee->m_UID;
-
-	CPhysicsLawsGroup* pPlgHive = m_DuckWorldCore.AddPhysicLawsGroup();
-	pPlgHive->m_Gravity = 0.0;
-	pPlgHive->m_AirFriction = 0;
-	pPlgHive->m_GroundFriction = 0;
-	m_HivePlgUID = pPlgBee->m_UID;
-
-	mem_zero(m_aBeeIsAlive, sizeof(m_aBeeIsAlive));
-
-	//SpawnBeeAt(vec2(1344, 680));
-
-	m_aHives[0].Create(&m_DuckWorldCore, vec2(1312, 638), m_HivePlgUID, 0);
-	m_aHives[1].Create(&m_DuckWorldCore, vec2(1344, 1790), m_HivePlgUID, 1);
-}
-
-void CGameControllerExamplePhys3::OnPlayerConnect(CPlayer* pPlayer)
-{
-	IGameController::OnPlayerConnect(pPlayer);
-	int ClientID = pPlayer->GetCID();
+	Reset();
 }
 
 void CGameControllerExamplePhys3::Tick()
 {
 	IGameController::Tick();
-	m_DuckWorldCore.Tick();
 
 	for(int i = 0; i < MAX_BEES; i++)
 	{
@@ -325,7 +320,6 @@ void CGameControllerExamplePhys3::Tick()
 void CGameControllerExamplePhys3::Snap(int SnappingClient)
 {
 	IGameController::Snap(SnappingClient);
-	m_DuckWorldCore.Snap(GameServer(), SnappingClient);
 
 	for(int i = 0; i < MAX_BEES; i++)
 	{
@@ -343,4 +337,9 @@ void CGameControllerExamplePhys3::Snap(int SnappingClient)
 void CGameControllerExamplePhys3::OnDuckMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 {
 	dbg_msg("duck", "DuckMessage :: NetID = 0x%x", MsgID);
+}
+
+void CGameControllerExamplePhys3::OnReset()
+{
+	Reset();
 }
