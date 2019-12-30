@@ -410,7 +410,7 @@ struct CDuckBridge : public CComponent
 	void OnNewSnapshot();
 	bool OnRenderPlayer(const CNetObj_Character *pPrevChar, const CNetObj_Character *pPlayerChar, const CNetObj_PlayerInfo *pPrevInfo, const CNetObj_PlayerInfo *pPlayerInfo, int ClientID);
 	void OnUpdatePlayer(const CNetObj_Character *pPrevChar, const CNetObj_Character *pPlayerChar, const CNetObj_PlayerInfo *pPrevInfo, const CNetObj_PlayerInfo *pPlayerInfo, int ClientID);
-    bool OnBind(int Stroke, const char* pCmd);
+	bool OnBind(int Stroke, const char* pCmd);
 
 	// mod installation
 	bool IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256);
