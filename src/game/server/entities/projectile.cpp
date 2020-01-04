@@ -80,24 +80,20 @@ void CProjectile::Tick()
 
 	// zomb
 	if(IsControllerZomb(GameServer())) {
-        bool d = ((CGameControllerZOMB*)GameServer()->m_pController)->
-                 PlayerProjectileTick(m_Owner, PrevPos, CurPos, m_Weapon, m_Direction,
-                                      Collide || m_LifeSpan < 0);
-        if(d) {
-            GameServer()->m_World.DestroyEntity(this);
-        }
-        return;
+		bool d = ((CGameControllerZOMB*)GameServer()->m_pController)->PlayerProjectileTick(m_Owner, PrevPos, CurPos, m_Weapon, m_Direction, Collide || m_LifeSpan < 0);
+		if(d) {
+			GameWorld()->DestroyEntity(this);
+		}
+		return;
 	}
 
-    CCharacter *TargetChr = GameServer()->m_World.IntersectCharacter(PrevPos, CurPos, 6.0f, CurPos, OwnerChar);
+	if(TargetChr || Collide || m_LifeSpan < 0 || GameLayerClipped(CurPos))
+	{
+		if(m_LifeSpan >= 0 || m_Weapon == WEAPON_GRENADE)
+			GameServer()->CreateSound(CurPos, m_SoundImpact);
 
-    if(TargetChr || Collide || m_LifeSpan < 0 || GameLayerClipped(CurPos))
-    {
-        if(m_LifeSpan >= 0 || m_Weapon == WEAPON_GRENADE)
-            GameServer()->CreateSound(CurPos, m_SoundImpact);
-
-        if(m_Explosive)
-            GameServer()->CreateExplosion(CurPos, m_Owner, m_Weapon, m_Damage);
+		if(m_Explosive)
+			GameServer()->CreateExplosion(CurPos, m_Owner, m_Weapon, m_Damage);
 
 		else if(TargetChr)
 			TargetChr->TakeDamage(m_Direction * max(0.001f, m_Force), m_Direction*-1, m_Damage, m_Owner, m_Weapon);
