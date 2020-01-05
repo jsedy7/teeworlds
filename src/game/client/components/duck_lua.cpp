@@ -3160,15 +3160,6 @@ bool CDuckLua::LuaLoadScriptFileData(int ScriptFileID)
 	return true;
 }
 
-void CDuckLua::FreeAllScriptFileData()
-{
-	const int Count = m_ScriptFileCount;
-	for(int i = 0; i < Count; i++)
-	{
-		mem_free((void*)m_aScriptFiles[i].m_pFileData);
-	}
-}
-
 void CDuckLua::ResetLuaState()
 {
 	if(m_pLuaState)
@@ -3416,8 +3407,6 @@ void CDuckLua::OnModLoaded()
 		LUA_CRIT("Could not load 'main.lua'");
 		return;
 	}
-
-	FreeAllScriptFileData();
 
 	// Get functions references for fast access
 

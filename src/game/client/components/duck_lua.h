@@ -114,7 +114,6 @@ class CDuckLua
 	void AddScriptFileItem(const char* pScriptFilename, const char* pFileData, int FileSize);
 	int FindScriptFileFromName(const char* pScriptFilename);
 	bool LuaLoadScriptFileData(int ScriptFileID);
-	void FreeAllScriptFileData();
 
 	void ResetLuaState();
 	void Reset();

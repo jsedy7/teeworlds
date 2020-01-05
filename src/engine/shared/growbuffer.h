@@ -1,5 +1,6 @@
 #pragma once
 #include <base/system.h>
+#include <base/math.h>
 
 //#define DBG_MEM_USAGE
 
@@ -59,9 +60,7 @@ struct CGrowBuffer
 		// grow
 		if(BuffSize + m_Size > m_Capacity)
 		{
-			int NewCapacity = m_Capacity * 2;
-			if(BuffSize + m_Size > NewCapacity)
-				NewCapacity = BuffSize + m_Size;
+			int NewCapacity = max(m_Capacity * 2, BuffSize + m_Size);
 
 #ifdef DBG_MEM_USAGE
 			GrowImp(NewCapacity, file, line);
