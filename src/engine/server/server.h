@@ -291,7 +291,6 @@ public:
 	// DUCK
 	SHA256_DIGEST m_DuckModSha256;
 	CGrowBuffer m_DuckModFileBuffer;
-	char m_aDuckDevModFolderPath[128];
 
 	bool IsDuckDevMode() const;
 	void ResetDuckMod();
