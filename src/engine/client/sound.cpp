@@ -490,6 +490,122 @@ ISound::CSampleHandle CSound::LoadWV(const char *pFilename)
 	return CreateSampleHandle(SampleID);
 }
 
+static const char* s_pFileData = 0;
+static int s_FileSize = 0;
+static int s_FileCursor = 0;
+
+static int ReadDataRaw(void *output, int ReadSize)
+{
+	if(output)
+	{
+		if(s_FileCursor + ReadSize > s_FileSize)
+			return 0;
+
+		mem_move(output, s_pFileData + s_FileCursor, ReadSize);
+	}
+
+	s_FileCursor += ReadSize;
+	return ReadSize;
+}
+
+ISound::CSampleHandle CSound::LoadWVRaw(const char *pFilename, const char *pFileData, int FileSize)
+{
+	CSample *pSample;
+	int SampleID = -1;
+	char aError[100];
+	WavpackContext *pContext;
+
+	// don't waste memory on sound when we are stress testing
+	if(g_Config.m_DbgStress)
+		return CSampleHandle();
+
+	// no need to load sound when we are running with no sound
+	if(!m_SoundEnabled)
+		return CSampleHandle();
+
+	if(!m_pStorage)
+		return CSampleHandle();
+
+	lock_wait(m_SoundLock);
+
+	SampleID = AllocID();
+	if(SampleID < 0)
+	{
+		lock_unlock(m_SoundLock);
+		return CSampleHandle();
+	}
+	pSample = &m_aSamples[SampleID];
+
+	s_pFileData = pFileData;
+	s_FileSize = FileSize;
+	s_FileCursor = 0;
+
+	pContext = WavpackOpenFileInput(ReadDataRaw, aError);
+	if (pContext)
+	{
+		int m_aSamples = WavpackGetNumSamples(pContext);
+		int BitsPerSample = WavpackGetBitsPerSample(pContext);
+		unsigned int SampleRate = WavpackGetSampleRate(pContext);
+		int m_aChannels = WavpackGetNumChannels(pContext);
+		int *pData;
+		int *pSrc;
+		short *pDst;
+		int i;
+
+		pSample->m_Channels = m_aChannels;
+		pSample->m_Rate = SampleRate;
+
+		if(pSample->m_Channels > 2)
+		{
+			dbg_msg("sound/wv", "file is not mono or stereo. filename='%s'", pFilename);
+			lock_unlock(m_SoundLock);
+			return CSampleHandle();
+		}
+
+		/*
+		if(snd->rate != 44100)
+		{
+			dbg_msg("sound/wv", "file is %d Hz, not 44100 Hz. filename='%s'", snd->rate, filename);
+			return -1;
+		}*/
+
+		if(BitsPerSample != 16)
+		{
+			dbg_msg("sound/wv", "bps is %d, not 16, filname='%s'", BitsPerSample, pFilename);
+			lock_unlock(m_SoundLock);
+			return CSampleHandle();
+		}
+
+		pData = (int *)mem_alloc(4*m_aSamples*m_aChannels, 1);
+		WavpackUnpackSamples(pContext, pData, m_aSamples); // TODO: check return value
+		pSrc = pData;
+
+		pSample->m_pData = (short *)mem_alloc(2*m_aSamples*m_aChannels, 1);
+		pDst = pSample->m_pData;
+
+		for (i = 0; i < m_aSamples*m_aChannels; i++)
+			*pDst++ = (short)*pSrc++;
+
+		mem_free(pData);
+
+		pSample->m_NumFrames = m_aSamples;
+		pSample->m_LoopStart = -1;
+		pSample->m_LoopEnd = -1;
+		pSample->m_PausedAt = 0;
+	}
+	else
+	{
+		dbg_msg("sound/wv", "failed to open %s: %s", pFilename, aError);
+	}
+
+	if(g_Config.m_Debug)
+		dbg_msg("sound/wv", "loaded %s", pFilename);
+
+	RateConvert(SampleID);
+	lock_unlock(m_SoundLock);
+	return CreateSampleHandle(SampleID);
+}
+
 void CSound::SetListenerPos(float x, float y)
 {
 	m_CenterX = (int)x;
