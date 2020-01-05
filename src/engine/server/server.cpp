@@ -1840,7 +1840,6 @@ void CServer::ResetDuckMod()
 {
 	m_DuckModSha256 = SHA256_ZEROED;
 	m_DuckModFileBuffer.Clear();
-	mem_zero(m_aDuckDevModFolderPath, sizeof(m_aDuckDevModFolderPath));
 }
 
 bool CServer::LoadDuckMod()
@@ -2122,7 +2121,7 @@ void CServer::SendDuckModChunks(int ClientID)
 
 bool CServer::SendDuckMod(int ClientID)
 {
-	if(m_aDuckDevModFolderPath[0] == 0) // there is not a duck mod
+	if(!*m_pGameServer->DuckMod()) // there is not a duck mod
 		return false;
 
 	SendDuckModChunkInfo(ClientID);

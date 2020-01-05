@@ -1638,7 +1638,10 @@ const char *CGameContext::NetVersionHashReal() const { return GAME_NETVERSION_HA
 
 const char *CGameContext::DuckMod() const
 {
-	return m_pController->m_aDuckMod;
+	static const char* pNull = "";
+	if(m_pController)
+		return m_pController->m_aDuckMod;
+	return pNull;
 }
 
 IGameServer *CreateGameServer() { return new CGameContext; }
