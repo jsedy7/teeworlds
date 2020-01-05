@@ -110,7 +110,7 @@ class CDuckLua
 	static int NativeCalculateTextSize(lua_State* L);
 	static int NativeSetMenuModeActive(lua_State* L);
 
-	bool LoadScriptFile(const char* pFilePath, const char* pRelFilePath);
+	bool LoadScriptFile(const char *pFileName, const char* pFileData, int FileSize);
 	void AddScriptFileItem(const char* pScriptFilename, const char* pFileData, int FileSize);
 	int FindScriptFileFromName(const char* pScriptFilename);
 	bool LuaLoadScriptFileData(int ScriptFileID);

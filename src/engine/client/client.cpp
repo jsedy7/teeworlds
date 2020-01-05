@@ -1560,7 +1560,7 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 				// mod download complete
 				dbg_msg("duck", "mod download complete, loading...");
 
-				bool IsInstalled = GameClient()->DuckBridge()->InstallAndLoadDuckModFromZipBuffer(m_DuckModDownloadFileBuff.m_pData, m_DuckModDownloadFileBuff.m_Size, &m_DuckModDownloadSha256);
+				bool IsInstalled = GameClient()->DuckBridge()->InstallAndLoadDuckModFromModFile(m_DuckModDownloadFileBuff.m_pData, m_DuckModDownloadFileBuff.m_Size, &m_DuckModDownloadSha256);
 
 				m_DuckModDownloadFileBuff.Clear();
 				m_DuckModDownloadAmount = 0;
