@@ -417,7 +417,6 @@ struct CDuckBridge : public CComponent
 	bool ExtractAndInstallModZipBuffer(const CGrowBuffer* pHttpZipData, const SHA256_DIGEST* pModSha256);
 	bool ExtractAndInstallModCompressedBuffer(const void* pCompBuff, int CompBuffSize, const SHA256_DIGEST* pModSha256);
 	bool LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256);
-	bool StartDuckModHttpDownload(const char* pModUrl, const SHA256_DIGEST* pModSha256);
 	bool TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256);
 	bool InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256);
 
@@ -450,5 +449,3 @@ inline uint32_t hash_fnv1a(const void* pData, int DataSize)
 	}
 	return Hash;
 }
-
-bool HttpRequestPage(const char* pUrl, CGrowBuffer* pHttpBuffer);

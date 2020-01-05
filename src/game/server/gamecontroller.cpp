@@ -50,6 +50,9 @@ IGameController::IGameController(CGameContext *pGameServer)
 	m_aNumSpawnPoints[0] = 0;
 	m_aNumSpawnPoints[1] = 0;
 	m_aNumSpawnPoints[2] = 0;
+
+	// duck mod
+	m_aDuckMod[0] = 0;
 }
 
 //activity

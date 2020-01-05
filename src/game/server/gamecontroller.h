@@ -167,8 +167,6 @@ public:
 
 	virtual void OnReset();
 
-	virtual void OnDuckMessage(int MsgID, CUnpacker *pUnpacker, int ClientID) {}
-
 	// game
 	enum
 	{
@@ -219,6 +217,10 @@ public:
 	
 	int GetRealPlayerNum() const { return m_aTeamSize[TEAM_RED]+m_aTeamSize[TEAM_BLUE]; }
 	int GetStartTeam();
+
+	// DUCK
+	virtual void OnDuckMessage(int MsgID, CUnpacker *pUnpacker, int ClientID) {}
+	char m_aDuckMod[128];
 };
 
 #endif

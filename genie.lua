@@ -173,8 +173,6 @@ project "teeworlds"
     includedirs {
 		SDL2_include,
         freetype_include,
-        curl_include,
-        zip_include,
         luajit_include
 	}
     
@@ -191,16 +189,12 @@ project "teeworlds"
         
         "SDL2",
         "freetype",
-        "libcurl",
-        "zip",
         "lua51",
     }
     
     libdirs {
         SDL2_libdir,
         freetype_libdir,
-        curl_libdir,
-        zip_libdir,
         luajit_libdir,
     }
     

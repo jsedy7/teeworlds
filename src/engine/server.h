@@ -68,8 +68,6 @@ public:
 
 	virtual void DemoRecorder_HandleAutoStart() = 0;
 	virtual bool DemoRecorder_IsRecording() = 0;
-
-	virtual bool LoadDuckMod(const char* pReleaseUrl, const char* pReleaseZipPath, const char* pDevFolderPath) = 0; // DUCK
 };
 
 class IGameServer : public IInterface
@@ -104,6 +102,7 @@ public:
 	virtual const char *NetVersion() const = 0;
 	virtual const char *NetVersionHashUsed() const = 0;
 	virtual const char *NetVersionHashReal() const = 0;
+	virtual const char *DuckMod() const = 0; // DUCK
 
 	virtual bool TimeScore() const { return false; }
 };

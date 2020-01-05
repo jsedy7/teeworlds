@@ -27,7 +27,7 @@ Lua = {
 				settings.cc.flags:Add("`pkg-config --cflags luajit`")
 				settings.link.flags:Add("`pkg-config --libs luajit`")
 			elseif option.use_winlib > 0 then
-				settings.cc.includes:Add(Lua.basepath .. "/src")
+				settings.cc.includes:Add(Lua.basepath .. "/include")
 				if option.use_winlib == 32 then
 					settings.link.libpath:Add(Lua.basepath .. "/windows/lib32")
 				else
