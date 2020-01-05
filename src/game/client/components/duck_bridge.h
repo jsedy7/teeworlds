@@ -5,6 +5,7 @@
 #include <engine/graphics.h>
 #include <engine/sound.h>
 #include <engine/shared/snapshot.h>
+#include <engine/shared/duck_modfile.h>
 #include <game/duck_collision.h>
 #include <game/duck_gamecore.h>
 #include <game/client/component.h>
@@ -167,6 +168,7 @@ struct CDuckBridge : public CComponent
 		}
 	};
 
+	CDuckModFileExtracted m_ModFiles;
 	bool m_IsModLoaded;
 	bool m_DoUnloadModBecauseError;
 	CMultiStackAllocator m_FrameAllocator; // holds data for a frame
@@ -364,6 +366,7 @@ struct CDuckBridge : public CComponent
 	void SetHudPartsShown(CHudPartsShown hps);
 
 	bool LoadTexture(const char* pTexturePath, const char *pTextureName);
+	bool LoadTextureRaw(const char* pTextureName, const char* pFileData, int FileSize);
 	IGraphics::CTextureHandle GetTextureFromName(const char* pTextureName);
 
 	void PacketCreate(int NetID, int Flags);
@@ -418,7 +421,7 @@ struct CDuckBridge : public CComponent
 	bool ExtractAndInstallModCompressedBuffer(const void* pCompBuff, int CompBuffSize, const SHA256_DIGEST* pModSha256);
 	bool LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256);
 	bool TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256);
-	bool InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256);
+	bool InstallAndLoadDuckModFromModFile(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256);
 
 	virtual void OnInit();
 	virtual void OnReset();

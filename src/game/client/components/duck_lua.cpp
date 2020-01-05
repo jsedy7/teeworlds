@@ -3091,27 +3091,9 @@ static void base_open(lua_State* L)
 
 }
 
-bool CDuckLua::LoadScriptFile(const char *pFilePath, const char *pRelFilePath)
+bool CDuckLua::LoadScriptFile(const char* pFileName, const char *pFileData, int FileSize)
 {
-	IOHANDLE ScriptFile = io_open(pFilePath, IOFLAG_READ);
-	if(!ScriptFile)
-	{
-		dbg_msg("duck", "could not open '%s'", pFilePath);
-		return false;
-	}
-
-	const int FileSize = (int)io_length(ScriptFile);
-	dbg_assert(FileSize < (10*1024*1024), "File too large");
-
-	char *pFileData = (char *)mem_alloc(FileSize + 1, 1);
-	dbg_assert(pFileData != NULL, "Failed to allocate");
-
-	io_read(ScriptFile, pFileData, FileSize);
-	pFileData[FileSize] = 0;
-	io_close(ScriptFile);
-
-	AddScriptFileItem(pRelFilePath, pFileData, FileSize);
-
+	AddScriptFileItem(pFileName, pFileData, FileSize);
 	return true;
 }
 
