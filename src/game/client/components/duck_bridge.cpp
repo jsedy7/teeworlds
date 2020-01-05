@@ -2236,27 +2236,22 @@ bool CDuckBridge::LoadModFilesFromDisk(const SHA256_DIGEST *pModSha256)
 		}
 		else if(str_endswith(pFilePath, ".wv"))
 		{
-			/*
-			const char* pSoundName = pFilePath+ModRootDirLen+1;
-			const char* pSoundRelPath = pFilePath+SaveDirPathLen;
-			ISound::CSampleHandle SoundId = m_pClient->Sound()->LoadWV(pSoundRelPath);
+			ISound::CSampleHandle SoundId = m_pClient->Sound()->LoadWVRaw(pFilePath, pFileEntries[i].m_pData, pFileEntries[i].m_Size);
 
-
-			const int Len = str_length(pSoundName);
+			const int Len = str_length(pFilePath);
 			if(Len < 4 || !SoundId.IsValid()) // .wv
 			{
-				dbg_msg("duck", "ERROR loading sound '%s'", pSoundName);
+				dbg_msg("duck", "ERROR loading sound '%s'", pFilePath);
 				continue;
 			}
 
-			uint32_t Hash = hash_fnv1a(pSoundName, Len-3);
-			dbg_msg("duck", "sound loaded '%s' (%x)", pSoundName, Hash);
+			uint32_t Hash = hash_fnv1a(pFilePath, Len-3);
+			dbg_msg("duck", "sound loaded '%s' (%x)", pFilePath, Hash);
 
 			CSoundHashPair Pair;
 			Pair.m_Hash = Hash;
 			Pair.m_Handle = SoundId;
 			m_aSounds.add(Pair);
-			*/
 		}
 	}
 
