@@ -204,6 +204,8 @@ public:
 		const int Type = T::NET_ID + NUM_NETOBJTYPES;
 		return (T*)Server()->SnapNewItem(Type, ItemID, sizeof(T));
 	}
+
+	virtual const char* DuckMod() const;
 };
 
 inline int64 CmaskAll() { return -1; }

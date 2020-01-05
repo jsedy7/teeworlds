@@ -3,8 +3,6 @@ CheckVersion("0.5")
 Import("configure.lua")
 Import("other/sdl/sdl.lua")
 Import("other/freetype/freetype.lua")
-Import("other/curl/curl.lua")
-Import("other/libzip/libzip.lua")
 Import("other/luajit/luajit.lua")
 
 --- Setup Config -------
@@ -16,8 +14,6 @@ config:Add(OptTestCompileC("buildwithoutsseflag", "#include <immintrin.h>\nint m
 config:Add(OptLibrary("zlib", "zlib.h", false))
 config:Add(SDL.OptFind("sdl", true))
 config:Add(FreeType.OptFind("freetype", true))
-config:Add(Curl.OptFind("curl", true))
-config:Add(Zip.OptFind("zip", true))
 config:Add(Lua.OptFind("lua", true))
 config:Finalize("config.lua")
 
@@ -318,14 +314,6 @@ function SharedClientFiles()
 		AddDependency(client_content_source, client_content_header)
 		
 		-- DUCK
-		netobj_js = PathJoin(generated_src_dir, Path("generated/netobj_js.cpp"))
-		AddJob(
-			netobj_js,
-			"duck_netobj_js" .. " > " .. netobj_js,
-			Python("datasrc/netobj_js.py") ..  " > " .. netobj_js
-		)
-		AddDependency(client_content_source, netobj_js)
-
 		netobj_lua = PathJoin(generated_src_dir, Path("generated/netobj_lua.cpp"))
 		AddJob(
 			netobj_lua,
@@ -334,7 +322,7 @@ function SharedClientFiles()
 		)
 		AddDependency(client_content_source, netobj_lua)
 
-		shared_client_files = {client_content_source, netobj_js}
+		shared_client_files = {client_content_source}
 	end
 
 	return shared_client_files
@@ -370,8 +358,6 @@ end
 function BuildClient(settings, family, platform)
 	config.sdl:Apply(settings)
 	config.freetype:Apply(settings)
-	config.curl:Apply(settings)
-	config.zip:Apply(settings)
 	config.lua:Apply(settings)
 	
 	local client = Compile(settings, Collect("src/engine/client/*.cpp", "src/engine/client/*.c"))

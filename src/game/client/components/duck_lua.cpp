@@ -233,15 +233,15 @@ int CDuckLua::NativePrint(lua_State *L)
 		return 0;
 	}
 
-    if(lua_isboolean(L, 1))
-    {
-        bool b = lua_toboolean(L, 1);
-        if(b)
-            This()->PrintToConsole("true", 4);
-        else
-            This()->PrintToConsole("false", 5);
-        return 0;
-    }
+	if(lua_isboolean(L, 1))
+	{
+		bool b = lua_toboolean(L, 1);
+		if(b)
+			This()->PrintToConsole("true", 4);
+		else
+			This()->PrintToConsole("false", 5);
+		return 0;
+	}
 
 	const char* pStr = lua_tostring(L, 1);
 	if(!pStr)
@@ -2910,183 +2910,183 @@ static const luaL_Reg base_funcs[]={
 // TABLE
 #define aux_getn(L,n)(luaL_checktype(L,n,5),luaL_getn(L,n))
 static int tinsert(lua_State*L){
-    int e=aux_getn(L,1)+1;
-    int pos;
-    switch(lua_gettop(L)){
-    case 2:{
-        pos=e;
-        break;
-    }
-    case 3:{
-        int i;
-        pos=luaL_checkint(L,2);
-        if(pos>e)e=pos;
-        for(i=e;i>pos;i--){
-            lua_rawgeti(L,1,i-1);
-            lua_rawseti(L,1,i);
-        }
-        break;
-    }
-    default:{
-        return luaL_error(L,"wrong number of arguments to " LUA_QL("insert"));
-    }
-    }
-    luaL_setn(L,1,e);
-    lua_rawseti(L,1,pos);
-    return 0;
+	int e=aux_getn(L,1)+1;
+	int pos;
+	switch(lua_gettop(L)){
+		case 2:{
+			pos=e;
+			break;
+		}
+		case 3:{
+			int i;
+			pos=luaL_checkint(L,2);
+			if(pos>e)e=pos;
+			for(i=e;i>pos;i--){
+				lua_rawgeti(L,1,i-1);
+				lua_rawseti(L,1,i);
+			}
+			break;
+		}
+		default:{
+			return luaL_error(L,"wrong number of arguments to " LUA_QL("insert"));
+		}
+	}
+	luaL_setn(L,1,e);
+	lua_rawseti(L,1,pos);
+	return 0;
 }
 
 static int tremove(lua_State*L){
-    int e=aux_getn(L,1);
-    int pos=luaL_optint(L,2,e);
-    if(!(1<=pos&&pos<=e))
-        return 0;
-    luaL_setn(L,1,e-1);
-    lua_rawgeti(L,1,pos);
-    for(;pos<e;pos++){
-        lua_rawgeti(L,1,pos+1);
-        lua_rawseti(L,1,pos);
-    }
-    lua_pushnil(L);
-    lua_rawseti(L,1,e);
-    return 1;
+	int e=aux_getn(L,1);
+	int pos=luaL_optint(L,2,e);
+	if(!(1<=pos&&pos<=e))
+		return 0;
+	luaL_setn(L,1,e-1);
+	lua_rawgeti(L,1,pos);
+	for(;pos<e;pos++){
+		lua_rawgeti(L,1,pos+1);
+		lua_rawseti(L,1,pos);
+	}
+	lua_pushnil(L);
+	lua_rawseti(L,1,e);
+	return 1;
 }
 
 static void addfield(lua_State*L,luaL_Buffer*b,int i){
-    lua_rawgeti(L,1,i);
-    if(!lua_isstring(L,-1))
-        luaL_error(L,"invalid value (%s) at index %d in table for "
-                   LUA_QL("concat"),luaL_typename(L,-1),i);
-    luaL_addvalue(b);
+	lua_rawgeti(L,1,i);
+	if(!lua_isstring(L,-1))
+		luaL_error(L,"invalid value (%s) at index %d in table for "
+				   LUA_QL("concat"),luaL_typename(L,-1),i);
+	luaL_addvalue(b);
 }
 
 static int tconcat(lua_State*L){
-    luaL_Buffer b;
-    size_t lsep;
-    int i,last;
-    const char*sep=luaL_optlstring(L,2,"",&lsep);
-    luaL_checktype(L,1,5);
-    i=luaL_optint(L,3,1);
-    last=luaL_opt(L,luaL_checkint,4,luaL_getn(L,1));
-    luaL_buffinit(L,&b);
-    for(;i<last;i++){
-        addfield(L,&b,i);
-        luaL_addlstring(&b,sep,lsep);
-    }
-    if(i==last)
-        addfield(L,&b,i);
-    luaL_pushresult(&b);
-    return 1;
+	luaL_Buffer b;
+	size_t lsep;
+	int i,last;
+	const char*sep=luaL_optlstring(L,2,"",&lsep);
+	luaL_checktype(L,1,5);
+	i=luaL_optint(L,3,1);
+	last=luaL_opt(L,luaL_checkint,4,luaL_getn(L,1));
+	luaL_buffinit(L,&b);
+	for(;i<last;i++){
+		addfield(L,&b,i);
+		luaL_addlstring(&b,sep,lsep);
+	}
+	if(i==last)
+		addfield(L,&b,i);
+	luaL_pushresult(&b);
+	return 1;
 }
 
 static void set2(lua_State*L,int i,int j){
-    lua_rawseti(L,1,i);
-    lua_rawseti(L,1,j);
+	lua_rawseti(L,1,i);
+	lua_rawseti(L,1,j);
 }
 
 static int sort_comp(lua_State*L,int a,int b){
-    if(!lua_isnil(L,2)){
-        int res;
-        lua_pushvalue(L,2);
-        lua_pushvalue(L,a-1);
-        lua_pushvalue(L,b-2);
-        lua_call(L,2,1);
-        res=lua_toboolean(L,-1);
-        lua_pop(L,1);
-        return res;
-    }
-    else
-        return lua_lessthan(L,a,b);
+	if(!lua_isnil(L,2)){
+		int res;
+		lua_pushvalue(L,2);
+		lua_pushvalue(L,a-1);
+		lua_pushvalue(L,b-2);
+		lua_call(L,2,1);
+		res=lua_toboolean(L,-1);
+		lua_pop(L,1);
+		return res;
+	}
+	else
+		return lua_lessthan(L,a,b);
 }
 
 static void auxsort(lua_State*L,int l,int u){
-    while(l<u){
-        int i,j;
-        lua_rawgeti(L,1,l);
-        lua_rawgeti(L,1,u);
-        if(sort_comp(L,-1,-2))
-            set2(L,l,u);
-        else
-            lua_pop(L,2);
-        if(u-l==1)break;
-        i=(l+u)/2;
-        lua_rawgeti(L,1,i);
-        lua_rawgeti(L,1,l);
-        if(sort_comp(L,-2,-1))
-            set2(L,i,l);
-        else{
-            lua_pop(L,1);
-            lua_rawgeti(L,1,u);
-            if(sort_comp(L,-1,-2))
-                set2(L,i,u);
-            else
-                lua_pop(L,2);
-        }
-        if(u-l==2)break;
-        lua_rawgeti(L,1,i);
-        lua_pushvalue(L,-1);
-        lua_rawgeti(L,1,u-1);
-        set2(L,i,u-1);
-        i=l;j=u-1;
-        for(;;){
-            while(lua_rawgeti(L,1,++i),sort_comp(L,-1,-2)){
-                if(i>u)luaL_error(L,"invalid order function for sorting");
-                lua_pop(L,1);
-            }
-            while(lua_rawgeti(L,1,--j),sort_comp(L,-3,-1)){
-                if(j<l)luaL_error(L,"invalid order function for sorting");
-                lua_pop(L,1);
-            }
-            if(j<i){
-                lua_pop(L,3);
-                break;
-            }
-            set2(L,i,j);
-        }
-        lua_rawgeti(L,1,u-1);
-        lua_rawgeti(L,1,i);
-        set2(L,u-1,i);
-        if(i-l<u-i){
-            j=l;i=i-1;l=i+2;
-        }
-        else{
-            j=i+1;i=u;u=j-2;
-        }
-        auxsort(L,j,i);
-    }
+	while(l<u){
+		int i,j;
+		lua_rawgeti(L,1,l);
+		lua_rawgeti(L,1,u);
+		if(sort_comp(L,-1,-2))
+			set2(L,l,u);
+		else
+			lua_pop(L,2);
+		if(u-l==1)break;
+		i=(l+u)/2;
+		lua_rawgeti(L,1,i);
+		lua_rawgeti(L,1,l);
+		if(sort_comp(L,-2,-1))
+			set2(L,i,l);
+		else{
+			lua_pop(L,1);
+			lua_rawgeti(L,1,u);
+			if(sort_comp(L,-1,-2))
+				set2(L,i,u);
+			else
+				lua_pop(L,2);
+		}
+		if(u-l==2)break;
+		lua_rawgeti(L,1,i);
+		lua_pushvalue(L,-1);
+		lua_rawgeti(L,1,u-1);
+		set2(L,i,u-1);
+		i=l;j=u-1;
+		for(;;){
+			while(lua_rawgeti(L,1,++i),sort_comp(L,-1,-2)){
+				if(i>u)luaL_error(L,"invalid order function for sorting");
+				lua_pop(L,1);
+			}
+			while(lua_rawgeti(L,1,--j),sort_comp(L,-3,-1)){
+				if(j<l)luaL_error(L,"invalid order function for sorting");
+				lua_pop(L,1);
+			}
+			if(j<i){
+				lua_pop(L,3);
+				break;
+			}
+			set2(L,i,j);
+		}
+		lua_rawgeti(L,1,u-1);
+		lua_rawgeti(L,1,i);
+		set2(L,u-1,i);
+		if(i-l<u-i){
+			j=l;i=i-1;l=i+2;
+		}
+		else{
+			j=i+1;i=u;u=j-2;
+		}
+		auxsort(L,j,i);
+	}
 }
 
 static int sort(lua_State*L){
-    int n=aux_getn(L,1);
-    luaL_checkstack(L,40,"");
-    if(!lua_isnoneornil(L,2))
-        luaL_checktype(L,2,6);
-    lua_settop(L,2);
-    auxsort(L,1,n);
-    return 0;
+	int n=aux_getn(L,1);
+	luaL_checkstack(L,40,"");
+	if(!lua_isnoneornil(L,2))
+		luaL_checktype(L,2,6);
+	lua_settop(L,2);
+	auxsort(L,1,n);
+	return 0;
 }
 
 static const luaL_Reg tab_funcs[]={
-    {"table_concat",tconcat},
-    {"table_insert",tinsert},
-    {"table_remove",tremove},
-    {"table_sort",sort},
-    {NULL,NULL}
+	{"table_concat",tconcat},
+	{"table_insert",tinsert},
+	{"table_remove",tremove},
+	{"table_sort",sort},
+	{NULL,NULL}
 };
 
 static void base_open(lua_State* L)
 {
-    lua_pushvalue(L, (-10002));
-    lua_setglobal(L, "_G");
+	lua_pushvalue(L, (-10002));
+	lua_setglobal(L, "_G");
 
-    luaL_register(L, "_G", base_funcs); // register base functions
-    luaL_register(L, "_G", tab_funcs); // register table functions
+	luaL_register(L, "_G", base_funcs); // register base functions
+	luaL_register(L, "_G", tab_funcs); // register table functions
 
-    lua_pushliteral(L, "Lua 5.1");
-    lua_setglobal(L, "_VERSION");
-    auxopen(L, "ipairs", luaB_ipairs, ipairsaux);
-    auxopen(L, "pairs", luaB_pairs, luaB_next);
-    lua_settop(L, 0); // pop stack
+	lua_pushliteral(L, "Lua 5.1");
+	lua_setglobal(L, "_VERSION");
+	auxopen(L, "ipairs", luaB_ipairs, ipairsaux);
+	auxopen(L, "pairs", luaB_pairs, luaB_next);
+	lua_settop(L, 0); // pop stack
 }
 
 }
@@ -3449,8 +3449,8 @@ void CDuckLua::OnModLoaded()
 	SEARCH_FUNCTION(OnInput);
 	SEARCH_FUNCTION(OnRender);
 	SEARCH_FUNCTION(OnRenderPlayer);
-    SEARCH_FUNCTION(OnUpdate);
-    SEARCH_FUNCTION(OnBind);
+	SEARCH_FUNCTION(OnUpdate);
+	SEARCH_FUNCTION(OnBind);
 
 #undef SEARCH_FUNCTION
 
@@ -3587,24 +3587,24 @@ bool CDuckLua::OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2
 		return r;
 	}
 
-    return false;
+	return false;
 }
 
 bool CDuckLua::OnBind(int Stroke, const char *pCmd)
 {
-    if(GetFunctionRef(OnBind))
-    {
-        lua_pushstring(L(), pCmd);
-        lua_pushboolean(L(), int(Stroke == 1)); // pressed
+	if(GetFunctionRef(OnBind))
+	{
+		lua_pushstring(L(), pCmd);
+		lua_pushboolean(L(), int(Stroke == 1)); // pressed
 
-        CallFunction(2, 1);
+		CallFunction(2, 1);
 
-        bool r = lua_toboolean(L(), -1);
-        lua_pop(L(), 1);
-        return r;
-    }
+		bool r = lua_toboolean(L(), -1);
+		lua_pop(L(), 1);
+		return r;
+	}
 
-    return false;
+	return false;
 }
 
 void CDuckLua::OnRender(float LocalTime, float IntraGameTick)

@@ -1636,4 +1636,9 @@ const char *CGameContext::NetVersion() const { return GAME_NETVERSION; }
 const char *CGameContext::NetVersionHashUsed() const { return GAME_NETVERSION_HASH_FORCED; }
 const char *CGameContext::NetVersionHashReal() const { return GAME_NETVERSION_HASH; }
 
+const char *CGameContext::DuckMod() const
+{
+	return m_pController->m_aDuckMod;
+}
+
 IGameServer *CreateGameServer() { return new CGameContext; }

@@ -410,14 +410,13 @@ struct CDuckBridge : public CComponent
 	void OnNewSnapshot();
 	bool OnRenderPlayer(const CNetObj_Character *pPrevChar, const CNetObj_Character *pPlayerChar, const CNetObj_PlayerInfo *pPrevInfo, const CNetObj_PlayerInfo *pPlayerInfo, int ClientID);
 	void OnUpdatePlayer(const CNetObj_Character *pPrevChar, const CNetObj_Character *pPlayerChar, const CNetObj_PlayerInfo *pPrevInfo, const CNetObj_PlayerInfo *pPlayerInfo, int ClientID);
-    bool OnBind(int Stroke, const char* pCmd);
+	bool OnBind(int Stroke, const char* pCmd);
 
 	// mod installation
 	bool IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256);
 	bool ExtractAndInstallModZipBuffer(const CGrowBuffer* pHttpZipData, const SHA256_DIGEST* pModSha256);
 	bool ExtractAndInstallModCompressedBuffer(const void* pCompBuff, int CompBuffSize, const SHA256_DIGEST* pModSha256);
 	bool LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256);
-	bool StartDuckModHttpDownload(const char* pModUrl, const SHA256_DIGEST* pModSha256);
 	bool TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256);
 	bool InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256);
 
@@ -450,5 +449,3 @@ inline uint32_t hash_fnv1a(const void* pData, int DataSize)
 	}
 	return Hash;
 }
-
-bool HttpRequestPage(const char* pUrl, CGrowBuffer* pHttpBuffer);

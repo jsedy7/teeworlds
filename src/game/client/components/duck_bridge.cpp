@@ -21,7 +21,9 @@
 #include <engine/shared/config.h>
 #include <engine/shared/compression.h>
 
-#include <zip.h>
+#ifdef MOD_ZIPFILE
+	#include <zip.h>
+#endif
 
 #ifdef DUCK_LUA_BACKEND
 #define MAIN_SCRIPT_FILE "main.lua"
@@ -1716,6 +1718,7 @@ bool CDuckBridge::IsModAlreadyInstalled(const SHA256_DIGEST *pModSha256)
 
 bool CDuckBridge::ExtractAndInstallModZipBuffer(const CGrowBuffer *pHttpZipData, const SHA256_DIGEST *pModSha256)
 {
+#ifdef MOD_ZIPFILE
 	dbg_msg("unzip", "EXTRACTING AND INSTALLING MOD");
 
 	char aUserModsPath[512];
@@ -1997,6 +2000,7 @@ bool CDuckBridge::ExtractAndInstallModZipBuffer(const CGrowBuffer *pHttpZipData,
 	unzClose(ZipFile);
 #endif
 
+#endif
 	return true;
 }
 
@@ -2329,28 +2333,6 @@ bool CDuckBridge::LoadModFilesFromDisk(const SHA256_DIGEST *pModSha256)
 	m_IsModLoaded = true;
 	m_Backend.OnModLoaded();
 	return true;
-}
-
-bool CDuckBridge::StartDuckModHttpDownload(const char *pModUrl, const SHA256_DIGEST *pModSha256)
-{
-	dbg_assert(!IsModAlreadyInstalled(pModSha256), "mod is already installed, check it before calling this");
-
-	CGrowBuffer Buff;
-	HttpRequestPage(pModUrl, &Buff);
-
-	bool IsUnzipped = ExtractAndInstallModZipBuffer(&Buff, pModSha256);
-	dbg_assert(IsUnzipped, "Unzipped to disk: rip in peace");
-
-	Buff.Release();
-
-	if(!IsUnzipped)
-		return false;
-
-	bool IsLoaded = LoadModFilesFromDisk(pModSha256);
-	dbg_assert(IsLoaded, "Loaded from disk: rip in peace");
-
-	dbg_msg("duck", "mod loaded url='%s'", pModUrl);
-	return IsLoaded;
 }
 
 bool CDuckBridge::TryLoadInstalledDuckMod(const SHA256_DIGEST *pModSha256)

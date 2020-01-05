@@ -1503,33 +1503,6 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 		}
 		else if((pPacket->m_Flags&NET_CHUNKFLAG_VITAL) != 0 && Msg == NETMSG_DUCK_MOD_INFO)
 		{
-			const char *pModDescription = Unpacker.GetString();
-			const char *pModUrl = Unpacker.GetString();
-			SHA256_DIGEST ModSha256 = *(SHA256_DIGEST*)Unpacker.GetRaw(sizeof(ModSha256));
-			if(Unpacker.Error())
-			{
-				dbg_msg("duck", "Error unpacking mod info");
-				return;
-			}
-
-			char aModSha256Str[SHA256_MAXSTRSIZE];
-			sha256_str(ModSha256, aModSha256Str, sizeof(aModSha256Str));
-			dbg_msg("duck", "mod info packet, desc='%s' url='%s' 'sha256=%s'", pModDescription, pModUrl, aModSha256Str);
-
-			if(GameClient()->DuckBridge()->TryLoadInstalledDuckMod(&ModSha256))
-			{
-				SendDuckModReady();
-			}
-			else
-			{
-				// TODO: this is currently blocking, make it not
-				// TODO: use pModDescription
-				GameClient()->DuckBridge()->StartDuckModHttpDownload(pModUrl, &ModSha256);
-				SendDuckModReady();
-			}
-		}
-		else if((pPacket->m_Flags&NET_CHUNKFLAG_VITAL) != 0 && Msg == NETMSG_DUCK_MOD_INFO_DEV)
-		{
 			const int ZipFileSize = Unpacker.GetInt();
 			const int ChunkNum = Unpacker.GetInt();
 			const int ChunkSize = Unpacker.GetInt();

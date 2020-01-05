@@ -77,7 +77,6 @@ enum
 	// DUCK
 	// server
 	NETMSG_DUCK_MOD_INFO,
-	NETMSG_DUCK_MOD_INFO_DEV,
 	NETMSG_DUCK_MOD_DATA,
 
 	// client
