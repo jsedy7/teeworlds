@@ -86,11 +86,7 @@ CGameControllerExamplePhys2::CGameControllerExamplePhys2(class CGameContext *pGa
 	m_pGameType = "EXPHYS2";
 	str_copy(g_Config.m_SvMap, "phys2", sizeof(g_Config.m_SvMap)); // force dm1
 
-	// load duck mod
-	if(!Server()->LoadDuckMod("", "", "mods/example_physics_2"))
-	{
-		dbg_msg("server", "failed to load duck mod");
-	}
+	str_copy(m_aDuckMod, "example_physics_2", sizeof(m_aDuckMod));
 
 	//m_GameFlags = GAMEFLAG_TEAMS; // GAMEFLAG_TEAMS makes it a two-team gamemode
 

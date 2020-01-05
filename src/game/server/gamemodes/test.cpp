@@ -58,10 +58,7 @@ CGameControllerTEST::CGameControllerTEST(class CGameContext *pGameServer)
 	m_pGameType = "TEST";
 
 	// load duck mod
-	if(!Server()->LoadDuckMod("", "", "mods/test"))
-	{
-		dbg_msg("server", "failed to load duck mod");
-	}
+	str_copy(m_aDuckMod, "test", sizeof(m_aDuckMod));
 
 	CDuckCollision* pCollision = (CDuckCollision*)GameServer()->Collision();
 

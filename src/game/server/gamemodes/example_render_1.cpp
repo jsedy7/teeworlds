@@ -7,12 +7,7 @@ CGameControllerExampleRender1::CGameControllerExampleRender1(CGameContext *pGame
 : IGameController(pGameServer)
 {
 	m_pGameType = "EXRDR1";
-
-	// load duck mod
-	if(!Server()->LoadDuckMod("", "", "mods/example_render_1"))
-	{
-		dbg_msg("server", "failed to load duck mod");
-	}
+	str_copy(m_aDuckMod, "example_render_1", sizeof(m_aDuckMod));
 }
 
 void CGameControllerExampleRender1::OnPlayerConnect(CPlayer* pPlayer)
