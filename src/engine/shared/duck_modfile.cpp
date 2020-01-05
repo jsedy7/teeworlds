@@ -179,12 +179,13 @@ bool DuckCreateModFileFromFolder(IStorage* pStorage, const char *pModPath, CDuck
 		mem_free(pFileData);
 	}
 
-	CGrowBuffer* pFileBuffer = &pOut->m_FileBuffer;
-	pFileBuffer->Clear();
-	pFileBuffer->Grow(compressBound(FilePackBuff.m_Size));
+	CGrowBuffer* pOutFileBuffer = &pOut->m_FileBuffer;
+	pOutFileBuffer->Clear();
+	pOutFileBuffer->Grow(compressBound(FilePackBuff.m_Size));
 
-	uLongf DestSize = pFileBuffer->m_Capacity;
-	int CompRet = compress2((Bytef*)pFileBuffer->m_pData, &DestSize, (const Bytef*)FilePackBuff.m_pData, FilePackBuff.m_Size, Z_BEST_COMPRESSION);
+	uLongf DestSize = pOutFileBuffer->m_Capacity;
+	int CompRet = compress2((Bytef*)pOutFileBuffer->m_pData, &DestSize, (const Bytef*)FilePackBuff.m_pData, FilePackBuff.m_Size, Z_BEST_COMPRESSION);
+	//int CompRet = compress((Bytef*)pOutFileBuffer->m_pData, &DestSize, (const Bytef*)FilePackBuff.m_pData, FilePackBuff.m_Size);
 
 	if(CompRet != Z_OK)
 	{
@@ -196,15 +197,28 @@ bool DuckCreateModFileFromFolder(IStorage* pStorage, const char *pModPath, CDuck
 			case Z_BUF_ERROR:
 				dbg_msg("duck", "CompressMod: Error, not enough room in the output buffer");
 				break;
+			case Z_STREAM_ERROR:
+				dbg_msg("duck", "CompressMod: Error, level invalid");
+				break;
 			default:
 				dbg_break(); // should never be reached
 		}
 		return false;
 	}
 
-	pFileBuffer->m_Size = DestSize;
+	pOutFileBuffer->m_Size = DestSize;
 
-	pOut->m_Sha256 = sha256(pFileBuffer->m_pData, pFileBuffer->m_Size);
+#if CONF_DEBUG
+	{
+		CGrowBuffer TestBuff;
+		TestBuff.Grow(FilePackBuff.m_Size);
+		uLongf TestDestSize = TestBuff.m_Capacity;
+		int UncompRet = uncompress((Bytef*)TestBuff.m_pData, &TestDestSize, (const Bytef*)pOutFileBuffer->m_pData, pOutFileBuffer->m_Size);
+		dbg_assert(UncompRet == Z_OK && TestDestSize == FilePackBuff.m_Size, "compression test failed");
+	}
+#endif
+
+	pOut->m_Sha256 = sha256(pOutFileBuffer->m_pData, pOutFileBuffer->m_Size);
 	char aModSha256Str[SHA256_MAXSTRSIZE];
 	sha256_str(pOut->m_Sha256, aModSha256Str, sizeof(aModSha256Str));
 
@@ -221,26 +235,30 @@ bool DuckExtractFilesFromModFile(const CDuckModFile *pIn, CDuckModFileExtracted 
 	pOut->m_Sha256 = pIn->m_Sha256;
 
 	if(IsVerbose)
-		dbg_msg("unzip", "EXTRACTING *COMPRESSED* MOD");
+		dbg_msg("extract", "EXTRACTING *COMPRESSED* MOD");
 
 	// uncompress
 	const char* pCompBuff = pIn->m_FileBuffer.m_pData;
 	const int CompBuffSize = pIn->m_FileBuffer.m_Size;
 
-	CGrowBuffer FilePackBuff;
-	FilePackBuff.Grow(CompBuffSize * 3);
+	CGrowBuffer& ExtractBuff = pOut->m_FileData;
+	ExtractBuff.Grow(CompBuffSize * 3);
 
-	uLongf DestSize = FilePackBuff.m_Capacity;
-	int UncompRet = uncompress((Bytef*)FilePackBuff.m_pData, &DestSize, (const Bytef*)pCompBuff, CompBuffSize);
-	FilePackBuff.m_Size = DestSize;
+	uLongf DestSize = ExtractBuff.m_Capacity;
+	int UncompRet = uncompress((Bytef*)ExtractBuff.m_pData, &DestSize, (const Bytef*)pCompBuff, CompBuffSize);
+	ExtractBuff.m_Size = DestSize;
 
+	// TODO: send extracted size instead?
 	int GrowAttempts = 4;
 	while(UncompRet == Z_BUF_ERROR && GrowAttempts--)
 	{
-		FilePackBuff.Grow(FilePackBuff.m_Capacity * 2);
-		DestSize = FilePackBuff.m_Capacity;
-		UncompRet = uncompress((Bytef*)FilePackBuff.m_pData, &DestSize, (const Bytef*)pCompBuff, CompBuffSize);
-		FilePackBuff.m_Size = DestSize;
+		ExtractBuff.Grow(ExtractBuff.m_Capacity * 2);
+		DestSize = ExtractBuff.m_Capacity;
+		UncompRet = uncompress((Bytef*)ExtractBuff.m_pData, &DestSize, (const Bytef*)pCompBuff, CompBuffSize);
+		ExtractBuff.m_Size = DestSize;
+
+		if(IsVerbose)
+			dbg_msg("extract", "failed to extract, growing... (%d %d)", ExtractBuff.m_Capacity, GrowAttempts);
 	}
 
 	if(UncompRet != Z_OK)
@@ -265,8 +283,8 @@ bool DuckExtractFilesFromModFile(const CDuckModFile *pIn, CDuckModFileExtracted 
 	// read decompressed pack file
 
 	// header
-	const char* pFilePack = FilePackBuff.m_pData;
-	const int FilePackSize = FilePackBuff.m_Size;
+	const char* pFilePack = ExtractBuff.m_pData;
+	const int FilePackSize = ExtractBuff.m_Size;
 	const char* const pFilePackEnd = pFilePack + FilePackSize;
 
 	if(str_comp_num(pFilePack, "DUCK", 4) != 0)
@@ -285,7 +303,6 @@ bool DuckExtractFilesFromModFile(const CDuckModFile *pIn, CDuckModFileExtracted 
 	const int RequiredFilesCount = sizeof(aRequiredFiles)/sizeof(aRequiredFiles[0]);
 	int FoundRequiredFilesCount = 0;
 
-	// TODO: use packer
 	const char* pCursor = pFilePack;
 	while(pCursor < pFilePackEnd)
 	{
@@ -299,12 +316,12 @@ bool DuckExtractFilesFromModFile(const CDuckModFile *pIn, CDuckModFileExtracted 
 		pCursor += FileSize;
 
 		char aFilePath[512];
-		dbg_assert(FilePathLen < sizeof(aFilePath)-1, "FilePathLen too large");
+		dbg_assert(FilePathLen > 0 && FilePathLen < sizeof(aFilePath)-1, "FilePathLen too large");
 		mem_move(aFilePath, pFilePath, FilePathLen);
 		aFilePath[FilePathLen] = 0;
 
 		if(IsVerbose)
-			dbg_msg("duck", "file path=%s size=%d", aFilePath, FileSize);
+			dbg_msg("duck", "extracted_file='%s' size=%d", aFilePath, FileSize);
 
 		for(int r = 0; r < RequiredFilesCount; r++)
 		{
@@ -339,13 +356,14 @@ bool DuckExtractFilesFromModFile(const CDuckModFile *pIn, CDuckModFileExtracted 
 		pCursor += FileSize;
 
 		CDuckModFileExtracted::CFileEntry Entry;
-		dbg_assert(FilePathLen < sizeof(Entry.m_aPath)-1, "FilePathLen too large");
+		dbg_assert(FilePathLen > 0 && FilePathLen < sizeof(Entry.m_aPath)-1, "FilePathLen too large");
 		mem_move(Entry.m_aPath, pFilePath, FilePathLen);
 		Entry.m_aPath[FilePathLen] = 0;
 		Entry.m_pData = pFileData;
 		Entry.m_Size = FileSize;
 
 		// TODO: validate files
+		pOut->m_Files.add(Entry);
 	}
 
 	return true;

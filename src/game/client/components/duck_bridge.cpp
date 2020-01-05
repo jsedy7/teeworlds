@@ -281,12 +281,17 @@ static unsigned PngReadCallback(void* output, unsigned long size, unsigned long 
 {
 	CFileBuffer& FileBuff = *(CFileBuffer*)user_pointer;
 	const int ReadSize = size * numel;
-	dbg_assert(FileBuff.m_Cursor + ReadSize <= FileBuff.m_FileSize, "reading past bounds");
 
-	mem_move(output, FileBuff.m_pData + FileBuff.m_Cursor, ReadSize);
+	if(output)
+	{
+		if(FileBuff.m_Cursor + ReadSize > FileBuff.m_FileSize)
+			return 0;
+
+		mem_move(output, FileBuff.m_pData + FileBuff.m_Cursor, ReadSize);
+	}
 
 	FileBuff.m_Cursor += ReadSize;
-	return 1;
+	return ReadSize;
 }
 
 static bool OpenPNGRaw(const char *pFileData, int FileSize, CImageInfo *pImg)
@@ -306,21 +311,17 @@ static bool OpenPNGRaw(const char *pFileData, int FileSize, CImageInfo *pImg)
 	if(Error != PNG_NO_ERROR)
 	{
 		dbg_msg("game/png", "failed to open file. filename='%s'", aCompleteFilename);
-		if(Error != PNG_FILE_ERROR)
-			png_close_file(&Png); // ignore_convention
 		return false;
 	}
 
 	if(Png.depth != 8 || (Png.color_type != PNG_TRUECOLOR && Png.color_type != PNG_TRUECOLOR_ALPHA) || Png.width > (2<<12) || Png.height > (2<<12)) // ignore_convention
 	{
 		dbg_msg("game/png", "invalid format. filename='%s'", aCompleteFilename);
-		png_close_file(&Png); // ignore_convention
 		return false;
 	}
 
 	pBuffer = (unsigned char *)mem_alloc(Png.width * Png.height * Png.bpp, 1); // ignore_convention
 	png_get_data(&Png, pBuffer); // ignore_convention
-	png_close_file(&Png); // ignore_convention
 
 	pImg->m_Width = Png.width; // ignore_convention
 	pImg->m_Height = Png.height; // ignore_convention
@@ -343,9 +344,15 @@ bool CDuckBridge::LoadTextureRaw(const char* pTextureName, const char *pFileData
 	{
 		Handle = Graphics()->LoadTextureRaw(Img.m_Width, Img.m_Height, Img.m_Format, Img.m_pData, CImageInfo::FORMAT_AUTO, 0);
 		mem_free(Img.m_pData);
+
 		if(Handle.Id() != InvalidTexture.Id() && g_Config.m_Debug)
 			dbg_msg("graphics/texture", "loaded %s", pTextureName);
-		return false;
+
+		if(Handle.Id() == InvalidTexture.Id())
+		{
+			dbg_msg("graphics/texture", "failed to load texture %s", pTextureName);
+			return false;
+		}
 	}
 
 	// save pair
@@ -2113,7 +2120,7 @@ bool CDuckBridge::ExtractAndInstallModCompressedBuffer(const void *pCompBuff, in
 
 	if(Sha256 != *pModSha256)
 	{
-		dbg_msg("duck", "mod url sha256 and server sent mod sha256 mismatch, received sha256=%s", aSha256Str);
+		dbg_msg("duck", "mod sha256 and server sent mod sha256 mismatch, received sha256=%s", aSha256Str);
 		// TODO: display error message
 		return false;
 	}
@@ -2148,46 +2155,6 @@ bool CDuckBridge::ExtractAndInstallModCompressedBuffer(const void *pCompBuff, in
 	return true;
 }
 
-struct CPath
-{
-	char m_aBuff[512];
-};
-
-struct CFileSearch
-{
-	CPath m_BaseBath;
-	array<CPath>* m_paFilePathList;
-};
-
-static int ListDirCallback(const char* pName, int IsDir, int Type, void *pUser)
-{
-	CFileSearch FileSearch = *(CFileSearch*)pUser; // copy
-
-	if(IsDir)
-	{
-		if(pName[0] != '.')
-		{
-			//dbg_msg("duck", "ListDirCallback dir='%s'", pName);
-			str_append(FileSearch.m_BaseBath.m_aBuff, "/", sizeof(FileSearch.m_BaseBath.m_aBuff));
-			str_append(FileSearch.m_BaseBath.m_aBuff, pName, sizeof(FileSearch.m_BaseBath.m_aBuff));
-			//dbg_msg("duck", "recursing... dir='%s'", DirPath.m_aBuff);
-			fs_listdir(FileSearch.m_BaseBath.m_aBuff, ListDirCallback, Type + 1, &FileSearch);
-		}
-	}
-	else
-	{
-		CPath FileStr;
-		str_copy(FileStr.m_aBuff, pName, sizeof(FileStr.m_aBuff));
-
-		CPath FilePath = FileSearch.m_BaseBath;
-		str_append(FilePath.m_aBuff, "/", sizeof(FilePath.m_aBuff));
-		str_append(FilePath.m_aBuff, pName, sizeof(FilePath.m_aBuff));
-		FileSearch.m_paFilePathList->add(FilePath);
-		//dbg_msg("duck", "ListDirCallback file='%s'", pName);
-	}
-
-	return 0;
-}
 
 bool CDuckBridge::LoadModFilesFromDisk(const SHA256_DIGEST *pModSha256)
 {
@@ -2219,6 +2186,8 @@ bool CDuckBridge::LoadModFilesFromDisk(const SHA256_DIGEST *pModSha256)
 		io_read(ModFile, DuckModFile.m_FileBuffer.m_pData, FileSize);
 		io_close(ModFile);
 
+		DuckModFile.m_FileBuffer.m_Size = FileSize;
+
 		bool r = DuckExtractFilesFromModFile(&DuckModFile, &m_ModFiles, g_Config.m_Debug == 1);
 		if(!r)
 		{
@@ -2235,7 +2204,7 @@ bool CDuckBridge::LoadModFilesFromDisk(const SHA256_DIGEST *pModSha256)
 	for(int i = 0; i < FileCount; i++)
 	{
 		const char* pFilePath = pFileEntries[i].m_aPath;
-		//dbg_msg("duck", "file='%s'", pFilePath);
+		dbg_msg("duck", "load_file='%s'", pFilePath);
 
 		if(str_endswith(pFilePath, SCRIPTFILE_EXT))
 		{
