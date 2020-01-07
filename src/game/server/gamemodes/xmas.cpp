@@ -244,12 +244,7 @@ CGameControllerXmas::CGameControllerXmas(class CGameContext *pGameServer)
 {
 	m_pGameType = "HOHO";
 	str_copy(g_Config.m_SvMap, "xmas", sizeof(g_Config.m_SvMap)); // force dm1
-
-	// load duck mod
-	if(!Server()->LoadDuckMod("", "", "mods/xmas"))
-	{
-		dbg_msg("server", "failed to load duck mod");
-	}
+	str_copy(m_aDuckMod, "xmas", sizeof(m_aDuckMod)); // force dm1
 
 	santa.Init(GameServer());
 }
