@@ -5,6 +5,7 @@
 #include <engine/graphics.h>
 #include <engine/sound.h>
 #include <engine/shared/snapshot.h>
+#include <engine/shared/duck_modfile.h>
 #include <game/duck_collision.h>
 #include <game/duck_gamecore.h>
 #include <game/client/component.h>
@@ -85,7 +86,7 @@ struct CDuckBridge : public CComponent
 			GAME_FOREGROUND,
 			HUD,
 			PLAYER,
-			PLAYER_END = MAX_CLIENTS-1,
+			PLAYER_END = PLAYER + MAX_CLIENTS-1,
 			_COUNT
 		};
 	};
@@ -167,6 +168,7 @@ struct CDuckBridge : public CComponent
 		}
 	};
 
+	CDuckModFileExtracted m_ModFiles;
 	bool m_IsModLoaded;
 	bool m_DoUnloadModBecauseError;
 	CMultiStackAllocator m_FrameAllocator; // holds data for a frame
@@ -364,6 +366,7 @@ struct CDuckBridge : public CComponent
 	void SetHudPartsShown(CHudPartsShown hps);
 
 	bool LoadTexture(const char* pTexturePath, const char *pTextureName);
+	bool LoadTextureRaw(const char* pTextureName, const char* pFileData, int FileSize);
 	IGraphics::CTextureHandle GetTextureFromName(const char* pTextureName);
 
 	void PacketCreate(int NetID, int Flags);
@@ -410,16 +413,15 @@ struct CDuckBridge : public CComponent
 	void OnNewSnapshot();
 	bool OnRenderPlayer(const CNetObj_Character *pPrevChar, const CNetObj_Character *pPlayerChar, const CNetObj_PlayerInfo *pPrevInfo, const CNetObj_PlayerInfo *pPlayerInfo, int ClientID);
 	void OnUpdatePlayer(const CNetObj_Character *pPrevChar, const CNetObj_Character *pPlayerChar, const CNetObj_PlayerInfo *pPrevInfo, const CNetObj_PlayerInfo *pPlayerInfo, int ClientID);
-    bool OnBind(int Stroke, const char* pCmd);
+	bool OnBind(int Stroke, const char* pCmd);
 
 	// mod installation
 	bool IsModAlreadyInstalled(const SHA256_DIGEST* pModSha256);
 	bool ExtractAndInstallModZipBuffer(const CGrowBuffer* pHttpZipData, const SHA256_DIGEST* pModSha256);
 	bool ExtractAndInstallModCompressedBuffer(const void* pCompBuff, int CompBuffSize, const SHA256_DIGEST* pModSha256);
 	bool LoadModFilesFromDisk(const SHA256_DIGEST* pModSha256);
-	bool StartDuckModHttpDownload(const char* pModUrl, const SHA256_DIGEST* pModSha256);
 	bool TryLoadInstalledDuckMod(const SHA256_DIGEST* pModSha256);
-	bool InstallAndLoadDuckModFromZipBuffer(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256);
+	bool InstallAndLoadDuckModFromModFile(const void* pBuffer, int BufferSize, const SHA256_DIGEST* pModSha256);
 
 	virtual void OnInit();
 	virtual void OnReset();
@@ -450,5 +452,3 @@ inline uint32_t hash_fnv1a(const void* pData, int DataSize)
 	}
 	return Hash;
 }
-
-bool HttpRequestPage(const char* pUrl, CGrowBuffer* pHttpBuffer);

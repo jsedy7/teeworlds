@@ -134,7 +134,7 @@ bool CBinds::OnInput(IInput::CEvent Event)
 	}
 
 	bool rtn = false;
-    int Modifier, Stroke;
+	int Modifier, Stroke;
 
 	if(Event.m_Flags&IInput::FLAG_PRESS)
 	{
@@ -169,15 +169,15 @@ bool CBinds::OnInput(IInput::CEvent Event)
 						continue;
 				}
 
-                Stroke = 1;
-                Modifier = m;
+				Stroke = 1;
+				Modifier = m;
 				rtn = true;
 				break;		// always stop after triggering a +xxx bind
 			}
 			if((Mask&(1 << m)) && m_aaaKeyBindings[Event.m_Key][m][0])
 			{
-                Stroke = 1;
-                Modifier = m;
+				Stroke = 1;
+				Modifier = m;
 				rtn = true;
 			}
 		}
@@ -189,24 +189,24 @@ bool CBinds::OnInput(IInput::CEvent Event)
 		{
 			if(m_aaaKeyBindings[Event.m_Key][m][0])
 			{
-                Stroke = 0;
-                Modifier = m;
+				Stroke = 0;
+				Modifier = m;
 				rtn = true;
 			}
 		}
 	}
 
-    if(rtn)
-    {
-        if(m_pClient->DuckBridge()->IsLoaded())
-        {
-            bool Skip = m_pClient->DuckBridge()->OnBind(Stroke, m_aaaKeyBindings[Event.m_Key][Modifier]);
-            if(Skip)
-                return false;
-        }
+	if(rtn)
+	{
+		if(m_pClient->DuckBridge()->IsLoaded())
+		{
+			bool Skip = m_pClient->DuckBridge()->OnBind(Stroke, m_aaaKeyBindings[Event.m_Key][Modifier]);
+			if(Skip)
+				return false;
+		}
 
-        Console()->ExecuteLineStroked(Stroke, m_aaaKeyBindings[Event.m_Key][Modifier]);
-    }
+		Console()->ExecuteLineStroked(Stroke, m_aaaKeyBindings[Event.m_Key][Modifier]);
+	}
 
 	return rtn;
 }

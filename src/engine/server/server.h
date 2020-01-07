@@ -5,7 +5,7 @@
 
 #include <engine/server.h>
 #include <engine/shared/memheap.h>
-#include <engine/shared/growbuffer.h>
+#include <engine/shared/duck_modfile.h>
 
 class CSnapIDPool
 {
@@ -289,24 +289,17 @@ public:
 
 	// TODO: Move to duck_server.cpp
 	// DUCK
-	SHA256_DIGEST m_DuckModSha256;
-	CGrowBuffer m_DuckModFileBuffer;
-	char m_aDuckDevModFolderPath[128];
-	char m_aDuckModZipPath[128];
-	char m_aDuckModReleaseUrl[512];
+	CDuckModFile m_DuckModFile;
 
 	bool IsDuckDevMode() const;
 	void ResetDuckMod();
-	void SendDuckModHttpInfo(int ClientID);
+	bool LoadDuckMod();
 	void SendDuckModChunkInfo(int ClientID);
-	bool LoadDuckModZipFile(const char *pModPath);
 	bool CompressDuckModFolder(const char* pModPath);
 	void SendDuckModChunks(int ClientID);
 	bool SendDuckMod(int ClientID);
 	bool TryGetDuckClientInfo(int ClientID, CUnpacker* pUnpacker);
 	bool IsDuckClient(int ClientID);
-
-	bool LoadDuckMod(const char* pReleaseUrl, const char* pReleaseZipPath, const char* pDevFolderPath);
 };
 
 #endif

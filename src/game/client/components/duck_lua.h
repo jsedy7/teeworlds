@@ -38,8 +38,8 @@ class CDuckLua
 	int m_FuncRefOnInput;
 	int m_FuncRefOnRender;
 	int m_FuncRefOnRenderPlayer;
-    int m_FuncRefOnUpdate;
-    int m_FuncRefOnBind;
+	int m_FuncRefOnUpdate;
+	int m_FuncRefOnBind;
 
 	inline lua_State* L() { return m_pLuaState; }
 	inline CDuckBridge* Bridge() { return m_pBridge; }
@@ -110,11 +110,10 @@ class CDuckLua
 	static int NativeCalculateTextSize(lua_State* L);
 	static int NativeSetMenuModeActive(lua_State* L);
 
-	bool LoadScriptFile(const char* pFilePath, const char* pRelFilePath);
+	bool LoadScriptFile(const char *pFileName, const char* pFileData, int FileSize);
 	void AddScriptFileItem(const char* pScriptFilename, const char* pFileData, int FileSize);
 	int FindScriptFileFromName(const char* pScriptFilename);
 	bool LuaLoadScriptFileData(int ScriptFileID);
-	void FreeAllScriptFileData();
 
 	void ResetLuaState();
 	void Reset();
@@ -136,7 +135,7 @@ public:
 	void OnInput(IInput::CEvent e);
 	void OnModLoaded();
 	bool OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2 Pos, vec2 Dir, int Emote, const CWeaponSpriteInfo *pWeaponSprite, int ClientID);
-    bool OnBind(int Stroke, const char* pCmd);
+	bool OnBind(int Stroke, const char* pCmd);
 
 	inline bool IsLoaded() const { return m_pLuaState != NULL; }
 

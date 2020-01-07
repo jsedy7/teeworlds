@@ -21,11 +21,8 @@
 #include <engine/shared/config.h>
 #include <engine/shared/compression.h>
 
-#include <zip.h>
-
-#ifdef DUCK_LUA_BACKEND
-#define MAIN_SCRIPT_FILE "main.lua"
-#define SCRIPTFILE_EXT ".lua"
+#ifdef MOD_ZIPFILE
+	#include <zip.h>
 #endif
 
 CMultiStackAllocator::CMultiStackAllocator()
@@ -118,6 +115,12 @@ void CDuckBridge::Reset()
 	m_MousePos = vec2(Graphics()->ScreenWidth() * 0.5, Graphics()->ScreenHeight() * 0.5);
 	m_IsMenuModeActive = false;
 	m_DoUnloadModBecauseError = false;
+
+	for(int i = 0; i < DrawSpace::_COUNT; i++)
+	{
+		m_aRenderCmdList[i].hint_size(1024);
+		m_aRenderCmdList[i].set_size(0);
+	}
 }
 
 void CDuckBridge::QueueSetColor(const float* pColor)
@@ -254,6 +257,109 @@ bool CDuckBridge::LoadTexture(const char *pTexturePath, const char* pTextureName
 		return false;
 
 	IGraphics::CTextureHandle Handle = Graphics()->LoadTexture(pTexturePath, IStorage::TYPE_SAVE, CImageInfo::FORMAT_AUTO, 0);
+	uint32_t Hash = hash_fnv1a(pTextureName, Len - 4);
+	CTextureHashPair Pair = { Hash, Handle };
+	m_aTextures.add(Pair);
+	return Handle.IsValid();
+}
+
+struct CFileBuffer
+{
+	const char* m_pData;
+	int m_FileSize;
+	int m_Cursor;
+
+	CFileBuffer()
+	{
+		m_pData = 0;
+		m_FileSize = 0;
+		m_Cursor = 0;
+	}
+};
+
+static unsigned PngReadCallback(void* output, unsigned long size, unsigned long numel, void* user_pointer)
+{
+	CFileBuffer& FileBuff = *(CFileBuffer*)user_pointer;
+	const int ReadSize = size * numel;
+
+	if(output)
+	{
+		if(FileBuff.m_Cursor + ReadSize > FileBuff.m_FileSize)
+			return 0;
+
+		mem_move(output, FileBuff.m_pData + FileBuff.m_Cursor, ReadSize);
+	}
+
+	FileBuff.m_Cursor += ReadSize;
+	return ReadSize;
+}
+
+static bool OpenPNGRaw(const char *pFileData, int FileSize, CImageInfo *pImg)
+{
+	char aCompleteFilename[512];
+	unsigned char *pBuffer;
+	png_t Png; // ignore_convention
+
+	// open file for reading
+	png_init(0,0); // ignore_convention
+
+	CFileBuffer FileBuff;
+	FileBuff.m_pData = pFileData;
+	FileBuff.m_FileSize = FileSize;
+	int Error = png_open(&Png, PngReadCallback, &FileBuff);
+
+	if(Error != PNG_NO_ERROR)
+	{
+		dbg_msg("game/png", "failed to open file. filename='%s'", aCompleteFilename);
+		return false;
+	}
+
+	if(Png.depth != 8 || (Png.color_type != PNG_TRUECOLOR && Png.color_type != PNG_TRUECOLOR_ALPHA) || Png.width > (2<<12) || Png.height > (2<<12)) // ignore_convention
+	{
+		dbg_msg("game/png", "invalid format. filename='%s'", aCompleteFilename);
+		return false;
+	}
+
+	pBuffer = (unsigned char *)mem_alloc(Png.width * Png.height * Png.bpp, 1); // ignore_convention
+	png_get_data(&Png, pBuffer); // ignore_convention
+
+	pImg->m_Width = Png.width; // ignore_convention
+	pImg->m_Height = Png.height; // ignore_convention
+	if(Png.color_type == PNG_TRUECOLOR) // ignore_convention
+		pImg->m_Format = CImageInfo::FORMAT_RGB;
+	else if(Png.color_type == PNG_TRUECOLOR_ALPHA) // ignore_convention
+		pImg->m_Format = CImageInfo::FORMAT_RGBA;
+	pImg->m_pData = pBuffer;
+	return true;
+}
+
+bool CDuckBridge::LoadTextureRaw(const char* pTextureName, const char *pFileData, int FileSize)
+{
+	// load it
+	IGraphics::CTextureHandle Handle;
+	const IGraphics::CTextureHandle InvalidTexture;
+	CImageInfo Img;
+
+	if(OpenPNGRaw(pFileData, FileSize, &Img))
+	{
+		Handle = Graphics()->LoadTextureRaw(Img.m_Width, Img.m_Height, Img.m_Format, Img.m_pData, CImageInfo::FORMAT_AUTO, 0);
+		mem_free(Img.m_pData);
+
+		if(Handle.Id() != InvalidTexture.Id() && g_Config.m_Debug)
+			dbg_msg("graphics/texture", "loaded %s", pTextureName);
+
+		if(Handle.Id() == InvalidTexture.Id())
+		{
+			dbg_msg("graphics/texture", "failed to load texture %s", pTextureName);
+			return false;
+		}
+	}
+
+	// save pair
+	int Len = str_length(pTextureName);
+	if(Len < 5) // .png
+		return false;
+
 	uint32_t Hash = hash_fnv1a(pTextureName, Len - 4);
 	CTextureHashPair Pair = { Hash, Handle };
 	m_aTextures.add(Pair);
@@ -790,6 +896,8 @@ bool CDuckBridge::RenderSetDrawSpace(int Space)
 
 void CDuckBridge::RenderDrawSpace(int Space)
 {
+	dbg_assert(Space >=0 && Space < DrawSpace::_COUNT, "Space is out of bounds");
+
 	const int CmdCount = m_aRenderCmdList[Space].size();
 	const CRenderCmd* aCmds = m_aRenderCmdList[Space].base_ptr();
 
@@ -1691,15 +1799,15 @@ bool CDuckBridge::IsModAlreadyInstalled(const SHA256_DIGEST *pModSha256)
 	char aSha256Str[SHA256_MAXSTRSIZE];
 	sha256_str(*pModSha256, aSha256Str, sizeof(aSha256Str));
 
-	char aModMainJsPath[512];
-	str_copy(aModMainJsPath, "mods/", sizeof(aModMainJsPath));
-	str_append(aModMainJsPath, aSha256Str, sizeof(aModMainJsPath));
-	str_append(aModMainJsPath, "/" MAIN_SCRIPT_FILE, sizeof(aModMainJsPath));
+	char aModFilePath[512];
+	str_copy(aModFilePath, "mods/", sizeof(aModFilePath));
+	str_append(aModFilePath, aSha256Str, sizeof(aModFilePath));
+	str_append(aModFilePath, ".mod", sizeof(aModFilePath));
 
-	IOHANDLE ModMainJs = Storage()->OpenFile(aModMainJsPath, IOFLAG_READ, IStorage::TYPE_SAVE);
-	if(ModMainJs)
+	IOHANDLE ModFile = Storage()->OpenFile(aModFilePath, IOFLAG_READ, IStorage::TYPE_SAVE);
+	if(ModFile)
 	{
-		io_close(ModMainJs);
+		io_close(ModFile);
 		dbg_msg("duck", "mod is already installed on disk");
 		return true;
 	}
@@ -1708,6 +1816,7 @@ bool CDuckBridge::IsModAlreadyInstalled(const SHA256_DIGEST *pModSha256)
 
 bool CDuckBridge::ExtractAndInstallModZipBuffer(const CGrowBuffer *pHttpZipData, const SHA256_DIGEST *pModSha256)
 {
+#ifdef MOD_ZIPFILE
 	dbg_msg("unzip", "EXTRACTING AND INSTALLING MOD");
 
 	char aUserModsPath[512];
@@ -1989,6 +2098,7 @@ bool CDuckBridge::ExtractAndInstallModZipBuffer(const CGrowBuffer *pHttpZipData,
 	unzClose(ZipFile);
 #endif
 
+#endif
 	return true;
 }
 
@@ -2010,306 +2120,133 @@ bool CDuckBridge::ExtractAndInstallModCompressedBuffer(const void *pCompBuff, in
 
 	if(Sha256 != *pModSha256)
 	{
-		dbg_msg("duck", "mod url sha256 and server sent mod sha256 mismatch, received sha256=%s", aSha256Str);
+		dbg_msg("duck", "mod sha256 and server sent mod sha256 mismatch, received sha256=%s", aSha256Str);
+		// TODO: display error message
+		return false;
+	}
+
+	// extract
+	CDuckModFile DuckModFile;
+	DuckModFile.m_Sha256 = Sha256;
+	DuckModFile.m_FileBuffer.Append(pCompBuff, CompBuffSize);
+
+	CDuckModFileExtracted Extracted;
+	bool r = DuckExtractFilesFromModFile(&DuckModFile, &Extracted, IsConfigDebug);
+	if(!r)
+	{
+		dbg_msg("duck", "failed to extract mod sha256=%s", aSha256Str);
 		// TODO: display error message
 		return false;
 	}
 
 	// mod folder where we're going to extract the files
-	char aModRootPath[512];
-	str_copy(aModRootPath, aUserModsPath, sizeof(aModRootPath));
-	str_append(aModRootPath, "/", sizeof(aModRootPath));
-	str_append(aModRootPath, aSha256Str, sizeof(aModRootPath));
+	char aDiskFilePath[512];
+	str_format(aDiskFilePath, sizeof(aDiskFilePath), "%s/%s.mod", aUserModsPath, aSha256Str);
 
-	// uncompress
-	CGrowBuffer FilePackBuff;
-	FilePackBuff.Grow(CompBuffSize * 3);
-
-	uLongf DestSize = FilePackBuff.m_Capacity;
-	int UncompRet = uncompress((Bytef*)FilePackBuff.m_pData, &DestSize, (const Bytef*)pCompBuff, CompBuffSize);
-	FilePackBuff.m_Size = DestSize;
-
-	int GrowAttempts = 4;
-	while(UncompRet == Z_BUF_ERROR && GrowAttempts--)
+	IOHANDLE SavedModFile = io_open(aDiskFilePath, IOFLAG_WRITE);
+	if(!SavedModFile)
 	{
-		FilePackBuff.Grow(FilePackBuff.m_Capacity * 2);
-		DestSize = FilePackBuff.m_Capacity;
-		UncompRet = uncompress((Bytef*)FilePackBuff.m_pData, &DestSize, (const Bytef*)pCompBuff, CompBuffSize);
-		FilePackBuff.m_Size = DestSize;
-	}
-
-	if(UncompRet != Z_OK)
-	{
-		switch(UncompRet)
-		{
-			case Z_MEM_ERROR:
-				dbg_msg("duck", "DecompressMod: Error, not enough memory");
-				break;
-			case Z_BUF_ERROR:
-				dbg_msg("duck", "DecompressMod: Error, not enough room in the output buffer");
-				break;
-			case Z_DATA_ERROR:
-				dbg_msg("duck", "DecompressMod: Error, data incomplete or corrupted");
-				break;
-			default:
-				dbg_break(); // should never be reached
-		}
+		dbg_msg("duck", "Error creating file '%s'", aDiskFilePath);
 		return false;
 	}
 
-	// read decompressed pack file
-
-	// header
-	const char* pFilePack = FilePackBuff.m_pData;
-	const int FilePackSize = FilePackBuff.m_Size;
-	const char* const pFilePackEnd = pFilePack + FilePackSize;
-
-	if(str_comp_num(pFilePack, "DUCK", 4) != 0)
-	{
-		dbg_msg("duck", "DecompressMod: Error, invalid pack file");
-		return false;
-	}
-
-	pFilePack += 4;
-
-	// find required files
-	const char* aRequiredFiles[] = {
-		MAIN_SCRIPT_FILE,
-		"mod_info.json"
-	};
-	const int RequiredFilesCount = sizeof(aRequiredFiles)/sizeof(aRequiredFiles[0]);
-	int FoundRequiredFilesCount = 0;
-
-	// TODO: use packer
-	const char* pCursor = pFilePack;
-	while(pCursor < pFilePackEnd)
-	{
-		const int FilePathLen = *(int*)pCursor;
-		pCursor += 4;
-		const char* pFilePath = pCursor;
-		pCursor += FilePathLen;
-		const int FileSize = *(int*)pCursor;
-		pCursor += 4;
-		const char* pFileData = pCursor;
-		pCursor += FileSize;
-
-		char aFilePath[512];
-		dbg_assert(FilePathLen < sizeof(aFilePath)-1, "FilePathLen too large");
-		mem_move(aFilePath, pFilePath, FilePathLen);
-		aFilePath[FilePathLen] = 0;
-
-		if(IsConfigDebug)
-			dbg_msg("duck", "file path=%s size=%d", aFilePath, FileSize);
-
-		for(int r = 0; r < RequiredFilesCount; r++)
-		{
-			// TODO: can 2 files have the same name?
-			// TODO: not very efficient, but oh well
-			const char* pFind = str_find(aFilePath, aRequiredFiles[r]);
-			if(pFind && FilePathLen-(pFind-aFilePath) == str_length(aRequiredFiles[r]))
-				FoundRequiredFilesCount++;
-		}
-	}
-
-	if(FoundRequiredFilesCount != RequiredFilesCount)
-	{
-		dbg_msg("duck", "mod is missing a required file, required files are: ");
-		for(int r = 0; r < RequiredFilesCount; r++)
-		{
-			dbg_msg("duck", "    - %s", aRequiredFiles[r]);
-		}
-		return false;
-	}
-
-	if(IsConfigDebug)
-		dbg_msg("duck", "CREATE directory '%s'", aModRootPath);
-	if(fs_makedir(aModRootPath) != 0)
-	{
-		dbg_msg("duck", "DecompressMod: Error, failed to create directory '%s'", aModRootPath);
-		return false;
-	}
-
-	pCursor = pFilePack;
-	while(pCursor < pFilePackEnd)
-	{
-		const int FilePathLen = *(int*)pCursor;
-		pCursor += 4;
-		const char* pFilePath = pCursor;
-		pCursor += FilePathLen;
-		const int FileSize = *(int*)pCursor;
-		pCursor += 4;
-		const char* pFileData = pCursor;
-		pCursor += FileSize;
-
-		char aFilePath[512];
-		dbg_assert(FilePathLen < sizeof(aFilePath)-1, "FilePathLen too large");
-		mem_move(aFilePath, pFilePath, FilePathLen);
-		aFilePath[FilePathLen] = 0;
-
-		// create directory to hold the file (if needed)
-		const char* pSlashFound = aFilePath;
-		do
-		{
-			pSlashFound = str_find(pSlashFound, "/");
-			if(pSlashFound)
-			{
-				char aDir[512];
-				str_format(aDir, sizeof(aDir), "%.*s", pSlashFound-aFilePath, aFilePath);
-
-				if(IsConfigDebug)
-					dbg_msg("duck", "CREATE SUBDIR dir=%s", aDir);
-
-				char aDirPath[512];
-				str_copy(aDirPath, aModRootPath, sizeof(aDirPath));
-				str_append(aDirPath, "/", sizeof(aDirPath));
-				str_append(aDirPath, aDir, sizeof(aDirPath));
-
-				if(fs_makedir(aDirPath) != 0)
-				{
-					dbg_msg("duck", "DecompressMod: Error, failed to create directory '%s'", aDirPath);
-					return false;
-				}
-
-				pSlashFound++;
-			}
-		}
-		while(pSlashFound);
-
-		// create file on disk
-		char aDiskFilePath[256];
-		str_copy(aDiskFilePath, aModRootPath, sizeof(aDiskFilePath));
-		str_append(aDiskFilePath, "/", sizeof(aDiskFilePath));
-		str_append(aDiskFilePath, aFilePath, sizeof(aDiskFilePath));
-
-		IOHANDLE FileExtracted = io_open(aDiskFilePath, IOFLAG_WRITE);
-		if(!FileExtracted)
-		{
-			dbg_msg("duck", "Error creating file '%s'", aDiskFilePath);
-			return false;
-		}
-
-		io_write(FileExtracted, pFileData, FileSize);
-		io_close(FileExtracted);
-	}
-
+	io_write(SavedModFile, pCompBuff, CompBuffSize);
+	io_close(SavedModFile);
 	return true;
 }
 
-struct CPath
-{
-	char m_aBuff[512];
-};
-
-struct CFileSearch
-{
-	CPath m_BaseBath;
-	array<CPath>* m_paFilePathList;
-};
-
-static int ListDirCallback(const char* pName, int IsDir, int Type, void *pUser)
-{
-	CFileSearch FileSearch = *(CFileSearch*)pUser; // copy
-
-	if(IsDir)
-	{
-		if(pName[0] != '.')
-		{
-			//dbg_msg("duck", "ListDirCallback dir='%s'", pName);
-			str_append(FileSearch.m_BaseBath.m_aBuff, "/", sizeof(FileSearch.m_BaseBath.m_aBuff));
-			str_append(FileSearch.m_BaseBath.m_aBuff, pName, sizeof(FileSearch.m_BaseBath.m_aBuff));
-			//dbg_msg("duck", "recursing... dir='%s'", DirPath.m_aBuff);
-			fs_listdir(FileSearch.m_BaseBath.m_aBuff, ListDirCallback, Type + 1, &FileSearch);
-		}
-	}
-	else
-	{
-		CPath FileStr;
-		str_copy(FileStr.m_aBuff, pName, sizeof(FileStr.m_aBuff));
-
-		CPath FilePath = FileSearch.m_BaseBath;
-		str_append(FilePath.m_aBuff, "/", sizeof(FilePath.m_aBuff));
-		str_append(FilePath.m_aBuff, pName, sizeof(FilePath.m_aBuff));
-		FileSearch.m_paFilePathList->add(FilePath);
-		//dbg_msg("duck", "ListDirCallback file='%s'", pName);
-	}
-
-	return 0;
-}
 
 bool CDuckBridge::LoadModFilesFromDisk(const SHA256_DIGEST *pModSha256)
 {
-	char aModRootPath[512];
-	char aSha256Str[SHA256_MAXSTRSIZE];
-	Storage()->GetCompletePath(IStorage::TYPE_SAVE, "mods", aModRootPath, sizeof(aModRootPath));
-	const int SaveDirPathLen = str_length(aModRootPath)-4;
-	sha256_str(*pModSha256, aSha256Str, sizeof(aSha256Str));
-	str_append(aModRootPath, "/", sizeof(aModRootPath));
-	str_append(aModRootPath, aSha256Str, sizeof(aModRootPath));
-	const int ModRootDirLen = str_length(aModRootPath);
+	if(m_ModFiles.m_Sha256 != *pModSha256)
+	{
+		char aModFilePath[512];
+		char aSha256Str[SHA256_MAXSTRSIZE];
+		Storage()->GetCompletePath(IStorage::TYPE_SAVE, "mods", aModFilePath, sizeof(aModFilePath));
 
-	// get files recursively on disk
-	array<CPath> aFilePathList;
-	CFileSearch FileSearch;
-	str_copy(FileSearch.m_BaseBath.m_aBuff, aModRootPath, sizeof(FileSearch.m_BaseBath.m_aBuff));
-	FileSearch.m_paFilePathList = &aFilePathList;
+		sha256_str(*pModSha256, aSha256Str, sizeof(aSha256Str));
+		str_append(aModFilePath, "/", sizeof(aModFilePath));
+		str_append(aModFilePath, aSha256Str, sizeof(aModFilePath));
+		str_append(aModFilePath, ".mod", sizeof(aModFilePath));
 
-	fs_listdir(aModRootPath, ListDirCallback, 1, &FileSearch);
+		IOHANDLE ModFile = io_open(aModFilePath, IOFLAG_READ);
+		if(!ModFile)
+		{
+			dbg_msg("duck", "could not open '%s'", aModFilePath);
+			return false;
+		}
+
+		const int FileSize = (int)io_length(ModFile);
+		dbg_assert(FileSize < (10*1024*1024), "File too large"); // TODO: larger
+
+		CDuckModFile DuckModFile;
+		DuckModFile.m_Sha256 = *pModSha256;
+		DuckModFile.m_FileBuffer.Grow(FileSize);
+
+		io_read(ModFile, DuckModFile.m_FileBuffer.m_pData, FileSize);
+		io_close(ModFile);
+
+		DuckModFile.m_FileBuffer.m_Size = FileSize;
+
+		bool r = DuckExtractFilesFromModFile(&DuckModFile, &m_ModFiles, g_Config.m_Debug == 1);
+		if(!r)
+		{
+			dbg_msg("duck", "failed to extract '%s'", aModFilePath);
+			return false;
+		}
+	}
 
 	// reset mod
 	ModInit();
 
-	const int FileCount = aFilePathList.size();
-	const CPath* pFilePaths = aFilePathList.base_ptr();
+	const int FileCount = m_ModFiles.m_Files.size();
+	const CDuckModFileExtracted::CFileEntry* pFileEntries = m_ModFiles.m_Files.base_ptr();
 	for(int i = 0; i < FileCount; i++)
 	{
-		//dbg_msg("duck", "file='%s'", pFilePaths[i].m_aBuff);
-		if(str_endswith(pFilePaths[i].m_aBuff, SCRIPTFILE_EXT))
+		const char* pFilePath = pFileEntries[i].m_aPath;
+		dbg_msg("duck", "load_file='%s'", pFilePath);
+
+		if(str_endswith(pFilePath, SCRIPTFILE_EXT))
 		{
-			const char* pRelPath = pFilePaths[i].m_aBuff+ModRootDirLen+1;
-			bool Loaded = m_Backend.LoadScriptFile(pFilePaths[i].m_aBuff, pRelPath);
+			m_Backend.AddScriptFileItem(pFilePath, pFileEntries[i].m_pData, pFileEntries[i].m_Size);
 		}
-		else if(str_endswith(pFilePaths[i].m_aBuff, ".png"))
+		else if(str_endswith(pFilePath, ".png"))
 		{
-			const char* pTextureName = pFilePaths[i].m_aBuff+ModRootDirLen+1;
-			const char* pTextureRelPath = pFilePaths[i].m_aBuff+SaveDirPathLen;
-			const bool Loaded = LoadTexture(pTextureRelPath, pTextureName);
+			const bool Loaded = LoadTextureRaw(pFilePath, pFileEntries[i].m_pData, pFileEntries[i].m_Size);
 
 			if(!Loaded)
 			{
-				ScriptError(JsErrorLvl::CRITICAL, "error loading png image '%s'", pTextureName);
+				ScriptError(JsErrorLvl::CRITICAL, "error loading png image '%s'", pFilePath);
 				continue;
 			}
 
-			dbg_msg("duck", "image loaded '%s' (%x)", pTextureName, m_aTextures[m_aTextures.size()-1].m_Hash);
+			dbg_msg("duck", "image loaded '%s' (%x)", pFilePath, m_aTextures[m_aTextures.size()-1].m_Hash);
 			// TODO: show error instead of breaking
 
-			if(str_startswith(pTextureName, "skins/")) {
-				pTextureName += 6;
-				const char* pPartEnd = str_find(pTextureName, "/");
+			if(str_startswith(pFilePath, "skins/")) {
+				pFilePath += 6;
+				const char* pPartEnd = str_find(pFilePath, "/");
 				if(!str_find(pPartEnd+1, "/")) {
-					dbg_msg("duck", "skin part name = '%.*s'", pPartEnd-pTextureName, pTextureName);
+					dbg_msg("duck", "skin part name = '%.*s'", pPartEnd-pFilePath, pFilePath);
 					char aPart[256];
-					str_format(aPart, sizeof(aPart), "%.*s", pPartEnd-pTextureName, pTextureName);
+					str_format(aPart, sizeof(aPart), "%.*s", pPartEnd-pFilePath, pFilePath);
 					AddSkinPart(aPart, pPartEnd+1, m_aTextures[m_aTextures.size()-1].m_Handle);
 				}
 			}
 		}
-		else if(str_endswith(pFilePaths[i].m_aBuff, ".wv"))
+		else if(str_endswith(pFilePath, ".wv"))
 		{
-			const char* pSoundName = pFilePaths[i].m_aBuff+ModRootDirLen+1;
-			const char* pSoundRelPath = pFilePaths[i].m_aBuff+SaveDirPathLen;
-			ISound::CSampleHandle SoundId = m_pClient->Sound()->LoadWV(pSoundRelPath);
+			ISound::CSampleHandle SoundId = m_pClient->Sound()->LoadWVRaw(pFilePath, pFileEntries[i].m_pData, pFileEntries[i].m_Size);
 
-
-			const int Len = str_length(pSoundName);
+			const int Len = str_length(pFilePath);
 			if(Len < 4 || !SoundId.IsValid()) // .wv
 			{
-				dbg_msg("duck", "ERROR loading sound '%s'", pSoundName);
+				dbg_msg("duck", "ERROR loading sound '%s'", pFilePath);
 				continue;
 			}
 
-			uint32_t Hash = hash_fnv1a(pSoundName, Len-3);
-			dbg_msg("duck", "sound loaded '%s' (%x)", pSoundName, Hash);
+			uint32_t Hash = hash_fnv1a(pFilePath, Len-3);
+			dbg_msg("duck", "sound loaded '%s' (%x)", pFilePath, Hash);
 
 			CSoundHashPair Pair;
 			Pair.m_Hash = Hash;
@@ -2318,31 +2255,9 @@ bool CDuckBridge::LoadModFilesFromDisk(const SHA256_DIGEST *pModSha256)
 		}
 	}
 
-	m_IsModLoaded = true;
 	m_Backend.OnModLoaded();
+	m_IsModLoaded = true;
 	return true;
-}
-
-bool CDuckBridge::StartDuckModHttpDownload(const char *pModUrl, const SHA256_DIGEST *pModSha256)
-{
-	dbg_assert(!IsModAlreadyInstalled(pModSha256), "mod is already installed, check it before calling this");
-
-	CGrowBuffer Buff;
-	HttpRequestPage(pModUrl, &Buff);
-
-	bool IsUnzipped = ExtractAndInstallModZipBuffer(&Buff, pModSha256);
-	dbg_assert(IsUnzipped, "Unzipped to disk: rip in peace");
-
-	Buff.Release();
-
-	if(!IsUnzipped)
-		return false;
-
-	bool IsLoaded = LoadModFilesFromDisk(pModSha256);
-	dbg_assert(IsLoaded, "Loaded from disk: rip in peace");
-
-	dbg_msg("duck", "mod loaded url='%s'", pModUrl);
-	return IsLoaded;
 }
 
 bool CDuckBridge::TryLoadInstalledDuckMod(const SHA256_DIGEST *pModSha256)
@@ -2359,7 +2274,7 @@ bool CDuckBridge::TryLoadInstalledDuckMod(const SHA256_DIGEST *pModSha256)
 	return IsLoaded;
 }
 
-bool CDuckBridge::InstallAndLoadDuckModFromZipBuffer(const void *pBuffer, int BufferSize, const SHA256_DIGEST *pModSha256)
+bool CDuckBridge::InstallAndLoadDuckModFromModFile(const void *pBuffer, int BufferSize, const SHA256_DIGEST *pModSha256)
 {
 	dbg_assert(!IsModAlreadyInstalled(pModSha256), "mod is already installed, check it before calling this");
 

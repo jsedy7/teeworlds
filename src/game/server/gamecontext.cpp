@@ -1606,4 +1606,12 @@ const char *CGameContext::NetVersion() const { return GAME_NETVERSION; }
 const char *CGameContext::NetVersionHashUsed() const { return GAME_NETVERSION_HASH_FORCED; }
 const char *CGameContext::NetVersionHashReal() const { return GAME_NETVERSION_HASH; }
 
+const char *CGameContext::DuckMod() const
+{
+	static const char* pNull = "";
+	if(m_pController)
+		return m_pController->m_aDuckMod;
+	return pNull;
+}
+
 IGameServer *CreateGameServer() { return new CGameContext; }
