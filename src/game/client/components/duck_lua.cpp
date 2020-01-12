@@ -3440,7 +3440,36 @@ static void AnimKeyframeLuaPush(lua_State* L, const CAnimKeyframe& Kf)
 	LuaSetPropNumber(L, -1, "angle", Kf.m_Angle);
 }
 
-bool CDuckLua::OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2 Pos, vec2 Dir, int Emote, const CWeaponSpriteInfo *pWeaponSprite, int ClientID)
+static void CharacterLuaPush(lua_State* L, const CNetObj_Character& Chara)
+{
+	lua_createtable(L, 0, 22);
+	// core
+	LuaSetPropInteger(L, -1, "tick", Chara.m_Tick);
+	LuaSetPropInteger(L, -1, "x", Chara.m_X);
+	LuaSetPropInteger(L, -1, "y", Chara.m_Y);
+	LuaSetPropInteger(L, -1, "velX", Chara.m_VelX);
+	LuaSetPropInteger(L, -1, "velY", Chara.m_VelY);
+	LuaSetPropInteger(L, -1, "angle", Chara.m_Angle);
+	LuaSetPropInteger(L, -1, "direction", Chara.m_Direction);
+	LuaSetPropInteger(L, -1, "jumped", Chara.m_Jumped);
+	LuaSetPropInteger(L, -1, "hookedPlayer", Chara.m_HookedPlayer);
+	LuaSetPropInteger(L, -1, "hookState", Chara.m_HookState);
+	LuaSetPropInteger(L, -1, "hookTick", Chara.m_HookTick);
+	LuaSetPropInteger(L, -1, "hookX", Chara.m_HookX);
+	LuaSetPropInteger(L, -1, "hookY", Chara.m_HookY);
+	LuaSetPropInteger(L, -1, "hookDx", Chara.m_HookDx);
+	LuaSetPropInteger(L, -1, "hookDy", Chara.m_HookDy);
+	// character
+	LuaSetPropInteger(L, -1, "health", Chara.m_Health);
+	LuaSetPropInteger(L, -1, "armor", Chara.m_Armor);
+	LuaSetPropInteger(L, -1, "ammoCount", Chara.m_AmmoCount);
+	LuaSetPropInteger(L, -1, "weapon", Chara.m_Weapon);
+	LuaSetPropInteger(L, -1, "emote", Chara.m_Emote);
+	LuaSetPropInteger(L, -1, "attackTick", Chara.m_AttackTick);
+	LuaSetPropInteger(L, -1, "triggeredEvents", Chara.m_TriggeredEvents);
+}
+
+bool CDuckLua::OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2 Pos, vec2 Dir, int Emote, const CWeaponSpriteInfo *pWeaponSprite, const CNetObj_Character& PrevChara, const CNetObj_Character& CurChara, int ClientID)
 {
 	if(GetFunctionRef(OnRenderPlayer))
 	{
@@ -3548,6 +3577,20 @@ bool CDuckLua::OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2
 		LuaBeginProperty(L(), "clientID");
 
 			lua_pushinteger(L(), ClientID);
+
+		LuaFinishProperty(L());
+
+		// Previous character
+		// TODO: use Last predicted?
+		LuaBeginProperty(L(), "char_prev");
+
+			CharacterLuaPush(L(), PrevChara);
+
+		LuaFinishProperty(L());
+
+		LuaBeginProperty(L(), "char");
+
+			CharacterLuaPush(L(), CurChara);
 
 		LuaFinishProperty(L());
 
