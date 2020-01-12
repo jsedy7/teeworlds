@@ -20,7 +20,6 @@ CGameControllerExamplePhys1::CGameControllerExamplePhys1(class CGameContext *pGa
 void CGameControllerExamplePhys1::OnPlayerConnect(CPlayer* pPlayer)
 {
 	IGameController::OnPlayerConnect(pPlayer);
-	int ClientID = pPlayer->GetCID();
 }
 
 void CGameControllerExamplePhys1::Tick()

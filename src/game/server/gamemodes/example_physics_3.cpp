@@ -158,7 +158,7 @@ struct CBee
 	{
 		int Core1ID, Core2ID;
 		CCustomCore* pCore1 = m_pWorld->FindCustomCoreFromUID(m_CoreUID[0], &Core1ID);
-		CCustomCore* pCore2 = m_pWorld->FindCustomCoreFromUID(m_CoreUID[1], &Core2ID);
+		m_pWorld->FindCustomCoreFromUID(m_CoreUID[1], &Core2ID);
 		vec2 Pos = pCore1->m_Pos + vec2(70, 0);
 
 		if(NetworkClipped(pGameServer, SnappinClient, Pos))
@@ -230,7 +230,7 @@ struct CHive
 	void Snap(CGameContext* pGameServer, int SnappinClient)
 	{
 		int CoreID;
-		CCustomCore* pCore1 = m_pWorld->FindCustomCoreFromUID(m_CoreUID, &CoreID);
+		m_pWorld->FindCustomCoreFromUID(m_CoreUID, &CoreID);
 
 		CNetObj_Hive* pHive = pGameServer->DuckSnapNewItem<CNetObj_Hive>(m_HiveID);
 		pHive->m_CoreID = CoreID;

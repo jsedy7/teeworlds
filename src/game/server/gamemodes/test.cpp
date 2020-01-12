@@ -59,20 +59,6 @@ CGameControllerTEST::CGameControllerTEST(class CGameContext *pGameServer)
 
 	// load duck mod
 	str_copy(m_aDuckMod, "test", sizeof(m_aDuckMod));
-
-	CDuckCollision* pCollision = (CDuckCollision*)GameServer()->Collision();
-
-#ifdef CHARCHORE_TEST
-	GameServer()->m_World.m_Core.m_apCharacters[63] = &TestCore;
-	TestCore.Init(&GameServer()->m_World.m_Core, pCollision);
-	TestCore.m_Pos = vec2(700, 280);
-#else
-	/*CDuckCollision::CDynamicDisk Disk;
-	Disk.m_Pos = vec2(700, 280);
-	Disk.m_Vel = vec2(0, 0);
-	Disk.m_Radius = 30;
-	pCollision->SetDynamicDisk(0, Disk);*/
-#endif
 }
 
 void CGameControllerTEST::Tick()
