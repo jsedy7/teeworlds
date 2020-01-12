@@ -134,7 +134,7 @@ public:
 	void OnDuckSnapItem(int Msg, int SnapID, void* pRawMsg, int Size);
 	void OnInput(IInput::CEvent e);
 	void OnModLoaded();
-	bool OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2 Pos, vec2 Dir, int Emote, const CWeaponSpriteInfo *pWeaponSprite, const CNetObj_Character &PrevChara, const CNetObj_Character &CurChara, int ClientID);
+	bool OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2 Pos, vec2 Dir, int Emote, const CWeaponSpriteInfo *pWeaponSprite, const CNetObj_Character& PrevChara, const CNetObj_Character& CurChara, int ClientID);
 	bool OnBind(int Stroke, const char* pCmd);
 
 	inline bool IsLoaded() const { return m_pLuaState != NULL; }

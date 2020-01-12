@@ -3443,22 +3443,25 @@ static void AnimKeyframeLuaPush(lua_State* L, const CAnimKeyframe& Kf)
 static void CharacterLuaPush(lua_State* L, const CNetObj_Character& Chara)
 {
 	lua_createtable(L, 0, 22);
+
 	// core
+	CCharacterCore Core;
+	Core.Read(&Chara);
 	LuaSetPropInteger(L, -1, "tick", Chara.m_Tick);
-	LuaSetPropInteger(L, -1, "x", Chara.m_X);
-	LuaSetPropInteger(L, -1, "y", Chara.m_Y);
-	LuaSetPropInteger(L, -1, "velX", Chara.m_VelX);
-	LuaSetPropInteger(L, -1, "velY", Chara.m_VelY);
-	LuaSetPropInteger(L, -1, "angle", Chara.m_Angle);
-	LuaSetPropInteger(L, -1, "direction", Chara.m_Direction);
-	LuaSetPropInteger(L, -1, "jumped", Chara.m_Jumped);
-	LuaSetPropInteger(L, -1, "hookedPlayer", Chara.m_HookedPlayer);
-	LuaSetPropInteger(L, -1, "hookState", Chara.m_HookState);
-	LuaSetPropInteger(L, -1, "hookTick", Chara.m_HookTick);
-	LuaSetPropInteger(L, -1, "hookX", Chara.m_HookX);
-	LuaSetPropInteger(L, -1, "hookY", Chara.m_HookY);
-	LuaSetPropInteger(L, -1, "hookDx", Chara.m_HookDx);
-	LuaSetPropInteger(L, -1, "hookDy", Chara.m_HookDy);
+	LuaSetPropNumber(L, -1, "x", Core.m_Pos.x);
+	LuaSetPropNumber(L, -1, "y", Core.m_Pos.y);
+	LuaSetPropNumber(L, -1, "velX", Core.m_Vel.x);
+	LuaSetPropNumber(L, -1, "velY", Core.m_Vel.y);
+	LuaSetPropNumber(L, -1, "angle", Core.m_Angle);
+	LuaSetPropInteger(L, -1, "direction", Core.m_Direction);
+	LuaSetPropInteger(L, -1, "jumped", Core.m_Jumped);
+	LuaSetPropInteger(L, -1, "hookedPlayer", Core.m_HookedPlayer);
+	LuaSetPropInteger(L, -1, "hookState", Core.m_HookState);
+	LuaSetPropInteger(L, -1, "hookTick", Core.m_HookTick);
+	LuaSetPropNumber(L, -1, "hookX", Core.m_HookPos.x);
+	LuaSetPropNumber(L, -1, "hookY", Core.m_HookPos.y);
+	LuaSetPropNumber(L, -1, "hookDx", Core.m_HookDir.x);
+	LuaSetPropNumber(L, -1, "hookDy", Core.m_HookDir.y);
 	// character
 	LuaSetPropInteger(L, -1, "health", Chara.m_Health);
 	LuaSetPropInteger(L, -1, "armor", Chara.m_Armor);

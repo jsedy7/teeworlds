@@ -110,5 +110,8 @@ MACRO_CONFIG_INT(DbgResizable, dbg_resizable, 0, 0, 0, CFGFLAG_CLIENT, "Enables 
 
 // DUCK
 MACRO_CONFIG_INT(SvDuckDev, sv_duck_dev, 0, 0, 1, CFGFLAG_SAVE|CFGFLAG_SERVER, "Enables duck dev mode (sends mod files directly, for quick iteration)")
+#ifdef CONF_DEBUG
+MACRO_CONFIG_INT(DbgDuckAutoReload, dbg_duck_autoreload, 0, 0, 1, CFGFLAG_SAVE|CFGFLAG_SERVER, "Loads duck mod on player connect (faster iteration time)")
+#endif
 
 #endif
