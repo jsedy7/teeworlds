@@ -390,8 +390,8 @@ struct CDuckBridge : public CComponent
 	float GetCameraZoom() const;
 	vec2 GetUiMousePos() const;
 	int GetBaseTextureHandle(int ImgID) const;
-	void GetBaseSpritSubset(int SpriteID, float *pSubSet) const;
-	void GetBaseSpritScale(int SpriteID, float* pOutScale) const;
+	void GetBaseSpriteSubset(int SpriteID, float *pSubSet) const;
+	void GetBaseSpriteScale(int SpriteID, float* pOutScale) const;
 	bool GetSkinPart(int PartID, const char *pPartName, IGraphics::CTextureHandle *pOrgText, IGraphics::CTextureHandle *pColorText) const;
 	vec2 GetLocalCursorPos() const;
 
