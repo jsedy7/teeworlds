@@ -1,7 +1,7 @@
 -- main mod file
 
 function OnLoad()
-    print("Example Render 1");
+    print("Example Render 1")
 end
 
 function OnRender(LocalTime, intraTick)
@@ -352,6 +352,141 @@ function RainbowSkin(Player)
     DrawTee(Player)
 end
 
+function RgbToHue(rgb)
+    local r = rgb.r / 255
+    local g = rgb.g / 255
+    local b = rgb.b / 255
+
+    local cmax = max(max(r, g), b)
+    local cmin = min(min(r, g), b)
+    local c = max - min
+    local hue = 0
+
+    if c ~= 0 then
+        if cmax == r then
+            local segment = (g - b) / c
+            local shift   = 0 / 60
+            if segment < 0 then
+                shift = 360 / 60
+            end
+            hue = segment + shift
+        elseif cmax == g then
+            local segment = (b - r) / c
+            local shift   = 120 / 60 
+            hue = segment + shift
+        elseif cmax == b then
+            local segment = (r - g) / c
+            local shift   = 240 / 60
+            hue = segment + shift
+        end
+    end
+
+    return hue * 60
+end
+
+function min(a, b)
+    if a < b then
+        return a
+    end
+    return b
+end
+
+function max(a, b)
+    if a > b then
+        return a
+    end
+    return b
+end
+
+function clamp(v, vmin, vmax)
+    if v < vmin then
+        return vmin
+    elseif v > vmax then
+        return vmax
+    end
+    return v
+end
+
+-- H [0-360] S [0-1] V [0-1]
+function RgbToHsv(fR, fG, fB)
+    local fCMax = max(max(fR, fG), fB)
+    local fCMin = min(min(fR, fG), fB)
+    local fDelta = fCMax - fCMin
+    local fH, fS, fV
+
+    if fDelta > 0 then
+        if fCMax == fR then
+            fH = 60 * (fmod(((fG - fB) / fDelta), 6))
+        elseif fCMax == fG then
+            fH = 60 * (((fB - fR) / fDelta) + 2)
+        elseif fCMax == fB then
+            fH = 60 * (((fR - fG) / fDelta) + 4)
+        end
+
+        if fCMax > 0 then
+            fS = fDelta / fCMax
+        else
+            fS = 0
+        end
+
+        fV = fCMax
+    else
+        fH = 0
+        fS = 0
+        fV = fCMax
+    end
+
+    if fH < 0 then
+        fH = 360 + fH
+    end
+
+    return fH, fS, fV
+end
+
+-- R [0-1] G [0-1] B [0-1]
+function HsvToRgb(fH, fS, fV)
+    local fC = fV * fS
+    local fHPrime = fmod(fH / 60.0, 6)
+    local fX = fC * (1 - abs(fmod(fHPrime, 2) - 1))
+    local fM = fV - fC
+    local fR,fG,FB
+
+    if 0 <= fHPrime and fHPrime < 1 then
+        fR = fC
+        fG = fX
+        fB = 0
+    elseif 1 <= fHPrime and fHPrime < 2 then
+        fR = fX
+        fG = fC
+        fB = 0
+    elseif 2 <= fHPrime and fHPrime < 3 then
+        fR = 0
+        fG = fC
+        fB = fX
+    elseif 3 <= fHPrime and fHPrime < 4 then
+        fR = 0
+        fG = fX
+        fB = fC
+    elseif 4 <= fHPrime and fHPrime < 5 then
+        fR = fX
+        fG = 0
+        fB = fC
+    elseif 5 <= fHPrime and fHPrime < 6 then
+        fR = fC
+        fG = 0
+        fB = fX
+    else
+        fR = 0
+        fG = 0
+        fB = 0
+    end
+
+    fR = fR + fM
+    fG = fG + fM
+    fB = fB + fM
+    return fR, fG, fB
+end
+
 local flameSkin = {
     flipX = false,
     canFlip = false
@@ -447,6 +582,28 @@ function FlameSkin(Player)
         feetColor[3] = feetColor[3] * 0.5
     end
 
+    local bodyColor = copy(tee.colors[SkinPart.Body])
+    --[[
+    local h,s,v = RgbToHsv(bodyColor[1], bodyColor[2], bodyColor[3])
+    h = h + sin(localTime * (cos(localTime) + 1.0)*1) * 5
+    h = fmod(h, 360)
+    local r,g,b = HsvToRgb(h, s ,v)
+    bodyColor[1] = r
+    bodyColor[2] = g
+    bodyColor[3] = b
+    ]]
+
+    local markingColor = copy(tee.colors[SkinPart.Marking])
+    --[[
+    local h,s,v = RgbToHsv(markingColor[1], markingColor[2], markingColor[3])
+    s = s - sin(localTime * (cos(localTime) + 1.0)*1) * 0.5
+    s = clamp(s, 0, 1)
+    local r,g,b = HsvToRgb(h, s ,v)
+    markingColor[1] = r
+    markingColor[2] = g
+    markingColor[3] = b
+    ]]
+
     -- BACK
 
     -- back flame body
@@ -457,7 +614,7 @@ function FlameSkin(Player)
 
     -- front foot
     TwRenderSetTexture(TwGetModTexture("flame_feet_back"))
-    TwRenderSetColorF4(1, 1, 1, 1)
+    SetColor(SkinPart.Decoration)
     TwRenderSetQuadRotation(frontFoot.angle*pi*2)
     SelectSprite({ cx = 2, cy = 1}, 1, 0, 1, 1)
     TwRenderQuadCentered(frontFoot.x, frontFoot.y, frontFootW, frontFootW)
@@ -484,12 +641,12 @@ function FlameSkin(Player)
 
     -- flame body
     TwRenderSetTexture(TwGetModTexture("flame_body"))
-    SetColor(SkinPart.Body)
+    TwRenderSetColorF4(bodyColor[1], bodyColor[2], bodyColor[3], bodyColor[4])
     TwRenderSetQuadSubSet(x1, frameIY * frameSize, x2, (frameIY + 1) * frameSize)
     TwRenderQuadCentered(flameX, flameY, flameW, flameH)
 
     TwRenderSetTexture(TwGetModTexture("flame_body_front"))
-    SetColor(SkinPart.Marking)
+    TwRenderSetColorF4(markingColor[1], markingColor[2], markingColor[3], markingColor[4])
     TwRenderSetQuadSubSet(x1, frameIY * frameSize, x2, (frameIY + 1) * frameSize)
     TwRenderQuadCentered(flameX, flameY, flameW, flameH)
 
@@ -539,7 +696,25 @@ function FlameSkin(Player)
     TwRenderQuadCentered(frontFoot.x, frontFoot.y, frontFootW, frontFootW)
 end
 
+function DrawAmmobar(Player)
+    local pos = Player.pos
+
+    local circleSize = 5
+    local circleSpace = 2
+    local circleCount = 10
+    local offX = (circleSize + circleSpace) * circleCount/2 - circleSpace
+    for i = 0,circleCount-1,1 do
+        if i < Player.char.ammoCount then
+            TwRenderSetColorF4(0.5, 0.5, 0.5, 1)
+        else
+            TwRenderSetColorF4(0.2, 0.2, 0.2, 1)
+        end
+        TwRenderDrawCircle(pos.x -offX + i*(circleSize+circleSpace), pos.y - 100, circleSize/2)
+    end
+end
+
 function OnRenderPlayer(Player)
+    DrawAmmobar(Player)
     DrawWeapon(Player)
     FlameSkin(Player)
     return true

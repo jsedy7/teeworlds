@@ -1,5 +1,5 @@
 -- Main script file
-require("utils.lua")
+require("utils")
 
 local isDebug = false
 local game = {
@@ -238,5 +238,12 @@ end
 function OnInput(event)
     if event.key == 112 and event.released then
         isDebug = not isDebug
+    end
+end
+
+function OnBind(cmd, pressed)
+    if cmd == "+bees" then
+        print("BEEEEES")
+        return true
     end
 end
