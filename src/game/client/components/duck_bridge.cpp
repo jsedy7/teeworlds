@@ -1627,6 +1627,9 @@ bool CDuckBridge::OnRenderPlayer(const CNetObj_Character *pPrevChar, const CNetO
 	WeaponSprite.m_ID = Cur.m_Weapon;
 	WeaponSprite.m_Recoil = Recoil;
 
+	// TODO: add velocity
+	// TODO: pack position, dir, and velocity into an "inter" (for interpolated) property
+
 	RenderSetDrawSpace(DrawSpace::PLAYER + ClientID);
 	return m_Backend.OnRenderPlayer(&State, &RenderInfo, Position, Direction, Cur.m_Emote, &WeaponSprite, Prev, Cur, ClientID);
 }

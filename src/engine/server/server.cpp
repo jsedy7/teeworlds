@@ -1341,7 +1341,7 @@ int CServer::Run()
 	}
 	m_MapChunksPerRequest = g_Config.m_SvMapDownloadSpeed;
 
-	ResetDuckMod(); // DUCK
+	m_MapReload = 1; // DUCK
 
 	// start server
 	NETADDR BindAddr;
@@ -1436,7 +1436,13 @@ int CServer::Run()
 					Kernel()->ReregisterInterface(GameServer());
 					GameServer()->OnInit();
 
-					LoadDuckMod(); // load duck from game controller string
+					bool IsModValid = LoadDuckMod(); // load duck from game controller string
+					if(!IsModValid && *GameServer()->DuckMod())
+					{
+						str_copy(g_Config.m_SvGametype, "dm", sizeof(g_Config.m_SvGametype));
+						m_MapReload = 1;
+						dbg_msg("duck", "ERROR: failed to load mod '%s'", GameServer()->DuckMod());
+					}
 
 					// send duck mod to duck client if there is one
 					for(int c = 0; c < MAX_CLIENTS; c++)
@@ -1837,12 +1843,22 @@ void CServer::ResetDuckMod()
 bool CServer::LoadDuckMod()
 {
 	const char* pDuckMod = m_pGameServer->DuckMod();
+	if(!*pDuckMod)
+		return false;
+
 	char aModPath[256];
 	str_format(aModPath, sizeof(aModPath), "mods/%s", pDuckMod);
+	dbg_msg("duck", "loading mod '%s'...", aModPath);
 
 	if(IsDuckDevMode())
 	{
-		if(!CompressDuckModFolder(aModPath))
+		bool IsMadeCorrectly = CompressDuckModFolder(aModPath);
+		if(IsMadeCorrectly)
+		{
+			dbg_msg("duck", "[dev mode] mod file created successfully. dir='%s'", aModPath);
+			return true;
+		}
+		else
 		{
 			dbg_msg("duck", "[dev mode] failed to load and compress duck mod. dir='%s'", aModPath);
 			return false;
@@ -1856,7 +1872,7 @@ bool CServer::LoadDuckMod()
 		return false;
 	}
 
-	return true;
+	return false;
 }
 
 // DUCK
@@ -1926,6 +1942,11 @@ bool CServer::TryGetDuckClientInfo(int ClientID, CUnpacker *pUnpacker)
 	if(!pUnpacker->Error())
 	{
 		m_aClients[ClientID].m_DuckVersion = DuckVersion;
+
+#ifdef CONF_DEBUG
+		if(g_Config.m_DbgDuckAutoReload)
+			LoadDuckMod();
+#endif
 		return true;
 	}
 	return false;
