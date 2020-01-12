@@ -214,7 +214,7 @@ bool DuckCreateModFileFromFolder(IStorage* pStorage, const char *pModPath, CDuck
 		TestBuff.Grow(FilePackBuff.m_Size);
 		uLongf TestDestSize = TestBuff.m_Capacity;
 		int UncompRet = uncompress((Bytef*)TestBuff.m_pData, &TestDestSize, (const Bytef*)pOutFileBuffer->m_pData, pOutFileBuffer->m_Size);
-		dbg_assert(UncompRet == Z_OK && TestDestSize == FilePackBuff.m_Size, "compression test failed");
+		dbg_assert(UncompRet == Z_OK && (int)TestDestSize == FilePackBuff.m_Size, "compression test failed");
 	}
 #endif
 
@@ -222,7 +222,7 @@ bool DuckCreateModFileFromFolder(IStorage* pStorage, const char *pModPath, CDuck
 	char aModSha256Str[SHA256_MAXSTRSIZE];
 	sha256_str(pOut->m_Sha256, aModSha256Str, sizeof(aModSha256Str));
 
-	dbg_msg("duck", "done creating mod file pack size=%d comp_ratio=%g sha256=%s", DestSize, FilePackBuff.m_Size/(double)DestSize, aModSha256Str);
+	dbg_msg("duck", "done creating mod file pack size=%d comp_ratio=%g sha256=%s", (int)DestSize, FilePackBuff.m_Size/(double)DestSize, aModSha256Str);
 
 	return true;
 }
@@ -312,11 +312,11 @@ bool DuckExtractFilesFromModFile(const CDuckModFile *pIn, CDuckModFileExtracted 
 		pCursor += FilePathLen;
 		const int FileSize = *(int*)pCursor;
 		pCursor += 4;
-		const char* pFileData = pCursor;
+		// const char* pFileData = pCursor;
 		pCursor += FileSize;
 
 		char aFilePath[512];
-		dbg_assert(FilePathLen > 0 && FilePathLen < sizeof(aFilePath)-1, "FilePathLen too large");
+		dbg_assert(FilePathLen > 0 && FilePathLen < (int)sizeof(aFilePath)-1, "FilePathLen too large");
 		mem_move(aFilePath, pFilePath, FilePathLen);
 		aFilePath[FilePathLen] = 0;
 
@@ -356,7 +356,7 @@ bool DuckExtractFilesFromModFile(const CDuckModFile *pIn, CDuckModFileExtracted 
 		pCursor += FileSize;
 
 		CDuckModFileExtracted::CFileEntry Entry;
-		dbg_assert(FilePathLen > 0 && FilePathLen < sizeof(Entry.m_aPath)-1, "FilePathLen too large");
+		dbg_assert(FilePathLen > 0 && FilePathLen < (int)sizeof(Entry.m_aPath)-1, "FilePathLen too large");
 		mem_move(Entry.m_aPath, pFilePath, FilePathLen);
 		Entry.m_aPath[FilePathLen] = 0;
 		Entry.m_pData = pFileData;

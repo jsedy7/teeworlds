@@ -20,7 +20,7 @@ inline CDuckLua* This() { return s_DuckLua; }
 
 #ifdef CONF_DEBUG
 	#define DBG_DETECTSTACKLEAK() if(IsStackLeaking()) {\
-		volatile int StackTop = lua_gettop(L());\
+		volatile int StackTop = lua_gettop(L()); (void)StackTop;\
 		dbg_assert(0, "stack leak"); }
 #else
 	#define DBG_DETECTSTACKLEAK()
@@ -171,7 +171,7 @@ static void TableToStr(lua_State *L, char* pStr, int MaxLen)
 		else
 		{
 			char aNum[16];
-			str_format(aNum, sizeof(aNum), "%d", lua_tointeger(L, -2));
+			str_format(aNum, sizeof(aNum), "%lld", (int64)lua_tointeger(L, -2));
 			APPEND(aNum, str_length(aNum));
 		}
 		APPEND("] = ", 4);
@@ -1229,7 +1229,7 @@ int CDuckLua::NativeGetSpriteSubSet(lua_State* L)
 
 	int SpriteID = lua_tointeger(L, 1);
 	float aSubSet[4];
-	This()->Bridge()->GetBaseSpritSubset(SpriteID, aSubSet);
+	This()->Bridge()->GetBaseSpriteSubset(SpriteID, aSubSet);
 
 	lua_newtable(L);
 	LuaSetPropNumber(L, -1, "x1", aSubSet[0]);
@@ -1259,7 +1259,7 @@ int CDuckLua::NativeGetSpriteScale(lua_State* L)
 
 	int SpriteID = lua_tointeger(L, 1);
 	float aScale[2];
-	This()->Bridge()->GetBaseSpritScale(SpriteID, aScale);
+	This()->Bridge()->GetBaseSpriteScale(SpriteID, aScale);
 
 	lua_newtable(L);
 	LuaSetPropNumber(L, -1, "w", aScale[0]);
@@ -1595,8 +1595,6 @@ int CDuckLua::NativeGetClientCharacterCores(lua_State* L)
 
 	IClient* pClient = This()->Bridge()->Client();
 	CGameClient* pGameClient = This()->Bridge()->m_pClient;
-
-	float IntraTick = pClient->IntraGameTick();
 
 	lua_createtable(L, MAX_CLIENTS, 0);
 	const CGameClient::CSnapState::CCharacterInfo* pSnapCharacters = pGameClient->m_Snap.m_aCharacters;
@@ -1972,7 +1970,6 @@ int CDuckLua::NativePhysGetCores(lua_State* L)
 
 
 	IClient* pClient = This()->Bridge()->Client();
-	float IntraTick = pClient->IntraGameTick();
 	float PredIntraTick = pClient->PredIntraGameTick();
 	const CDuckBridge& Bridge = *This()->Bridge();
 
@@ -2060,9 +2057,6 @@ int CDuckLua::NativePhysGetJoints(lua_State* L)
 {
 	CheckArgumentCount(L, 0);
 
-	IClient* pClient = This()->Bridge()->Client();
-	float IntraTick = pClient->IntraGameTick();
-	float PredIntraTick = pClient->PredIntraGameTick();
 	CDuckBridge& Bridge = *This()->Bridge();
 
 	const int Count = Bridge.m_WorldCorePredicted.m_aJoints.size();
@@ -2447,7 +2441,7 @@ int CDuckLua::NativeNetPacketUnpack(lua_State* L)
 
 	lua_pop(L, 1);
 
-	int Cursor = 0;
+	size_t Cursor = 0;
 
 	enum {
 		T_INT32=0,
@@ -2908,7 +2902,7 @@ static const luaL_Reg base_funcs[]={
 
 
 // TABLE
-#define aux_getn(L,n)(luaL_checktype(L,n,5),luaL_getn(L,n))
+#define aux_getn(L,n)(luaL_checktype(L,n,5), luaL_getn(L,n))
 static int tinsert(lua_State*L){
 	int e=aux_getn(L,1)+1;
 	int pos;

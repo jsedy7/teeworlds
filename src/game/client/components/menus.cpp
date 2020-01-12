@@ -2080,7 +2080,6 @@ int CMenus::Render()
 			}
 			if(Client()->DuckModDownloadTotalsize() > 0)
 			{
-				char aBuf[128];
 				Box.HSplitTop(15.f, 0, &Box);
 				Box.HSplitTop(ButtonHeight, &Part, &Box);
 				UI()->DoLabel(&Part, Client()->DuckModDescription(), ButtonHeight*ms_FontmodHeight*0.8f, CUI::ALIGN_CENTER);

@@ -29,8 +29,12 @@ Building on Linux or macOS
 
 Installing Duck extra dependencies
 -----------------------
+
     # Debian/Ubuntu
-    sudo apt install libcurl4-openssl-dev libzip-dev liblua5.3-dev libluajit-5.1-dev
+    cd other/luajit
+    sudo tar xvzf LuaJIT-2.0.5.tar.gz
+    sudo make
+    sudo make install
 
 
 Installing dependencies

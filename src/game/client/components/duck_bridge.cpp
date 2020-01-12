@@ -1,4 +1,6 @@
 #include <float.h>
+#include <stdarg.h>
+#include <stdio.h>
 
 #include "duck_bridge.h"
 
@@ -652,7 +654,6 @@ vec2 CDuckBridge::GetScreenSize() const
 vec2 CDuckBridge::GetPixelScale() const
 {
 	float OriScreenX0, OriScreenY0, OriScreenX1, OriScreenY1;
-	float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
 	Graphics()->GetScreen(&OriScreenX0, &OriScreenY0, &OriScreenX1, &OriScreenY1);
 
 	float MappedScreenWidth;
@@ -746,19 +747,17 @@ static void GetSpriteSubSet(const CDataSprite& Spr, float* pOutSubSet)
 	pOutSubSet[3] = y2;
 }
 
-void CDuckBridge::GetBaseSpritSubset(int SpriteID, float* pSubSet) const
+void CDuckBridge::GetBaseSpriteSubset(int SpriteID, float* pSubSet) const
 {
 	SpriteID = clamp(SpriteID, 0, NUM_SPRITES-1);
 	CDataSprite Spr = g_pData->m_aSprites[SpriteID];
 	GetSpriteSubSet(Spr, pSubSet);
 }
 
-void CDuckBridge::GetBaseSpritScale(int SpriteID, float *pOutScale) const
+void CDuckBridge::GetBaseSpriteScale(int SpriteID, float *pOutScale) const
 {
 	SpriteID = clamp(SpriteID, 0, NUM_SPRITES-1);
 	CDataSprite Spr = g_pData->m_aSprites[SpriteID];
-	int x = Spr.m_X;
-	int y = Spr.m_Y;
 	int w = Spr.m_W;
 	int h = Spr.m_H;
 
@@ -1342,7 +1341,7 @@ bool CDuckBridge::OnRenderPlayer(const CNetObj_Character *pPrevChar, const CNetO
 	Prev = *pPrevChar;
 	Cur = *pPlayerChar;
 
-	CNetObj_PlayerInfo pInfo = *pPlayerInfo;
+	//CNetObj_PlayerInfo pInfo = *pPlayerInfo;
 	CTeeRenderInfo RenderInfo = m_pClient->m_aClients[ClientID].m_RenderInfo;
 
 	// set size
@@ -1620,8 +1619,6 @@ bool CDuckBridge::OnRenderPlayer(const CNetObj_Character *pPrevChar, const CNetO
 		if(a < 1)
 			Recoil = sinf(a*pi);
 	}
-
-	const int iw = clamp(Cur.m_Weapon, 0, NUM_WEAPONS-1);
 
 	CWeaponSpriteInfo WeaponSprite;
 	WeaponSprite.m_ID = Cur.m_Weapon;
@@ -2230,9 +2227,9 @@ bool CDuckBridge::LoadModFilesFromDisk(const SHA256_DIGEST *pModSha256)
 				pFilePath += 6;
 				const char* pPartEnd = str_find(pFilePath, "/");
 				if(!str_find(pPartEnd+1, "/")) {
-					dbg_msg("duck", "skin part name = '%.*s'", pPartEnd-pFilePath, pFilePath);
+					dbg_msg("duck", "skin part name = '%.*s'", (int)(pPartEnd-pFilePath), pFilePath);
 					char aPart[256];
-					str_format(aPart, sizeof(aPart), "%.*s", pPartEnd-pFilePath, pFilePath);
+					str_format(aPart, sizeof(aPart), "%.*s", (int)( pPartEnd-pFilePath), pFilePath);
 					AddSkinPart(aPart, pPartEnd+1, m_aTextures[m_aTextures.size()-1].m_Handle);
 				}
 			}
