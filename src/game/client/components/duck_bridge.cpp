@@ -1628,7 +1628,7 @@ bool CDuckBridge::OnRenderPlayer(const CNetObj_Character *pPrevChar, const CNetO
 	WeaponSprite.m_Recoil = Recoil;
 
 	RenderSetDrawSpace(DrawSpace::PLAYER + ClientID);
-	return m_Backend.OnRenderPlayer(&State, &RenderInfo, Position, Direction, Cur.m_Emote, &WeaponSprite, ClientID);
+	return m_Backend.OnRenderPlayer(&State, &RenderInfo, Position, Direction, Cur.m_Emote, &WeaponSprite, Prev, Cur, ClientID);
 }
 
 void CDuckBridge::OnUpdatePlayer(const CNetObj_Character *pPrevChar, const CNetObj_Character *pPlayerChar, const CNetObj_PlayerInfo *pPrevInfo, const CNetObj_PlayerInfo *pPlayerInfo, int ClientID)
