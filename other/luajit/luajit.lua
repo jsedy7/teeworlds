@@ -5,12 +5,16 @@ Lua = {
 		local check = function(option, settings)
 			option.value = false
 			option.use_pkgconfig = false
+			option.use_luajitconfig = false
 			option.use_winlib = 0
 			option.lib_path = nil
 
 			if ExecuteSilent("pkg-config luajit") == 0 then
 				option.value = true
 				option.use_pkgconfig = true
+			elseif ExecuteSilent("luajit-config") > 0 and ExecuteSilent("luajit-config --cflags") == 0 then
+				option.value = true
+				option.use_luajitconfig = true
 			end
 
 			if platform == "win32" then
@@ -26,6 +30,9 @@ Lua = {
 			if option.use_pkgconfig == true then
 				settings.cc.flags:Add("`pkg-config --cflags luajit`")
 				settings.link.flags:Add("`pkg-config --libs luajit`")
+			elseif option.use_luajitconfig == true then
+				settings.cc.flags:Add("`luajit-config --cflags`")
+				settings.link.flags:Add("`luajit-config --libs`")
 			elseif option.use_winlib > 0 then
 				settings.cc.includes:Add(Lua.basepath .. "/include")
 				if option.use_winlib == 32 then
