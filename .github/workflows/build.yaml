@@ -128,9 +128,10 @@ jobs:
         sudo apt-get install libfreetype6-dev libsdl2-dev -y
         cd other/luajit
         sudo tar xvzf LuaJIT-2.0.5.tar.gz
+        cd LuaJIT-2.0.5
         sudo make
         sudo make install
-        cd ../..
+        cd ../../..
         cd bam
         ./make_unix.sh
 
