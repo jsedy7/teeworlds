@@ -143,7 +143,7 @@ jobs:
         cd other/luajit
         sudo tar xvzf LuaJIT-2.0.5.tar.gz
         cd LuaJIT-2.0.5
-        sudo make
+        sudo make MACOSX_DEPLOYMENT_TARGET=10.14
         sudo make install
         cd ../../..
         cd bam
