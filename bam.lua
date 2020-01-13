@@ -408,6 +408,7 @@ function BuildContent(settings, arch, conf)
 		AddJob({"other/freetype/include/ft2build.h", "other/freetype/windows/lib" .. _arch .. "/freetype.dll"}, "Downloading freetype", dl .. " freetype")
 		table.insert(content, CopyFile(settings.link.Output(settings, "") .. "/SDL2.dll", "other/sdl/windows/lib" .. _arch .. "/SDL2.dll"))
 		table.insert(content, CopyFile(settings.link.Output(settings, "") .. "/freetype.dll", "other/freetype/windows/lib" .. _arch .. "/freetype.dll"))
+		table.insert(content, CopyFile(settings.link.Output(settings, "") .. "/lua51.dll", "other/luajit/windows/lib" .. _arch .. "/lua51.dll"))
 		AddDependency(settings.link.Output(settings, "") .. "/SDL2.dll", "other/sdl/include/SDL.h")
 		AddDependency(settings.link.Output(settings, "") .. "/freetype.dll", "other/freetype/include/ft2build.h")
 	end
