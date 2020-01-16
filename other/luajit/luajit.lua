@@ -23,6 +23,9 @@ Lua = {
 		end
 
 		local apply = function(option, settings)
+			if(option.use_pkgconfig == nil) then
+				check(option, settings)
+			end
 			if option.use_pkgconfig == true then
 				settings.cc.flags:Add("`pkg-config --cflags luajit`")
 				settings.link.flags:Add("`pkg-config --libs luajit`")
