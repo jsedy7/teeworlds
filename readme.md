@@ -32,8 +32,8 @@ Installing Duck extra dependencies
 
     # Debian/Ubuntu
     cd other/luajit
-    sudo tar xvzf LuaJIT-2.0.5.tar.gz
-    sudo make
+    tar xvzf LuaJIT-2.0.5.tar.gz --strip 1
+    make
     sudo make install
 
 
