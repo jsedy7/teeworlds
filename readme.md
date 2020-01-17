@@ -27,16 +27,6 @@ Originally written by Magnus Auvinen.
 Building on Linux or macOS
 ==========================
 
-Installing Duck extra dependencies
------------------------
-
-    # Debian/Ubuntu
-    cd other/luajit
-    tar xvzf LuaJIT-2.0.5.tar.gz --strip 1
-    make
-    sudo make install
-
-
 Installing dependencies
 -----------------------
 
