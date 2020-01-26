@@ -2255,9 +2255,8 @@ bool CDuckBridge::LoadModFilesFromDisk(const SHA256_DIGEST *pModSha256)
 		}
 	}
 
-	m_Backend.OnModLoaded();
-	m_IsModLoaded = true;
-	return true;
+	m_IsModLoaded = m_Backend.LoadScripts();
+	return m_IsModLoaded;
 }
 
 bool CDuckBridge::TryLoadInstalledDuckMod(const SHA256_DIGEST *pModSha256)

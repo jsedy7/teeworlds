@@ -1856,10 +1856,10 @@ void CEditor::DoMapEditor(CUIRect View, CUIRect ToolBar)
 		float y = -(View.y/Screen.h)*h;
 		wx = x+w*mx/Screen.w;
 		wy = y+h*my/Screen.h;
-		Graphics()->MapScreen(x, y, x+w, y+h);
 		CLayerTiles *t = (CLayerTiles *)GetSelectedLayerType(0, LAYERTYPE_TILES);
 		if(t)
 		{
+			Graphics()->MapScreen(x, y, x+w, y+h);
 			m_TilesetPicker.m_Image = t->m_Image;
 			m_TilesetPicker.m_Texture = t->m_Texture;
 			m_TilesetPicker.m_Game = t->m_Game;
@@ -1867,15 +1867,39 @@ void CEditor::DoMapEditor(CUIRect View, CUIRect ToolBar)
 			if(m_ShowTileInfo)
 				m_TilesetPicker.ShowInfo();
 		}
+		else
+		{
+			CLayerQuads *t = (CLayerQuads *)GetSelectedLayerType(0, LAYERTYPE_QUADS);
+			if(t)
+			{
+				m_QuadsetPicker.m_Image = t->m_Image;
+				m_QuadsetPicker.m_lQuads[0].m_aPoints[0].x = (int) View.x << 10;
+				m_QuadsetPicker.m_lQuads[0].m_aPoints[0].y = (int) View.y << 10;
+				m_QuadsetPicker.m_lQuads[0].m_aPoints[1].x = (int) (View.x+View.w) << 10;
+				m_QuadsetPicker.m_lQuads[0].m_aPoints[1].y = (int) View.y << 10;
+				m_QuadsetPicker.m_lQuads[0].m_aPoints[2].x = (int) View.x << 10;
+				m_QuadsetPicker.m_lQuads[0].m_aPoints[2].y = (int) (View.y+View.h) << 10;
+				m_QuadsetPicker.m_lQuads[0].m_aPoints[3].x = (int) (View.x+View.w) << 10;
+				m_QuadsetPicker.m_lQuads[0].m_aPoints[3].y = (int) (View.y+View.h) << 10;
+				m_QuadsetPicker.m_lQuads[0].m_aPoints[4].x = (int) (View.x+View.w/2) << 10;
+				m_QuadsetPicker.m_lQuads[0].m_aPoints[4].y = (int) (View.y+View.h/2) << 10;
+				m_QuadsetPicker.Render();
+			}
+		}
 	}
 
 	// draw layer borders
 	CLayer *pEditLayers[16];
 	int NumEditLayers = 0;
 
-	if(m_ShowTilePicker)
+	if(m_ShowTilePicker && GetSelectedLayer(0) && GetSelectedLayer(0)->m_Type == LAYERTYPE_TILES)
 	{
 		pEditLayers[0] = &m_TilesetPicker;
+		NumEditLayers++;
+	}
+	else if(m_ShowTilePicker)
+	{
+		pEditLayers[0] = &m_QuadsetPicker;
 		NumEditLayers++;
 	}
 	else
@@ -3103,6 +3127,7 @@ void CEditor::AddFileDialogEntry(int Index, CUIRect *pView)
 		else
 			m_aFileDialogFileName[0] = 0;
 		m_FilesSelectedIndex = Index;
+		m_PreviewImageIsLoaded = false;
 
 		if(Input()->MouseDoubleClick())
 			m_aFileDialogActivate = true;
@@ -3114,6 +3139,7 @@ void CEditor::RenderFileDialog()
 	// GUI coordsys
 	Graphics()->MapScreen(UI()->Screen()->x, UI()->Screen()->y, UI()->Screen()->w, UI()->Screen()->h);
 	CUIRect View = *UI()->Screen();
+	CUIRect Preview;
 	float Width = View.w, Height = View.h;
 
 	RenderTools()->DrawUIRect(&View, vec4(0,0,0,0.25f), 0, 0);
@@ -3132,6 +3158,8 @@ void CEditor::RenderFileDialog()
 	View.HSplitBottom(14.0f, &View, &FileBox);
 	FileBox.VSplitLeft(55.0f, &FileBoxLabel, &FileBox);
 	View.HSplitBottom(10.0f, &View, 0); // some spacing
+	if (m_FileDialogFileType == CEditor::FILETYPE_IMG)
+		View.VSplitMid(&View, &Preview);
 	View.VSplitRight(15.0f, &View, &Scroll);
 
 	// title
@@ -3229,7 +3257,48 @@ void CEditor::RenderFileDialog()
 				else
 					m_aFileDialogFileName[0] = 0;
 				m_FilesSelectedIndex = NewIndex;
+				m_PreviewImageIsLoaded = false;
 			}
+		}
+
+		if (m_FileDialogFileType == CEditor::FILETYPE_IMG && !m_PreviewImageIsLoaded && m_FilesSelectedIndex > -1)
+		{
+			int Length = str_length(m_FileList[m_FilesSelectedIndex].m_aFilename);
+			if (Length >= 4 && str_endswith_nocase(m_FileList[m_FilesSelectedIndex].m_aFilename, ".png"))
+			{
+				char aBuffer[1024];
+				str_format(aBuffer, sizeof(aBuffer), "%s/%s", m_pFileDialogPath, m_FileList[m_FilesSelectedIndex].m_aFilename);
+
+				if(Graphics()->LoadPNG(&m_FilePreviewImageInfo, aBuffer, m_FileList[m_FilesSelectedIndex].m_StorageType))
+				{
+					Graphics()->UnloadTexture(&m_FilePreviewImage);
+					m_FilePreviewImage = Graphics()->LoadTextureRaw(m_FilePreviewImageInfo.m_Width, m_FilePreviewImageInfo.m_Height, m_FilePreviewImageInfo.m_Format, m_FilePreviewImageInfo.m_pData, m_FilePreviewImageInfo.m_Format, IGraphics::TEXLOAD_NORESAMPLE);
+					mem_free(m_FilePreviewImageInfo.m_pData);
+					m_PreviewImageIsLoaded = true;
+				}
+			}
+		}
+		if (m_PreviewImageIsLoaded)
+		{
+			int w = m_FilePreviewImageInfo.m_Width;
+			int h = m_FilePreviewImageInfo.m_Height;
+			if (m_FilePreviewImageInfo.m_Width > Preview.w)
+			{
+				h = m_FilePreviewImageInfo.m_Height * Preview.w / m_FilePreviewImageInfo.m_Width;
+				w = Preview.w;
+			}
+			if (h > Preview.h)
+			{
+				w = w * Preview.h / h,
+				h = Preview.h;
+			}
+
+			Graphics()->TextureSet(m_FilePreviewImage);
+			Graphics()->BlendNormal();
+			Graphics()->QuadsBegin();
+			IGraphics::CQuadItem QuadItem(Preview.x, Preview.y, w, h);
+			Graphics()->QuadsDrawTL(&QuadItem, 1);
+			Graphics()->QuadsEnd();
 		}
 	}
 
@@ -3375,6 +3444,7 @@ void CEditor::FilelistPopulate(int StorageType)
 	}
 	Storage()->ListDirectory(StorageType, m_pFileDialogPath, EditorListdirCallback, this);
 	m_FilesSelectedIndex = m_FileList.size() ? 0 : -1;
+	m_PreviewImageIsLoaded = false;
 	m_aFileDialogActivate = false;
 }
 
@@ -3396,6 +3466,7 @@ void CEditor::InvokeFileDialog(int StorageType, int FileType, const char *pTitle
 	m_FileDialogScrollValue = 0.0f;
 	m_FilesSearchBoxID = 0;
 	UI()->SetActiveItem(&m_FilesSearchBoxID);
+	m_PreviewImageIsLoaded = false;
 
 	if(pDefaultName)
 		str_copy(m_aFileDialogFileName, pDefaultName, sizeof(m_aFileDialogFileName));
@@ -4609,6 +4680,10 @@ void CEditor::Init()
 	m_TilesetPicker.m_pEditor = this;
 	m_TilesetPicker.MakePalette();
 	m_TilesetPicker.m_Readonly = true;
+
+	m_QuadsetPicker.m_pEditor = this;
+	m_QuadsetPicker.NewQuad();
+	m_QuadsetPicker.m_Readonly = true;
 
 	m_Brush.m_pMap = &m_Map;
 

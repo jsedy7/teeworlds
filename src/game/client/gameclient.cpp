@@ -441,8 +441,11 @@ int CGameClient::OnSnapInput(int *pData)
 void CGameClient::OnConnected()
 {
 	m_Layers.Init(Kernel());
+
+	if(m_pDuckBridge->IsLoaded())
+		m_pDuckBridge->m_Collision.Init(Layers());
+
 	m_Collision.Init(Layers());
-	m_pDuckBridge->m_Collision.Init(Layers());
 
 	RenderTools()->RenderTilemapGenerateSkip(Layers());
 
@@ -691,7 +694,7 @@ void CGameClient::OnMessage(int MsgId, CUnpacker *pUnpacker)
 					char aLabel[64];
 					GetPlayerLabel(aLabel, sizeof(aLabel), ClientID, m_aClients[ClientID].m_aName);
 					str_format(aBuf, sizeof(aBuf), Localize("'%s' initiated a pause"), aLabel);
-					m_pChat->AddLine(-1, 0, aBuf);
+					m_pChat->AddLine(aBuf);
 				}
 				break;
 			case GAMEMSG_CTF_CAPTURE:
@@ -724,7 +727,7 @@ void CGameClient::OnMessage(int MsgId, CUnpacker *pUnpacker)
 						str_format(aBuf, sizeof(aBuf), Localize("The red flag was captured by '%s'"), aLabel);
 					}
 				}
-				m_pChat->AddLine(-1, 0, aBuf);
+				m_pChat->AddLine(aBuf);
 			}
 			return;
 		}
@@ -740,7 +743,7 @@ void CGameClient::OnMessage(int MsgId, CUnpacker *pUnpacker)
 		switch(gs_GameMsgList[GameMsgID].m_Action)
 		{
 		case DO_CHAT:
-			m_pChat->AddLine(-1, 0, pText);
+			m_pChat->AddLine(pText);
 			break;
 		case DO_BROADCAST:
 			m_pBroadcast->DoBroadcast(pText);
@@ -829,7 +832,7 @@ void CGameClient::OnMessage(int MsgId, CUnpacker *pUnpacker)
 			char aLabel[64];
 			GetPlayerLabel(aLabel, sizeof(aLabel), pMsg->m_ClientID, m_aClients[pMsg->m_ClientID].m_aName);
 			str_format(aBuf, sizeof(aBuf), Localize("%s is muted by you"), aLabel);
-			m_pChat->AddLine(-2, 0, aBuf);
+			m_pChat->AddLine(aBuf, CChat::CLIENT_MSG);
 		}
 
 		m_aClients[pMsg->m_ClientID].UpdateRenderInfo(this, pMsg->m_ClientID, true);
@@ -909,9 +912,10 @@ void CGameClient::OnMessage(int MsgId, CUnpacker *pUnpacker)
 		CNetMsg_Sv_ServerSettings *pMsg = (CNetMsg_Sv_ServerSettings *)pRawMsg;
 
 		if(!m_ServerSettings.m_TeamLock && pMsg->m_TeamLock)
-			m_pChat->AddLine(-1, 0, Localize("Teams were locked"));
+			m_pChat->AddLine(Localize("Teams were locked"));
 		else if(m_ServerSettings.m_TeamLock && !pMsg->m_TeamLock)
-			m_pChat->AddLine(-1, 0, Localize("Teams were unlocked"));
+			m_pChat->AddLine(Localize("Teams were unlocked"));
+
 		m_ServerSettings.m_KickVote = pMsg->m_KickVote;
 		m_ServerSettings.m_KickMin = pMsg->m_KickMin;
 		m_ServerSettings.m_SpecVote = pMsg->m_SpecVote;
@@ -1331,9 +1335,12 @@ void CGameClient::OnNewSnapshot()
 		CSnapState::CCharacterInfo *c = &m_Snap.m_aCharacters[m_LocalClientID];
 		if(c->m_Active)
 		{
-			m_Snap.m_pLocalCharacter = &c->m_Cur;
-			m_Snap.m_pLocalPrevCharacter = &c->m_Prev;
-			m_LocalCharacterPos = vec2(m_Snap.m_pLocalCharacter->m_X, m_Snap.m_pLocalCharacter->m_Y);
+			if (!m_Snap.m_SpecInfo.m_Active)
+			{
+				m_Snap.m_pLocalCharacter = &c->m_Cur;
+				m_Snap.m_pLocalPrevCharacter = &c->m_Prev;
+				m_LocalCharacterPos = vec2(m_Snap.m_pLocalCharacter->m_X, m_Snap.m_pLocalCharacter->m_Y);
+			}
 		}
 		else if(Client()->SnapFindItem(IClient::SNAP_PREV, NETOBJTYPE_CHARACTER, m_LocalClientID))
 		{
@@ -1531,6 +1538,9 @@ void CGameClient::OnPredict()
 
 		for(int i = 0; i < MAX_CLIENTS; i++)
 			DuckWorld.m_aBaseCoreExtras[i].Read(m_pDuckBridge->m_Snap.m_aCharCoreExtra[i]);
+
+		for(int i = 0; i < MAX_CLIENTS; i++)
+			World.m_apCharacters[i]->Init(&World, &m_pDuckBridge->m_Collision);
 	}
 
 	// predict
@@ -1678,6 +1688,12 @@ void CGameClient::CClientData::UpdateRenderInfo(CGameClient *pGameClient, int Cl
 	// update skin info
 	if(UpdateSkinInfo)
 	{
+		char* apSkinParts[NUM_SKINPARTS];
+		for(int p = 0; p < NUM_SKINPARTS; p++)
+			apSkinParts[p] = m_aaSkinPartNames[p];
+
+		pGameClient->m_pSkins->ValidateSkinParts(apSkinParts, m_aUseCustomColors, m_aSkinPartColors, pGameClient->m_GameInfo.m_GameFlags);
+
 		m_SkinInfo.m_Size = 64;
 		if(pGameClient->IsXmas())
 		{
@@ -1774,7 +1790,7 @@ void CGameClient::DoEnterMessage(const char *pName, int ClientID, int Team)
 	case STR_TEAM_BLUE: str_format(aBuf, sizeof(aBuf), Localize("'%s' entered and joined the blue team"), aLabel); break;
 	case STR_TEAM_SPECTATORS: str_format(aBuf, sizeof(aBuf), Localize("'%s' entered and joined the spectators"), aLabel); break;
 	}
-	m_pChat->AddLine(-1, 0, aBuf);
+	m_pChat->AddLine(aBuf);
 }
 
 void CGameClient::DoLeaveMessage(const char *pName, int ClientID, const char *pReason)
@@ -1785,7 +1801,7 @@ void CGameClient::DoLeaveMessage(const char *pName, int ClientID, const char *pR
 		str_format(aBuf, sizeof(aBuf), Localize("'%s' has left the game (%s)"), aLabel, pReason);
 	else
 		str_format(aBuf, sizeof(aBuf), Localize("'%s' has left the game"), aLabel);
-	m_pChat->AddLine(-1, 0, aBuf);
+	m_pChat->AddLine(aBuf);
 }
 
 void CGameClient::DoTeamChangeMessage(const char *pName, int ClientID, int Team)
@@ -1800,7 +1816,7 @@ void CGameClient::DoTeamChangeMessage(const char *pName, int ClientID, int Team)
 	case STR_TEAM_BLUE: str_format(aBuf, sizeof(aBuf), Localize("'%s' joined the blue team"), aLabel); break;
 	case STR_TEAM_SPECTATORS: str_format(aBuf, sizeof(aBuf), Localize("'%s' joined the spectators"), aLabel); break;
 	}
-	m_pChat->AddLine(-1, 0, aBuf);
+	m_pChat->AddLine(aBuf);
 }
 
 void CGameClient::SendSwitchTeam(int Team)
@@ -1927,7 +1943,10 @@ void CGameClient::ConchainXmasHatUpdate(IConsole::IResult *pResult, void *pUserD
 
 CCollision* CGameClient::Collision()
 {
-	return &m_pDuckBridge->m_Collision;
+	 // TODO: quite bad to check this every time, cache this result somehow
+	if(m_pDuckBridge->IsLoaded())
+		return &m_pDuckBridge->m_Collision;
+	return &m_Collision;
 }
 
 IGameClient *CreateGameClient()

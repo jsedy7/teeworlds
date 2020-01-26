@@ -8,6 +8,12 @@
 /other/*/linux
 /other/*/mac
 /other/*/windows
+other/luajit/COPYRIGHT
+other/luajit/README
+other/luajit/doc/
+other/luajit/dynasm/
+other/luajit/etc/
+other/luajit/src/
 __pycache__/
 *.dll
 *.dmg
@@ -46,6 +52,7 @@ cscope.files
 cscope.out
 out
 tags
+*.code-workspace
 
 # CMake
 data

@@ -860,6 +860,13 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 					{
 						str_format(aDesc, sizeof(aDesc), "%s", pOption->m_aDescription);
 						str_format(aCmd, sizeof(aCmd), "%s", pOption->m_aCommand);
+						char aBuf[128];
+						str_format(aBuf, sizeof(aBuf),
+							"'%d:%s' voted %s '%s' reason='%s' cmd='%s' force=%d",
+							ClientID, Server()->ClientName(ClientID), pMsg->m_Type,
+							aDesc, pReason, aCmd, pMsg->m_Force
+						);
+						Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "server", aBuf);
 						if(pMsg->m_Force)
 						{
 							Server()->SetRconCID(ClientID);
@@ -896,6 +903,13 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 					Server()->GetClientAddr(KickID, aAddrStr, sizeof(aAddrStr));
 					str_format(aCmd, sizeof(aCmd), "ban %s %d Banned by vote", aAddrStr, g_Config.m_SvVoteKickBantime);
 				}
+				char aBuf[128];
+				str_format(aBuf, sizeof(aBuf),
+					"'%d:%s' voted %s '%d:%s' reason='%s' cmd='%s' force=%d",
+					ClientID, Server()->ClientName(ClientID), pMsg->m_Type,
+					KickID, Server()->ClientName(KickID), pReason, aCmd, pMsg->m_Force
+				);
+				Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "server", aBuf);
 				if(pMsg->m_Force)
 				{
 					Server()->SetRconCID(ClientID);
@@ -917,6 +931,13 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 
 				str_format(aDesc, sizeof(aDesc), "%2d: %s", SpectateID, Server()->ClientName(SpectateID));
 				str_format(aCmd, sizeof(aCmd), "set_team %d -1 %d", SpectateID, g_Config.m_SvVoteSpectateRejoindelay);
+				char aBuf[128];
+				str_format(aBuf, sizeof(aBuf),
+					"'%d:%s' voted %s '%d:%s' reason='%s' cmd='%s' force=%d",
+					ClientID, Server()->ClientName(ClientID), pMsg->m_Type,
+					SpectateID, Server()->ClientName(SpectateID), pReason, aCmd, pMsg->m_Force
+				);
+				Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "server", aBuf);
 				if(pMsg->m_Force)
 				{
 					Server()->SetRconCID(ClientID);
@@ -1045,6 +1066,11 @@ void CGameContext::OnMessage(int MsgID, CUnpacker *pUnpacker, int ClientID)
 			}
 
 			m_pController->OnPlayerInfoChange(pPlayer);
+		}
+		else if (MsgID == NETMSGTYPE_CL_COMMAND)
+		{
+			CNetMsg_Cl_Command *pMsg = (CNetMsg_Cl_Command*)pRawMsg;
+			m_pController->OnPlayerCommand(pPlayer, pMsg->m_Name, pMsg->m_Arguments);
 		}
 	}
 	else
@@ -1444,8 +1470,8 @@ void CGameContext::ConchainSettingUpdate(IConsole::IResult *pResult, void *pUser
 	if(pResult->NumArguments())
 	{
 		CGameContext *pSelf = (CGameContext *)pUserData;
-		if(pSelf->Server()->MaxClients() < g_Config.m_SvPlayerSlots)
-			g_Config.m_SvPlayerSlots = pSelf->Server()->MaxClients();
+		if(g_Config.m_SvMaxClients < g_Config.m_SvPlayerSlots)
+			g_Config.m_SvPlayerSlots = g_Config.m_SvMaxClients;
 		pSelf->SendSettings(-1);
 	}
 }
@@ -1557,23 +1583,24 @@ void CGameContext::OnInit()
 	Console()->Chain("sv_vote_spectate", ConchainSettingUpdate, this);
 	Console()->Chain("sv_teambalance_time", ConchainSettingUpdate, this);
 	Console()->Chain("sv_player_slots", ConchainSettingUpdate, this);
+	Console()->Chain("sv_max_clients", ConchainSettingUpdate, this);
 
 	Console()->Chain("sv_scorelimit", ConchainGameinfoUpdate, this);
 	Console()->Chain("sv_timelimit", ConchainGameinfoUpdate, this);
 	Console()->Chain("sv_matches_per_map", ConchainGameinfoUpdate, this);
 
 	// clamp sv_player_slots to 0..MaxClients
-	if(Server()->MaxClients() < g_Config.m_SvPlayerSlots)
-		g_Config.m_SvPlayerSlots = Server()->MaxClients();
+	if(g_Config.m_SvMaxClients < g_Config.m_SvPlayerSlots)
+		g_Config.m_SvPlayerSlots = g_Config.m_SvMaxClients;
 
 #ifdef CONF_DEBUG
-	// clamp dbg_dummies to 0..MaxClients-1
-	if(Server()->MaxClients() <= g_Config.m_DbgDummies)
-		g_Config.m_DbgDummies = Server()->MaxClients();
+	// clamp dbg_dummies to 0..MAX_CLIENTS-1
+	if(MAX_CLIENTS <= g_Config.m_DbgDummies)
+		g_Config.m_DbgDummies = MAX_CLIENTS;
 	if(g_Config.m_DbgDummies)
 	{
 		for(int i = 0; i < g_Config.m_DbgDummies ; i++)
-			OnClientConnected(Server()->MaxClients() -i-1, true, false);
+			OnClientConnected(MAX_CLIENTS -i-1, true, false);
 	}
 #endif
 }

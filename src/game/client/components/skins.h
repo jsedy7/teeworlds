@@ -72,6 +72,9 @@ public:
 	vec4 GetColorV4(int v, bool UseAlpha) const;
 	int GetTeamColor(int UseCustomColors, int PartColor, int Team, int Part) const;
 
+	// returns true if everything was valid and nothing changed
+	bool ValidateSkinParts(char *aPartNames[NUM_SKINPARTS], int *aUseCustomColors, int* aPartColors, int GameFlags) const;
+
 	 // DUCK
 	inline void AddSkinPart(int PartType, CSkinPart Part) {
 		dbg_assert(PartType >= 0 && PartType < NUM_SKINPARTS, "Part out of bounds");

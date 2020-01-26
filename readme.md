@@ -2,7 +2,7 @@
     <img src="https://repology.org/badge/vertical-allrepos/teeworlds.svg" alt="Packaging status" align="right">
 </a>
 
-Teeworlds [![CircleCI](https://circleci.com/gh/teeworlds/teeworlds.svg?style=svg)](https://circleci.com/gh/teeworlds/teeworlds) [![Travis CI Build Status](https://travis-ci.org/teeworlds/teeworlds.svg?branch=master)](https://travis-ci.org/teeworlds/teeworlds) [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/teeworlds/teeworlds?branch=master&svg=true)](https://ci.appveyor.com/project/heinrich5991/teeworlds)
+Teeworlds ![GitHub Actions](https://github.com/teeworlds/teeworlds/workflows/Build/badge.svg)
 =========
 
 A retro multiplayer shooter
@@ -26,16 +26,6 @@ Originally written by Magnus Auvinen.
 
 Building on Linux or macOS
 ==========================
-
-Installing Duck extra dependencies
------------------------
-
-    # Debian/Ubuntu
-    cd other/luajit
-    sudo tar xvzf LuaJIT-2.0.5.tar.gz
-    sudo make
-    sudo make install
-
 
 Installing dependencies
 -----------------------

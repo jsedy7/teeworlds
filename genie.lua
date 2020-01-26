@@ -20,7 +20,7 @@ local files_GAME_CLIENT_CPP = { "src/game/client/**.h", "src/game/client/**.cpp"
 local files_CLIENT_RC = { "other/icons/teeworlds_cl.rc" }
 local files_SERVER_RC = { "other/icons/teeworlds_srv_cl.rc" }
 
-solution "Teeworlds"
+solution "Duck"
 	location "build_genie"
 	
 	configurations {

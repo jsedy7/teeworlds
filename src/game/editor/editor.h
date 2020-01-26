@@ -675,6 +675,10 @@ public:
 	char m_FileDialogNewFolderName[64];
 	char m_FileDialogErrString[64];
 	float m_FilesSearchBoxID;
+	IGraphics::CTextureHandle m_FilePreviewImage;
+	bool m_PreviewImageIsLoaded;
+	CImageInfo m_FilePreviewImageInfo;
+
 
 	struct CFilelistItem
 	{
@@ -732,7 +736,7 @@ public:
 	int m_SelectedPoints;
 	int m_SelectedEnvelope;
 	int m_SelectedEnvelopePoint;
-    int m_SelectedQuadEnvelope;
+	int m_SelectedQuadEnvelope;
 	int m_SelectedImage;
 	
 	vec4 m_SelectedColor;
@@ -746,6 +750,7 @@ public:
 
 	CLayerGroup m_Brush;
 	CLayerTiles m_TilesetPicker;
+	CLayerQuads m_QuadsetPicker;
 
 	static const void *ms_pUiGotContext;
 
