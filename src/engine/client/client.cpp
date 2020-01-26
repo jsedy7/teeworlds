@@ -1569,7 +1569,7 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 				m_DuckModDownloadAmount = 0;
 
 				// request first chunk package of mod data
-				CMsgPacker Msg(NETMSG_DUCK_MOD_REQUEST_DATA, true);
+				CMsgPacker Msg(NETMSG_DUCK_CL_MOD_REQUEST_DATA, true);
 				SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH);
 
 				dbg_msg("duck", "mod info dev packet, chunk_size=%d chunk_num=%d file_size=%d sha256=%s'", ChunkSize, ChunkNum, ZipFileSize, aModSha256Str);
@@ -1613,7 +1613,7 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 			else if(m_DuckModDownloadChunk%m_DuckModDownloadChunkNum == 0)
 			{
 				// request next chunk package of map data
-				CMsgPacker Msg(NETMSG_DUCK_MOD_REQUEST_DATA, true);
+				CMsgPacker Msg(NETMSG_DUCK_CL_MOD_REQUEST_DATA, true);
 				SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH);
 				if(g_Config.m_Debug)
 					dbg_msg("duck", "requested next mod chunk package");
@@ -2671,7 +2671,7 @@ void CClient::DoVersionSpecificActions()
 // DUCK
 void CClient::SendDuckModReady()
 {
-	CMsgPacker Msg(NETMSG_DUCK_MOD_READY, true);
+	CMsgPacker Msg(NETMSG_DUCK_CL_MOD_READY, true);
 	SendMsg(&Msg, MSGFLAG_VITAL|MSGFLAG_FLUSH);
 }
 

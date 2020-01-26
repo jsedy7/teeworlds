@@ -18,6 +18,8 @@
 
 #define DUCK_VERSION 0x1
 
+#define NETMSGTYPE_SV_DUCK_MSG NUM_NETMSGTYPES
+
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
