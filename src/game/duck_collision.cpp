@@ -6,9 +6,49 @@
 
 const float MinStaticPhysSize = 30; // actually the smallest boject right now is a map tile (32 x 32)
 
+CDuckCollision::~CDuckCollision()
+{
+	if(m_pTiles)
+	{
+		mem_free(m_pTiles);
+		m_pTiles = 0;
+	}
+}
+
 void CDuckCollision::Init(CLayers *pLayers)
 {
-	CCollision::Init(pLayers);
+	if(m_pTiles != 0x0)
+		mem_free(m_pTiles);
+
+	m_pLayers = pLayers;
+	m_Width = m_pLayers->GameLayer()->m_Width;
+	m_Height = m_pLayers->GameLayer()->m_Height;
+	m_pTiles = (CTile*)mem_alloc(sizeof(CTile) * m_Width * m_Height, 1);
+	dbg_assert(m_pTiles != 0x0, "failed to alloc");
+	mem_copy(m_pTiles, m_pLayers->Map()->GetData(m_pLayers->GameLayer()->m_Data), sizeof(CTile) * m_Width * m_Height);
+
+	for(int i = 0; i < m_Width*m_Height; i++)
+	{
+		int Index = m_pTiles[i].m_Index;
+
+		if(Index > 128)
+			continue;
+
+		switch(Index)
+		{
+		case TILE_DEATH:
+			m_pTiles[i].m_Index = COLFLAG_DEATH;
+			break;
+		case TILE_SOLID:
+			m_pTiles[i].m_Index = COLFLAG_SOLID;
+			break;
+		case TILE_NOHOOK:
+			m_pTiles[i].m_Index = COLFLAG_SOLID|COLFLAG_NOHOOK;
+			break;
+		default:
+			m_pTiles[i].m_Index = 0;
+		}
+	}
 }
 
 void CDuckCollision::SetTileCollisionFlags(int Tx, int Ty, int Flags)

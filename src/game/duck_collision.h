@@ -9,6 +9,7 @@ class CWorldCore;
 class CDuckCollision: public CCollision
 {
 public:
+	~CDuckCollision();
 	void Init(class CLayers *pLayers);
 	void SetTileCollisionFlags(int Tx, int Ty, int Flags);
 

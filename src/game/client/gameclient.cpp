@@ -441,8 +441,11 @@ int CGameClient::OnSnapInput(int *pData)
 void CGameClient::OnConnected()
 {
 	m_Layers.Init(Kernel());
+
+	//if(m_pDuckBridge->IsLoaded())
+		m_pDuckBridge->m_Collision.Init(Layers());
+
 	m_Collision.Init(Layers());
-	m_pDuckBridge->m_Collision.Init(Layers());
 
 	RenderTools()->RenderTilemapGenerateSkip(Layers());
 
