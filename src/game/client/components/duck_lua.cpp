@@ -3389,7 +3389,7 @@ void CDuckLua::OnInput(IInput::CEvent e)
 	}
 }
 
-void CDuckLua::OnModLoaded()
+bool CDuckLua::LoadScripts()
 {
 	// Actually load the lua files now
 	int MainLuaID = FindScriptFileFromName("main.lua");
@@ -3399,7 +3399,7 @@ void CDuckLua::OnModLoaded()
 	if(!r)
 	{
 		LUA_CRIT("Could not load 'main.lua'");
-		return;
+		return false;
 	}
 
 	// Get functions references for fast access
@@ -3423,6 +3423,8 @@ void CDuckLua::OnModLoaded()
 	{
 		CallFunction(0, 0);
 	}
+
+	return true;
 }
 
 static void AnimKeyframeLuaPush(lua_State* L, const CAnimKeyframe& Kf)

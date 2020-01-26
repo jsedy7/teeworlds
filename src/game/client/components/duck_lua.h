@@ -114,6 +114,7 @@ class CDuckLua
 	void AddScriptFileItem(const char* pScriptFilename, const char* pFileData, int FileSize);
 	int FindScriptFileFromName(const char* pScriptFilename);
 	bool LuaLoadScriptFileData(int ScriptFileID);
+	bool LoadScripts();
 
 	void ResetLuaState();
 	void Reset();
@@ -129,15 +130,13 @@ class CDuckLua
 public:
 	CDuckLua();
 	void Shutdown();
+
 	void OnMessage(int Msg, void *pRawMsg);
 	void OnSnapItem(int Msg, int SnapID, void* pRawMsg);
 	void OnDuckSnapItem(int Msg, int SnapID, void* pRawMsg, int Size);
 	void OnInput(IInput::CEvent e);
-	void OnModLoaded();
 	bool OnRenderPlayer(CAnimState *pState, CTeeRenderInfo* pTeeInfo, vec2 Pos, vec2 Dir, int Emote, const CWeaponSpriteInfo *pWeaponSprite, const CNetObj_Character& PrevChara, const CNetObj_Character& CurChara, int ClientID);
 	bool OnBind(int Stroke, const char* pCmd);
-
-	inline bool IsLoaded() const { return m_pLuaState != NULL; }
 
 	void OnRender(float LocalTime, float IntraGameTick);
 	void OnUpdate(float LocalTime, float IntraGameTick);

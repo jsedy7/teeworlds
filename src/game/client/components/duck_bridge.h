@@ -434,7 +434,7 @@ struct CDuckBridge : public CComponent
 
 	void ModInit();
 	void Unload();
-	inline bool IsLoaded() const { return m_Backend.IsLoaded() && m_IsModLoaded; }
+	inline bool IsLoaded() const { return m_IsModLoaded; }
 
 	inline int DuckVersion() const { return DUCK_VERSION; }
 
