@@ -442,7 +442,7 @@ void CGameClient::OnConnected()
 {
 	m_Layers.Init(Kernel());
 
-	//if(m_pDuckBridge->IsLoaded())
+	if(m_pDuckBridge->IsLoaded())
 		m_pDuckBridge->m_Collision.Init(Layers());
 
 	m_Collision.Init(Layers());
@@ -1538,6 +1538,9 @@ void CGameClient::OnPredict()
 
 		for(int i = 0; i < MAX_CLIENTS; i++)
 			DuckWorld.m_aBaseCoreExtras[i].Read(m_pDuckBridge->m_Snap.m_aCharCoreExtra[i]);
+
+		for(int i = 0; i < MAX_CLIENTS; i++)
+			World.m_apCharacters[i]->Init(&World, &m_pDuckBridge->m_Collision);
 	}
 
 	// predict
@@ -1940,7 +1943,10 @@ void CGameClient::ConchainXmasHatUpdate(IConsole::IResult *pResult, void *pUserD
 
 CCollision* CGameClient::Collision()
 {
-	return &m_pDuckBridge->m_Collision;
+	 // TODO: quite bad to check this every time, cache this result somehow
+	if(m_pDuckBridge->IsLoaded())
+		return &m_pDuckBridge->m_Collision;
+	return &m_Collision;
 }
 
 IGameClient *CreateGameClient()
