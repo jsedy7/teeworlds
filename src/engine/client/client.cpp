@@ -300,10 +300,11 @@ CClient::CClient() : m_DemoPlayer(&m_SnapshotDelta), m_DemoRecorder(&m_SnapshotD
 
 	m_State = IClient::STATE_OFFLINE;
 	m_aServerAddressStr[0] = 0;
+	m_aServerPassword[0] = 0;
 
 	mem_zero(m_aSnapshots, sizeof(m_aSnapshots));
 	m_SnapshotStorage.Init();
-	m_RecivedSnapshots = 0;
+	m_ReceivedSnapshots = 0;
 
 	m_VersionInfo.m_State = CVersionInfo::STATE_INIT;
 
@@ -346,9 +347,15 @@ int CClient::SendMsg(CMsgPacker *pMsg, int Flags)
 
 void CClient::SendInfo()
 {
+	// restore password of favorite if possible
+	const char *pPassword = m_ServerBrowser.GetFavoritePassword(m_aServerAddressStr);
+	if(!pPassword)
+		pPassword = g_Config.m_Password;
+	str_copy(m_aServerPassword, pPassword, sizeof(m_aServerPassword));
+
 	CMsgPacker Msg(NETMSG_INFO, true);
 	Msg.AddString(GameClient()->NetVersion(), 128);
-	Msg.AddString(g_Config.m_Password, 128);
+	Msg.AddString(m_aServerPassword, 128);
 	Msg.AddInt(GameClient()->ClientVersion());
 	// DUCK
 	dbg_assert(GameClient()->DuckBridge()->DuckVersion() > 0, "Duck version <= 0");
@@ -465,7 +472,11 @@ void CClient::SetState(int s)
 	}
 	m_State = s;
 	if(Old != s)
+	{
 		GameClient()->OnStateChange(m_State, Old);
+		if(s == IClient::STATE_ONLINE)
+			OnClientOnline();
+	}
 }
 
 // called when the map is loaded and we should init for a new round
@@ -481,7 +492,7 @@ void CClient::OnEnterGame()
 	m_aSnapshots[SNAP_CURRENT] = 0;
 	m_aSnapshots[SNAP_PREV] = 0;
 	m_SnapshotStorage.PurgeAll();
-	m_RecivedSnapshots = 0;
+	m_ReceivedSnapshots = 0;
 	m_SnapshotParts = 0;
 	m_PredTick = 0;
 	m_CurrentRecvTick = 0;
@@ -499,6 +510,20 @@ void CClient::EnterGame()
 	// to finish the connection
 	SendEnterGame();
 	OnEnterGame();
+}
+
+void CClient::OnClientOnline()
+{
+	DemoRecorder_HandleAutoStart();
+
+	// store password and server as favorite if configured, if the server was password protected
+	CServerInfo Info = {0};
+	GetServerInfo(&Info);
+	bool ShouldStorePassword = g_Config.m_ClSaveServerPasswords == 2 || (g_Config.m_ClSaveServerPasswords == 1 && Info.m_Favorite);
+	if(m_aServerPassword[0] && ShouldStorePassword && (Info.m_Flags&IServerBrowser::FLAG_PASSWORD))
+	{
+		m_ServerBrowser.SetFavoritePassword(m_aServerAddressStr, m_aServerPassword);
+	}
 }
 
 void CClient::Connect(const char *pAddress)
@@ -547,6 +572,14 @@ void CClient::DisconnectWithReason(const char *pReason)
 	m_DemoPlayer.Stop();
 	DemoRecorder_Stop();
 
+	// reset password stored in favorites if it's invalid
+	if(pReason && str_find_nocase(pReason, "password"))
+	{
+		const char *pPassword = m_ServerBrowser.GetFavoritePassword(m_aServerAddressStr);
+		if(pPassword && str_comp(pPassword, m_aServerPassword) == 0)
+			m_ServerBrowser.SetFavoritePassword(m_aServerAddressStr, 0);
+	}
+
 	//
 	m_RconAuthed = 0;
 	m_UseTempRconCommands = 0;
@@ -569,11 +602,13 @@ void CClient::DisconnectWithReason(const char *pReason)
 	// clear the current server info
 	mem_zero(&m_CurrentServerInfo, sizeof(m_CurrentServerInfo));
 	mem_zero(&m_ServerAddress, sizeof(m_ServerAddress));
+	m_aServerAddressStr[0] = 0;
+	m_aServerPassword[0] = 0;
 
 	// clear snapshots
 	m_aSnapshots[SNAP_CURRENT] = 0;
 	m_aSnapshots[SNAP_PREV] = 0;
-	m_RecivedSnapshots = 0;
+	m_ReceivedSnapshots = 0;
 }
 
 void CClient::Disconnect()
@@ -582,9 +617,10 @@ void CClient::Disconnect()
 }
 
 
-void CClient::GetServerInfo(CServerInfo *pServerInfo) const
+void CClient::GetServerInfo(CServerInfo *pServerInfo)
 {
 	mem_copy(pServerInfo, &m_CurrentServerInfo, sizeof(m_CurrentServerInfo));
+	m_ServerBrowser.UpdateFavoriteState(pServerInfo);
 }
 
 int CClient::LoadData()
@@ -807,7 +843,7 @@ const char *CClient::LoadMap(const char *pName, const char *pFilename, const SHA
 	char aBuf[256];
 	str_format(aBuf, sizeof(aBuf), "loaded map '%s'", pFilename);
 	m_pConsole->Print(IConsole::OUTPUT_LEVEL_ADDINFO, "client", aBuf);
-	m_RecivedSnapshots = 0;
+	m_ReceivedSnapshots = 0;
 
 	str_copy(m_aCurrentMap, pName, sizeof(m_aCurrentMap));
 	str_copy(m_aCurrentMapPath, pFilename, sizeof(m_aCurrentMapPath));
@@ -1351,7 +1387,7 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 				}
 
 				// TODO: clean this up abit
-				mem_copy((char*)m_aSnapshotIncommingData + Part*MAX_SNAPSHOT_PACKSIZE, pData, PartSize);
+				mem_copy((char*)m_aSnapshotIncomingData + Part*MAX_SNAPSHOT_PACKSIZE, pData, PartSize);
 				m_SnapshotParts |= 1<<Part;
 
 				if(m_SnapshotParts == (unsigned)((1<<NumParts)-1))
@@ -1403,7 +1439,7 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 
 					if(CompleteSize)
 					{
-						int IntSize = CVariableInt::Decompress(m_aSnapshotIncommingData, CompleteSize, aTmpBuffer2, sizeof(aTmpBuffer2));
+						int IntSize = CVariableInt::Decompress(m_aSnapshotIncomingData, CompleteSize, aTmpBuffer2, sizeof(aTmpBuffer2));
 
 						if(IntSize < 0) // failure during decompression, bail
 							return;
@@ -1470,12 +1506,12 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 					}
 
 					// apply snapshot, cycle pointers
-					m_RecivedSnapshots++;
+					m_ReceivedSnapshots++;
 
 					m_CurrentRecvTick = GameTick;
 
 					// we got two snapshots until we see us self as connected
-					if(m_RecivedSnapshots == 2)
+					if(m_ReceivedSnapshots == 2)
 					{
 						// start at 200ms and work from there
 						m_PredictedTime.Init(GameTick*time_freq()/50);
@@ -1484,11 +1520,10 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket)
 						m_aSnapshots[SNAP_PREV] = m_SnapshotStorage.m_pFirst;
 						m_aSnapshots[SNAP_CURRENT] = m_SnapshotStorage.m_pLast;
 						SetState(IClient::STATE_ONLINE);
-						DemoRecorder_HandleAutoStart();
 					}
 
 					// adjust game time
-					if(m_RecivedSnapshots > 2)
+					if(m_ReceivedSnapshots > 2)
 					{
 						int64 Now = m_GameTime.Get(time_get());
 						int64 TickStart = GameTick*time_freq()/50;
@@ -1608,7 +1643,7 @@ void CClient::PumpNetwork()
 		if(State() != IClient::STATE_OFFLINE && State() != IClient::STATE_QUITING && m_NetClient.State() == NETSTATE_OFFLINE)
 		{
 			SetState(IClient::STATE_OFFLINE);
-			Disconnect();
+			DisconnectWithReason(m_NetClient.ErrorString());
 			char aBuf[256];
 			str_format(aBuf, sizeof(aBuf), "offline error='%s'", m_NetClient.ErrorString());
 			m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "client", aBuf);
@@ -1728,7 +1763,7 @@ void CClient::Update()
 			Disconnect();
 		}
 	}
-	else if(State() == IClient::STATE_ONLINE && m_RecivedSnapshots >= 3)
+	else if(State() == IClient::STATE_ONLINE && m_ReceivedSnapshots >= 3)
 	{
 		// switch snapshot
 		int Repredict = 0;
