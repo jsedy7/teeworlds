@@ -1085,17 +1085,17 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 			CMsgPacker Msg(NETMSG_PING_REPLY, true);
 			SendMsg(&Msg, 0, ClientID);
 		}
-		else if(Msg == NETMSG_DUCK_MOD_READY)
+		else if(Msg == NETMSG_DUCK_CL_MOD_READY)
 		{
 			// DUCK
 			// TODO: set a variable indicating the client has the mod loaded?
 			SendMap(ClientID);
 		}
-		else if(Msg == NETMSG_DUCK_MOD_REQUEST_DATA)
+		else if(Msg == NETMSG_DUCK_CL_MOD_REQUEST_DATA)
 		{
 			SendDuckModChunks(ClientID);
 		}
-		else if(Msg == NETMSG_DUCK_NETOBJ)
+		else if(Msg == NETMSG_DUCK_CL_MSG)
 		{
 			// DUCK
 			int NetID = Unpacker.GetInt();

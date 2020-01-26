@@ -3316,7 +3316,7 @@ void CDuckLua::OnMessage(int Msg, void *pRawMsg)
 		if(MakeVanillaLuaNetMessage(Msg, pRawMsg))
 		{
 		}
-		else if(Msg == NETMSG_DUCK_NETOBJ)
+		else if(Msg == NETMSGTYPE_SV_DUCK_MSG)
 		{
 			CUnpacker* pUnpacker = (CUnpacker*)pRawMsg;
 			const int ObjID = pUnpacker->GetInt();

@@ -191,7 +191,8 @@ public:
 	template<typename T>
 	void SendDuckNetObj(const T &NetObj, int CID)
 	{
-		CMsgPacker Msg(NETMSG_DUCK_NETOBJ, false);
+#define NETMSGTYPE_SV_DUCK_MSG NUM_NETMSGTYPES
+		CMsgPacker Msg(NETMSGTYPE_SV_DUCK_MSG, false);
 		Msg.AddInt((int)T::NET_ID);
 		Msg.AddInt((int)sizeof(NetObj));
 		Msg.AddRaw(&NetObj, sizeof(NetObj));

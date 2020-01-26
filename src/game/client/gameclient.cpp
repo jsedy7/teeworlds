@@ -750,7 +750,7 @@ void CGameClient::OnMessage(int MsgId, CUnpacker *pUnpacker)
 			break;
 		}
 	}
-	else if(MsgId == NETMSG_DUCK_NETOBJ)
+	else if(MsgId == NETMSGTYPE_SV_DUCK_MSG)
 	{
 		m_pDuckBridge->OnMessage(MsgId, pUnpacker);
 		// TODO: how does demo recording handle this?
@@ -1540,7 +1540,10 @@ void CGameClient::OnPredict()
 			DuckWorld.m_aBaseCoreExtras[i].Read(m_pDuckBridge->m_Snap.m_aCharCoreExtra[i]);
 
 		for(int i = 0; i < MAX_CLIENTS; i++)
-			World.m_apCharacters[i]->Init(&World, &m_pDuckBridge->m_Collision);
+		{
+			if(World.m_apCharacters[i])
+				World.m_apCharacters[i]->Init(&World, &m_pDuckBridge->m_Collision);
+		}
 	}
 
 	// predict
