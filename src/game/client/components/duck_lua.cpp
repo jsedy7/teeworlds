@@ -222,7 +222,12 @@ Prints arg1 to console.
 #*/
 int CDuckLua::NativePrint(lua_State *L)
 {
-	CheckArgumentCount(L, 1);
+	int n = lua_gettop(L);
+	if(n != 1)
+	{
+		LUA_ERR("print() wrong argument count (%d), expected %d", n, 1);
+		return false;
+	}
 
 	if(lua_istable(L, 1))
 	{
@@ -240,6 +245,12 @@ int CDuckLua::NativePrint(lua_State *L)
 			This()->PrintToConsole("true", 4);
 		else
 			This()->PrintToConsole("false", 5);
+		return 0;
+	}
+
+	if(lua_isnil(L, 1))
+	{
+		This()->PrintToConsole("nil", 3);
 		return 0;
 	}
 
