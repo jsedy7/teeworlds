@@ -2,6 +2,7 @@
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
 #include <game/server/gamecontext.h>
 #include <game/server/player.h>
+#include <game/server/gamemodes/zomb.h>
 
 #include "character.h"
 #include "projectile.h"
@@ -76,6 +77,15 @@ void CProjectile::Tick()
 	CCharacter *TargetChr = GameWorld()->IntersectCharacter(PrevPos, CurPos, 6.0f, CurPos, OwnerChar);
 
 	m_LifeSpan--;
+
+	// zomb
+	if(IsControllerZomb(GameServer())) {
+		bool d = ((CGameControllerZOMB*)GameServer()->m_pController)->PlayerProjectileTick(m_Owner, PrevPos, CurPos, m_Weapon, m_Direction, Collide || m_LifeSpan < 0);
+		if(d) {
+			GameWorld()->DestroyEntity(this);
+		}
+		return;
+	}
 
 	if(TargetChr || Collide || m_LifeSpan < 0 || GameLayerClipped(CurPos))
 	{

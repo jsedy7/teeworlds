@@ -6,6 +6,7 @@
 #include <game/server/gamecontext.h>
 #include <game/server/gamecontroller.h>
 #include <game/server/player.h>
+#include <game/server/gamemodes/zomb.h>
 
 #include "character.h"
 #include "laser.h"
@@ -161,6 +162,12 @@ void CCharacter::HandleNinja()
 			float Radius = GetProximityRadius() * 2.0f;
 			vec2 Center = OldPos + Dir * 0.5f;
 			int Num = GameWorld()->FindEntities(Center, Radius, (CEntity**)aEnts, MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
+
+			// zomb
+			if(IsControllerZomb(GameServer())) {
+				((CGameControllerZOMB*)GameServer()->m_pController)->
+						PlayerNinjaHit(GetPlayer()->GetCID(), Center, Radius);
+			}
 
 			for (int i = 0; i < Num; ++i)
 			{
@@ -332,6 +339,12 @@ void CCharacter::FireWeapon()
 				Hits++;
 			}
 
+            // zomb
+            if(IsControllerZomb(GameServer())) {
+                Hits += ((CGameControllerZOMB*)GameServer()->m_pController)->
+                        PlayerTryHitHammer(m_pPlayer->GetCID(), m_Pos, Direction);
+            }
+
 			// if we Hit anything, we have to wait for the reload
 			if(Hits)
 				m_ReloadTimer = Server()->TickSpeed()/3;
@@ -352,6 +365,12 @@ void CCharacter::FireWeapon()
 
 		case WEAPON_SHOTGUN:
 		{
+            if(IsControllerZomb(GameServer())) {
+                ((CGameControllerZOMB*)GameServer()->m_pController)->
+                        PlayerFireShotgun(m_pPlayer->GetCID(), m_Pos, Direction);
+                break;
+            }
+
 			int ShotSpread = 2;
 
 			for(int i = -ShotSpread; i <= ShotSpread; ++i)
@@ -400,6 +419,12 @@ void CCharacter::FireWeapon()
 			m_Ninja.m_OldVelAmount = length(m_Core.m_Vel);
 
 			GameServer()->CreateSound(m_Pos, SOUND_NINJA_FIRE);
+
+			// zomb
+			if(IsControllerZomb(GameServer())) {
+				((CGameControllerZOMB*)GameServer()->m_pController)->
+						PlayerNinjaStartDashing(GetPlayer()->GetCID());
+			}
 		} break;
 
 	}
@@ -668,7 +693,7 @@ void CCharacter::Die(int Killer, int Weapon)
 			Killer, - 1 - Killer,
 			m_pPlayer->GetCID(), m_pPlayer->GetTeam(), Server()->ClientName(m_pPlayer->GetCID()), Weapon, ModeSpecial
 		);
-	else
+	else if(GameServer()->m_apPlayers[Killer])
 		str_format(aBuf, sizeof(aBuf), "kill killer='%d:%d:%s' victim='%d:%d:%s' weapon=%d special=%d",
 			Killer, GameServer()->m_apPlayers[Killer]->GetTeam(), Server()->ClientName(Killer),
 			m_pPlayer->GetCID(), m_pPlayer->GetTeam(), Server()->ClientName(m_pPlayer->GetCID()), Weapon, ModeSpecial

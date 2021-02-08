@@ -64,6 +64,8 @@ public:
 	class CPlayer *GetPlayer() { return m_pPlayer; }
 
 private:
+	friend class CGameControllerZOMB;
+
 	// player controlling this character
 	class CPlayer *m_pPlayer;
 

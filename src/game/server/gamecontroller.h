@@ -48,16 +48,16 @@ class IGameController
 
 		IGS_GAME_PAUSED,		// game paused (infinite or tick timer)
 		IGS_GAME_RUNNING,		// game running (infinite)
-		
+
 		IGS_END_MATCH,			// match is over (tick timer)
 		IGS_END_ROUND,			// round is over (tick timer)
- 	};
+	};
 	EGameState m_GameState;
 	int m_GameStateTimer;
 
 	virtual bool DoWincheckMatch();		// returns true when the match is over
 	virtual void DoWincheckRound() {};
-	bool HasEnoughPlayers() const { return (IsTeamplay() && m_aTeamSize[TEAM_RED] > 0 && m_aTeamSize[TEAM_BLUE] > 0) || (!IsTeamplay() && m_aTeamSize[TEAM_RED] > 1); }
+	virtual bool HasEnoughPlayers() const { return (IsTeamplay() && m_aTeamSize[TEAM_RED] > 0 && m_aTeamSize[TEAM_BLUE] > 0) || (!IsTeamplay() && m_aTeamSize[TEAM_RED] > 1); }
 	void ResetGame();
 	void SetGameState(EGameState GameState, int Timer=0);
 	void StartMatch();
@@ -65,7 +65,7 @@ class IGameController
 
 	// map
 	char m_aMapWish[128];
-	
+
 	void CycleMap();
 
 	// spawn
@@ -86,7 +86,7 @@ class IGameController
 	};
 	vec2 m_aaSpawnPoints[3][64];
 	int m_aNumSpawnPoints[3];
-	
+
 	float EvaluateSpawnPos(CSpawnEval *pEval, vec2 Pos) const;
 	void EvaluateSpawnType(CSpawnEval *pEval, int Type) const;
 
@@ -197,13 +197,13 @@ public:
 	*/
 	virtual bool OnEntity(int Index, vec2 Pos);
 
-	void OnPlayerConnect(class CPlayer *pPlayer);
+	virtual void OnPlayerConnect(class CPlayer *pPlayer);
 	void OnPlayerDisconnect(class CPlayer *pPlayer);
 	void OnPlayerInfoChange(class CPlayer *pPlayer);
 	void OnPlayerReadyChange(class CPlayer *pPlayer);
 	void OnPlayerCommand(class CPlayer *pPlayer, const char *pCommandName, const char *pCommandArgs);
 
-	void OnReset();
+	virtual void OnReset();
 
 	// game
 	enum
@@ -228,7 +228,7 @@ public:
 
 	// info
 	void CheckGameInfo();
-	bool IsFriendlyFire(int ClientID1, int ClientID2) const;
+	virtual bool IsFriendlyFire(int ClientID1, int ClientID2) const;
 	bool IsFriendlyTeamFire(int Team1, int Team2) const;
 	bool IsGamePaused() const { return m_GameState == IGS_GAME_PAUSED || m_GameState == IGS_START_COUNTDOWN; }
 	bool IsGameRunning() const { return m_GameState == IGS_GAME_RUNNING; }
@@ -243,16 +243,16 @@ public:
 	void ChangeMap(const char *pToMap);
 
 	//spawn
-	bool CanSpawn(int Team, vec2 *pPos) const;
+	virtual bool CanSpawn(int Team, vec2 *pPos) const;
 	bool GetStartRespawnState() const;
 
 	// team
 	bool CanJoinTeam(int Team, int NotThisID) const;
-	bool CanChangeTeam(CPlayer *pPplayer, int JoinTeam) const;
+	virtual bool CanChangeTeam(CPlayer *pPplayer, int JoinTeam) const;
 
 	void DoTeamChange(class CPlayer *pPlayer, int Team, bool DoChatMsg=true);
 	void ForceTeamBalance() { if(!(m_GameFlags&GAMEFLAG_SURVIVAL)) DoTeamBalance(); }
-	
+
 	int GetRealPlayerNum() const { return m_aTeamSize[TEAM_RED]+m_aTeamSize[TEAM_BLUE]; }
 	int GetStartTeam();
 };

@@ -1,0 +1,92 @@
+#wave 1
+{
+	zombie: 20;
+}
+
+#wave 2
+{
+	zombie: 5;
+	boomer: 1;
+	mudge: 1;
+	zombie: 15;
+}
+
+#wave 3
+{
+	zombie: 6;
+	bull: 1;
+	mudge: 1;
+	hunter: 1;
+	zombie: 18;
+}
+
+#wave 4
+{
+	zombie: 10;
+	tank: 1;
+	zombie: 15;
+}
+
+#wave 5
+{
+	zombie: 10;
+	boomer: 2;
+	bull: 1;
+	zombie: 5;
+	mudge: 1;
+	zombie: 5;
+}
+
+#wave 6
+{
+	hunter: 2;
+	zombie: 20;
+	mudge: 2;
+	zombie: 20;
+	tank: 1;
+}
+
+#wave 7
+{
+	bull: 3;
+	zombie: 25;
+	mudge: 2;
+	zombie: 20;
+}
+
+#wave 8
+{
+	zombie: 10;
+	dominant: 1;
+	hunter: 3;
+	boomer_elite: 1;
+	zombie: 30;
+}
+
+#wave 9
+{
+	zombie_elite: 2;
+	boomer: 1;
+	wartule: 1;
+	bull: 2;
+	zombie: 20;
+}
+
+#wave 10
+{
+	tank: 1;
+	zombie: 10;
+	berserker: 1;
+	zombie: 5;
+	dominant: 1;
+	zombie: 15;
+}
+
+#wave 11
+{
+	zombie_elite: 5;
+	bull_elite: 1;
+	boomer_elite: 1;
+	wartule: 1;
+	zombie: 20;
+}

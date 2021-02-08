@@ -2,6 +2,7 @@
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
 #include <generated/server_data.h>
 #include <game/server/gamecontext.h>
+#include <game/server/gamemodes/zomb.h>
 
 #include "character.h"
 #include "laser.h"
@@ -23,6 +24,19 @@ bool CLaser::HitCharacter(vec2 From, vec2 To)
 {
 	vec2 At;
 	CCharacter *pOwnerChar = GameServer()->GetPlayerChar(m_Owner);
+
+	// zomb
+	if(IsControllerZomb(GameServer())) {
+        bool hit = ((CGameControllerZOMB*)GameServer()->m_pController)->
+                    PlayerTryHitLaser(m_Owner, From, To, At);
+        if(hit) {
+            m_From = From;
+            m_Pos = At;
+            m_Energy = -1;
+            return true;
+        }
+	}
+
 	CCharacter *pHit = GameWorld()->IntersectCharacter(m_Pos, To, 0.f, At, pOwnerChar);
 	if(!pHit)
 		return false;

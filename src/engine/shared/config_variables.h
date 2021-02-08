@@ -80,7 +80,7 @@ MACRO_CONFIG_STR(Bindaddr, bindaddr, 128, "", CFGFLAG_SAVE|CFGFLAG_CLIENT|CFGFLA
 MACRO_CONFIG_INT(SvPort, sv_port, 8303, 0, 0, CFGFLAG_SAVE|CFGFLAG_SERVER, "Port to use for the server")
 MACRO_CONFIG_INT(SvExternalPort, sv_external_port, 0, 0, 0, CFGFLAG_SAVE|CFGFLAG_SERVER, "External port to report to the master servers")
 MACRO_CONFIG_STR(SvMap, sv_map, 128, "dm1", CFGFLAG_SAVE|CFGFLAG_SERVER, "Map to use on the server")
-MACRO_CONFIG_INT(SvMaxClients, sv_max_clients, 8, 1, MAX_CLIENTS, CFGFLAG_SAVE|CFGFLAG_SERVER, "Maximum number of clients that are allowed on a server")
+MACRO_CONFIG_INT(SvMaxClients, sv_max_clients, 4, 1, 4, CFGFLAG_SAVE|CFGFLAG_SERVER, "Maximum number of clients that are allowed on a server")
 MACRO_CONFIG_INT(SvMaxClientsPerIP, sv_max_clients_per_ip, 4, 1, MAX_CLIENTS, CFGFLAG_SAVE|CFGFLAG_SERVER, "Maximum number of clients with the same IP that can connect to the server")
 MACRO_CONFIG_INT(SvMapDownloadSpeed, sv_map_download_speed, 2, 1, 16, CFGFLAG_SAVE|CFGFLAG_SERVER, "Number of map data packages a client gets on each request")
 MACRO_CONFIG_INT(SvHighBandwidth, sv_high_bandwidth, 0, 0, 1, CFGFLAG_SAVE|CFGFLAG_SERVER, "Use high bandwidth mode. Doubles the bandwidth required for the server. LAN use only")
@@ -107,5 +107,15 @@ MACRO_CONFIG_INT(DbgGraphs, dbg_graphs, 0, 0, 1, CFGFLAG_CLIENT, "Performance gr
 MACRO_CONFIG_INT(DbgHitch, dbg_hitch, 0, 0, 0, CFGFLAG_SERVER, "Hitch warnings")
 MACRO_CONFIG_STR(DbgStressServer, dbg_stress_server, 32, "localhost", CFGFLAG_CLIENT, "Server to stress")
 MACRO_CONFIG_INT(DbgResizable, dbg_resizable, 0, 0, 0, CFGFLAG_CLIENT, "Enables window resizing")
+
+// zomb
+#ifdef CONF_DEBUG
+MACRO_CONFIG_INT(DbgPathFindIterations, sv_pf_iterations, 2500, 1, 10000, CFGFLAG_SERVER, "Debug pathfind iterations")
+#endif
+
+MACRO_CONFIG_INT(SvZombAutoStart, sv_zomb_auto_start, 0, 0, 600, CFGFLAG_SERVER, "Zomb auto start on player join")
+MACRO_CONFIG_INT(SvZombAutoRestart, sv_zomb_auto_restart, 0, 0, 600, CFGFLAG_SERVER, "Zomb auto restart")
+MACRO_CONFIG_STR(SvZombWaveFile, sv_zomb_wave_file, 256, "", CFGFLAG_SAVE|CFGFLAG_SERVER, "Zomb wave file path")
+MACRO_CONFIG_INT(SvZombSurvivalDifficulty, sv_zomb_survival_difficulty, 1, 0, 2, CFGFLAG_SAVE|CFGFLAG_SERVER, "Zomb survival difficulty (0=easy 1=normal 2=hard)")
 
 #endif
